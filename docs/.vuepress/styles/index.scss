@@ -1,55 +1,418 @@
 /* Spora brand tokens.
  *
- * Mirrors the spora-landing palette from /Users/fabeat/Development/Spora/spora-landing/spec.md:
- *   --ink       #0a0e0e  (background — deep teal-black)
- *   --teal      #205158  (primary)
- *   --teal-deep #163a3f  (section bg variant, hover)
- *   --cream     #f7f3ec  (primary text on dark, primary CTA, light surfaces)
- *   --honey     #e8d4a8  (spore field color)
- *   --amber     #c87a3a  (reserved highlight, use sparingly)
+ * Mirrors the spora-landing palette from
+ * /Users/fabeat/Development/Spora/spora-landing/tailwind.config.js
+ * (and spec.md § 5 — the canonical brand spec):
  *
- * Plume uses its own CSS variable names internally; the :root block below
- * remaps Plume's variables onto the Spora palette so the theme picks up
- * the brand colours automatically. The palette CSS custom properties are
- * also exposed so plugin / per-page styles can reference them.
+ *   ink         #33221a  (background — warm milk chocolate; navbar, hero,
+ *                         footer, code-block surfaces)
+ *   ink-2       #2a1c14  (slightly darker brown for layered dark surfaces)
+ *   warm        #8a4d2a  (primary — sienna)
+ *   warm-deep   #3a2618  (deep cocoa)
+ *   warm-light  #b86b3e  (bright sienna — hover/active)
+ *   warm-mist   #a89888  (sepia mist — muted secondary text on sand)
+ *   paper       #f3ede0  (sand — light surfaces)
+ *   paper-50    #faf6ec  (lightest cream — body background)
+ *   paper-deep  #e6d8b8  (deep cream — accent surface)
+ *   cream       #f4ecdc  (text on dark, warm-cream tone)
+ *   amber       #c87a3a  (reserved highlight, use sparingly)
+ *
+ * Brand philosophy (per landing page): the BODY background is sand (#faf6ec).
+ * Dark brown (#33221a) is reserved for the navbar, hero card frame, footer,
+ * and code-block surfaces — never the body. The docs mirror that treatment.
+ *
+ * Note on selectors: Plume sets `data-theme="dark"` or `data-theme="light"` on
+ * <html>, NOT a `.dark` class — so we use `[data-theme="dark"]` for the dark
+ * override (used only if a user toggles appearance; light is the default).
  */
 
-:root {
-  /* Exposed Spora tokens */
-  --spora-ink: #0a0e0e;
-  --spora-teal: #205158;
-  --spora-teal-deep: #163a3f;
-  --spora-cream: #f7f3ec;
-  --spora-honey: #e8d4a8;
+@import './fonts.scss';
+
+/* ── Light mode (default) — sand body, brown text, brown navbar ─────────── */
+:root,
+html[data-theme='light'] {
+  /* Brand tokens */
+  --spora-ink: #33221a;
+  --spora-ink-2: #2a1c14;
+  --spora-warm: #8a4d2a;
+  --spora-warm-deep: #3a2618;
+  --spora-warm-light: #b86b3e;
+  --spora-warm-mist: #a89888;
+  --spora-paper: #f3ede0;
+  --spora-paper-50: #faf6ec;
+  --spora-paper-deep: #e6d8b8;
+  --spora-cream: #f4ecdc;
+  --spora-cream-dim: #d8cdb8;
+  --spora-honey: #e6d8b8;
   --spora-amber: #c87a3a;
 
-  /* Plume's theme color mapping (dark mode is the default for v1) */
-  --vp-c-brand-1: var(--spora-teal);
-  --vp-c-brand-2: var(--spora-teal-deep);
-  --vp-c-brand-3: var(--spora-teal);
-  --vp-c-brand-soft: rgba(32, 81, 88, 0.14);
+  /* Brand / accent */
+  --vp-c-brand-1: var(--spora-warm);
+  --vp-c-brand-2: var(--spora-warm-deep);
+  --vp-c-brand-3: var(--spora-warm);
+  --vp-c-brand-soft: rgba(138, 77, 42, 0.18);
+
+  /* Backgrounds — SAND body, layered cream for cards, deeper cream for mute */
+  --vp-c-bg: var(--spora-paper-50); /* body — sand #faf6ec */
+  --vp-c-bg-soft: var(--spora-paper); /* cards/sidebar — sand #f3ede0 */
+  --vp-c-bg-mute: var(--spora-paper-deep); /* mute surface — deep cream */
+  --vp-c-bg-alt: var(--spora-paper); /* alt bg — sand */
+
+  /* Text — dark brown on sand */
+  --vp-c-text-1: var(--spora-ink);
+  --vp-c-text-2: #5a4a3a;
+  --vp-c-text-3: var(--spora-warm-mist);
+  --vp-c-text-inverse-1: var(--spora-cream);
+  --vp-c-text-inverse-2: #4a3f33;
+
+  /* Borders — brown ink at low alpha */
+  --vp-c-divider: rgba(51, 34, 26, 0.1);
+  --vp-c-divider-light: rgba(51, 34, 26, 0.06);
+  --vp-c-border: rgba(51, 34, 26, 0.14);
+  --vp-c-gutter: var(--spora-paper-deep);
+
+  /* Default / mute colors */
+  --vp-c-default-1: var(--spora-ink);
+  --vp-c-default-2: #5a4a3a;
+  --vp-c-default-3: #8a7e6d;
+  --vp-c-default-soft: rgba(51, 34, 26, 0.06);
 }
 
-/* Plume's dark-mode background defaults to near-black, which matches --spora-ink.
- * No override needed for the body — we let the theme's own dark palette do the work.
+/* ── Dark mode (user-toggled) — warm brown body, cream text ────────────── */
+html[data-theme='dark'] {
+  --vp-c-brand-1: var(--spora-warm-light);
+  --vp-c-brand-2: var(--spora-warm);
+  --vp-c-brand-3: var(--spora-warm-light);
+  --vp-c-brand-soft: rgba(184, 107, 62, 0.2);
+
+  --vp-c-bg: var(--spora-ink);
+  --vp-c-bg-soft: var(--spora-ink-2);
+  --vp-c-bg-mute: var(--spora-warm-deep);
+  --vp-c-bg-alt: var(--spora-ink-2);
+
+  --vp-c-text-1: var(--spora-cream);
+  --vp-c-text-2: var(--spora-warm-mist);
+  --vp-c-text-3: #8a7e6d;
+  --vp-c-text-inverse-1: var(--spora-ink);
+  --vp-c-text-inverse-2: #4a3f33;
+
+  --vp-c-divider: rgba(244, 236, 220, 0.1);
+  --vp-c-divider-light: rgba(244, 236, 220, 0.06);
+  --vp-c-border: rgba(244, 236, 220, 0.14);
+  --vp-c-gutter: var(--spora-ink-2);
+
+  --vp-c-default-1: var(--spora-cream);
+  --vp-c-default-2: var(--spora-warm-mist);
+  --vp-c-default-3: #6a5e4f;
+  --vp-c-default-soft: rgba(244, 236, 220, 0.06);
+}
+
+/* ── Component polish ────────────────────────────────────────────────────── */
+
+/* Border radius — 0.5rem for cards (matches spora-landing), 0.5rem for code */
+.VPCard,
+.vp-doc-card,
+.vp-code-group,
+.vp-code-block,
+.vp-block,
+div[class*='card'] {
+  border-radius: 0.5rem;
+}
+
+code,
+.vp-code-block pre,
+pre[class*='language-'] {
+  border-radius: 0.5rem;
+}
+
+/* Inline code — warm tint, matches spora-landing's `text-warm` treatment */
+code:not(pre code):not([class*='language-']) {
+  color: var(--spora-warm-deep);
+  background: rgba(184, 107, 62, 0.1);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+/* Internal links inside doc content — warm sienna, hovering to amber */
+.VPDoc a:not(.vp-skip-link):not(.vp-edit-link-button) {
+  color: var(--spora-warm);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(138, 77, 42, 0.3);
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.VPDoc a:not(.vp-skip-link):hover {
+  color: var(--spora-amber);
+  border-bottom-color: var(--spora-amber);
+}
+
+/* Navbar — ALWAYS dark brown with cream text, regardless of theme. This is
+ * the brand-identifying surface (matches spora-landing sticky nav). */
+/* Navbar — ALWAYS dark brown with cream text, regardless of theme. This is
+ * the brand-identifying surface (matches spora-landing sticky nav).
+ *
+ * Plume paints its navbar via THREE things we need to override:
+ *   1. --vp-nav-bg-color (sand) — used by .vp-navbar and its variants
+ *      for the default/mobile view AND on non-home pages.
+ *   2. .vp-navbar.top — on desktop, has a media-query rule that makes
+ *      it transparent for sidebar pages so the parent's bg shows through.
+ *   3. .content-body — Plume's inner wrapper (data-v-scoped) gets a sand
+ *      background via a [data-v-*] attribute selector. That sand leaks
+ *      through the transparent .vp-navbar.top on desktop sidebar pages.
+ *
+ * Fix: override the CSS variable AND force both elements to dark brown
+ * with !important so the cascade never paints sand on the navbar chrome.
  */
-
-/* Light-mode override: keep the brand teal but warm the background slightly */
-html:not(.dark) {
-  --vp-c-bg: #fbf9f5;
-  --vp-c-bg-soft: #f5f1ea;
-  --vp-c-bg-mute: #ebe5dc;
-  --vp-c-text-1: #1a2020;
+:root,
+html[data-theme='light'],
+html[data-theme='dark'] {
+  --vp-nav-bg-color: var(--spora-ink) !important;
 }
 
-/* Tighter code-block radius and the brand honey for inline `code` accents */
-code {
-  border-radius: 4px;
+.vp-nav,
+header.vp-nav {
+  background: var(--spora-ink) !important;
+  border-bottom: 1px solid rgba(244, 236, 220, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-/* The home hero — Plume's home layout supports a custom hero via frontmatter,
- * but the global rule below makes the page background match the ink palette */
-.VPHero .name,
-.VPHero .text {
+.vp-navbar,
+.vp-navbar.top,
+.vp-navbar.has-sidebar.top,
+.vp-navbar[data-v-01186af6],
+.vp-navbar[data-v-01186af6]:not(.home),
+.vp-navbar[data-v-01186af6]:not(.has-sidebar, .home.top),
+.content-body[data-v-01186af6],
+.vp-navbar .container,
+.vp-navbar .wrapper,
+.vp-navbar .content {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+.VPNavBar .VPNavBarTitle,
+.vp-navbar-title .vp-link,
+.VPNavBar .VPHero .name,
+.vp-navbar-title span {
+  color: var(--spora-cream);
+  font-weight: 700;
   letter-spacing: -0.01em;
+}
+/* Plume actually uses `.navbar-menu-link` on the <a> elements (no .vp-
+ * prefix), so the .vp-navbar-menu-link selector misses entirely. */
+.VPNavBarMenuLink,
+.vp-navbar-menu-link,
+.navbar-menu-link {
+  color: var(--spora-cream-dim) !important;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.VPNavBarMenuLink:hover,
+.vp-navbar-menu-link:hover,
+.navbar-menu-link:hover,
+.VPNavBarMenuLink.active,
+.vp-navbar-menu-link.active,
+.navbar-menu-link.active {
+  color: var(--spora-cream) !important;
+}
+
+/* Sidebar — LAYERED SAND (matches body but slightly deeper) with brown text.
+ * Mirrors the rest of the doc page, not the dark navbar. */
+.VPSidebar,
+.vp-sidebar,
+.VPSidebar .VPSidebarItem.level-1 > .item > .link,
+.vp-sidebar .vp-sidebar-item.level-1 > .item > .link {
+  background: var(--spora-paper);
+  color: #5a4a3a;
+  border-right: 1px solid var(--vp-c-divider);
+}
+.VPSidebarItem.is-active > .item > .link,
+.vp-sidebar .is-active > .item > .link {
+  color: var(--spora-warm-deep);
+  background: rgba(184, 107, 62, 0.12);
+  border-left: 2px solid var(--spora-warm-light);
+  padding-left: calc(1rem - 2px);
+  font-weight: 600;
+}
+.VPSidebarItem.level-2 .link,
+.vp-sidebar .level-2 .link {
+  color: #5a4a3a;
+  font-size: 0.875rem;
+}
+.VPSidebarItem.level-2 .link:hover,
+.vp-sidebar .level-2 .link:hover {
+  color: var(--spora-ink);
+}
+
+/* Home hero — sand background with brown wordmark + warm accent ring.
+ * Lighter than the landing hero (which uses dark brown as a brand intro).
+ * The docs home is content-first, not marketing. */
+.VPHero {
+  background:
+    radial-gradient(ellipse at top, rgba(184, 107, 62, 0.1) 0%, transparent 60%),
+    var(--spora-paper-50);
+  margin-top: -3.5rem; /* bleed under the navbar */
+  padding-top: 6rem !important;
+  padding-bottom: 4rem !important;
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.VPHero .name,
+.VPHero .text,
+.VPHero .tagline {
+  color: var(--spora-ink);
+  letter-spacing: -0.02em;
+}
+.VPHero .name {
+  font-size: clamp(3.5rem, 8vw, 7rem) !important;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 1rem;
+  background: linear-gradient(180deg, var(--spora-ink) 0%, var(--spora-warm-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.VPHero .text {
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem) !important;
+  font-weight: 500;
+  color: #4a3f33;
+  margin-bottom: 0.5rem;
+}
+.VPHero .tagline {
+  font-size: clamp(0.95rem, 1.5vw, 1.125rem) !important;
+  font-weight: 400;
+  color: var(--spora-warm);
+  margin-bottom: 2rem;
+}
+
+/* CTA buttons — cream/sand primary on sand body, dark-brown secondary */
+.VPButton {
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.2s,
+    color 0.2s,
+    background 0.2s,
+    border-color 0.2s;
+}
+.VPButton:hover {
+  transform: scale(1.02);
+}
+.VPButton.brand {
+  background: var(--spora-ink);
+  color: var(--spora-cream);
+  border: 1px solid var(--spora-ink);
+}
+.VPButton.brand:hover {
+  background: var(--spora-warm-deep);
+  border-color: var(--spora-warm-deep);
+  color: var(--spora-cream);
+}
+.VPButton.alt {
+  background: transparent;
+  color: var(--spora-ink);
+  border: 1px solid rgba(51, 34, 26, 0.3);
+}
+.VPButton.alt:hover {
+  border-color: var(--spora-ink);
+  background: rgba(51, 34, 26, 0.05);
+}
+
+/* Feature cards (home page) — layered cream/sand with brown text */
+.VPFeature {
+  background: var(--spora-paper);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.VPFeature:hover {
+  border-color: var(--spora-warm-light);
+  transform: translateY(-2px);
+}
+.VPFeature .icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+.VPFeature .title {
+  color: var(--spora-ink);
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+.VPFeature .details {
+  color: #4a3f33;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* Code blocks — DARK BROWN SURFACE for contrast against the sand body.
+ * Matches the landing page's quickstart code card. */
+.vp-doc div[class*='language-'],
+.vp-doc pre {
+  background: var(--spora-ink);
+  border: 1px solid rgba(244, 236, 220, 0.08);
+  color: var(--spora-cream);
+}
+
+/* Tables */
+.vp-doc table {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.vp-doc table th {
+  background: var(--spora-paper-deep);
+  color: var(--spora-ink);
+  font-weight: 600;
+}
+.vp-doc table tr {
+  border-top: 1px solid var(--vp-c-divider);
+}
+.vp-doc table tr:nth-child(2n) {
+  background: rgba(184, 107, 62, 0.05);
+}
+
+/* Blockquote (used for callouts) */
+.vp-doc blockquote {
+  border-left: 3px solid var(--spora-warm);
+  background: rgba(184, 107, 62, 0.06);
+  color: var(--spora-ink);
+  padding: 0.75rem 1rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+/* Selection highlight — brown on sand */
+::selection {
+  background: var(--spora-warm);
+  color: var(--spora-cream);
+}
+
+/* Page-level footer (Plume renders one) — dark brown, cream text */
+.VPFooter,
+.vp-footer {
+  background: var(--spora-ink) !important;
+  color: var(--spora-cream-dim) !important;
+  border-top: 1px solid rgba(244, 236, 220, 0.08);
+}
+.VPFooter a,
+.vp-footer a {
+  color: var(--spora-cream) !important;
+}
+.VPFooter a:hover,
+.vp-footer a:hover {
+  color: var(--spora-paper-deep) !important;
 }

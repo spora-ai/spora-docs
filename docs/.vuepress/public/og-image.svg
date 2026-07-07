@@ -1,28 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
-  <rect width="1200" height="630" fill="#0a0e0e"/>
+  <rect width="1200" height="630" fill="#33221a"/>
   <g opacity="0.5">
-    <circle cx="200" cy="180" r="6" fill="#e8d4a8"/>
-    <circle cx="380" cy="120" r="4" fill="#e8d4a8"/>
-    <circle cx="560" cy="240" r="7" fill="#e8d4a8"/>
-    <circle cx="780" cy="160" r="5" fill="#e8d4a8"/>
-    <circle cx="940" cy="320" r="4" fill="#e8d4a8"/>
-    <circle cx="1080" cy="200" r="6" fill="#e8d4a8"/>
-    <circle cx="120" cy="380" r="5" fill="#e8d4a8"/>
-    <circle cx="320" cy="440" r="4" fill="#e8d4a8"/>
-    <circle cx="600" cy="500" r="6" fill="#e8d4a8"/>
-    <circle cx="860" cy="460" r="5" fill="#e8d4a8"/>
-    <circle cx="1020" cy="540" r="4" fill="#e8d4a8"/>
+    <circle cx="200" cy="180" r="6" fill="#e6d8b8"/>
+    <circle cx="380" cy="120" r="4" fill="#e6d8b8"/>
+    <circle cx="560" cy="240" r="7" fill="#e6d8b8"/>
+    <circle cx="780" cy="160" r="5" fill="#e6d8b8"/>
+    <circle cx="940" cy="320" r="4" fill="#e6d8b8"/>
+    <circle cx="1080" cy="200" r="6" fill="#e6d8b8"/>
+    <circle cx="120" cy="380" r="5" fill="#e6d8b8"/>
+    <circle cx="320" cy="440" r="4" fill="#e6d8b8"/>
+    <circle cx="600" cy="500" r="6" fill="#e6d8b8"/>
+    <circle cx="860" cy="460" r="5" fill="#e6d8b8"/>
+    <circle cx="1020" cy="540" r="4" fill="#e6d8b8"/>
   </g>
   <g transform="translate(80, 220)">
-    <circle cx="14" cy="14" r="10" fill="#205158"/>
-    <circle cx="42" cy="14" r="10" fill="#205158"/>
-    <circle cx="28" cy="36" r="10" fill="#205158"/>
-    <circle cx="14" cy="14" r="4" fill="#e8d4a8"/>
-    <circle cx="42" cy="14" r="4" fill="#e8d4a8"/>
-    <circle cx="28" cy="36" r="4" fill="#e8d4a8"/>
+    <circle cx="14" cy="14" r="10" fill="#b86b3e"/>
+    <circle cx="42" cy="14" r="10" fill="#b86b3e"/>
+    <circle cx="28" cy="36" r="10" fill="#b86b3e"/>
+    <circle cx="14" cy="14" r="4" fill="#f4ecdc"/>
+    <circle cx="42" cy="14" r="4" fill="#f4ecdc"/>
+    <circle cx="28" cy="36" r="4" fill="#f4ecdc"/>
   </g>
-  <text x="200" y="280" font-family="'Barlow', system-ui, sans-serif" font-weight="700" font-size="120" fill="#f7f3ec" letter-spacing="-0.02em">Spora</text>
-  <text x="200" y="350" font-family="'Barlow', system-ui, sans-serif" font-weight="400" font-size="32" fill="#e8d4a8">Self-hosted AI agent orchestration</text>
-  <text x="200" y="400" font-family="'Barlow', system-ui, sans-serif" font-weight="500" font-size="24" fill="#f7f3ec" opacity="0.7">Zero-config. Anywhere.</text>
-  <text x="200" y="560" font-family="'Barlow', system-ui, sans-serif" font-weight="500" font-size="22" fill="#f7f3ec" opacity="0.5">docs.spora-ai.com</text>
+  <text x="200" y="280" font-family="'Barlow', system-ui, sans-serif" font-weight="700" font-size="120" fill="#f4ecdc" letter-spacing="-0.02em">Spora</text>
+  <text x="200" y="350" font-family="'Barlow', system-ui, sans-serif" font-weight="400" font-size="32" fill="#e6d8b8">Self-hosted AI agent orchestration</text>
+  <text x="200" y="400" font-family="'Barlow', system-ui, sans-serif" font-weight="500" font-size="24" fill="#f4ecdc" opacity="0.7">Zero-config. Anywhere.</text>
+  <text x="200" y="560" font-family="'Barlow', system-ui, sans-serif" font-weight="500" font-size="22" fill="#f4ecdc" opacity="0.5">docs.spora-ai.com</text>
 </svg>

@@ -106,4 +106,4 @@ storage/
 
 The first three are state. The logs are not. The caches can be regenerated.
 
-For the framework's full env-var knobs that affect storage paths, see [Environment variables → Logging](/guide/operators/env-vars#logging).
+For the framework's full env-var knobs that affect storage paths, see [Environment variables → Logging](/start/operators/env-vars#logging).

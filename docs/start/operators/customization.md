@@ -71,7 +71,7 @@ $agent->save();
 
 ## Custom recipes
 
-Recipes are YAML files in `recipes/`. Schema: see the [Architecture overview](/guide/core-contributors/architecture). Drop a new YAML file in, then refresh the recipe list (admin UI or CLI).
+Recipes are YAML files in `recipes/`. Schema: see the [Architecture overview](/concepts/architecture). Drop a new YAML file in, then refresh the recipe list (admin UI or CLI).
 
 ## Theming the admin UI
 
@@ -99,4 +99,4 @@ All configuration is `.env`-driven. See `.env.example` for the full list. Key va
 - `SPORA_PLUGIN_INSTALL_ENABLED` — `true` to expose the install-via-UI feature.
 - `SPORA_FRONTEND_DEV` — `1` to force Vite HMR mode in `bin/dev`.
 
-For the full reference, see [Environment variables](/guide/operators/env-vars).
+For the full reference, see [Environment variables](/start/operators/env-vars).

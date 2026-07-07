@@ -26,7 +26,7 @@
  * override (used only if a user toggles appearance; light is the default).
  */
 
-@import './fonts.scss';
+@use './fonts.scss';
 
 /* ── Light mode (default) — sand body, brown text, brown navbar ─────────── */
 :root,

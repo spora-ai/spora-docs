@@ -15,9 +15,11 @@ export default defineUserConfig({
   // Served from / when the CNAME points docs.spora-ai.com at spora-ai.github.io
   base: '/',
 
-  // Top-level site metadata
+  // Top-level site metadata — title is empty so the navbar doesn't render a
+  // redundant "Spora" text next to the wordmark logo (logo.svg already spells
+  // "SPORA" with the spore pictogram).
   lang: 'en-US',
-  title: 'Spora',
+  title: '',
   description: 'Self-hosted AI agent orchestration. Zero-config. Anywhere.',
 
   // The Vite bundler is required by VuePress 2 — not auto-inferred from the theme
@@ -33,7 +35,7 @@ export default defineUserConfig({
   locales: {
     '/': {
       lang: 'en-US',
-      title: 'Spora',
+      title: '',
       description: 'Self-hosted AI agent orchestration. Zero-config. Anywhere.',
     },
   },
@@ -46,8 +48,10 @@ export default defineUserConfig({
 
   // Plume theme — extensive options; we start with the essentials
   theme: plumeTheme({
-    // Dark mode is the default per the spora-landing brand spec
-    appearance: 'force-dark',
+    // Light mode is the default — spora-landing uses sand (#faf6ec) for body
+    // backgrounds and only paints the navbar / hero / footer / code blocks in
+    // dark brown. Docs mirror that treatment.
+    appearance: false,
     // Show last-updated timestamps + edit links
     lastUpdated: true,
     editLink: true,

@@ -1,0 +1,33 @@
+{
+  "name": "spora-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Spora documentation site — https://docs.spora-ai.com",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vuepress dev docs",
+    "build": "vuepress build docs",
+    "preview": "vuepress preview docs",
+    "typecheck": "vuepress typecheck docs",
+    "lint:md": "markdownlint-cli2 \"docs/**/*.md\" \".github/**/*.md\" \"*.md\"",
+    "format": "prettier --write \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",
+    "format:check": "prettier --check \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\""
+  },
+  "dependencies": {
+    "vuepress": "2.0.0-rc.30",
+    "vuepress-theme-plume": "1.0.0-rc.204",
+    "@vuepress/bundler-vite": "2.0.0-rc.30"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "markdownlint-cli2": "^0.23.0",
+    "prettier": "^3.9.0",
+    "typescript": "^5.6.0",
+    "vue": "^3.5.0",
+    "vue-tsc": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

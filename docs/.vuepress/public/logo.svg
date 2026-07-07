@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="none">
+  <g>
+    <circle cx="14" cy="14" r="5" fill="#205158"/>
+    <circle cx="30" cy="14" r="5" fill="#205158"/>
+    <circle cx="22" cy="26" r="5" fill="#205158"/>
+    <circle cx="14" cy="14" r="2" fill="#e8d4a8"/>
+    <circle cx="30" cy="14" r="2" fill="#e8d4a8"/>
+    <circle cx="22" cy="26" r="2" fill="#e8d4a8"/>
+  </g>
+  <text x="48" y="28" font-family="'Barlow', system-ui, sans-serif" font-weight="700" font-size="22" fill="#f7f3ec" letter-spacing="-0.01em">Spora</text>
+</svg>

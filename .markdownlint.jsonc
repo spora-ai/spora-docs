@@ -1,0 +1,13 @@
+{
+  "default": true,
+  "MD013": false,
+  "MD024": { "siblings_only": true },
+  "MD025": { "front_matter_title": "^\\s*title\\s*[:=]" },
+  "MD026": false,
+  "MD033": false,
+  "MD041": false,
+  "MD046": { "style": "fenced" },
+  "MD048": false,
+  "MD049": { "emphasis": "_", "strong": "_" },
+  "MD060": false,
+}

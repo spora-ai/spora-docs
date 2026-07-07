@@ -1,0 +1,55 @@
+/* Spora brand tokens.
+ *
+ * Mirrors the spora-landing palette from /Users/fabeat/Development/Spora/spora-landing/spec.md:
+ *   --ink       #0a0e0e  (background — deep teal-black)
+ *   --teal      #205158  (primary)
+ *   --teal-deep #163a3f  (section bg variant, hover)
+ *   --cream     #f7f3ec  (primary text on dark, primary CTA, light surfaces)
+ *   --honey     #e8d4a8  (spore field color)
+ *   --amber     #c87a3a  (reserved highlight, use sparingly)
+ *
+ * Plume uses its own CSS variable names internally; the :root block below
+ * remaps Plume's variables onto the Spora palette so the theme picks up
+ * the brand colours automatically. The palette CSS custom properties are
+ * also exposed so plugin / per-page styles can reference them.
+ */
+
+:root {
+  /* Exposed Spora tokens */
+  --spora-ink: #0a0e0e;
+  --spora-teal: #205158;
+  --spora-teal-deep: #163a3f;
+  --spora-cream: #f7f3ec;
+  --spora-honey: #e8d4a8;
+  --spora-amber: #c87a3a;
+
+  /* Plume's theme color mapping (dark mode is the default for v1) */
+  --vp-c-brand-1: var(--spora-teal);
+  --vp-c-brand-2: var(--spora-teal-deep);
+  --vp-c-brand-3: var(--spora-teal);
+  --vp-c-brand-soft: rgba(32, 81, 88, 0.14);
+}
+
+/* Plume's dark-mode background defaults to near-black, which matches --spora-ink.
+ * No override needed for the body — we let the theme's own dark palette do the work.
+ */
+
+/* Light-mode override: keep the brand teal but warm the background slightly */
+html:not(.dark) {
+  --vp-c-bg: #fbf9f5;
+  --vp-c-bg-soft: #f5f1ea;
+  --vp-c-bg-mute: #ebe5dc;
+  --vp-c-text-1: #1a2020;
+}
+
+/* Tighter code-block radius and the brand honey for inline `code` accents */
+code {
+  border-radius: 4px;
+}
+
+/* The home hero — Plume's home layout supports a custom hero via frontmatter,
+ * but the global rule below makes the page background match the ink palette */
+.VPHero .name,
+.VPHero .text {
+  letter-spacing: -0.01em;
+}

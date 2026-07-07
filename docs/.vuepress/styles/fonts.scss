@@ -11,24 +11,42 @@
  */
 
 :root {
-  --spora-font-sans: 'Barlow', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --spora-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
-    Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --spora-font-sans:
+    'Barlow', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --spora-font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
 }
 
-html, body, .VPHero, .VPNavBar, .VPSidebar, .VPDoc {
+html,
+body,
+.VPHero,
+.VPNavBar,
+.VPSidebar,
+.VPDoc {
   font-family: var(--spora-font-sans);
 }
 
-code, pre, kbd, samp, .vp-code, .shiki, .vuepress-plugin-themes-default-content {
+code,
+pre,
+kbd,
+samp,
+.vp-code,
+.shiki,
+.vuepress-plugin-themes-default-content {
   font-family: var(--spora-font-mono);
 }
 
 /* Barlow is geometric — the landing page uses weight 700 for the wordmark.
  * Plume's headings default to 600 with fairly tight tracking; tighten and
  * weight to match the spec's display treatment. */
-h1, h2, h3, h4, h5, h6,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
 .VPHero .name,
 .VPHero .text,
 .VPDoc h1,

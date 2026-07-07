@@ -71,7 +71,7 @@ try {
 }
 ```
 
-For the full error envelope and the error code registry, see the [Error handling](/guide/core-contributors/error-handling) page.
+For the full error envelope and the error code registry, see the [Error handling](/concepts/error-handling) page.
 
 ## Composables
 

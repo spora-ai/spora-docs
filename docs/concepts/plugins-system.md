@@ -164,7 +164,7 @@ final class Plugin implements PluginInterface
 
 > **Note:** the plugin system is currently a work-in-progress. The hook methods (`tools()`, `drivers()`, `recipePaths()`, `register()`) are declared on the interface and surfaced by the manifest, but the explicit `PluginLoader → DI container` injection path is not yet fully wired up. New drivers, tools, and recipes contributed via plugins may not take effect without additional glue in `app/Plugins/PluginLoader.php` or direct registration via `config.php`. Three open PRs are landing this — the WIP note is preserved verbatim from the framework docs.
 >
-> To register a new LLM driver via a plugin, return its FQCN from `PluginInterface::drivers()` — see the [LLM drivers](/guide/core-contributors/drivers) page for the driver contract and the `llm_driver_classes` container key that plugins are intended to extend.
+> To register a new LLM driver via a plugin, return its FQCN from `PluginInterface::drivers()` — see the [LLM drivers](/concepts/drivers) page for the driver contract and the `llm_driver_classes` container key that plugins are intended to extend.
 
 ## Database migrations
 
@@ -251,7 +251,7 @@ In both cases the second plugin is quietly ignored. If a plugin appears to be "n
 
 Plugins are loaded by `Spora\Plugins\PluginLoader` (`app/Plugins/PluginLoader.php`) at boot. They are **not sandboxed** — a plugin runs as ordinary PHP code with full access to the application, the database, the file system, and any decrypted credentials. Only install plugins from sources you trust, and review their `plugin.json` manifest and source before deployment.
 
-For the broader security model (credential encryption, API auth, rate limiting), see the [Security](/guide/operators/security) page.
+For the broader security model (credential encryption, API auth, rate limiting), see the [Security](/start/operators/security) page.
 
 ### Boot-time stamp cache
 

@@ -7,7 +7,7 @@ description: Backups, plugin management, updates, logs, workers, reset.
 
 This page covers what you do _after_ install: backups, plugin management, framework updates, log tailing, scheduled workers, and reset.
 
-For a deeper backup strategy, see [Backups](/guide/operators/backups).
+For a deeper backup strategy, see [Backups](/start/operators/backups).
 
 ## Plugin management
 
@@ -54,7 +54,7 @@ composer update spora-ai/spora-frontend
 
 Tail with `tail -f storage/spora.log`.
 
-For the full env-var controls on logging (`SPORA_LOG_LEVEL`, `SPORA_LOG_PATH`), see [Environment variables](/guide/operators/env-vars#logging).
+For the full env-var controls on logging (`SPORA_LOG_LEVEL`, `SPORA_LOG_PATH`), see [Environment variables](/start/operators/env-vars#logging).
 
 ## Cron workers (scheduled tasks)
 

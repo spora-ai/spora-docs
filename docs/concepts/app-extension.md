@@ -156,6 +156,6 @@ Ship as a Composer package. Install with `php bin/spora spora:plugin:install`. N
 
 See also:
 
-- [Plugin system](/guide/core-contributors/plugins-system) — plugin system reference (for the migration target)
-- [Tool system](/guide/core-contributors/tools) — how to write a Tool class
-- [Architecture](/guide/core-contributors/architecture) — config priority and boot sequence
+- [Plugin system](/concepts/plugins-system) — plugin system reference (for the migration target)
+- [Tool system](/concepts/tools) — how to write a Tool class
+- [Architecture](/concepts/architecture) — config priority and boot sequence

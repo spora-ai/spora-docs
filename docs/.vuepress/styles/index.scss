@@ -4,58 +4,47 @@
  * /Users/fabeat/Development/Spora/spora-landing/tailwind.config.js
  * (and spec.md § 5 — the canonical brand spec):
  *
- *   ink         #33221a  (background — warm milk chocolate)
- *   ink-2       #2a1c14  (slightly lighter brown for layered surfaces)
+ *   ink         #33221a  (background — warm milk chocolate; navbar, hero,
+ *                         footer, code-block surfaces)
+ *   ink-2       #2a1c14  (slightly darker brown for layered dark surfaces)
  *   warm        #8a4d2a  (primary — sienna)
- *   warm-deep   #3a2618  (deep cocoa — section bg variants, hover)
+ *   warm-deep   #3a2618  (deep cocoa)
  *   warm-light  #b86b3e  (bright sienna — hover/active)
- *   warm-mist   #a89888  (sepia mist — muted secondary text)
- *   paper       #f3ede0  (light surface — primary CTA, card bg on light mode)
- *   paper-50    #faf6ec  (light cream — lightest surface)
- *   paper-deep  #e6d8b8  (deep cream — accent replacements)
+ *   warm-mist   #a89888  (sepia mist — muted secondary text on sand)
+ *   paper       #f3ede0  (sand — light surfaces)
+ *   paper-50    #faf6ec  (lightest cream — body background)
+ *   paper-deep  #e6d8b8  (deep cream — accent surface)
  *   cream       #f4ecdc  (text on dark, warm-cream tone)
  *   amber       #c87a3a  (reserved highlight, use sparingly)
  *
- * Maps Spora's palette onto Plume's CSS variables so the theme picks up the
- * brand colors automatically across nav, sidebar, code blocks, links, etc.
+ * Brand philosophy (per landing page): the BODY background is sand (#faf6ec).
+ * Dark brown (#33221a) is reserved for the navbar, hero card frame, footer,
+ * and code-block surfaces — never the body. The docs mirror that treatment.
  *
  * Note on selectors: Plume sets `data-theme="dark"` or `data-theme="light"` on
- * <html>, NOT a `.dark` class — so we use `[data-theme="dark"]` here.
+ * <html>, NOT a `.dark` class — so we use `[data-theme="dark"]` for the dark
+ * override (used only if a user toggles appearance; light is the default).
  */
 
 @import './fonts.scss';
 
 
-/* ── Light mode (default) — paper/ink inverse of the dark palette ───────── */
+/* ── Light mode (default) — sand body, brown text, brown navbar ─────────── */
 :root,
 html[data-theme='light'] {
-  --vp-c-bg: var(--spora-paper-50);   /* lightest cream */
-  --vp-c-bg-soft: var(--spora-paper);
-  --vp-c-bg-mute: var(--spora-paper-deep);
-  --vp-c-bg-alt: var(--spora-paper);
-  --vp-c-text-1: var(--spora-ink);
-  --vp-c-text-2: #4a3f33;
-  --vp-c-text-3: #6a5e4f;
-  --vp-c-divider: rgba(51, 34, 26, 0.10);
-  --vp-c-divider-light: rgba(51, 34, 26, 0.06);
-  --vp-c-border: rgba(51, 34, 26, 0.12);
-}
-
-/* ── Dark mode (default per spora-landing brand) — warm brown + cream ────── */
-html[data-theme='dark'] {
-  /* Exposed Spora tokens */
+  /* Brand tokens */
   --spora-ink: #33221a;
-  --spora-ink-2: #2a1c14;          /* slightly lighter brown for layered surfaces */
+  --spora-ink-2: #2a1c14;
   --spora-warm: #8a4d2a;
   --spora-warm-deep: #3a2618;
-  --spora-warm-light: #b86b3e;     /* brighter warm for hover/active */
-  --spora-warm-mist: #a89888;      /* sepia mist — muted secondary text */
+  --spora-warm-light: #b86b3e;
+  --spora-warm-mist: #a89888;
   --spora-paper: #f3ede0;
   --spora-paper-50: #faf6ec;
   --spora-paper-deep: #e6d8b8;
   --spora-cream: #f4ecdc;
-  --spora-cream-dim: #d8cdb8;      /* secondary text on dark surfaces */
-  --spora-honey: #e6d8b8;          /* alias of paper-deep — kept for spec continuity */
+  --spora-cream-dim: #d8cdb8;
+  --spora-honey: #e6d8b8;
   --spora-amber: #c87a3a;
 
   /* Brand / accent */
@@ -64,26 +53,55 @@ html[data-theme='dark'] {
   --vp-c-brand-3: var(--spora-warm);
   --vp-c-brand-soft: rgba(138, 77, 42, 0.18);
 
-  /* Backgrounds — warm brown */
+  /* Backgrounds — SAND body, layered cream for cards, deeper cream for mute */
+  --vp-c-bg: var(--spora-paper-50);          /* body — sand #faf6ec */
+  --vp-c-bg-soft: var(--spora-paper);        /* cards/sidebar — sand #f3ede0 */
+  --vp-c-bg-mute: var(--spora-paper-deep);   /* mute surface — deep cream */
+  --vp-c-bg-alt: var(--spora-paper);         /* alt bg — sand */
+
+  /* Text — dark brown on sand */
+  --vp-c-text-1: var(--spora-ink);
+  --vp-c-text-2: #5a4a3a;
+  --vp-c-text-3: var(--spora-warm-mist);
+  --vp-c-text-inverse-1: var(--spora-cream);
+  --vp-c-text-inverse-2: #4a3f33;
+
+  /* Borders — brown ink at low alpha */
+  --vp-c-divider: rgba(51, 34, 26, 0.10);
+  --vp-c-divider-light: rgba(51, 34, 26, 0.06);
+  --vp-c-border: rgba(51, 34, 26, 0.14);
+  --vp-c-gutter: var(--spora-paper-deep);
+
+  /* Default / mute colors */
+  --vp-c-default-1: var(--spora-ink);
+  --vp-c-default-2: #5a4a3a;
+  --vp-c-default-3: #8a7e6d;
+  --vp-c-default-soft: rgba(51, 34, 26, 0.06);
+}
+
+/* ── Dark mode (user-toggled) — warm brown body, cream text ────────────── */
+html[data-theme='dark'] {
+  --vp-c-brand-1: var(--spora-warm-light);
+  --vp-c-brand-2: var(--spora-warm);
+  --vp-c-brand-3: var(--spora-warm-light);
+  --vp-c-brand-soft: rgba(184, 107, 62, 0.20);
+
   --vp-c-bg: var(--spora-ink);
   --vp-c-bg-soft: var(--spora-ink-2);
   --vp-c-bg-mute: var(--spora-warm-deep);
   --vp-c-bg-alt: var(--spora-ink-2);
 
-  /* Text */
   --vp-c-text-1: var(--spora-cream);
   --vp-c-text-2: var(--spora-warm-mist);
   --vp-c-text-3: #8a7e6d;
   --vp-c-text-inverse-1: var(--spora-ink);
   --vp-c-text-inverse-2: #4a3f33;
 
-  /* Borders / dividers — 8% alpha cream */
   --vp-c-divider: rgba(244, 236, 220, 0.10);
   --vp-c-divider-light: rgba(244, 236, 220, 0.06);
   --vp-c-border: rgba(244, 236, 220, 0.14);
   --vp-c-gutter: var(--spora-ink-2);
 
-  /* Default / mute colors */
   --vp-c-default-1: var(--spora-cream);
   --vp-c-default-2: var(--spora-warm-mist);
   --vp-c-default-3: #6a5e4f;
@@ -108,10 +126,10 @@ pre[class*='language-'] {
   border-radius: 0.5rem;
 }
 
-/* Inline code — warm tint for warmth, matching spora-landing's cream accent */
+/* Inline code — warm tint, matches spora-landing's `text-warm` treatment */
 code:not(pre code):not([class*='language-']) {
-  color: var(--spora-paper-deep);
-  background: rgba(230, 216, 184, 0.10);
+  color: var(--spora-warm-deep);
+  background: rgba(184, 107, 62, 0.10);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
@@ -119,9 +137,9 @@ code:not(pre code):not([class*='language-']) {
 
 /* Internal links inside doc content — warm sienna, hovering to amber */
 .VPDoc a:not(.vp-skip-link):not(.vp-edit-link-button) {
-  color: var(--spora-warm-light);
+  color: var(--spora-warm);
   text-decoration: none;
-  border-bottom: 1px solid rgba(184, 107, 62, 0.3);
+  border-bottom: 1px solid rgba(138, 77, 42, 0.3);
   transition: color 0.2s, border-color 0.2s;
 }
 .VPDoc a:not(.vp-skip-link):hover {
@@ -129,15 +147,14 @@ code:not(pre code):not([class*='language-']) {
   border-bottom-color: var(--spora-amber);
 }
 
-/* Navbar — warm-milk-chocolate brown with cream text, matches spora-landing
- * footer's `bg-ink` treatment. Slim, slightly translucent so the hero gradient
- * can bleed through. */
+/* Navbar — ALWAYS dark brown with cream text, regardless of theme. This is
+ * the brand-identifying surface (matches spora-landing sticky nav). */
 .VPNavBar,
 .vp-nav {
-  background: rgba(51, 34, 26, 0.92);
+  background: var(--spora-ink) !important;
+  border-bottom: 1px solid rgba(244, 236, 220, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--vp-c-divider);
 }
 .VPNavBar .VPNavBarTitle,
 .vp-navbar-title .vp-link,
@@ -160,43 +177,44 @@ code:not(pre code):not([class*='language-']) {
   color: var(--spora-cream) !important;
 }
 
-/* Sidebar — slightly lighter brown layered surface, warm-sienna active state.
- * Matches spora-landing footer's `bg-ink` with `text-cream/55-70-45` text. */
+/* Sidebar — LAYERED SAND (matches body but slightly deeper) with brown text.
+ * Mirrors the rest of the doc page, not the dark navbar. */
 .VPSidebar,
 .vp-sidebar,
 .VPSidebar .VPSidebarItem.level-1 > .item > .link,
 .vp-sidebar .vp-sidebar-item.level-1 > .item > .link {
-  background: var(--spora-ink-2);
-  color: var(--spora-cream-dim);
+  background: var(--spora-paper);
+  color: #5a4a3a;
   border-right: 1px solid var(--vp-c-divider);
 }
 .VPSidebarItem.is-active > .item > .link,
 .vp-sidebar .is-active > .item > .link {
-  color: var(--spora-cream);
-  background: rgba(184, 107, 62, 0.14);
+  color: var(--spora-warm-deep);
+  background: rgba(184, 107, 62, 0.12);
   border-left: 2px solid var(--spora-warm-light);
   padding-left: calc(1rem - 2px);
   font-weight: 600;
 }
 .VPSidebarItem.level-2 .link,
 .vp-sidebar .level-2 .link {
-  color: var(--spora-cream-dim);
+  color: #5a4a3a;
   font-size: 0.875rem;
 }
 .VPSidebarItem.level-2 .link:hover,
 .vp-sidebar .level-2 .link:hover {
-  color: var(--spora-cream);
+  color: var(--spora-ink);
 }
 
-/* Home hero — match the landing page's full-viewport warm-brown background,
- * centered-wordmark style with a cream-to-paper-deep gradient on the name. */
+/* Home hero — sand background with brown wordmark + warm accent ring.
+ * Lighter than the landing hero (which uses dark brown as a brand intro).
+ * The docs home is content-first, not marketing. */
 .VPHero {
   background: radial-gradient(
       ellipse at top,
-      rgba(184, 107, 62, 0.18) 0%,
+      rgba(184, 107, 62, 0.10) 0%,
       transparent 60%
     ),
-    var(--spora-ink);
+    var(--spora-paper-50);
   margin-top: -3.5rem; /* bleed under the navbar */
   padding-top: 6rem !important;
   padding-bottom: 4rem !important;
@@ -213,7 +231,7 @@ code:not(pre code):not([class*='language-']) {
 .VPHero .name,
 .VPHero .text,
 .VPHero .tagline {
-  color: var(--spora-cream);
+  color: var(--spora-ink);
   letter-spacing: -0.02em;
 }
 .VPHero .name {
@@ -221,7 +239,7 @@ code:not(pre code):not([class*='language-']) {
   font-weight: 700;
   line-height: 1;
   margin-bottom: 1rem;
-  background: linear-gradient(180deg, var(--spora-cream) 0%, var(--spora-paper-deep) 100%);
+  background: linear-gradient(180deg, var(--spora-ink) 0%, var(--spora-warm-deep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -229,17 +247,17 @@ code:not(pre code):not([class*='language-']) {
 .VPHero .text {
   font-size: clamp(1.25rem, 2.5vw, 1.75rem) !important;
   font-weight: 500;
-  color: var(--spora-cream-dim);
+  color: #4a3f33;
   margin-bottom: 0.5rem;
 }
 .VPHero .tagline {
   font-size: clamp(0.95rem, 1.5vw, 1.125rem) !important;
   font-weight: 400;
-  color: var(--spora-paper-deep);
+  color: var(--spora-warm);
   margin-bottom: 2rem;
 }
 
-/* CTA buttons — cream primary, outline secondary (matches spora-landing) */
+/* CTA buttons — cream/sand primary on sand body, dark-brown secondary */
 .VPButton {
   border-radius: 9999px;
   padding: 0.75rem 1.5rem;
@@ -251,28 +269,28 @@ code:not(pre code):not([class*='language-']) {
   transform: scale(1.02);
 }
 .VPButton.brand {
-  background: var(--spora-cream);
-  color: var(--spora-ink);
-  border: 1px solid var(--spora-cream);
+  background: var(--spora-ink);
+  color: var(--spora-cream);
+  border: 1px solid var(--spora-ink);
 }
 .VPButton.brand:hover {
-  background: var(--spora-paper-deep);
-  border-color: var(--spora-paper-deep);
-  color: var(--spora-ink);
+  background: var(--spora-warm-deep);
+  border-color: var(--spora-warm-deep);
+  color: var(--spora-cream);
 }
 .VPButton.alt {
   background: transparent;
-  color: var(--spora-cream);
-  border: 1px solid rgba(244, 236, 220, 0.4);
+  color: var(--spora-ink);
+  border: 1px solid rgba(51, 34, 26, 0.30);
 }
 .VPButton.alt:hover {
-  border-color: var(--spora-cream);
-  background: rgba(244, 236, 220, 0.08);
+  border-color: var(--spora-ink);
+  background: rgba(51, 34, 26, 0.05);
 }
 
-/* Feature cards (home page) */
+/* Feature cards (home page) — layered cream/sand with brown text */
 .VPFeature {
-  background: var(--spora-ink-2);
+  background: var(--spora-paper);
   border: 1px solid var(--vp-c-divider);
   border-radius: 0.5rem;
   padding: 1.5rem;
@@ -287,21 +305,22 @@ code:not(pre code):not([class*='language-']) {
   margin-bottom: 0.5rem;
 }
 .VPFeature .title {
-  color: var(--spora-cream);
+  color: var(--spora-ink);
   font-weight: 600;
   font-size: 1.125rem;
 }
 .VPFeature .details {
-  color: var(--spora-cream-dim);
+  color: #4a3f33;
   font-size: 0.9375rem;
   line-height: 1.6;
 }
 
-/* Code blocks — warm-dark surface, cream text. */
+/* Code blocks — DARK BROWN SURFACE for contrast against the sand body.
+ * Matches the landing page's quickstart code card. */
 .vp-doc div[class*='language-'],
 .vp-doc pre {
-  background: var(--spora-ink-2);
-  border: 1px solid var(--vp-c-divider);
+  background: var(--spora-ink);
+  border: 1px solid rgba(244, 236, 220, 0.08);
   color: var(--spora-cream);
 }
 
@@ -312,28 +331,44 @@ code:not(pre code):not([class*='language-']) {
   overflow: hidden;
 }
 .vp-doc table th {
-  background: var(--spora-warm-deep);
-  color: var(--spora-cream);
+  background: var(--spora-paper-deep);
+  color: var(--spora-ink);
   font-weight: 600;
 }
 .vp-doc table tr {
   border-top: 1px solid var(--vp-c-divider);
 }
 .vp-doc table tr:nth-child(2n) {
-  background: rgba(184, 107, 62, 0.06);
+  background: rgba(184, 107, 62, 0.05);
 }
 
 /* Blockquote (used for callouts) */
 .vp-doc blockquote {
-  border-left: 3px solid var(--spora-paper-deep);
-  background: rgba(230, 216, 184, 0.06);
-  color: var(--spora-cream);
+  border-left: 3px solid var(--spora-warm);
+  background: rgba(184, 107, 62, 0.06);
+  color: var(--spora-ink);
   padding: 0.75rem 1rem;
   border-radius: 0 0.5rem 0.5rem 0;
 }
 
-/* Selection highlight */
+/* Selection highlight — brown on sand */
 ::selection {
-  background: var(--spora-paper-deep);
-  color: var(--spora-ink);
+  background: var(--spora-warm);
+  color: var(--spora-cream);
+}
+
+/* Page-level footer (Plume renders one) — dark brown, cream text */
+.VPFooter,
+.vp-footer {
+  background: var(--spora-ink) !important;
+  color: var(--spora-cream-dim) !important;
+  border-top: 1px solid rgba(244, 236, 220, 0.08);
+}
+.VPFooter a,
+.vp-footer a {
+  color: var(--spora-cream) !important;
+}
+.VPFooter a:hover,
+.vp-footer a:hover {
+  color: var(--spora-paper-deep) !important;
 }

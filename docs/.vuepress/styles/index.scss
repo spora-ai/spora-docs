@@ -149,12 +149,47 @@ code:not(pre code):not([class*='language-']) {
 
 /* Navbar — ALWAYS dark brown with cream text, regardless of theme. This is
  * the brand-identifying surface (matches spora-landing sticky nav). */
-.VPNavBar,
-.vp-nav {
+/* Navbar — ALWAYS dark brown with cream text, regardless of theme. This is
+ * the brand-identifying surface (matches spora-landing sticky nav).
+ *
+ * Plume paints its navbar via THREE things we need to override:
+ *   1. --vp-nav-bg-color (sand) — used by .vp-navbar and its variants
+ *      for the default/mobile view AND on non-home pages.
+ *   2. .vp-navbar.top — on desktop, has a media-query rule that makes
+ *      it transparent for sidebar pages so the parent's bg shows through.
+ *   3. .content-body — Plume's inner wrapper (data-v-scoped) gets a sand
+ *      background via a [data-v-*] attribute selector. That sand leaks
+ *      through the transparent .vp-navbar.top on desktop sidebar pages.
+ *
+ * Fix: override the CSS variable AND force both elements to dark brown
+ * with !important so the cascade never paints sand on the navbar chrome.
+ */
+:root,
+html[data-theme='light'],
+html[data-theme='dark'] {
+  --vp-nav-bg-color: var(--spora-ink) !important;
+}
+
+.vp-nav,
+header.vp-nav {
   background: var(--spora-ink) !important;
   border-bottom: 1px solid rgba(244, 236, 220, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+.vp-navbar,
+.vp-navbar.top,
+.vp-navbar.has-sidebar.top,
+.vp-navbar[data-v-01186af6],
+.vp-navbar[data-v-01186af6]:not(.home),
+.vp-navbar[data-v-01186af6]:not(.has-sidebar, .home.top),
+.content-body[data-v-01186af6],
+.vp-navbar .container,
+.vp-navbar .wrapper,
+.vp-navbar .content {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 .VPNavBar .VPNavBarTitle,
 .vp-navbar-title .vp-link,
@@ -164,16 +199,21 @@ code:not(pre code):not([class*='language-']) {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
+/* Plume actually uses `.navbar-menu-link` on the <a> elements (no .vp-
+ * prefix), so the .vp-navbar-menu-link selector misses entirely. */
 .VPNavBarMenuLink,
-.vp-navbar-menu-link {
+.vp-navbar-menu-link,
+.navbar-menu-link {
   color: var(--spora-cream-dim) !important;
   font-weight: 500;
   transition: color 0.2s;
 }
 .VPNavBarMenuLink:hover,
 .vp-navbar-menu-link:hover,
+.navbar-menu-link:hover,
 .VPNavBarMenuLink.active,
-.vp-navbar-menu-link.active {
+.vp-navbar-menu-link.active,
+.navbar-menu-link.active {
   color: var(--spora-cream) !important;
 }
 

@@ -6,6 +6,7 @@ import { plumeTheme } from 'vuepress-theme-plume'
 // - Bundler: Vite via @vuepress/bundler-vite
 // - Theme: vuepress-theme-plume (https://theme-plume.vuejs.press)
 // - Brand tokens applied via docs/.vuepress/styles/index.scss
+// - Brand fonts (Barlow + JetBrains Mono) loaded via Google Fonts <link>
 // - Locales config wired so DE/FR/etc. can be added without restructuring
 
 const repo = 'https://github.com/spora-ai/spora-docs'
@@ -21,6 +22,11 @@ export default defineUserConfig({
 
   // The Vite bundler is required by VuePress 2 — not auto-inferred from the theme
   bundler: viteBundler(),
+
+  // Plume does not auto-load user styles from .vuepress/styles/ — we have to
+  // wire it via VuePress's `userStyle` config option (path is relative to docs/,
+  // not .vuepress/, so we go up one). Otherwise our brand SCSS is never imported.
+  userStyle: '.vuepress/styles/index.scss',
 
   // Locales config — only `en-US` populated for v1. To add another language,
   // copy the structure under a new locale key (e.g. '/de/') and translate.
@@ -75,12 +81,21 @@ export default defineUserConfig({
     footer: 'Released under the MIT License. Copyright © 2026-present Fabian Graßl.',
   }),
 
-  // Global <head> tags
+  // Global <head> tags — Spora brand font preload + site meta
   head: [
-    ['meta', { name: 'theme-color', content: '#205158' }],
+    // Google Fonts: Barlow (sans) + JetBrains Mono (code), per spora-landing spec
+    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    ['link', {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
+    }],
+    // Site meta — matches the brown ink of the spora-landing palette
+    ['meta', { name: 'theme-color', content: '#33221a' }],
     ['meta', { property: 'og:site_name', content: 'Spora' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:url', content: 'https://docs.spora-ai.com' }],
+    // Brand assets
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['link', { rel: 'apple-touch-icon', href: '/favicon.svg' }],
   ],

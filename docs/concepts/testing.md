@@ -64,7 +64,7 @@ All PRs must pass: `composer analyse && composer test && cd frontend && npm run 
 - **Per-PR new-code coverage gate: `new_coverage >= 80%`.** This is the SonarQube quality gate — the "new code" window is the diff of the PR, not the whole repo. Legacy untouched files are excluded from the gate.
 - **Whole-repo coverage** is reported as a secondary signal but is not part of the gate.
 - For the frontend, lcov is uploaded to SonarQube from `frontend/coverage/lcov.info` (already wired in `sonar-project.properties`).
-- Phase 5 raised whole-repo coverage from ~44% → ~67% via (a) extracting sub-components from the largest SFCs (`TaskChatPage.vue`, `AgentSettingsPage.vue`, `SharedScheduleEditor.vue`) and (b) adding page/admin/memory SFC tests. See the [Frontend architecture](/guide/core-contributors/frontend-architecture) page for the per-phase breakdown.
+- Phase 5 raised whole-repo coverage from ~44% → ~67% via (a) extracting sub-components from the largest SFCs (`TaskChatPage.vue`, `AgentSettingsPage.vue`, `SharedScheduleEditor.vue`) and (b) adding page/admin/memory SFC tests. See the [Frontend architecture](/concepts/frontend-architecture) page for the per-phase breakdown.
 
 ## Component test patterns
 

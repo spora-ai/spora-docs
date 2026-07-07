@@ -5,7 +5,7 @@ description: Deployment guide for cron and daemon modes, environment variables, 
 
 # Worker Deployment Guide
 
-This guide covers deployment and operations for the Spora agent worker in `cron` and `worker` modes. For architecture details, see [Agent loop and async mode](/guide/core-contributors/agent-loop-async).
+This guide covers deployment and operations for the Spora agent worker in `cron` and `worker` modes. For architecture details, see [Agent loop and async mode](/concepts/agent-loop-async).
 
 ## Modes at a Glance
 
@@ -172,4 +172,4 @@ Alert when either count is non-zero for more than 2 consecutive minutes.
 
 ## Environment Variables Reference
 
-See [Environment variables](/guide/operators/env-vars) for the consolidated reference. Most variables can also be set in `config.php` (gitignored, shared-hosting friendly) using the same `snake_case` config keys, or via `SPORA_*` env vars which take highest priority. Example: `SPORA_WORKER_STALE_MINUTES=90` env var overrides `worker_stale_minutes: 60` in `config.php`.
+See [Environment variables](/start/operators/env-vars) for the consolidated reference. Most variables can also be set in `config.php` (gitignored, shared-hosting friendly) using the same `snake_case` config keys, or via `SPORA_*` env vars which take highest priority. Example: `SPORA_WORKER_STALE_MINUTES=90` env var overrides `worker_stale_minutes: 60` in `config.php`.

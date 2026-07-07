@@ -63,17 +63,18 @@ export default defineUserConfig({
     // Site branding
     logo: '/logo.svg',
     logoDark: '/logo.svg',
-    // Top nav — single-tier, matches the IA in the plan
+    // Top nav — Tailwind-style IA: Start → Concepts → Develop → Deploy → Reference
     navbar: [
-      { text: 'Guide', link: '/guide/' },
+      { text: 'Start', link: '/start/' },
+      { text: 'Concepts', link: '/concepts/' },
       { text: 'Develop', link: '/develop/' },
       { text: 'Deploy', link: '/deploy/' },
       { text: 'Reference', link: '/reference/' },
-      { text: 'About', link: '/about/' },
     ],
     // Sidebar — auto-generated from the directory structure
     sidebar: {
-      '/guide/': 'auto',
+      '/start/': 'auto',
+      '/concepts/': 'auto',
       '/develop/': 'auto',
       '/deploy/': 'auto',
       '/reference/': 'auto',
@@ -90,10 +91,13 @@ export default defineUserConfig({
     // Google Fonts: Barlow (sans) + JetBrains Mono (code), per spora-landing spec
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-    ['link', {
-      rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
-    }],
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
+      },
+    ],
     // Site meta — matches the brown ink of the spora-landing palette
     ['meta', { name: 'theme-color', content: '#33221a' }],
     ['meta', { property: 'og:site_name', content: 'Spora' }],

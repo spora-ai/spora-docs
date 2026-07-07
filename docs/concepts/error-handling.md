@@ -228,5 +228,5 @@ The "Backend Changes" and "Frontend Changes" sections above were an early design
 ## Out of Scope
 
 - Error deduplication (future, only if rapid duplicate errors become a problem)
-- Error logging service integration (handled by PSR-3 Monolog already — see [Logging](/guide/core-contributors/logging))
+- Error logging service integration (handled by PSR-3 Monolog already — see [Logging](/concepts/logging))
 - Field-level validation error mapping (server returns flat `message`; inline pattern is sufficient for current forms)

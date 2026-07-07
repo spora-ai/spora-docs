@@ -11,7 +11,7 @@ description: Self-hosted AI agent orchestration. Zero-config. Anywhere.
 
 PHP 8.4+ on a laptop, a shared host, or a Docker container.
 
-[Get Started →](/guide/) · [View on GitHub](https://github.com/spora-ai/spora)
+[Get Started →](/start/) · [Concepts](/concepts/) · [View on GitHub](https://github.com/spora-ai/spora)
 
 </div>
 
@@ -38,12 +38,13 @@ That is the whole bootstrap. SQLite by default; flip `SPORA_DB_*` in `.env` for 
 
 ## Pick your track
 
-| If you…                                 | Start here                                             |
-| --------------------------------------- | ------------------------------------------------------ |
-| Are deploying Spora for yourself/team   | [Operators guide →](/guide/operators/)                 |
-| Are setting up a local dev environment  | [Developers guide →](/guide/developers/)               |
-| Are using the admin UI to chat          | [End user guide →](/guide/end-users/)                  |
-| Are reading the source and contributing | [Core contributors guide →](/guide/core-contributors/) |
+| If you…                                | Start here                               |
+| -------------------------------------- | ---------------------------------------- |
+| Are deploying Spora for yourself/team  | [Operators guide →](/start/operators/)   |
+| Are setting up a local dev environment | [Developers guide →](/start/developers/) |
+| Are using the admin UI to chat         | [End user guide →](/start/end-users/)    |
+
+Looking for the architecture deep-dive? See [Concepts](/concepts/).
 
 ## Project layout
 
@@ -58,7 +59,7 @@ That is the whole bootstrap. SQLite by default; flip `SPORA_DB_*` in `.env` for 
 
 ## Where to next?
 
-- **New to Spora?** → [Getting Started → Operators](/guide/operators/) or pick your track above.
+- **New to Spora?** → [Getting Started → Operators](/start/operators/) or pick your track above.
 - **Building a plugin?** → [Develop → Plugins](/develop/plugins/).
 - **Running it in production?** → [Deploy](/deploy/).
-- **Reading the source?** → [Core Contributors](/guide/core-contributors/).
+- **Reading the source?** → [Concepts](/concepts/).

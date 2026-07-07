@@ -15,9 +15,11 @@ export default defineUserConfig({
   // Served from / when the CNAME points docs.spora-ai.com at spora-ai.github.io
   base: '/',
 
-  // Top-level site metadata
+  // Top-level site metadata — title is empty so the navbar doesn't render a
+  // redundant "Spora" text next to the wordmark logo (logo.svg already spells
+  // "SPORA" with the spore pictogram).
   lang: 'en-US',
-  title: 'Spora',
+  title: '',
   description: 'Self-hosted AI agent orchestration. Zero-config. Anywhere.',
 
   // The Vite bundler is required by VuePress 2 — not auto-inferred from the theme
@@ -33,7 +35,7 @@ export default defineUserConfig({
   locales: {
     '/': {
       lang: 'en-US',
-      title: 'Spora',
+      title: '',
       description: 'Self-hosted AI agent orchestration. Zero-config. Anywhere.',
     },
   },

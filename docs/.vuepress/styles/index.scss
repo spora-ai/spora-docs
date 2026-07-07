@@ -28,7 +28,6 @@
 
 @import './fonts.scss';
 
-
 /* ── Light mode (default) — sand body, brown text, brown navbar ─────────── */
 :root,
 html[data-theme='light'] {
@@ -54,10 +53,10 @@ html[data-theme='light'] {
   --vp-c-brand-soft: rgba(138, 77, 42, 0.18);
 
   /* Backgrounds — SAND body, layered cream for cards, deeper cream for mute */
-  --vp-c-bg: var(--spora-paper-50);          /* body — sand #faf6ec */
-  --vp-c-bg-soft: var(--spora-paper);        /* cards/sidebar — sand #f3ede0 */
-  --vp-c-bg-mute: var(--spora-paper-deep);   /* mute surface — deep cream */
-  --vp-c-bg-alt: var(--spora-paper);         /* alt bg — sand */
+  --vp-c-bg: var(--spora-paper-50); /* body — sand #faf6ec */
+  --vp-c-bg-soft: var(--spora-paper); /* cards/sidebar — sand #f3ede0 */
+  --vp-c-bg-mute: var(--spora-paper-deep); /* mute surface — deep cream */
+  --vp-c-bg-alt: var(--spora-paper); /* alt bg — sand */
 
   /* Text — dark brown on sand */
   --vp-c-text-1: var(--spora-ink);
@@ -67,7 +66,7 @@ html[data-theme='light'] {
   --vp-c-text-inverse-2: #4a3f33;
 
   /* Borders — brown ink at low alpha */
-  --vp-c-divider: rgba(51, 34, 26, 0.10);
+  --vp-c-divider: rgba(51, 34, 26, 0.1);
   --vp-c-divider-light: rgba(51, 34, 26, 0.06);
   --vp-c-border: rgba(51, 34, 26, 0.14);
   --vp-c-gutter: var(--spora-paper-deep);
@@ -84,7 +83,7 @@ html[data-theme='dark'] {
   --vp-c-brand-1: var(--spora-warm-light);
   --vp-c-brand-2: var(--spora-warm);
   --vp-c-brand-3: var(--spora-warm-light);
-  --vp-c-brand-soft: rgba(184, 107, 62, 0.20);
+  --vp-c-brand-soft: rgba(184, 107, 62, 0.2);
 
   --vp-c-bg: var(--spora-ink);
   --vp-c-bg-soft: var(--spora-ink-2);
@@ -97,7 +96,7 @@ html[data-theme='dark'] {
   --vp-c-text-inverse-1: var(--spora-ink);
   --vp-c-text-inverse-2: #4a3f33;
 
-  --vp-c-divider: rgba(244, 236, 220, 0.10);
+  --vp-c-divider: rgba(244, 236, 220, 0.1);
   --vp-c-divider-light: rgba(244, 236, 220, 0.06);
   --vp-c-border: rgba(244, 236, 220, 0.14);
   --vp-c-gutter: var(--spora-ink-2);
@@ -129,7 +128,7 @@ pre[class*='language-'] {
 /* Inline code — warm tint, matches spora-landing's `text-warm` treatment */
 code:not(pre code):not([class*='language-']) {
   color: var(--spora-warm-deep);
-  background: rgba(184, 107, 62, 0.10);
+  background: rgba(184, 107, 62, 0.1);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
@@ -140,7 +139,9 @@ code:not(pre code):not([class*='language-']) {
   color: var(--spora-warm);
   text-decoration: none;
   border-bottom: 1px solid rgba(138, 77, 42, 0.3);
-  transition: color 0.2s, border-color 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
 }
 .VPDoc a:not(.vp-skip-link):hover {
   color: var(--spora-amber);
@@ -209,11 +210,8 @@ code:not(pre code):not([class*='language-']) {
  * Lighter than the landing hero (which uses dark brown as a brand intro).
  * The docs home is content-first, not marketing. */
 .VPHero {
-  background: radial-gradient(
-      ellipse at top,
-      rgba(184, 107, 62, 0.10) 0%,
-      transparent 60%
-    ),
+  background:
+    radial-gradient(ellipse at top, rgba(184, 107, 62, 0.1) 0%, transparent 60%),
     var(--spora-paper-50);
   margin-top: -3.5rem; /* bleed under the navbar */
   padding-top: 6rem !important;
@@ -263,7 +261,11 @@ code:not(pre code):not([class*='language-']) {
   padding: 0.75rem 1.5rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  transition: transform 0.2s, color 0.2s, background 0.2s, border-color 0.2s;
+  transition:
+    transform 0.2s,
+    color 0.2s,
+    background 0.2s,
+    border-color 0.2s;
 }
 .VPButton:hover {
   transform: scale(1.02);
@@ -281,7 +283,7 @@ code:not(pre code):not([class*='language-']) {
 .VPButton.alt {
   background: transparent;
   color: var(--spora-ink);
-  border: 1px solid rgba(51, 34, 26, 0.30);
+  border: 1px solid rgba(51, 34, 26, 0.3);
 }
 .VPButton.alt:hover {
   border-color: var(--spora-ink);
@@ -294,7 +296,9 @@ code:not(pre code):not([class*='language-']) {
   border: 1px solid var(--vp-c-divider);
   border-radius: 0.5rem;
   padding: 1.5rem;
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
 }
 .VPFeature:hover {
   border-color: var(--spora-warm-light);

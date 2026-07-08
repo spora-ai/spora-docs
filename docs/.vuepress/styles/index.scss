@@ -416,3 +416,78 @@ header.vp-nav {
 .vp-footer a:hover {
   color: var(--spora-paper-deep) !important;
 }
+
+/* 4-column footer grid (matches spora-ai.com layout) */
+.spora-footer-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+  gap: 2.5rem 2rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .spora-footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem 1.5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .spora-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+.spora-footer-brand p {
+  margin: 0.5rem 0;
+  color: var(--spora-cream-dim);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.spora-footer-brand .spora-footer-logo {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.spora-footer-brand .spora-footer-tagline {
+  color: var(--spora-warm-mist);
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+.spora-footer-col h4 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--spora-warm);
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}
+
+.spora-footer-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.spora-footer-col li {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.spora-footer-col a {
+  color: var(--spora-cream-dim) !important;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.spora-footer-col a:hover {
+  color: var(--spora-paper-deep) !important;
+}

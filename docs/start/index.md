@@ -27,8 +27,12 @@ For people running Spora. Install it (5 routes: standard, shared host, dev, Dock
 
 ### [Developers](/start/developers/)
 
-For people setting up a local dev environment for Spora or one of its plugins. Quickstart, local setup, project structure, stack, Docker dev, how to add a tool, CLI, frontend dev, testing, coding standards. Coming in a future phase.
+For people setting up a local dev environment for Spora or one of its plugins. Local setup, project structure, stack, how to add a tool, CLI, testing, coding standards.
+
+[Local setup →](/start/developers/local-setup) · [Project structure →](/start/developers/project-structure) · [Stack →](/start/developers/stack) · [How to add a tool →](/start/developers/how-to-add-a-tool) · [CLI & coding standards →](/start/developers/cli-and-coding-standards)
 
 ### [End users](/start/end-users/)
 
-For people using the admin UI: chatting with agents, managing tools, reviewing results. Coming in a future phase.
+For people using the admin UI: chatting with agents, managing tools, installing plugins, troubleshooting.
+
+[First conversation →](/start/end-users/first-conversation) · [Managing agents →](/start/end-users/managing-agents) · [Troubleshooting →](/start/end-users/troubleshooting)

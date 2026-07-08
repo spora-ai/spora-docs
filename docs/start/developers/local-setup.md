@@ -73,6 +73,8 @@ npm run test:watch           # Watch mode
 
 End-to-end (E2E) tests are not currently wired up — no Playwright dependency, no `frontend/tests/e2e/` directory. The CI pipeline runs Pest + Vitest, not E2E.
 
+The `composer frontend:test` script lives in `spora-core` (the framework), not the deployed `spora` skeleton. To run the framework's full test suite, check out `spora-ai/spora-core` separately and run its composer scripts.
+
 ## Database
 
 - **SQLite** at `storage/database.sqlite` (the default, zero-config)

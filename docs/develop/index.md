@@ -17,4 +17,6 @@ A Spora plugin is a Composer package that ships tools, drivers, recipes, and mig
 
 ## [Projects](/develop/projects/)
 
-Coming in a future phase. Projects are standalone Spora-compatible applications scaffolded with `spora-maker` — see the [operator guide on customization](/start/operators/customization#2-as-an-app-extension-recommended-for-project-local-code) for the current project-local workflow.
+A project is a single Spora deployment customised with project-local code. The scaffolder (`spora-maker`) generates the boilerplate for Tools, Controllers, and the `app/App.php` entry class:
+
+- **[Scaffolding → make:tool, make:controller, make:app](/develop/projects/scaffolding)** — the scaffolder command reference, with the generated-code templates and a guide for adding a new `make:*` command

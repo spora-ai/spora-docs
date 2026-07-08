@@ -122,14 +122,29 @@ Stores expose a `load()` action that pages call from `onMounted` and from refres
 
 Each "app" is a self-contained bundle of pages, components, types, stores, and an API client. The pattern keeps feature work isolated — adding a new top-level page (e.g. **Plugins**) does **not** touch the rest of the app.
 
-```text
-src/apps/
-└── plugins/           ← "Plugins" page, its store, and API
-    ├── api/           ← typed wrappers around /api/v1/plugins/*
-    ├── components/    ← PluginCard, MigrationStatusBadge, PluginDetailDialog
-    ├── pages/         ← PluginsPage.vue (mounted by the router)
-    ├── stores/        ← Pinia store for plugin inventory state
-    └── types/         ← PluginResource, MigrationInfo, etc.
+```mermaid
+flowchart TD
+    root["src/apps/"]
+    plugins["plugins/"]
+    api["api/<br/>typed wrappers around<br/>/api/v1/plugins/*"]
+    components["components/<br/>PluginCard,<br/>MigrationStatusBadge,<br/>PluginDetailDialog"]
+    pages["pages/<br/>PluginsPage.vue<br/>(mounted by the router)"]
+    stores["stores/<br/>Pinia store for plugin<br/>inventory state"]
+    types["types/<br/>PluginResource,<br/>MigrationInfo, etc."]
+
+    root --> plugins
+    plugins --> api
+    plugins --> components
+    plugins --> pages
+    plugins --> stores
+    plugins --> types
+
+    classDef root fill:var(--spora-paper),stroke:var(--spora-warm),color:var(--spora-ink),font-weight:bold
+    classDef app fill:var(--spora-paper-deep),stroke:var(--spora-warm-deep),color:var(--spora-ink),font-weight:bold
+    classDef child fill:var(--spora-cream),stroke:var(--spora-warm-mist),color:var(--spora-ink)
+    class root root
+    class plugins app
+    class api,components,pages,stores,types child
 ```
 
 ### Use `plugins/` as the template for new apps

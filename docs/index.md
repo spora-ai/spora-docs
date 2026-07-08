@@ -30,8 +30,9 @@ composer create-project spora-ai/spora my-spora
 # Install
 cd my-spora && php bin/spora spora:install
 
-# Run
-php bin/spora serve   # → http://localhost:8080
+# Run (dev server with hot reload)
+composer dev            # → http://localhost:8080
+# Or for a production-like server, see the [Deployment guide](/deploy/)
 ```
 
 That is the whole bootstrap. SQLite by default; flip `SPORA_DB_*` in `.env` for MySQL.

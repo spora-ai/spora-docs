@@ -5,7 +5,7 @@ description: Spora's HTTP API — endpoint catalog, request/response envelope, a
 
 # REST API reference
 
-Spora exposes a JSON REST API at `/api/v1/`. All endpoints require a session cookie (`PHPSESSID`) for read access and a `X-CSRF-Token` header (matching the value of `data.csrf_token` returned by `GET /api/v1/auth/me`) for state-changing requests.
+Spora exposes a JSON REST API at `/api/v1/`. Most routes require a session cookie (`PHPSESSID`) and a `X-CSRF-Token` header (the value of `data.csrf_token` returned by `GET /api/v1/auth/me`). The unauthenticated exceptions are the pre-auth flows (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verify/{selector}`, `/auth/verification/resend`) and `GET /health`. The plugin install endpoints additionally require admin (`currentUser.isAdmin = true`).
 
 For the canonical, comprehensive reference, see [Concepts → Error handling](/concepts/error-handling) (envelope shape, error code registry, severity mapping) and the per-endpoint docs in [Operations → Day-2 ops](/start/operators/operations) (plugin install API in detail).
 
@@ -19,7 +19,7 @@ The API surface splits into three areas: auth, agents, and tools/plugins. Auth a
 | ------- | ----------------------------------- | ------ | ---------------------------------------------------- |
 | `POST`  | `/api/v1/auth/login`                | —      | Authenticate (issues `data.csrf_token`)              |
 | `POST`  | `/api/v1/auth/logout`               | + CSRF | End session                                          |
-| `GET`   | `/api/v1/auth/me`                   | —      | Current user (returns `data.csrf_token`)             |
+| `GET`   | `/api/v1/auth/me`                   | + CSRF | Current user (returns `data.csrf_token`)             |
 | `POST`  | `/api/v1/auth/register`             | —      | Create account (gated by `SPORA_ALLOW_REGISTRATION`) |
 | `POST`  | `/api/v1/auth/forgot-password`      | —      | Start password reset flow                            |
 | `POST`  | `/api/v1/auth/reset-password`       | —      | Complete password reset                              |

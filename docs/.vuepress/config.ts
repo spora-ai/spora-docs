@@ -82,8 +82,54 @@ export default defineUserConfig({
     },
     // Social links in the nav
     socials: [{ icon: 'github', link: 'https://github.com/spora-ai/spora' }],
-    // Footer
-    footer: 'Released under the MIT License. Copyright © 2026-present Fabian Graßl.',
+    // Footer — 4-column layout matching https://spora-ai.com/ (logo + tagline + 4 link groups + closing line)
+    footer: {
+      copyright: '© 2026 — Released under the MIT License.',
+      message: `
+<div class="spora-footer-grid">
+  <div class="spora-footer-brand">
+    <a href="https://spora-ai.com/" class="spora-footer-logo" rel="noopener">
+      <strong>Spora docs</strong>
+    </a>
+    <p>Self-hosted AI agent orchestration. Built so your tools, your models, and your data stay where you put them.</p>
+    <p class="spora-footer-tagline">Built for self-hosters.</p>
+  </div>
+  <div class="spora-footer-col">
+    <h4>Project</h4>
+    <ul>
+      <li><a href="https://github.com/spora-ai/spora" rel="noopener">Source</a></li>
+      <li><a href="https://github.com/spora-ai/spora/releases" rel="noopener">Releases</a></li>
+      <li><a href="https://github.com/spora-ai/spora/blob/main/LICENSE" rel="noopener">MIT License</a></li>
+    </ul>
+  </div>
+  <div class="spora-footer-col">
+    <h4>Community</h4>
+    <ul>
+      <li><a href="https://github.com/spora-ai/spora/discussions" rel="noopener">Discussions</a></li>
+      <li><a href="https://github.com/spora-ai/spora/blob/main/CONTRIBUTING.md" rel="noopener">Contributing</a></li>
+      <li><a href="https://github.com/spora-ai/spora/issues" rel="noopener">Issues</a></li>
+    </ul>
+  </div>
+  <div class="spora-footer-col">
+    <h4>In the Ecosystem</h4>
+    <ul>
+      <li><a href="https://github.com/spora-ai/spora-core" rel="noopener">spora-core</a></li>
+      <li><a href="https://github.com/spora-ai/spora-frontend" rel="noopener">spora-frontend</a></li>
+      <li><a href="https://github.com/spora-ai/installer" rel="noopener">spora-installer</a></li>
+      <li><a href="https://github.com/spora-ai/spora-plugin-skeleton" rel="noopener">plugin-skeleton</a></li>
+    </ul>
+  </div>
+  <div class="spora-footer-col">
+    <h4>Legal</h4>
+    <ul>
+      <li><a href="https://spora-ai.com/impressum.html" rel="noopener">Imprint</a></li>
+      <li><a href="https://spora-ai.com/privacy.html" rel="noopener">Privacy</a></li>
+      <li><a href="https://spora-ai.com/" rel="noopener">Back to spora-ai.com</a></li>
+    </ul>
+  </div>
+</div>
+`,
+    },
   }),
 
   // Global <head> tags — Spora brand font preload + site meta

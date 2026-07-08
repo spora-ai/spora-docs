@@ -483,12 +483,17 @@ header.vp-nav {
   line-height: 1.4;
 }
 
-.spora-footer-col a {
+.spora-footer-col a,
+.spora-footer-brand a,
+.spora-footer-col a:visited,
+.spora-footer-brand a:visited {
   color: var(--spora-cream-dim) !important;
-  text-decoration: none;
+  text-decoration: none !important;
+  border-bottom: none !important;
   transition: color 0.2s;
 }
 
-.spora-footer-col a:hover {
+.spora-footer-col a:hover,
+.spora-footer-brand a:hover {
   color: var(--spora-paper-deep) !important;
 }

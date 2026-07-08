@@ -218,6 +218,40 @@ header.vp-nav {
   color: var(--spora-cream) !important;
 }
 
+/* Mobile menu trigger — Plume's built-in hamburger gets hidden by the
+ * transparent-content rules at .vp-navbar .container / .wrapper / .content
+ * (lines ~189–194 above) on a dark navbar, so it reads as invisible at
+ * narrow viewports. The selector list is the union of every Plume name
+ * for this control across recent minor versions, so a rename in one
+ * release doesn't kill the styling. */
+.VPNavBarMenuButton,
+.nav-menu-button,
+.VPNavBarMenu .button,
+.VPNavBar .VPNavBarHamburger,
+.VPNavBar .VPNavBarMenuGroup {
+  color: var(--spora-cream);
+  background-color: transparent !important;
+  border: none;
+  transition:
+    color 0.2s,
+    background-color 0.2s;
+}
+.VPNavBarMenuButton:hover,
+.nav-menu-button:hover,
+.VPNavBarMenu .button:hover,
+.VPNavBar .VPNavBarHamburger:hover,
+.VPNavBar .VPNavBarMenuGroup:hover {
+  color: var(--spora-paper-deep);
+}
+.VPNavBarMenuButton:focus-visible,
+.nav-menu-button:focus-visible,
+.VPNavBarMenu .button:focus-visible,
+.VPNavBar .VPNavBarHamburger:focus-visible,
+.VPNavBar .VPNavBarMenuGroup:focus-visible {
+  outline: 2px solid var(--spora-warm-light);
+  outline-offset: 2px;
+}
+
 /* Sidebar — LAYERED SAND (matches body but slightly deeper) with brown text.
  * Mirrors the rest of the doc page, not the dark navbar. */
 .VPSidebar,
@@ -359,12 +393,36 @@ header.vp-nav {
   line-height: 1.6;
 }
 
-/* Code blocks — DARK BROWN SURFACE for contrast against the sand body.
- * Matches the landing page's quickstart code card. */
+/* Code blocks — LIGHT SURFACE (deep cream) with dark text, paired with
+ * Shiki's github-light theme (pinned in config.ts). The earlier dark-brown
+ * shell forced a light-themed syntax highlighter onto a dark surface, which
+ * made the token palette read as muddy. Cream-on-cream with github-light
+ * tokens restores the contrast the syntax colors were designed for. */
 .vp-doc div[class*='language-'],
 .vp-doc pre {
-  background: var(--spora-ink);
-  border: 1px solid rgba(244, 236, 220, 0.08);
+  background: var(--spora-paper-deep);
+  border: 1px solid var(--vp-c-divider);
+  color: var(--spora-ink);
+}
+/* Lock the inherited text color so earlier rules (--spora-cream on pre code
+ * via the inline-code chain) don't bleed into the block. */
+.vp-doc pre code {
+  color: var(--spora-ink);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Dark mode — re-paint the code surface in dark brown (--spora-ink-2) with
+ * cream text so the contrast ratio holds when a user toggles appearance.
+ * The light Shiki theme still paints token colors as designed, but the
+ * deep-cream surface (--spora-paper-deep) gets replaced by a dark surface
+ * for dark-mode legibility. */
+html[data-theme='dark'] .vp-doc div[class*='language-'],
+html[data-theme='dark'] .vp-doc pre {
+  background: var(--spora-ink-2);
+  border-color: rgba(244, 236, 220, 0.12);
+  color: var(--spora-cream);
+}
+html[data-theme='dark'] .vp-doc pre code {
   color: var(--spora-cream);
 }
 

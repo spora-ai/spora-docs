@@ -33,18 +33,47 @@ Stateless and short-lived. Each `tick()` is one full LLM turn (Think → Act). S
 2. **LLM call** — blocking HTTP call outside any transaction. `step_count` is incremented after the lock is released.
 3. **Write** — append history rows, update task status.
 
-```text
-start()  → create Task (QUEUED or RUNNING depending on SPORA_SYNC_MODE), call tick() [Sync mode only]
-tick()   → [claim] → [LLM call] → branch:
-             text response   → COMPLETED
-             InputTool call  → execute, append, call tick() again
-             OutputTool call → resolve approval:
-                               auto-approved     → execute, append, call tick() again
-                               requires approval → serialize AgentState → PENDING_APPROVAL, halt
-resume() → execute approved tools, write history, set RUNNING → [tick()]
-reject() → inject rejection rows, set RUNNING → [tick()]
-           (agent chooses alternative action)
-step_count >= max_steps → FAILED ("Max steps reached.")
+```mermaid
+flowchart LR
+    start(["start()"])
+    tick["tick()"]
+    claim["claim<br/>(lockForUpdate)"]
+    llm["LLM call<br/>(outside transaction)"]
+    text["text response"]
+    input["InputTool call"]
+    output["OutputTool call"]
+    approved["auto-approved"]
+    grant["approval granted"]
+    required{"requires approval?"}
+    history1["append history"]
+    history2["append history"]
+    completed(["COMPLETED"])
+    failed(["FAILED"])
+    pending(["PENDING_APPROVAL"])
+    cancel(["CANCELLED"])
+    resume(["resume()"])
+    reject(["reject()"])
+    max{{"step_count >= max_steps?"}}
+
+    start --> tick
+    tick --> claim --> llm
+    llm -->|text| text --> completed
+    llm -->|InputTool| input --> history1 --> tick
+    llm -->|OutputTool| output --> required
+    required -->|no| approved --> history1
+    required -->|yes| grant --> history2 --> tick
+    required -->|yes| pending
+    pending -->|resume| resume --> tick
+    pending -->|reject| reject --> tick
+    tick --> max
+    max -->|yes| failed
+    max -.->|no| claim
+
+    classDef entry fill:var(--spora-paper),stroke:var(--spora-warm),color:var(--spora-ink)
+    classDef action fill:var(--spora-paper-deep),stroke:var(--spora-warm-deep),color:var(--spora-ink)
+    classDef terminal fill:var(--spora-cream),stroke:var(--spora-warm-deep),color:var(--spora-ink),font-weight:bold
+    class start,tick,claim,llm,text,input,output,required,approved,grant,history1,history2,max action
+    class completed,failed,pending,cancel,resume,reject terminal
 ```
 
 Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVAL ⇄ RUNNING → CANCELLED` (PENDING is the initial value written by the migration; in practice the worker transitions QUEUED→RUNNING before the first tick. The `CANCELLED` terminal status is set by `TaskService::cancelRetryChain` — `REJECTED` is the analogous status for `tool_calls` rows, not `tasks`.)

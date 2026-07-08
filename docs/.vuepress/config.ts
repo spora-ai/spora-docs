@@ -44,6 +44,14 @@ export default defineUserConfig({
   markdown: {
     linkify: true,
     typographer: true,
+    // Pin Shiki to a light theme to match the light code-block surface in
+    // styles/index.scss (--spora-paper-deep bg, --spora-ink text). The default
+    // Shiki theme paints near-white backgrounds per token, which read as muddy
+    // against a dark surface; pinning the theme to github-light keeps the
+    // token palette designed for a light surface.
+    highlight: {
+      theme: 'github-light',
+    },
   },
 
   // Plume theme — extensive options; we start with the essentials
@@ -63,22 +71,94 @@ export default defineUserConfig({
     // Site branding
     logo: '/logo.svg',
     logoDark: '/logo.svg',
-    // Top nav — Tailwind-style IA: Start → Concepts → Develop → Deploy → Reference
+    // Top nav — Tailwind-style IA: Getting Started → Develop → Deploy → Reference.
+    // "Concepts" is no longer a top-level entry; it lives under Reference as
+    // the "Architecture & concepts" sub-section (see the Reference sidebar
+    // below) so it doesn't compete for prominence with the primary tracks.
     navbar: [
-      { text: 'Start', link: '/start/' },
-      { text: 'Concepts', link: '/concepts/' },
+      { text: 'Getting Started', link: '/start/' },
       { text: 'Develop', link: '/develop/' },
       { text: 'Deploy', link: '/deploy/' },
       { text: 'Reference', link: '/reference/' },
     ],
-    // Sidebar — auto-generated from the directory structure
+    // Sidebar — explicit items arrays for sections where Plume's 'auto'
+    // derivation would render kebab-case directory names ("classical-server",
+    // "local", "shared-host", "plugins", "projects") instead of proper
+    // titles. The 'text' override on each item pins the human label. The
+    // index entry is pinned at the top of each section so Plume doesn't
+    // auto-insert it in an unpredictable position. Sections not flagged
+    // (start, concepts, about) stay on 'auto'.
     sidebar: {
       '/start/': 'auto',
       '/concepts/': 'auto',
-      '/develop/': 'auto',
-      '/deploy/': 'auto',
-      '/reference/': 'auto',
       '/about/': 'auto',
+      '/develop/': [
+        { text: 'Overview', link: '/develop/' },
+        {
+          text: 'Plugins',
+          items: [
+            { text: 'Overview', link: '/develop/plugins/' },
+            { text: 'Author guide', link: '/develop/plugins/author-guide' },
+            { text: 'Install API', link: '/develop/plugins/install-api' },
+            { text: 'Reference', link: '/develop/plugins/reference/' },
+          ],
+        },
+        {
+          text: 'Projects',
+          items: [
+            { text: 'Overview', link: '/develop/projects/' },
+            { text: 'Scaffolding', link: '/develop/projects/scaffolding' },
+          ],
+        },
+      ],
+      '/deploy/': [
+        { text: 'Overview', link: '/deploy/' },
+        {
+          text: 'Docker',
+          items: [
+            { text: 'Single container', link: '/deploy/docker/single-container' },
+            { text: 'Multi-container', link: '/deploy/docker/multi-container' },
+            { text: 'Custom build', link: '/deploy/docker/custom-build' },
+          ],
+        },
+        { text: 'Classical server', link: '/deploy/classical-server/' },
+        { text: 'Local — PHP / Ollama / LM Studio', link: '/deploy/local/' },
+        {
+          text: 'Shared host',
+          items: [
+            { text: 'Overview', link: '/deploy/shared-host/' },
+            { text: 'Limitations', link: '/deploy/shared-host/limitations' },
+          ],
+        },
+      ],
+      '/reference/': [
+        { text: 'Overview', link: '/reference/' },
+        { text: 'API', link: '/reference/api' },
+        { text: 'CLI', link: '/reference/cli' },
+        { text: 'Config keys', link: '/reference/config-keys' },
+        { text: 'Plugin schema', link: '/reference/plugin-schema' },
+        {
+          text: 'Architecture & concepts',
+          items: [
+            { text: 'Overview', link: '/concepts/' },
+            { text: 'Architecture', link: '/concepts/architecture' },
+            { text: 'Agent loop & async', link: '/concepts/agent-loop-async' },
+            { text: 'App extensions', link: '/concepts/app-extension' },
+            { text: 'Code documentation', link: '/concepts/code-documentation' },
+            { text: 'Drivers', link: '/concepts/drivers' },
+            { text: 'Error handling', link: '/concepts/error-handling' },
+            { text: 'Frontend architecture', link: '/concepts/frontend-architecture' },
+            { text: 'Interfaces', link: '/concepts/interfaces' },
+            { text: 'Logging', link: '/concepts/logging' },
+            { text: 'Media assets', link: '/concepts/media-assets' },
+            { text: 'Plugin system', link: '/concepts/plugins-system' },
+            { text: 'Schema', link: '/concepts/schema' },
+            { text: 'Testing', link: '/concepts/testing' },
+            { text: 'Tools', link: '/concepts/tools' },
+            { text: 'Worker deployment', link: '/concepts/worker-deployment' },
+          ],
+        },
+      ],
     },
     // Social links in the nav
     socials: [{ icon: 'github', link: 'https://github.com/spora-ai/spora' }],

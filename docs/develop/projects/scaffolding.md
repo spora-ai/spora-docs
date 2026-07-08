@@ -102,6 +102,32 @@ The generated controller has no parent class (Spora controllers are plain Symfon
 
 The default route path is `/api/v1/<name-in-kebab-case>` (e.g. `make:controller MyApi` → `/api/v1/my-api`).
 
+Generated shape:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+final class MyApiController
+{
+    public function index(Request $request): Response
+    {
+        // TODO: implement.
+
+        return new JsonResponse([
+            'message' => 'Hello from MyApiController!',
+        ]);
+    }
+}
+```
+
 After creation, the scaffolder prints:
 
 ```text

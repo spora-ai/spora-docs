@@ -420,12 +420,13 @@ header.vp-nav {
 /* 4-column footer grid (matches spora-ai.com layout) */
 .spora-footer-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
-  gap: 2.5rem 2rem;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 2.5rem 1.5rem;
   max-width: 80rem;
   margin: 0 auto;
   padding: 0 1.5rem;
   align-items: start;
+  text-align: left;
 }
 
 @media (max-width: 900px) {
@@ -456,9 +457,9 @@ header.vp-nav {
 }
 
 .spora-footer-brand .spora-footer-tagline {
-  color: var(--spora-warm-mist);
+  color: var(--spora-paper-deep);
   font-size: 0.8125rem;
-  font-style: italic;
+  font-weight: 500;
 }
 
 .spora-footer-col h4 {

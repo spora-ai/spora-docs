@@ -1,30 +1,6 @@
-/* Spora brand tokens.
- *
- * Mirrors the spora-landing palette from
- * /Users/fabeat/Development/Spora/spora-landing/tailwind.config.js
- * (and spec.md § 5 — the canonical brand spec):
- *
- *   ink         #33221a  (background — warm milk chocolate; navbar, hero,
- *                         footer, code-block surfaces)
- *   ink-2       #2a1c14  (slightly darker brown for layered dark surfaces)
- *   warm        #8a4d2a  (primary — sienna)
- *   warm-deep   #3a2618  (deep cocoa)
- *   warm-light  #b86b3e  (bright sienna — hover/active)
- *   warm-mist   #a89888  (sepia mist — muted secondary text on sand)
- *   paper       #f3ede0  (sand — light surfaces)
- *   paper-50    #faf6ec  (lightest cream — body background)
- *   paper-deep  #e6d8b8  (deep cream — accent surface)
- *   cream       #f4ecdc  (text on dark, warm-cream tone)
- *   amber       #c87a3a  (reserved highlight, use sparingly)
- *
- * Brand philosophy (per landing page): the BODY background is sand (#faf6ec).
- * Dark brown (#33221a) is reserved for the navbar, hero card frame, footer,
- * and code-block surfaces — never the body. The docs mirror that treatment.
- *
- * Note on selectors: Plume sets `data-theme="dark"` or `data-theme="light"` on
- * <html>, NOT a `.dark` class — so we use `[data-theme="dark"]` for the dark
- * override (used only if a user toggles appearance; light is the default).
- */
+/* Spora docs brand styles. Tokens mirror spora-landing/tailwind.config.js:
+ * ink (#33221a) for navbar/footer/hero chrome, paper-50 (#faf6ec) for body,
+ * cream (#f4ecdc) for text on dark, warm (#8a4d2a) as accent. */
 
 @use './fonts.scss';
 
@@ -148,23 +124,10 @@ code:not(pre code):not([class*='language-']) {
   border-bottom-color: var(--spora-amber);
 }
 
-/* Navbar — ALWAYS dark brown with cream text, regardless of theme. This is
- * the brand-identifying surface (matches spora-landing sticky nav). */
-/* Navbar — ALWAYS dark brown with cream text, regardless of theme. This is
- * the brand-identifying surface (matches spora-landing sticky nav).
- *
- * Plume paints its navbar via THREE things we need to override:
- *   1. --vp-nav-bg-color (sand) — used by .vp-navbar and its variants
- *      for the default/mobile view AND on non-home pages.
- *   2. .vp-navbar.top — on desktop, has a media-query rule that makes
- *      it transparent for sidebar pages so the parent's bg shows through.
- *   3. .content-body — Plume's inner wrapper (data-v-scoped) gets a sand
- *      background via a [data-v-*] attribute selector. That sand leaks
- *      through the transparent .vp-navbar.top on desktop sidebar pages.
- *
- * Fix: override the CSS variable AND force both elements to dark brown
- * with !important so the cascade never paints sand on the navbar chrome.
- */
+/* Navbar — always dark brown, brand-identifying surface. Override Plume's
+ * sand-coloured --vp-nav-bg-color and the transparent .vp-navbar.top +
+ * .content-body rules so the chrome never paints sand on desktop sidebar
+ * pages. */
 :root,
 html[data-theme='light'],
 html[data-theme='dark'] {
@@ -218,38 +181,50 @@ header.vp-nav {
   color: var(--spora-cream) !important;
 }
 
-/* Mobile menu trigger — Plume's built-in hamburger gets hidden by the
- * transparent-content rules at .vp-navbar .container / .wrapper / .content
- * (lines ~189–194 above) on a dark navbar, so it reads as invisible at
- * narrow viewports. The selector list is the union of every Plume name
- * for this control across recent minor versions, so a rename in one
- * release doesn't kill the styling. */
-.VPNavBarMenuButton,
-.nav-menu-button,
-.VPNavBarMenu .button,
-.VPNavBar .VPNavBarHamburger,
-.VPNavBar .VPNavBarMenuGroup {
-  color: var(--spora-cream);
+/* Mobile menu trigger — Plume's hamburger. Default colour is --vp-c-text-1
+ * (dark brown), invisible on the spora-ink navbar. Force cream. */
+.vp-navbar-hamburger.hamburger,
+.hamburger {
+  color: var(--spora-cream) !important;
   background-color: transparent !important;
   border: none;
+  cursor: pointer;
   transition:
     color 0.2s,
     background-color 0.2s;
 }
-.VPNavBarMenuButton:hover,
-.nav-menu-button:hover,
-.VPNavBarMenu .button:hover,
-.VPNavBar .VPNavBarHamburger:hover,
-.VPNavBar .VPNavBarMenuGroup:hover {
-  color: var(--spora-paper-deep);
+.vp-navbar-hamburger.hamburger:hover,
+.hamburger:hover {
+  color: var(--spora-paper-deep) !important;
 }
-.VPNavBarMenuButton:focus-visible,
-.nav-menu-button:focus-visible,
-.VPNavBarMenu .button:focus-visible,
-.VPNavBar .VPNavBarHamburger:focus-visible,
-.VPNavBar .VPNavBarMenuGroup:focus-visible {
+.vp-navbar-hamburger.hamburger:focus-visible,
+.hamburger:focus-visible {
   outline: 2px solid var(--spora-warm-light);
   outline-offset: 2px;
+}
+
+/* Plume's VPNavBarHamburger.vue paints the bars with a hardcoded
+ * background-color: var(--vp-c-text-1) (NOT currentColor), so the cream
+ * color on the button above doesn't cascade. Force it on the bars. */
+.vp-navbar-hamburger.hamburger .top,
+.vp-navbar-hamburger.hamburger .middle,
+.vp-navbar-hamburger.hamburger .bottom,
+.vp-navbar-hamburger.hamburger .icon,
+.hamburger .top,
+.hamburger .middle,
+.hamburger .bottom,
+.hamburger .icon {
+  background-color: var(--spora-cream) !important;
+}
+.vp-navbar-hamburger.hamburger .top:hover,
+.vp-navbar-hamburger.hamburger .middle:hover,
+.vp-navbar-hamburger.hamburger .bottom:hover,
+.vp-navbar-hamburger.hamburger .icon:hover,
+.hamburger .top:hover,
+.hamburger .middle:hover,
+.hamburger .bottom:hover,
+.hamburger .icon:hover {
+  background-color: var(--spora-paper-deep) !important;
 }
 
 /* Sidebar — LAYERED SAND (matches body but slightly deeper) with brown text.

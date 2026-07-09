@@ -8,6 +8,6 @@
   "MD041": false,
   "MD046": { "style": "fenced" },
   "MD048": false,
-  "MD049": { "emphasis": "_", "strong": "_" },
+  "MD049": false,
   "MD060": false,
 }

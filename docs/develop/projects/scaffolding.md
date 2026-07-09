@@ -88,7 +88,7 @@ Don't forget to register the tool in app/App.php:
   public function tools(): array { return [Tools\WebSearchTool::class]; }
 ```
 
-For the full `#[Tool]` / `#[ToolOperation]` / `#[ToolParameter]` / `#[ToolSetting]` attribute surface that the generated class composes with, see [Concepts → Tool system](/concepts/tools). For how `app/App.php` discovers and wires the tool, see [Concepts → App extensions](/concepts/app-extension).
+For the full `#[Tool]` / `#[ToolOperation]` / `#[ToolParameter]` / `#[ToolSetting]` attribute surface that the generated class composes with, see [Concepts → Tool system](/reference/concepts/tools). For how `app/App.php` discovers and wires the tool, see [Concepts → App extensions](/reference/concepts/app-extension).
 
 ## `make:controller <Name>`
 
@@ -184,11 +184,13 @@ final class App extends AbstractExtension
 }
 ```
 
-For the full hook surface and lifecycle ordering, see [Concepts → App extensions](/concepts/app-extension).
+For the full hook surface and lifecycle ordering, see [Concepts → App extensions](/reference/concepts/app-extension).
 
 ## Adding a new `make:*` command
 
 If the three built-in commands don't cover what your project needs, add your own. The scaffolder is designed for extension — three steps, no other wiring required.
+
+> **Note:** the `make:recipe` command below is shown as an extension example, but **recipes are WIP — not yet shipped** in this release. See [Managing agents → Recipes _(WIP)_](/start/end-users/managing-agents#recipes-wip--not-yet-shipped) for status.
 
 1. **Create the maker** at `src/Maker/<Name>.php` (in the `spora-ai/spora-maker` package — this is a scaffolder change, not a project change). The class extends `Symfony\Component\Console\Command\Command` and implements `Spora\Maker\MakerInterface`:
 

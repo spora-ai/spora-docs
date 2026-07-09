@@ -7,7 +7,7 @@ description: Spora's HTTP API — endpoint catalog, request/response envelope, a
 
 Spora exposes a JSON REST API at `/api/v1/`. Most routes require a session cookie (`PHPSESSID`) and a `X-CSRF-Token` header (the value of `data.csrf_token` returned by `GET /api/v1/auth/me`). The unauthenticated exceptions are the pre-auth flows (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verify/{selector}`, `/auth/verification/resend`) and `GET /health`. The plugin install endpoints additionally require admin (`currentUser.isAdmin = true`).
 
-For the canonical, comprehensive reference, see [Concepts → Error handling](/concepts/error-handling) (envelope shape, error code registry, severity mapping) and the per-endpoint docs in [Operations → Day-2 ops](/start/operators/operations) (plugin install API in detail).
+For the canonical, comprehensive reference, see [Concepts → Error handling](/reference/concepts/error-handling) (envelope shape, error code registry, severity mapping) and the per-endpoint docs in [Operations → Day-2 ops](/start/operators/operations) (plugin install API in detail).
 
 ## Endpoint summary
 
@@ -69,7 +69,7 @@ Full envelope, error codes, and per-endpoint contract: [Install API](/develop/pl
 
 ### Notifications, recipes, LLM drivers, tools, users
 
-See [Concepts → Architecture](/concepts/architecture) for the full HTTP surface. The Vue admin UI consumes these endpoints; the same `X-CSRF-Token` middleware protects all state-changing routes.
+See [Concepts → Architecture](/reference/concepts/architecture) for the full HTTP surface. The Vue admin UI consumes these endpoints; the same `X-CSRF-Token` middleware protects all state-changing routes.
 
 ## Envelope
 
@@ -90,7 +90,7 @@ Error:
 }
 ```
 
-Rate-limited responses carry `Retry-After` as an HTTP header. For the full error code registry (codes, HTTP statuses, severities, mapping to UI), see [Concepts → Error handling](/concepts/error-handling).
+Rate-limited responses carry `Retry-After` as an HTTP header. For the full error code registry (codes, HTTP statuses, severities, mapping to UI), see [Concepts → Error handling](/reference/concepts/error-handling).
 
 ## Auth stack
 
@@ -110,6 +110,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ## What's next
 
-- [Concepts → Error handling](/concepts/error-handling) — full error code registry and envelope spec
+- [Concepts → Error handling](/reference/concepts/error-handling) — full error code registry and envelope spec
 - [Install API](/develop/plugins/install-api) — the plugin install endpoints in detail
 - [Operations → Day-2 ops](/start/operators/operations) — operator-facing workflows

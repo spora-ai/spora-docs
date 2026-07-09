@@ -89,20 +89,53 @@ export default defineUserConfig({
     // auto-insert it in an unpredictable position. Sections not flagged
     // (start, concepts, about) stay on 'auto'.
     sidebar: {
-      '/start/': 'auto',
-      '/concepts/': 'auto',
-      '/about/': 'auto',
-      '/develop/': [
-        { text: 'Overview', link: '/develop/' },
+      // /start/ uses explicit items so the three sub-section labels render
+      // as "Operators", "Developers", and "End users" instead of the
+      // kebab-case directory names. Same shape as the other explicit
+      // entries below.
+      '/start/': [
+        { text: 'Overview', link: '/start/' },
         {
-          text: 'Plugins',
+          text: 'Operators',
           items: [
-            { text: 'Overview', link: '/develop/plugins/' },
-            { text: 'Author guide', link: '/develop/plugins/author-guide' },
-            { text: 'Install API', link: '/develop/plugins/install-api' },
-            { text: 'Reference', link: '/develop/plugins/reference/' },
+            { text: 'Overview', link: '/start/operators/' },
+            { text: 'Installation', link: '/start/operators/install' },
+            { text: 'Environment variables', link: '/start/operators/env-vars' },
+            { text: 'Customization', link: '/start/operators/customization' },
+            { text: 'Security', link: '/start/operators/security' },
+            { text: 'Day-2 operations', link: '/start/operators/operations' },
+            { text: 'Backups', link: '/start/operators/backups' },
           ],
         },
+        {
+          text: 'Developers',
+          items: [
+            { text: 'Overview', link: '/start/developers/' },
+            { text: 'Local setup', link: '/start/developers/local-setup' },
+            { text: 'Project structure', link: '/start/developers/project-structure' },
+            { text: 'Stack', link: '/start/developers/stack' },
+            { text: 'How to add a tool', link: '/start/developers/how-to-add-a-tool' },
+            { text: 'CLI & coding standards', link: '/start/developers/cli-and-coding-standards' },
+          ],
+        },
+        {
+          text: 'End users',
+          items: [
+            { text: 'Overview', link: '/start/end-users/' },
+            { text: 'First conversation', link: '/start/end-users/first-conversation' },
+            { text: 'Managing agents', link: '/start/end-users/managing-agents' },
+            { text: 'Troubleshooting', link: '/start/end-users/troubleshooting' },
+          ],
+        },
+      ],
+      // /develop/ uses explicit items so the two sub-section labels render
+      // as "Projects" and "Plugins" (proper case) instead of the kebab-case
+      // directory names. Projects is intentionally first: a project can be
+      // promoted into a plugin via a Composer package, so users looking to
+      // extend Spora start at the project level and graduate to a plugin
+      // when the code is ready to ship.
+      '/develop/': [
+        { text: 'Overview', link: '/develop/' },
         {
           text: 'Projects',
           items: [
@@ -110,7 +143,31 @@ export default defineUserConfig({
             { text: 'Scaffolding', link: '/develop/projects/scaffolding' },
           ],
         },
+        {
+          text: 'Plugins',
+          items: [
+            { text: 'Overview', link: '/develop/plugins/' },
+            { text: 'Author guide', link: '/develop/plugins/author-guide' },
+            { text: 'Install API', link: '/develop/plugins/install-api' },
+            {
+              text: 'Reference',
+              items: [
+                { text: 'Plugin skeleton', link: '/develop/plugins/reference/plugin-skeleton' },
+                { text: 'Calendar', link: '/develop/plugins/reference/calendar' },
+                { text: 'Email', link: '/develop/plugins/reference/email' },
+                { text: 'MiniMax', link: '/develop/plugins/reference/minimax' },
+                { text: 'Semantic Scholar', link: '/develop/plugins/reference/semantic-scholar' },
+                { text: 'Serper', link: '/develop/plugins/reference/serper' },
+                { text: 'Tavily', link: '/develop/plugins/reference/tavily' },
+                { text: 'Weather', link: '/develop/plugins/reference/weather' },
+                { text: 'World News', link: '/develop/plugins/reference/worldnews' },
+                { text: 'Zernio', link: '/develop/plugins/reference/zernio' },
+              ],
+            },
+          ],
+        },
       ],
+      '/about/': 'auto',
       '/deploy/': [
         { text: 'Overview', link: '/deploy/' },
         {
@@ -140,22 +197,22 @@ export default defineUserConfig({
         {
           text: 'Architecture & concepts',
           items: [
-            { text: 'Overview', link: '/concepts/' },
-            { text: 'Architecture', link: '/concepts/architecture' },
-            { text: 'Agent loop & async', link: '/concepts/agent-loop-async' },
-            { text: 'App extensions', link: '/concepts/app-extension' },
-            { text: 'Code documentation', link: '/concepts/code-documentation' },
-            { text: 'Drivers', link: '/concepts/drivers' },
-            { text: 'Error handling', link: '/concepts/error-handling' },
-            { text: 'Frontend architecture', link: '/concepts/frontend-architecture' },
-            { text: 'Interfaces', link: '/concepts/interfaces' },
-            { text: 'Logging', link: '/concepts/logging' },
-            { text: 'Media assets', link: '/concepts/media-assets' },
-            { text: 'Plugin system', link: '/concepts/plugins-system' },
-            { text: 'Schema', link: '/concepts/schema' },
-            { text: 'Testing', link: '/concepts/testing' },
-            { text: 'Tools', link: '/concepts/tools' },
-            { text: 'Worker deployment', link: '/concepts/worker-deployment' },
+            { text: 'Overview', link: '/reference/concepts/' },
+            { text: 'Architecture', link: '/reference/concepts/architecture' },
+            { text: 'Agent loop & async', link: '/reference/concepts/agent-loop-async' },
+            { text: 'App extensions', link: '/reference/concepts/app-extension' },
+            { text: 'Code documentation', link: '/reference/concepts/code-documentation' },
+            { text: 'Drivers', link: '/reference/concepts/drivers' },
+            { text: 'Error handling', link: '/reference/concepts/error-handling' },
+            { text: 'Frontend architecture', link: '/reference/concepts/frontend-architecture' },
+            { text: 'Interfaces', link: '/reference/concepts/interfaces' },
+            { text: 'Logging', link: '/reference/concepts/logging' },
+            { text: 'Media assets', link: '/reference/concepts/media-assets' },
+            { text: 'Plugin system', link: '/reference/concepts/plugins-system' },
+            { text: 'Schema', link: '/reference/concepts/schema' },
+            { text: 'Testing', link: '/reference/concepts/testing' },
+            { text: 'Tools', link: '/reference/concepts/tools' },
+            { text: 'Worker deployment', link: '/reference/concepts/worker-deployment' },
           ],
         },
       ],

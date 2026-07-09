@@ -71,7 +71,7 @@ $agent->save();
 
 ## Custom recipes
 
-Recipes are YAML files in `recipes/`. Schema: see the [Architecture overview](/concepts/architecture). Drop a new YAML file in, then refresh the recipe list (admin UI or CLI).
+Recipes are YAML files in `recipes/`. Schema: see the [Architecture overview](/reference/concepts/architecture). Drop a new YAML file in, then refresh the recipe list (admin UI or CLI).
 
 ## Theming the admin UI
 

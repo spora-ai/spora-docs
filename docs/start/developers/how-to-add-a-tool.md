@@ -60,7 +60,7 @@ What this class does:
 - `execute(...)` — the actual work. Returns a `ToolResult::ok(...)` on success or `ToolResult::fail(...)` on a graceful failure. **Never throws** — a single API failure cannot kill the agent loop.
 - `describeAction(...)` — the human-readable summary shown in the approval UI when the agent calls this tool.
 
-For the full attribute surface (`#[ToolSetting]`, `#[ToolOperation]`, `InputToolInterface` vs `OutputToolInterface`, etc.), see [Concepts → Tool system](/concepts/tools).
+For the full attribute surface (`#[ToolSetting]`, `#[ToolOperation]`, `InputToolInterface` vs `OutputToolInterface`, etc.), see [Concepts → Tool system](/reference/concepts/tools).
 
 ## Step 2 — Register the tool
 
@@ -172,7 +172,7 @@ final class HelloTool extends AbstractTool
 
 The operator sees `default_greeting` in the admin UI's Tools → Hello page. The setting is encrypted at rest and merged into the tool's effective settings via `ToolConfigService::getEffectiveSettings()`.
 
-For the full settings key convention, see [Concepts → Tool system → Setting cascade](/concepts/tools#setting-cascade-schema-defaults--global--user--agent).
+For the full settings key convention, see [Concepts → Tool system → Setting cascade](/reference/concepts/tools#setting-cascade-schema-defaults--global--user--agent).
 
 ## Step 6 — Distribute as a plugin (optional)
 
@@ -193,6 +193,6 @@ If the tool should ship to other Spora installs, see [Develop → Plugins → Au
 
 ## What's next
 
-- [Tool system concepts](/concepts/tools) — the full `#[Tool]`, `#[ToolOperation]`, `#[ToolParameter]`, `#[ToolSetting]` attribute surface
+- [Tool system concepts](/reference/concepts/tools) — the full `#[Tool]`, `#[ToolOperation]`, `#[ToolParameter]`, `#[ToolSetting]` attribute surface
 - [CLI & coding standards](/start/developers/cli-and-coding-standards) — Pest + PHPStan, code comment policy
 - [Plugin author guide](/develop/plugins/author-guide) — when the tool should be distributed

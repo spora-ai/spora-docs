@@ -1,13 +1,13 @@
 ---
 title: Plugin author guide
-description: End-to-end guide for writing a Spora plugin — Composer package, manifest, tools, drivers, recipes, migrations, testing, publishing.
+description: End-to-end guide for writing a Spora plugin — Composer package, manifest, tools, drivers, migrations, testing, publishing. (Recipes WIP — not yet shipped.)
 ---
 
 # Plugin Author Guide
 
-End-to-end guide for writing a Spora plugin — a Composer package that ships tools, drivers, recipes, and migrations to a Spora deployment.
+End-to-end guide for writing a Spora plugin — a Composer package that ships tools, drivers, and migrations to a Spora deployment _(recipes are WIP — see [Recipes *(WIP — not yet shipped)*](#recipes-wip--not-yet-shipped) below)_.
 
-The complete plugin system reference (load order, manifest validation, manifest schemas, boot-time stamp cache, security model) lives in [Concepts → Plugin system](/concepts/plugins-system). The operator-facing install/uninstall flow (`bin/spora plugin:install`, HTTP endpoints) is documented in [Install API](/develop/plugins/install-api). This doc is focused on **how to author a plugin** from scratch.
+The complete plugin system reference (load order, manifest validation, manifest schemas, boot-time stamp cache, security model) lives in [Concepts → Plugin system](/reference/concepts/plugins-system). The operator-facing install/uninstall flow (`bin/spora plugin:install`, HTTP endpoints) is documented in [Install API](/develop/plugins/install-api). This doc is focused on **how to author a plugin** from scratch.
 
 ## Table of contents
 
@@ -17,7 +17,7 @@ The complete plugin system reference (load order, manifest validation, manifest 
 4. [Adding a tool](#adding-a-tool)
 5. [Adding an LLM driver](#adding-an-llm-driver)
 6. [Adding migrations](#adding-migrations)
-7. [Recipes](#recipes)
+7. [Recipes _(WIP — not yet shipped)_](#recipes-wip--not-yet-shipped)
 8. [Local development workflow](#local-development-workflow)
 9. [The `spora-plugin` keyword](#the-spora-plugin-keyword)
 10. [PSR-4 entry-point quirk](#psr-4-entry-point-quirk)
@@ -31,8 +31,8 @@ A Spora plugin is a Composer package — installable via `composer require` and 
 
 - **Tools** callable by an agent (web search, image generation, calendar ops).
 - **LLM drivers** that plug into the driver factory alongside OpenAI and Anthropic.
-- **Recipes** that bundle a system prompt + tool allowlist into a one-click agent.
 - **Migrations** that create plugin-owned database tables.
+- **Recipes** _(WIP — not yet shipped)_ that bundle a system prompt + tool allowlist into a one-click agent. The hook is declared and `RecipeScanner` exists, but no recipes are bundled or shipped in this release. See the dedicated [Recipes _(WIP)_](#recipes-wip--not-yet-shipped) section below.
 
 A plugin is identified by a **Composer package** with `type: "spora-plugin"`. On install, the `spora-ai/installer` Composer plugin routes the package to the host Spora's `plugins/{slug}/` directory and the host's `PluginLoader` picks up its manifest on the next request.
 
@@ -55,7 +55,7 @@ spora-plugin-foo/
 ├── database/
 │   └── migrations/
 │       └── foo_000001_create_xyz_table.php
-├── recipes/
+├── recipes/                ← WIP — not yet shipped
 │   └── default.yaml
 └── tests/
     └── Unit/
@@ -78,10 +78,10 @@ The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/s
 
 ### Optional fields
 
-| Field         | Type   | Description                                                                                                                                                                                                                                                                                                  |
-| ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `description` | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                |
-| `icon`        | string | Icon shown next to the plugin in admin UIs. Three accepted forms — bundled name (`"puzzle"`, `"brain"`, `"globe"`…), a full `<svg>` string, or a raw SVG path string. Defaults to `"puzzle"` when omitted. See [Plugin system → Bundled icons](/concepts/plugins-system#bundled-icons) for the full palette. |
+| Field         | Type   | Description                                                                                                                                                                                                                                                                                                            |
+| ------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description` | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                          |
+| `icon`        | string | Icon shown next to the plugin in admin UIs. Three accepted forms — bundled name (`"puzzle"`, `"brain"`, `"globe"`…), a full `<svg>` string, or a raw SVG path string. Defaults to `"puzzle"` when omitted. See [Plugin system → Bundled icons](/reference/concepts/plugins-system#bundled-icons) for the full palette. |
 
 ### Minimal example
 
@@ -156,7 +156,7 @@ All hooks live on `Spora\Plugins\PluginInterface` (re-exported from `Spora\Exten
 | `getName()`                                | `string`                        | Human-facing name shown in admin UIs.                                            |
 | `tools()`                                  | `class-string<ToolInterface>[]` | Tools contributed to the tool registry.                                          |
 | `drivers()`                                | `string[]` (id → FQCN)          | LLM drivers contributed to the driver factory.                                   |
-| `recipePaths()`                            | `string[]`                      | Absolute paths to recipe YAML directories or files.                              |
+| `recipePaths()`                            | `string[]`                      | Absolute paths to recipe YAML directories or files. _(WIP — not yet shipped.)_   |
 | `apps()`                                   | `class-string<AppInterface>[]`  | UI side-panels contributed to the App registry.                                  |
 | `migrationsPath()`                         | `?string`                       | Absolute path to plugin migrations directory, or `null` if no schema.            |
 | `schemaVersion()`                          | `int`                           | Bump every time a new migration file is added. `0` if no schema.                 |
@@ -211,7 +211,7 @@ final class AcmeSearchTool extends AbstractTool
 }
 ```
 
-The contract is `Spora\Tools\ToolInterface`. The full `#[Tool]` / `#[ToolParameter]` / `#[ToolSetting]` attribute surface and the settings-key convention are documented in [Concepts → Tool system](/concepts/tools) — read it before shipping a tool with operator-facing config.
+The contract is `Spora\Tools\ToolInterface`. The full `#[Tool]` / `#[ToolParameter]` / `#[ToolSetting]` attribute surface and the settings-key convention are documented in [Concepts → Tool system](/reference/concepts/tools) — read it before shipping a tool with operator-facing config.
 
 ### Convention reminders
 
@@ -223,7 +223,7 @@ The contract is `Spora\Tools\ToolInterface`. The full `#[Tool]` / `#[ToolParamet
 
 Drivers work the same way as tools: a class in `src/Drivers/`, referenced by FQCN from the plugin's `drivers()` hook. Drivers implement `Spora\Drivers\LLMDriverInterface` and are picked up by the driver factory alongside the built-in OpenAI and Anthropic drivers.
 
-Driver registration contracts (config keys, `LLMDriverConfigInterface`, environment overrides) are documented in [Concepts → LLM drivers](/concepts/drivers). Plugin drivers follow the same rules — return the FQCN from `drivers()` and the plugin loader registers it under the declared id.
+Driver registration contracts (config keys, `LLMDriverConfigInterface`, environment overrides) are documented in [Concepts → LLM drivers](/reference/concepts/drivers). Plugin drivers follow the same rules — return the FQCN from `drivers()` and the plugin loader registers it under the declared id.
 
 ```php
 /** @return array<string, class-string<\Spora\Drivers\LLMDriverInterface>> */
@@ -303,9 +303,11 @@ Rule of thumb:
 - Always write a `down()` even if you only use it for local cleanup.
 - Never edit a migration that has already shipped — bump `schemaVersion()` and add a new file.
 
-## Recipes
+## Recipes _(WIP — not yet shipped)_
 
-Recipes bundle a system prompt + tool allowlist + LLM config into a one-click agent template. They live under `recipes/` in your plugin and are returned from the entry-point's `recipePaths()` hook.
+> **Status: WIP** — the recipe system is scaffolded but not shipped in this release. The hook (`PluginInterface::recipePaths()`) is declared, `RecipeScanner` exists, `RecipeController` and `GET /api/v1/recipes` are wired, and `agents.recipe_id` is in the schema — but **no recipes are bundled with Spora** (the framework's `recipes/` directory is empty), the agent create/edit UI does not yet wire up the `recipe_id` field, and no recipe picker drives the run flow yet. Treat this section as forward-looking API surface, not a usable feature. See [Roadmap → Medium](/about/roadmap) for the open work items.
+
+Recipes bundle a system prompt + tool allowlist + LLM config into a one-click agent template. They would live under `recipes/` in your plugin and be returned from the entry-point's `recipePaths()` hook.
 
 ### Directory layout
 
@@ -331,7 +333,7 @@ llm:
   temperature: 0.3
 ```
 
-The full YAML schema (tool format, LLM driver override, max iterations, scheduled-run fields) is documented in [Concepts → Architecture](/concepts/architecture). What is plugin-specific is the path declaration:
+The full YAML schema (tool format, LLM driver override, max iterations, scheduled-run fields) would be documented in [Concepts → Architecture](/reference/concepts/architecture) once the recipe system lands. What is plugin-specific is the path declaration:
 
 ```php
 public function recipePaths(): array
@@ -342,7 +344,7 @@ public function recipePaths(): array
 }
 ```
 
-Recipes are picked up by `RecipeScanner` alongside the host Spora's `recipes/` directory; plugin recipes are first-class and indistinguishable from operator-defined ones at runtime.
+Once shipped, recipes would be picked up by `RecipeScanner` alongside the host Spora's `recipes/` directory; plugin recipes would be first-class and indistinguishable from operator-defined ones at runtime.
 
 ## Local development workflow
 
@@ -375,7 +377,7 @@ Comma-separate multiple paths:
 SPORA_PLUGINS_PATHS=/opt/spora-plugins/foo,/srv/spora/community
 ```
 
-The in-repo `plugins/` directory is scanned first; external paths follow in declaration order. Duplicates by `slug` are silently skipped — first manifest wins. See [Plugin system → Loading from external paths](/concepts/plugins-system#loading-from-external-paths) for details.
+The in-repo `plugins/` directory is scanned first; external paths follow in declaration order. Duplicates by `slug` are silently skipped — first manifest wins. See [Plugin system → Loading from external paths](/reference/concepts/plugins-system#loading-from-external-paths) for details.
 
 ### Verifying changes locally
 

@@ -1,13 +1,13 @@
 ---
 title: Managing agents
-description: Create, edit, and configure agents — system prompt, LLM config, tool allowlist, recipes.
+description: Create, edit, and configure agents — system prompt, LLM config, tool allowlist.
 ---
 
 # Managing agents
 
-An **agent** is the thing you chat with. It has a system prompt, an LLM config (which model to use), a tool allowlist (which tools it can call), and optionally a recipe (a template the agent is built from). This page covers how to manage agents in the admin UI.
+An **agent** is the thing you chat with. It has a system prompt, an LLM config (which model to use), and a tool allowlist (which tools it can call). This page covers how to manage agents in the admin UI.
 
-For the underlying architecture (what an agent IS in the codebase), see [Concepts → Architecture](/concepts/architecture).
+For the underlying architecture (what an agent IS in the codebase), see [Concepts → Architecture](/reference/concepts/architecture).
 
 ## List view
 
@@ -16,7 +16,6 @@ For the underlying architecture (what an agent IS in the codebase), see [Concept
 - **Name** — display name
 - **Driver / model** — which LLM config the agent is using
 - **Tools** — number of tools enabled
-- **Recipe** — which recipe the agent is built from (if any)
 - **Last used** — when the agent last received a message
 - **Status** — enabled / disabled
 
@@ -67,7 +66,7 @@ Pick which LLM config the agent uses. You can:
 - **Use a global default** — the agent inherits whichever LLM is marked `is_default = true` in **Settings → LLM drivers**
 - **Override per agent** — pick a specific config from the dropdown
 
-For details on creating LLM configs, see **Settings → LLM drivers** (or, programmatically, [Concepts → LLM drivers](/concepts/drivers)).
+For details on creating LLM configs, see **Settings → LLM drivers** (or, programmatically, [Concepts → LLM drivers](/reference/concepts/drivers)).
 
 ### Tab 4 — Tools
 
@@ -82,15 +81,16 @@ For a new agent, **start with no tools**. Add tools one at a time to see how eac
 
 Each tool has operator-configurable settings (API keys, hostnames). Configure these under **Settings → Tools** before enabling the tool on an agent.
 
-## Recipes
+## Recipes _(WIP — not yet shipped)_
 
-A **recipe** is a YAML file that bundles a system prompt + tool allowlist + LLM config into a one-click template. Recipes live in `recipes/` (operator-authored) or in a plugin's `recipes/` (plugin-supplied).
+> **Status: WIP** — recipes are not yet shipped in this release. The recipe scaffolding exists in the codebase (`RecipeScanner`, `RecipeController`, `agents.recipe_id`, `PluginInterface::recipePaths()`), but the system is **not usable**: `recipes/` is empty, the agent create/edit UI does not yet wire up the `recipe_id` field, and no recipe picker drives the run flow yet. See [Roadmap → Medium](/about/roadmap) for the open work items.
 
-**Agent → Recipe** dropdown lets you pick a recipe. The recipe's settings (system prompt, LLM, tools) are loaded into the form. You can then tweak the agent without losing the recipe as a starting point.
+A **recipe** is a YAML file that bundles a system prompt + tool allowlist + LLM config into a one-click template. Recipes would live in `recipes/` (operator-authored) or in a plugin's `recipes/` (plugin-supplied). The intended behaviour once shipped:
 
-A recipe is **not** a snapshot — once an agent is built from a recipe, edits to the recipe don't propagate. The agent is a copy.
+- **Agent → Recipe** dropdown lets you pick a recipe. The recipe's settings (system prompt, LLM, tools) are loaded into the form. You can then tweak the agent without losing the recipe as a starting point.
+- A recipe is **not** a snapshot — once an agent is built from a recipe, edits to the recipe don't propagate. The agent is a copy.
 
-For details on the recipe format, see [Concepts → Architecture → Recipes](/concepts/architecture).
+For details on the recipe format (when it's documented), see [Concepts → Architecture](/reference/concepts/architecture).
 
 ## Edit vs disable
 
@@ -108,28 +108,21 @@ Delete only when:
 - The agent is brand new and never used
 - You're sure the historical tasks aren't needed
 
-## Recipes and the plugin system
+## Recipes and the plugin system _(WIP — not yet shipped)_
 
-Plugins can ship their own recipes. When a plugin is installed, its `recipes/` directory is scanned and the recipes appear in the agent's Recipe dropdown.
+> **Status: WIP** — see the note at the top of [Recipes](#recipes-wip--not-yet-shipped). The plugin → recipe pipeline is scaffolded but not yet shipping.
+
+Plugins would ship their own recipes. When a plugin is installed, its `recipes/` directory would be scanned and the recipes would appear in the agent's Recipe dropdown.
 
 For example, the `spora-plugin-email` plugin might ship an "Email Assistant" recipe that bundles a system prompt + the `email` tool. Installing the plugin makes the recipe available in every agent's create form.
 
 ## Approval and tool permissions
 
-By default, every tool call requires **explicit human approval** in the admin UI. The agent's response pauses with a "Approve / Reject" button for each tool call.
+Whether a tool call requires human approval is **per-operation and per-agent**, not a single global default. The tool author sets the operation's default via the `#[ToolOperation(requiresApprovalByDefault:)]` attribute; the operator can override that per-agent via the `agent_tool_operation_overrides.default_requires_approval` column (a nullable three-state — `1` = always require, `0` = never require, `null` = use the operation's class default). Read-only / generative operations typically default to `false` (no approval); side-effecting operations (send email, write file, call external API) typically default to `true` (require approval).
 
-You can change per-tool default behavior in **Settings → Tools → [tool] → Require approval by default**. The agent can also override per-operation via `requiresApprovalByDefault` in the `#[ToolOperation]` attribute (the tool author controls this).
+When approval IS required, the agent's response pauses with an **Approve / Reject** button for each tool call. The chat shows the tool call with the proposed arguments, **Approve**, **Reject**, and a comment field. Clicking Approve resumes the task; Reject halts it.
 
-When the agent is awaiting approval, the chat shows the tool call with **Approve**, **Reject**, and a comment field. Clicking Approve resumes the task; Reject halts it.
-
-## Auditing
-
-Every agent action is recorded in the database. For an audit trail of a specific agent:
-
-- **Tools → Audit log** (if enabled) — every tool call with timestamp, arguments, result, approval status
-- **Tasks → [task]** — the full conversation history (user message, LLM responses, tool calls)
-
-These are admin-only views; non-admin users see only their own task history.
+You can change an operation's default in **Settings → Tools → [tool] → Require approval by default**, and the per-agent override in the agent's edit form under **Tools → [operation] → Approval**.
 
 ## What's next
 

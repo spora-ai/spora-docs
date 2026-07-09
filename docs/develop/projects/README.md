@@ -41,8 +41,8 @@ The promotion path is mechanical, not a rewrite — see the [Customization guide
 
 The project-local flow is documented here. The deeper architecture (the hook surface, lifecycle ordering, AppLoader) lives in:
 
-- [Concepts → App extensions](/concepts/app-extension) — the full `SporaExtensionInterface` hook surface, `AbstractExtension` base class, and how `app/App.php` is discovered and wired
-- [Concepts → Tool system](/concepts/tools) — the `#[Tool]`, `#[ToolOperation]`, `#[ToolParameter]`, `#[ToolSetting]` attribute surface that `make:tool` scaffolds against
-- [Concepts → PHP interfaces](/concepts/interfaces) — the contracts each generated class implements
+- [Concepts → App extensions](/reference/concepts/app-extension) — the full `SporaExtensionInterface` hook surface, `AbstractExtension` base class, and how `app/App.php` is discovered and wired
+- [Concepts → Tool system](/reference/concepts/tools) — the `#[Tool]`, `#[ToolOperation]`, `#[ToolParameter]`, `#[ToolSetting]` attribute surface that `make:tool` scaffolds against
+- [Concepts → PHP interfaces](/reference/concepts/interfaces) — the contracts each generated class implements
 
 The scaffolder emits code that is **trivially correct but incomplete** — it leaves `// TODO: implement.` placeholders everywhere the developer needs to fill in real logic. The intent is to remove the boilerplate (namespace, use statements, class declaration, base class extension) and let the developer focus on the tool's behaviour.

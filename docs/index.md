@@ -11,7 +11,7 @@ description: Self-hosted AI agent orchestration. Zero-config. Anywhere.
 
 PHP 8.4+ on a laptop, a shared host, or a Docker container.
 
-[Get Started →](/start/) · [Concepts](/concepts/) · [View on GitHub](https://github.com/spora-ai/spora)
+[Get Started →](/start/) · [Concepts](/reference/concepts/) · [View on GitHub](https://github.com/spora-ai/spora)
 
 </div>
 
@@ -45,13 +45,13 @@ That is the whole bootstrap. SQLite by default; flip `SPORA_DB_*` in `.env` for 
 | Are setting up a local dev environment | [Developers guide →](/start/developers/) |
 | Are using the admin UI to chat         | [End user guide →](/start/end-users/)    |
 
-Looking for the architecture deep-dive? See [Concepts](/concepts/).
+Looking for the architecture deep-dive? See [Concepts](/reference/concepts/).
 
 ## Project layout
 
 | Repo                                                             | Role                                                 |
 | ---------------------------------------------------------------- | ---------------------------------------------------- |
-| [`spora-core`](https://github.com/spora-ai/spora-core)           | PHP framework, plugins, recipes, drivers             |
+| [`spora-core`](https://github.com/spora-ai/spora-core)           | PHP framework, plugins, drivers _(recipes WIP)_      |
 | [`spora`](https://github.com/spora-ai/spora)                     | Skeleton — what you deploy                           |
 | [`spora-frontend`](https://github.com/spora-ai/spora-frontend)   | Vue 3 + Vite + Tailwind admin SPA                    |
 | [`spora-plugin-*`](https://github.com/spora-ai)                  | Tool plugins (calendar, email, web search, etc.)     |
@@ -63,4 +63,4 @@ Looking for the architecture deep-dive? See [Concepts](/concepts/).
 - **New to Spora?** → [Getting Started → Operators](/start/operators/) or pick your track above.
 - **Building a plugin?** → [Develop → Plugins](/develop/plugins/).
 - **Running it in production?** → [Deploy](/deploy/).
-- **Reading the source?** → [Concepts](/concepts/).
+- **Reading the source?** → [Concepts](/reference/concepts/).

@@ -11,7 +11,7 @@ This walks through a first session with Spora: signing in, sending a message, re
 
 Open `http://localhost:8080` (or your deployment URL) in a browser. You'll see the login screen.
 
-The default seeded admin credentials are printed by `db:seed` — typically `admin@example.com` / `somesecret`. **Change these immediately** under **Settings → Users → Edit**.
+The default seeded admin credentials are printed by `db:seed` — `admin@spora.local` / `password` (defined in `spora-core/app/Core/DatabaseSeeder.php:47`). **Change these immediately** under **Settings → Users → Edit**.
 
 If you disabled `SPORA_ALLOW_REGISTRATION` before creating your account, you can't sign up via the UI. Ask an admin to create the account for you, or re-enable registration in `.env` and restart.
 
@@ -78,7 +78,7 @@ Every chat message is a **task** in the Orchestrator. The lifecycle:
 4. **Loop** — repeat step 3 until the LLM returns text or `max_steps` is reached
 5. **History** — every LLM message and tool call is appended to `task_history` for the next turn
 
-For details, see [Concepts → Agent loop and async mode](/concepts/agent-loop-async).
+For details, see [Concepts → Agent loop and async mode](/reference/concepts/agent-loop-async).
 
 ## What the chat timeline shows
 

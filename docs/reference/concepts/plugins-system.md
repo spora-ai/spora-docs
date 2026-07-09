@@ -164,7 +164,7 @@ final class Plugin implements PluginInterface
 
 > **Note:** the plugin system is currently a work-in-progress. The hook methods (`tools()`, `drivers()`, `recipePaths()`, `register()`) are declared on the interface and surfaced by the manifest, but the explicit `PluginLoader → DI container` injection path is not yet fully wired up. New drivers, tools, and recipes contributed via plugins may not take effect without additional glue in `app/Plugins/PluginLoader.php` or direct registration via `config.php`. Three open PRs are landing this — the WIP note is preserved verbatim from the framework docs.
 >
-> To register a new LLM driver via a plugin, return its FQCN from `PluginInterface::drivers()` — see the [LLM drivers](/concepts/drivers) page for the driver contract and the `llm_driver_classes` container key that plugins are intended to extend.
+> To register a new LLM driver via a plugin, return its FQCN from `PluginInterface::drivers()` — see the [LLM drivers](/reference/concepts/drivers) page for the driver contract and the `llm_driver_classes` container key that plugins are intended to extend.
 
 ## Database migrations
 

@@ -53,7 +53,7 @@ If `SPORA_DB_HOST` is set in `.env`, it wins. If `config.php` has `'db_host' => 
 | `plugin_catalog_enabled`      | `SPORA_PLUGIN_CATALOG_ENABLED`      | `true`                                | Show the Browse tab in `/apps/plugins` and enable `GET /api/v1/plugins/catalog`.                                             |
 | `plugin_catalog_ttl`          | `SPORA_PLUGIN_CATALOG_TTL`          | `3600`                                | Cache TTL (seconds) for the on-disk Packagist cache.                                                                         |
 
-For per-tool settings (e.g. Tavily `api_key`, Anthropic `api_key`), see [Concepts → Tool system → Setting cascade](/concepts/tools).
+For per-tool settings (e.g. Tavily `api_key`, Anthropic `api_key`), see [Concepts → Tool system → Setting cascade](/reference/concepts/tools).
 
 ## Example `config.php`
 

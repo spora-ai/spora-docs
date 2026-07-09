@@ -81,14 +81,14 @@ When you run `composer create-project spora-ai/spora`, the skeleton's `app/` is 
 
 The migrated documentation in this site maps to the framework structure as follows:
 
-| Doc site page                                                      | Source file                                                   |
-| ------------------------------------------------------------------ | ------------------------------------------------------------- |
-| [Concepts → Architecture](/concepts/architecture)                  | `spora-core/AGENTS.md` + `spora-core/docs/01_architecture.md` |
-| [Concepts → Agent loop and async mode](/concepts/agent-loop-async) | `spora-core/docs/11_agent_loop_async.md`                      |
-| [Concepts → Plugin system](/concepts/plugins-system)               | `spora-core/docs/07_plugins.md`                               |
-| [Concepts → Tool system](/concepts/tools)                          | `spora-core/docs/06_tools.md`                                 |
-| [Concepts → Database schema](/concepts/schema)                     | `spora-core/docs/02_schema.md`                                |
-| [Concepts → Code documentation](/concepts/code-documentation)      | `spora-core/docs/14_code_documentation.md`                    |
-| [Concepts → Testing](/concepts/testing)                            | `spora-core/docs/16_testing.md`                               |
+| Doc site page                                                                | Source file                                                   |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [Concepts → Architecture](/reference/concepts/architecture)                  | `spora-core/AGENTS.md` + `spora-core/docs/01_architecture.md` |
+| [Concepts → Agent loop and async mode](/reference/concepts/agent-loop-async) | `spora-core/docs/11_agent_loop_async.md`                      |
+| [Concepts → Plugin system](/reference/concepts/plugins-system)               | `spora-core/docs/07_plugins.md`                               |
+| [Concepts → Tool system](/reference/concepts/tools)                          | `spora-core/docs/06_tools.md`                                 |
+| [Concepts → Database schema](/reference/concepts/schema)                     | `spora-core/docs/02_schema.md`                                |
+| [Concepts → Code documentation](/reference/concepts/code-documentation)      | `spora-core/docs/14_code_documentation.md`                    |
+| [Concepts → Testing](/reference/concepts/testing)                            | `spora-core/docs/16_testing.md`                               |
 
 For the broader Stack table and "How to Add a Tool" walkthrough, see the [Stack](/start/developers/stack) and [How to add a tool](/start/developers/how-to-add-a-tool) pages in this track.

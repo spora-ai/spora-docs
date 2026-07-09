@@ -5,7 +5,7 @@ description: Deployment guide for cron and daemon modes, environment variables, 
 
 # Worker Deployment Guide
 
-This guide covers deployment and operations for the Spora agent worker in `cron` and `worker` modes. For architecture details, see [Agent loop and async mode](/concepts/agent-loop-async).
+This guide covers deployment and operations for the Spora agent worker in `cron` and `worker` modes. For architecture details, see [Agent loop and async mode](/reference/concepts/agent-loop-async).
 
 ## Modes at a Glance
 

@@ -89,7 +89,7 @@ Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVA
 
 In Worker mode, multi-step tasks (multiple LLM turns) still run synchronously within a single worker invocation — the loop continues until `COMPLETED`, `FAILED`, or `PENDING_APPROVAL`.
 
-For the full details on tick phases, task lifecycle, and Mercure publishing, see [Agent loop and async mode](/concepts/agent-loop-async).
+For the full details on tick phases, task lifecycle, and Mercure publishing, see [Agent loop and async mode](/reference/concepts/agent-loop-async).
 
 ## Plugin System
 
@@ -105,7 +105,7 @@ Boot sequence (`app/Plugins/PluginLoader.php`):
 6. `tools()`, `drivers()`, `recipePaths()`, `schemaVersion()`, `migrationsPath()` → register contributions
 7. `register(ContainerBuilder)` → arbitrary DI bindings
 
-Plugins can contribute: tools, LLM drivers, recipes, and database migrations. See `app/Plugins/PluginInterface.php` and the [Plugin system](/concepts/plugins-system) page.
+Plugins can contribute: tools, LLM drivers, recipes, and database migrations. See `app/Plugins/PluginInterface.php` and the [Plugin system](/reference/concepts/plugins-system) page.
 
 > **Status: WIP** — the plugin system is currently a work-in-progress. The hook methods (`tools()`, `drivers()`, `recipePaths()`, `register()`) are declared on the interface and surfaced by the manifest, but the explicit `PluginLoader → DI container` injection path is not yet fully wired up. New drivers, tools, and recipes contributed via plugins may not take effect without additional glue in `app/Plugins/PluginLoader.php` or direct registration via `config.php`.
 >
@@ -115,6 +115,6 @@ Plugins can contribute: tools, LLM drivers, recipes, and database migrations. Se
 
 ## Database
 
-SQLite by default (zero config), MySQL/MariaDB supported via `config.php` or env vars (`SPORA_DB_DRIVER=mysql` + `SPORA_DB_HOST/PORT/NAME/USER/PASSWORD`). All schema managed by `DatabaseSchemaInstaller` using Illuminate Schema Builder — versioned, component-aware, with a hot-path stamp cache. See the [Database schema](/concepts/schema) page.
+SQLite by default (zero config), MySQL/MariaDB supported via `config.php` or env vars (`SPORA_DB_DRIVER=mysql` + `SPORA_DB_HOST/PORT/NAME/USER/PASSWORD`). All schema managed by `DatabaseSchemaInstaller` using Illuminate Schema Builder — versioned, component-aware, with a hot-path stamp cache. See the [Database schema](/reference/concepts/schema) page.
 
 **Runtime artifacts in `storage/`:** `.schema_stamp` (DB installer cache) and `spora-worker.lock` (single-instance worker lock) are runtime state, not data — exclude them from backups. See the [Backups](/start/operators/backups) page for what to back up.

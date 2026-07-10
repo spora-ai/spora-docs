@@ -67,7 +67,7 @@ The runtime starts two processes via supervisord:
 - **`spora-web`** — `frankenphp run` (the web server)
 - **`spora-worker`** — `php /app/bin/spora worker:run --daemon` (the agent worker)
 
-With the default `SPORA_SYNC_MODE=false` (per [env-vars §Worker](/start/operators/env-vars#worker)), the worker drains the task queue asynchronously and the HTTP request returns immediately after enqueuing.
+With the default `SPORA_SYNC_MODE=false` (per [env-vars §Worker / Sync Mode](/start/operators/env-vars#worker--sync-mode)), the worker drains the task queue asynchronously and the HTTP request returns immediately after enqueuing.
 
 If you flip `SPORA_SYNC_MODE=true` (inline / dev mode), the Orchestrator executes the entire agent loop inside the HTTP request, and the worker is no longer needed. The worker process still runs in the container (it is started by supervisord regardless) but drains no tasks. To save ~30 MB of RAM, remove the `[program:spora-worker]` section from `docker/supervisord.conf` when running in sync mode.
 

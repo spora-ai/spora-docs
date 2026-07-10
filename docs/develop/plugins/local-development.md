@@ -44,7 +44,7 @@ If your plugin also ships a Vue frontend, add a second path-repo entry for the f
 }
 ```
 
-`spora-ai/installer` routes the frontend package into `public/plugins/foo-frontend/`, where the host SPA's bundle registry looks for it. See [Author guide → Admin UI](/develop/plugins/author-guide/admin-ui#adding-an-admin-ui) for the two-package contract.
+`spora-ai/installer` routes the frontend package into `public/plugins/foo-frontend/`, where the host SPA's bundle registry looks for it. See [Author guide → Admin UI](/develop/plugins/author-guide/admin-ui) for the two-package contract.
 
 ## HMR for plugins with a Vue frontend
 

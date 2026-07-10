@@ -134,7 +134,7 @@ The web server's Caddy config (`docker/frankenphp.conf`):
 - SPA fallback — non-API routes return `index.html`
 - Everything else routed to PHP
 
-The worker drains the queued tasks when `SPORA_SYNC_MODE=false` (default, per [env-vars §Worker](/start/operators/env-vars#worker)). In inline/dev mode (`SPORA_SYNC_MODE=true`), the worker idles.
+The worker drains the queued tasks when `SPORA_SYNC_MODE=false` (default, per [env-vars §Worker / Sync Mode](/start/operators/env-vars#worker--sync-mode)). In inline/dev mode (`SPORA_SYNC_MODE=true`), the worker idles.
 
 ## Volumes
 

@@ -44,9 +44,13 @@ public function apps(): array
 `FooApp` implements `Spora\Apps\VueAppInterface` and tells the host SPA which file to load:
 
 ```php
-final class FooApp extends AbstractVueApp
+use Spora\Apps\VueAppInterface;
+
+final class FooApp implements VueAppInterface
 {
     public function name(): string { return 'foo'; }
+    public function displayName(): string { return 'Foo'; }
+    public function description(): string { return 'Browse, filter, and manage foo records.'; }
     public function icon(): string { return 'puzzle'; }
 
     /** File inside the frontend package's `frontend/` directory. */

@@ -46,7 +46,7 @@ cp docker/.env.example .env
 Minimum for a production image:
 
 ```bash
-# Generate SPORA_SECRET_KEY with [the one-liner from env-vars §Encryption](/start/operators/env-vars#encryption)
+# Generate SPORA_SECRET_KEY with the one-liner from env-vars §Encryption (see link above the block)
 SPORA_SECRET_KEY=<your-base64-key>
 SPORA_DB_DRIVER=mysql
 SPORA_DB_HOST=db

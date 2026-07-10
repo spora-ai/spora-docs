@@ -5,7 +5,7 @@ description: Adding an operator-facing UI to a Spora plugin — the two-package 
 
 # Admin UI
 
-Plugins that need an operator-facing interface — a browseable list, a config panel, a settings page — contribute a **Vue IIFE bundle** to the host SPA via the `apps()` hook. The UI is shipped as a separate Composer package and the PHP plugin pulls it in by default so a single `composer require` gets both halves.
+Plugins that need an operator-facing interface — a browsable list, a config panel, a settings page — contribute a **Vue IIFE bundle** to the host SPA via the `apps()` hook. The UI is shipped as a separate Composer package and the PHP plugin pulls it in by default so a single `composer require` gets both halves.
 
 ## When to ship one
 

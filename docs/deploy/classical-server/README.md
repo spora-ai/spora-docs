@@ -129,7 +129,7 @@ php_admin_value[max_execution_time] = 120
 
 ## 3. supervisord for the worker
 
-The worker drains the queued tasks in async mode (the default, per [env-vars §Worker / Sync Mode](/start/operators/env-vars#worker--sync-mode)). Create the log directory first (supervisord will fail to start the program if the log path doesn't exist), then write the program config:
+The worker drains the queued tasks in async mode (`SPORA_SYNC_MODE=false`, the value shipped in `spora/.env.example`; per [env-vars §Worker / Sync Mode](/start/operators/env-vars#worker--sync-mode)). Create the log directory first (supervisord will fail to start the program if the log path doesn't exist), then write the program config:
 
 ```bash
 sudo mkdir -p /var/log/spora

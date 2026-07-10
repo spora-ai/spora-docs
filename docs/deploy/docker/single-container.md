@@ -53,7 +53,7 @@ The full `docker-compose.yml` ships MariaDB + phpMyAdmin + Spora (3 services, 4 
 - **One volume to back up** (the `spora_storage` named volume)
 - **Same FrankenPHP runtime** (Mercure SSE, security headers, SPA fallback all work identically)
 
-SQLite handles the same workload as MariaDB for single-instance Spora deployments. The `spora-storage` volume is a directory on the host — back it up the way you'd back up any file directory.
+SQLite handles the same workload as MariaDB for single-instance Spora deployments. The `spora_storage` volume is a directory on the host — back it up the way you'd back up any file directory.
 
 ## What's in the image
 
@@ -67,7 +67,9 @@ The runtime starts two processes via supervisord:
 - **`spora-web`** — `frankenphp run` (the web server)
 - **`spora-worker`** — `php /app/bin/spora worker:run --daemon` (the agent worker, only needed if `SPORA_SYNC_MODE=false`)
 
-In single-container mode with the default `SPORA_SYNC_MODE=true`, the worker still runs but processes no tasks (the Orchestrator executes inline in the HTTP request). You can remove the `[program:spora-worker]` block from `docker/supervisord.conf` to save ~30 MB of RAM.
+In single-container mode with the default `SPORA_SYNC_MODE=false` (per `spora/.env.example:51`), the worker is required: it runs in `--daemon` mode and drains the task queue asynchronously. The HTTP request itself returns immediately after enqueuing the task; the worker picks it up and runs the agent loop.
+
+If you flip `SPORA_SYNC_MODE=true` (inline / dev mode), the Orchestrator executes the entire agent loop inside the HTTP request, and the worker is no longer needed. The worker process still runs in the container (it is started by supervisord regardless) but drains no tasks. To save ~30 MB of RAM, remove the `[program:spora-worker]` section from `docker/supervisord.conf` when running in sync mode.
 
 ## Updating
 

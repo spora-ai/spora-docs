@@ -16,6 +16,8 @@ Use this repository as a template for any new `spora-plugin`:
 5. Replace `src/Tools/EchoTool.php` with your real tool(s); add more files under `src/Tools/` and list them in `src/Plugin.php::tools()`.
 6. If your plugin needs database tables, add Laravel migrations under `database/migrations/` and bump `SkeletonPlugin::schemaVersion()`.
 
+> **Note on the skeleton's `src/Plugin.php`:** the class is named `SkeletonPlugin` (not `Plugin`), which is a violation of the PSR-4 file-must-match-FQCN rule the rest of the docs follow. The skeleton is the historical exception; the `PluginLoader` resolves the class via the `class` field in `plugin.json`, not via the file name. For any new plugin, name the file to match the FQCN — `src/AcmeSearchPlugin.php` for `Spora\Plugins\AcmeSearch\AcmeSearchPlugin`.
+
 ## Layout
 
 ```text

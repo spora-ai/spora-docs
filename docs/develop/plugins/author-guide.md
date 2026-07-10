@@ -19,12 +19,13 @@ The complete plugin system reference (load order, manifest validation, manifest 
 6. [Adding migrations](#adding-migrations)
 7. [Adding an admin UI](#adding-an-admin-ui)
 8. [Recipes _(WIP — not yet shipped)_](#recipes-wip--not-yet-shipped)
-9. [Local development workflow](#local-development-workflow)
-10. [The `spora-plugin` keyword](#the-spora-plugin-keyword)
-11. [PSR-4 entry-point quirk](#psr-4-entry-point-quirk)
-12. [Testing](#testing)
-13. [Versioning](#versioning)
-14. [Reference implementations](#reference-implementations)
+9. [The `spora-plugin` keyword](#the-spora-plugin-keyword)
+10. [PSR-4 entry-point quirk](#psr-4-entry-point-quirk)
+11. [Testing](#testing)
+12. [Versioning](#versioning)
+13. [Reference implementations](#reference-implementations)
+
+> For the **local development workflow** (Composer path repos, 3-terminal HMR walkthrough for plugins with a Vue frontend), see [Local plugin development](/develop/plugins/local-development).
 
 ## What a Spora plugin is
 
@@ -40,7 +41,7 @@ A plugin is identified by a **Composer package** with `type: "spora-plugin"`. On
 Two reference layouts:
 
 - **Skeleton template** — `spora-ai/spora-plugin-skeleton`. Copy this repo to bootstrap a new plugin.
-- **Production example** — `spora-ai/spora-plugin-minimax`. Five tools (image, speech, music, lyrics, video), one migration, custom DI bindings.
+- **Production example** — `spora-ai/spora-plugin-minimax`. Four tools (image, speech, music, video) — lyrics are operations on the music tool, not a separate tool — plus one migration and custom DI bindings.
 
 ### Standard layout
 
@@ -68,7 +69,7 @@ The directory name is up to you (Composer picks files by namespace, not director
 
 ## `plugin.json` manifest
 
-The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) in the framework repo. Every field is validated at boot by `Spora\Plugins\PluginLoader` — extra fields are rejected outright (`additionalProperties: false`).
+The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) in the framework repo. JSON-schema validation rejects extra fields outright (`additionalProperties: false`); `Spora\Plugins\PluginLoader` separately validates the two required fields (`slug` and `class`) and refuses to load if they are missing or malformed.
 
 ### Required fields
 
@@ -435,51 +436,6 @@ public function recipePaths(): array
 
 Once shipped, recipes would be picked up by `RecipeScanner` alongside the host Spora's `recipes/` directory; plugin recipes would be first-class and indistinguishable from operator-defined ones at runtime.
 
-## Local development workflow
-
-When iterating on a plugin against a Spora checkout, you want your changes effective without round-tripping through Packagist. Two equivalent options — pick whichever fits your setup.
-
-### Option A — Composer path repository
-
-In your Spora checkout's `composer.json`, register the plugin as a path repo and require it pinned to `@dev`:
-
-```bash
-cd /path/to/spora
-composer config repositories.spora-plugin-foo path /Users/you/code/spora-plugin-foo
-composer require spora-ai/spora-plugin-foo:@dev
-```
-
-Edits in `/Users/you/code/spora-plugin-foo` are picked up immediately on the next request — no rebuild, no re-publish.
-
-### Option B — `SPORA_PLUGINS_PATHS`
-
-Clone the plugin anywhere on disk and point Spora at it via env var (or `config.php`):
-
-```bash
-git clone https://github.com/spora-ai/spora-plugin-foo.git /opt/spora-plugins/foo
-echo 'SPORA_PLUGINS_PATHS=/opt/spora-plugins/foo' >> .env
-```
-
-Comma-separate multiple paths:
-
-```bash
-SPORA_PLUGINS_PATHS=/opt/spora-plugins/foo,/srv/spora/community
-```
-
-The in-repo `plugins/` directory is scanned first; external paths follow in declaration order. Duplicates by `slug` are silently skipped — first manifest wins. See [Plugin system → Loading from external paths](/reference/concepts/plugins-system#loading-from-external-paths) for details.
-
-### Verifying changes locally
-
-After editing, refresh the boot:
-
-```bash
-php bin/spora spora:install   # applies any new migrations
-```
-
-`PluginLoader` invalidates its boot-stamp cache (`storage/.plugins_stamp`) automatically when a manifest's content changes, so no manual cache-bust is needed.
-
-For agents working on the plugin via sub-agents in parallel worktrees, `.worktrees/` is gitignored across all Spora repos — see CLAUDE.md for the local workflow rules.
-
 ## The `spora-plugin` keyword
 
 Plugins **must** include `"spora-plugin"` in their `composer.json` `keywords` array, alongside `"type": "spora-plugin"`:
@@ -524,7 +480,7 @@ declared under the matching PSR-4 prefix in `composer.json`:
 }
 ```
 
-The `spora-ai/installer` Composer plugin (transitive dep of `spora-core`) handles the path routing — `composer require spora-ai/spora-plugin-foo` on a Spora install lands the package at `plugins/{slug}/` where `PluginLoader` expects to find it.
+The `spora-ai/installer` Composer plugin (transitive dep of `spora-core`) handles the path routing — `composer require spora-ai/spora-plugin-foo` on a Spora install lands the package at `plugins/<package-last-segment>/` (e.g. `plugins/foo/`) where `PluginLoader` expects to find it. The destination directory is derived from the package name, not the manifest slug, so if you rename the manifest slug you do not have to move the install path.
 
 If you see `"Plugin class X could not be resolved"` at boot, the cause is almost always a class-name vs filename mismatch or a missing PSR-4 mapping in `composer.json` (regenerate the classmap with `composer dump-autoload` after adding the prefix).
 
@@ -598,7 +554,7 @@ The catalog indexes tags on every push; releasing a tag without a GitHub Release
 The two canonical starting points:
 
 - **[`spora-ai/spora-plugin-skeleton`](https://github.com/spora-ai/spora-plugin-skeleton)** — minimal template, copy-and-rename. The `composer.json` is the canonical example of `type`, `keywords`, scripts, and PSR-4 mapping.
-- **[`spora-ai/spora-plugin-minimax`](https://github.com/spora-ai/spora-plugin-minimax)** — production example. Five tools (image, speech, music, lyrics, video), DI bindings, a migration with both `up()` and `down()`, an HTTP client wrapper, and an opt-in log writer. The closest real-world analogue to anything an author will actually need to build.
+- **[`spora-ai/spora-plugin-minimax`](https://github.com/spora-ai/spora-plugin-minimax)** — production example. Four tools (image, speech, music, video) — lyrics are operations on the music tool, not a separate tool — plus DI bindings, a migration with both `up()` and `down()`, an HTTP client wrapper, and an opt-in log writer. The closest real-world analogue to anything an author will actually need to build.
 
 Other public plugins (`spora-plugin-tavily`, `spora-plugin-serper`, `spora-plugin-semantic-scholar`, `spora-plugin-worldnews`, `spora-plugin-weather`, `spora-plugin-calendar`, `spora-plugin-email`) are minimal single-tool plugins — ideal for studying the **minimum viable plugin** shape before adding tooling.
 

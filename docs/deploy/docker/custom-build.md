@@ -1,154 +1,139 @@
 ---
 title: Docker — custom build
-description: Fork the Dockerfile, ship a prebuilt image to GHCR, or pin a specific Spora version.
+description: Fork the spora-ai/spora template, adjust composer.json + Dockerfile as needed, ship your own image via the shipped CI workflow.
 ---
 
 # Docker — custom build
 
-The `spora-ai/spora` skeleton ships a `docker/Dockerfile` that the canonical setup uses unmodified. If you need to fork the image (change a base layer, add a runtime extension, ship a prebuilt image to GHCR, or pin to a specific Spora version), this page covers the four common patterns.
+Spora's image is built from a Dockerfile in the [`spora-ai/spora`](https://github.com/spora-ai/spora) template. The template ships a working `docker/Dockerfile`, `docker/docker-compose.yml`, and a GitHub Actions workflow that publishes the image to GHCR. To deploy your own image, fork the template and follow the five-step pipeline below.
 
-## Pattern 1 — Pin to a specific Spora version
+## The pipeline
 
-The skeleton's `docker/Dockerfile` builds from the current `composer.json` in your project, which (per Composer semver) resolves to the latest matching `^x.y` constraint. If you want a specific version:
+### 1. Fork the template
 
-```bash
-# In your project root, before docker compose build
-composer require spora-ai/spora:^0.5
-git add composer.json composer.lock
-git commit -m "Pin Spora to 0.5.x"
-docker compose build
-```
+Fork [`spora-ai/spora`](https://github.com/spora-ai/spora) on GitHub. The fork is your image's source of truth — every push to `main` rebuilds the image.
 
-`composer.lock` is committed in the skeleton's `.gitignore` toggle — the lockfile forces the exact resolved version. Rebuild + restart after pulling upstream.
+### 2. Adjust `composer.json`
 
-## Pattern 2 — Fork the Dockerfile
-
-Clone the skeleton locally, edit `docker/Dockerfile`, and rebuild. The file is short (70 lines) and heavily commented. Common edits:
-
-- **Add a PHP extension** — extend the `apt-get install` line in stage 2 and add a `docker-php-ext-install <name>` call. Example: add `gd` for image manipulation:
-
-  ```dockerfile
-  RUN apt-get update \
-      && apt-get install -y --no-install-recommends supervisor libgd-dev \
-      && docker-php-ext-install pdo_mysql gd \
-      && rm -rf /var/lib/apt/lists/*
-  ```
-
-- **Change the base PHP version** — swap `dunglas/frankenphp:1-php8.5-bookworm` for an earlier tag (e.g. `1-php8.4-bookworm`). Spora's `composer.json` declares `"php": "^8.4"`; using PHP 8.3 will fail the platform check.
-- **Switch to MySQL-only at build time** — remove the SQLite fallback from the deps stage by changing the platform check (Spora currently uses SQLite at runtime if no MySQL config is set; the build is the same either way).
-- **Pin to a specific Composer version** — swap `composer:2.8` for `composer:2.8.5` or similar. The latest stable Composer 2.x is fine.
-
-After editing, rebuild:
+Add the plugins and packages you need. The skeleton's `composer.json` already requires `spora-ai/spora-core` and `spora-ai/spora-frontend`; add anything else with `composer require`:
 
 ```bash
-docker compose -f docker/docker-compose.yml build
-docker compose -f docker/docker-compose.yml up -d
+composer require spora-ai/spora-plugin-tavily spora-ai/spora-plugin-email
 ```
 
-## Pattern 3 — Ship a prebuilt image to GHCR
+Commit the resulting `composer.json` + `composer.lock` change.
 
-Build the image in CI and push to GitHub Container Registry. Use the `docker/build-push-action@v6` pattern in a workflow like `.github/workflows/image.yml`:
+### 3. Update the Dockerfile (if needed)
 
-```yaml
-name: Docker image
+The shipped `docker/Dockerfile` (in the template, two-stage, ~70 lines, heavily commented) covers the common case. Edit it only when you need to add an OS package or a PHP extension — e.g. a database client, an image library, or a missing PECL extension. Most plugins do not require a Dockerfile change because they install via Composer.
 
-on:
-  push:
-    branches: [main]
-    tags: ['v*']
-  workflow_dispatch:
+The base images are pinned:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@<40-char-sha> # vX.Y.Z
-      - uses: docker/setup-buildx-action@<40-char-sha>
-      - uses: docker/login-action@<40-char-sha>
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/metadata-action@<40-char-sha>
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=sha,prefix=sha-
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-      - uses: docker/build-push-action@<40-char-sha>
-        with:
-          context: .
-          file: docker/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+- `composer:2.8` (deps-builder stage)
+- `dunglas/frankenphp:1-php8.5-bookworm` (runtime stage)
+
+Spora's `composer.json` declares `"php": "^8.4.1"`; downgrading the runtime to PHP 8.3 will fail the platform check.
+
+### 4. Configure your environment
+
+Create a `.env` file in the directory you'll run `docker compose` from (the project root, next to the compose file). The shipped `docker/.env.example` is the source of values:
+
+```bash
+cp docker/.env.example .env
+# Edit .env: at minimum set SPORA_SECRET_KEY and the SPORA_DB_* values.
 ```
 
-(All actions pinned to 40-char commit SHAs with `# vX.Y.Z` comments per the project's supply-chain policy.)
+Minimum for a production image:
 
-This produces images at:
+```bash
+SPORA_SECRET_KEY=<your-base64-key>      # generate with: php -r "echo base64_encode(random_bytes(32));"
+SPORA_DB_DRIVER=mysql
+SPORA_DB_HOST=db
+SPORA_DB_NAME=spora
+SPORA_DB_USER=spora
+SPORA_DB_PASSWORD=<strong-password>
+SPORA_DB_ROOT_PASSWORD=<strong-password>
+SPORA_APP_ENV=production
+SPORA_ALLOW_REGISTRATION=false
+```
 
-- `ghcr.io/<org>/<repo>:sha-<7-char-sha>` — every commit
-- `ghcr.io/<org>/<repo>:<branch>` — every push to a branch
-- `ghcr.io/<org>/<repo>:v<X.Y.Z>` — every semver tag
+The example compose below references this `.env` via `env_file: - .env` (Compose resolves the path relative to the compose file).
 
-Pull the prebuilt image without building locally:
+### 5. Push — the workflow builds and publishes
+
+Commit and push. The template's shipped `.github/workflows/` (or your fork's equivalent) runs on `push` to `main`, builds the image, and pushes it to `ghcr.io/<your-org>/spora:<tag>`. No additional CI configuration is needed for the standard image.
+
+## Example: docker-compose for your image
+
+A minimal compose file that uses your published image + a local MariaDB:
 
 ```yaml
 services:
   spora:
-    image: ghcr.io/<org>/<repo>:v0.5.3
-    # ... rest of docker-compose.yml ...
-    pull_policy: always # always pull, don't use a stale cached image
+    image: ghcr.io/<your-org>/spora:latest
+    container_name: spora-app
+    restart: always
+    ports:
+      - '8081:80'
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - spora_storage:/app/storage
+    networks:
+      - spora
+
+  db:
+    image: mariadb:11
+    container_name: spora-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SPORA_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${SPORA_DB_NAME:-spora}
+      MYSQL_USER: ${SPORA_DB_USER:-spora}
+      MYSQL_PASSWORD: ${SPORA_DB_PASSWORD}
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - spora
+
+volumes:
+  spora_storage:
+  mysql_data:
+
+networks:
+  spora:
+    driver: bridge
 ```
 
-## Pattern 4 — Multi-arch builds
-
-For arm64 (Apple Silicon, AWS Graviton) support, enable buildx multi-platform in CI:
-
-```yaml
-- uses: docker/setup-buildx-action@<40-char-sha>
-- uses: docker/build-push-action@<40-char-sha>
-  with:
-    platforms: linux/amd64,linux/arm64
-    # ...
-```
-
-The base `dunglas/frankenphp:1-php8.5-bookworm` is multi-arch, so this works without changes to your Dockerfile.
-
-For local multi-arch testing (slow, only when debugging):
-
-```bash
-docker buildx create --use --name multiarch
-docker buildx build --platform linux/amd64,linux/arm64 -t spora-local:test --load .
-```
+Run with `docker compose -f docker-compose.yml up -d`. The site is at `http://localhost:8081`.
 
 ## What's NOT in the image
 
-The image is **multi-stage**, which means:
+The image is multi-stage, so the runtime image contains only what the app needs at runtime:
 
-- **No Node toolchain.** The admin SPA (`spora-ai/spora-frontend`) is a prebuilt Composer package — `spora-ai/installer` routes it into `public/dist/` during `composer install`. You don't need npm/yarn/pnpm in the image.
+- **No Node toolchain.** The admin SPA (`spora-ai/spora-frontend`) is a prebuilt Composer package — `spora-ai/installer` routes it into `public/dist/` during `composer install`. You don't need npm in the image.
 - **No Git.** The build stages use `COPY` of `composer.json` + `composer.lock`, not a git clone.
-- **No `storage/` content from your dev machine.** The `storage/` directory is intentionally **not** `COPY`'d in the Dockerfile — it's created and `chown`'d at runtime. Copying it would risk shipping the SQLite DB and `secret.key` (the encryption key for tool settings) into the image.
-- **No `vendor/` from your dev machine.** The `vendor/` is built in stage 1 (`composer install`) and `COPY --from=deps-builder`'d into stage 2.
+- **No `storage/` content from your dev machine.** The `storage/` directory is intentionally not `COPY`'d — it is created and `chown`'d at runtime. Copying it would risk shipping the SQLite DB and `secret.key` into the image.
+- **No `vendor/` from your dev machine.** The `vendor/` is built in stage 1 and `COPY --from=deps-builder`'d into stage 2.
 
-## Production hardening checklist
+## When to fork the Dockerfile
 
-- [ ] **Pin base image tags** — use `dunglas/frankenphp:1.1.0-php8.5-bookworm` (not `:latest`) so a base-image rebuild doesn't break your image
-- [ ] **Pin Composer image tag** — use `composer:2.8.5` (not `:2`)
-- [ ] **Use specific version tags** when pulling prebuilt images: `ghcr.io/<org>/<repo>:v0.5.3`
-- [ ] **Set `SPORA_SECRET_KEY`** in your secret manager (not in the Dockerfile or .env)
-- [ ] **Set `SPORA_ALLOW_REGISTRATION=false`** after the first admin signup
-- [ ] **Drop phpMyAdmin** from production compose files (it's a debugging tool)
-- [ ] **Run behind a reverse proxy** with TLS, rate limiting, and DDoS protection
-- [ ] **Back up `spora_storage` + `mysql_data` volumes** to off-host storage
-- [ ] **Set up monitoring** — the supervisord process is the right level to alert on
+Fork the Dockerfile when you need to add something the base image doesn't ship. The most common reasons:
+
+- An OS package your plugin needs at runtime (e.g. `libpq-dev` for native PostgreSQL drivers).
+- A PHP extension that the base image doesn't include (e.g. `gd` for image manipulation, `intl` for ICU — note: `intl` is already in the skeleton's `php` install list).
+- A multi-arch build (`linux/amd64,linux/arm64` — for Apple Silicon or AWS Graviton). The base image is multi-arch, so this works without changing the Dockerfile; just enable `platforms: linux/amd64,linux/arm64` in your CI's `docker/build-push-action`.
+
+If you only need to add PHP code, dependencies, or a plugin, do not fork the Dockerfile — `composer require` is enough.
 
 ## Next steps
 

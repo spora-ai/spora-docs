@@ -5,7 +5,7 @@ description: Run Spora on a laptop — with optional local LLM via Ollama or LM 
 
 # Local — PHP / Ollama / LM Studio
 
-Run Spora on your laptop. No Docker, no VPS, no shared host. The skeleton's `composer dev` command starts a PHP server + Vite HMR; you can also use the canonical FrankenPHP image via [Docker — single container](/deploy/docker/single-container).
+Run Spora on your laptop. No Docker, no VPS, no shared host. The skeleton's `composer dev` command starts the PHP built-in server against the prebuilt `public/dist/` (the host's compiled admin SPA + index.php front controller). You can also use the canonical FrankenPHP image via [Docker — single container](/deploy/docker/single-container).
 
 Two paths for the LLM:
 
@@ -18,15 +18,13 @@ This page covers the local LLM path. The PHP server path is the same as the stan
 
 - **PHP 8.4+** with `pdo_mysql`, `mbstring`, `zip`, `json` extensions
 - **Composer** (latest 2.x)
-- **Node.js 18+** and **npm** (only for the dev server's Vite HMR; not needed for the built `php bin/spora serve`)
 - **Ollama** ([ollama.com](https://ollama.com)) OR **LM Studio** ([lmstudio.ai](https://lmstudio.ai)) — only needed for the local LLM path
+
+> The skeleton's dev loop is PHP-only — there is no Vite dev server running against the host. If you're hacking on the host's Vue frontend itself (`spora-ai/spora-frontend`), see that repo's `npm run dev`; otherwise the prebuilt `public/dist/` is the source of truth at runtime.
 
 ## Path A — Pure PHP server (hosted LLM)
 
-The skeleton's `composer dev` starts two processes:
-
-- PHP server (via `php -S localhost:8080 -t public/`)
-- Vite dev server (proxies `/api/v1` to PHP, hot-reloads the SPA)
+The skeleton's `composer dev` starts the PHP built-in server:
 
 ```bash
 composer create-project spora-ai/spora my-spora
@@ -39,15 +37,13 @@ php bin/spora db:seed   # creates a sample admin user (see output for credential
 composer dev
 ```
 
-The site is at `http://localhost:8080`. The SPA hot-reloads on any source change.
-
-For a non-dev mode (closer to production), use FrankenPHP:
+The site is at `http://127.0.0.1:8080`. The actual command (from `composer.json:33`) is:
 
 ```bash
-docker run -d -p 8080:8080 -v $PWD:/app ghcr.io/<org>/<repo>:latest
+php -S ${PHP_HOST:-127.0.0.1}:${PHP_PORT:-8080} -t public/dist public/index.php
 ```
 
-Or use the [Docker — single container](/deploy/docker/single-container) path.
+For a more production-like local server, use the Docker image from [Custom build](/deploy/docker/custom-build) or the [Docker — single container](/deploy/docker/single-container) path.
 
 ## Path B — Local LLM with Ollama
 
@@ -125,7 +121,7 @@ The default `composer dev` is the dev loop. For a more production-like local ser
 # docker-compose.yml
 services:
   spora:
-    image: ghcr.io/<org>/<repo>:latest
+    image: ghcr.io/<your-org>/spora:latest # your custom build
     ports:
       - '8080:80'
     environment:

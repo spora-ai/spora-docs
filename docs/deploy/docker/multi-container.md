@@ -23,8 +23,8 @@ SPORA_DB_USER=spora
 SPORA_DB_PASSWORD=changeme-sporapassword
 SPORA_DB_ROOT_PASSWORD=changeme-rootpassword
 
-# Encryption (32 random bytes, base64-encoded)
-SPORA_SECRET_KEY=<your-base64-key>     # generate with: php -r "echo base64_encode(random_bytes(32));"
+# Encryption — generate with the one-liner from env-vars §Encryption (see link below)
+SPORA_SECRET_KEY=<your-base64-key>
 
 # App
 SPORA_APP_ENV=production
@@ -134,7 +134,7 @@ The web server's Caddy config (`docker/frankenphp.conf`):
 - SPA fallback — non-API routes return `index.html`
 - Everything else routed to PHP
 
-The worker is required for the default `SPORA_SYNC_MODE=false` (per `spora/.env.example:51`); it drains the queued tasks. If you flip `SPORA_SYNC_MODE=true` for inline/dev mode, the worker idles.
+The worker drains the queued tasks when `SPORA_SYNC_MODE=false` (the value shipped in `spora/.env.example`, per [env-vars §Worker / Sync Mode](/start/operators/env-vars#worker--sync-mode)). In inline/dev mode (`SPORA_SYNC_MODE=true`), the worker idles.
 
 ## Volumes
 

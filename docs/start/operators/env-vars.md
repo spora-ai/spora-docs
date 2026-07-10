@@ -52,6 +52,8 @@ The DB driver is selected by `SPORA_DB_DRIVER` (`sqlite` or `mysql`) and is also
 | `SPORA_WORKER_STALE_MINUTES` | `60`    | `worker_stale_minutes` | Minutes before a `RUNNING` task is treated as orphaned (0 = disabled). Should exceed worst-case LLM round-trip time.                                                                                                                       |
 | `SPORA_MAX_WORKERS`          | `0`     | `max_workers`          | Max concurrent child processes in daemon mode (0 = unlimited).                                                                                                                                                                             |
 
+> **Why the default differs from the code fallback.** The `spora-core` code default (in `app/Core/ContainerDefinitions.php`) is `true` (sync mode) — the safe choice for env-less LAMP/FTP deploys that don't run a worker. The `spora/.env.example` ships `false` (queue mode) — the right choice for operators who copy `.env` and run the worker (Docker supervisord, classical-server supervisord, shared-host cron, `composer dev`). **The two defaults are intentional and must not be aligned** — the shipped `.env` wins whenever it's present (every supported deploy path); the code fallback only matters in env-less test/CI contexts.
+
 See [Worker deployment](/reference/concepts/worker-deployment) for deployment patterns (cron vs daemon vs supervisord) and the `--stale-minutes` / `--workers` CLI flag overrides.
 
 ## Timeouts
@@ -98,7 +100,7 @@ Mail transport itself is configured through the `SPORA_MAIL_*` env vars (read by
 | `SPORA_PLUGIN_CATALOG_ENABLED` | `true`           | `plugin_catalog_enabled` | When `false`, the Browse tab in `/apps/plugins` is hidden and `GET /api/v1/plugins/catalog` returns `404`. Already-installed plugins are unaffected — only the discovery surface is gated.                    |
 | `SPORA_PLUGIN_CATALOG_TTL`     | `3600`           | `plugin_catalog_ttl`     | Cache TTL (seconds) for the on-disk Packagist cache at `storage/.spora_plugin_catalog.json`. Different queries share the file but each gets its own entry keyed by a SHA-256 fingerprint of the query string. |
 
-See [Plugin author guide](/develop/plugins/author-guide#2-plugin-catalog) for what authors need to ship so their plugin shows up under Browse, and [Plugin system](/develop/plugins/concepts) for the runtime side (manifest, auto-discovery).
+See [Plugin author guide → Distribution](/develop/plugins/author-guide/distribution#the-spora-plugin-keyword) for what authors need to ship so their plugin shows up under Browse, and [Plugin system](/develop/plugins/concepts) for the runtime side (manifest, auto-discovery).
 
 ## Config path
 

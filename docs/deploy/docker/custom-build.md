@@ -46,7 +46,8 @@ cp docker/.env.example .env
 Minimum for a production image:
 
 ```bash
-SPORA_SECRET_KEY=<your-base64-key>      # generate with: php -r "echo base64_encode(random_bytes(32));"
+# Generate SPORA_SECRET_KEY with the one-liner from env-vars §Encryption (see link above the block)
+SPORA_SECRET_KEY=<your-base64-key>
 SPORA_DB_DRIVER=mysql
 SPORA_DB_HOST=db
 SPORA_DB_NAME=spora

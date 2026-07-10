@@ -34,10 +34,10 @@ volumes:
   spora_storage:
 ```
 
-Generate a secret key and start:
+Set a secret key (generate one with the one-liner from [env-vars §Encryption](/start/operators/env-vars#encryption); the snippet below just writes a placeholder — replace `<your-base64-key>` with the value you generated) and start:
 
 ```bash
-echo "SPORA_SECRET_KEY=$(php -r 'echo base64_encode(random_bytes(32));')" > .env
+echo "SPORA_SECRET_KEY=<your-base64-key>" > .env
 docker compose up -d
 docker compose logs -f
 ```
@@ -65,9 +65,9 @@ The Dockerfile is at `docker/Dockerfile` in the `spora-ai/spora` skeleton. It us
 The runtime starts two processes via supervisord:
 
 - **`spora-web`** — `frankenphp run` (the web server)
-- **`spora-worker`** — `php /app/bin/spora worker:run --daemon` (the agent worker, only needed if `SPORA_SYNC_MODE=false`)
+- **`spora-worker`** — `php /app/bin/spora worker:run --daemon` (the agent worker)
 
-In single-container mode with the default `SPORA_SYNC_MODE=false` (per `spora/.env.example:51`), the worker is required: it runs in `--daemon` mode and drains the task queue asynchronously. The HTTP request itself returns immediately after enqueuing the task; the worker picks it up and runs the agent loop.
+With `SPORA_SYNC_MODE=false` (the value shipped in `spora/.env.example`, per [env-vars §Worker / Sync Mode](/start/operators/env-vars#worker--sync-mode)), the worker drains the task queue asynchronously and the HTTP request returns immediately after enqueuing.
 
 If you flip `SPORA_SYNC_MODE=true` (inline / dev mode), the Orchestrator executes the entire agent loop inside the HTTP request, and the worker is no longer needed. The worker process still runs in the container (it is started by supervisord regardless) but drains no tasks. To save ~30 MB of RAM, remove the `[program:spora-worker]` section from `docker/supervisord.conf` when running in sync mode.
 

@@ -85,7 +85,7 @@ Shared hosts typically cap:
 
 - **PHP memory_limit**: 128-512 MB. Spora needs at least 256 MB for large LLM responses. Adjust in cPanel's "MultiPHP INI Editor" if needed.
 - **Max execution time**: 30-120 s. Long agent loops can hit this. Adjust in cPanel's "MultiPHP INI Editor" or via `.user.ini`.
-- **Concurrent connections**: 10-50. Spora's FrankenPHP runtime is efficient but a long task per request will block others.
+- **Concurrent connections**: 10-50. Spora's PHP-FPM runtime is efficient but a long task per request will block others.
 
 If your workload outgrows these, the path forward is a VPS.
 

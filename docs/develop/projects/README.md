@@ -31,7 +31,7 @@ All three scaffolder commands share the same `bin/spora` binary you already use.
 
 | Need                                               | Use                                                                                                                                      |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| One tool, this project only                        | `app/Tools/Foo.php` (scaffolded with `make:tool`)                                                                                        |
+| One tool, this project only                        | `app/Tools/FooTool.php` (scaffolded with `make:tool` — the `Tool` suffix is appended automatically)                                      |
 | Multiple project-local contributions + routes + DI | `app/App.php` (scaffolded with `make:app`) + several `make:tool` / `make:controller`                                                     |
 | Distribute to other Spora installs                 | A [plugin](/develop/plugins), not a project — promote `app/` into a Composer package, rename `App.php` → `Plugin.php`, add `plugin.json` |
 

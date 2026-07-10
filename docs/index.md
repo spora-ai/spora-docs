@@ -37,6 +37,8 @@ composer dev            # → http://localhost:8080
 
 That is the whole bootstrap. SQLite by default; flip `SPORA_DB_*` in `.env` for MySQL.
 
+Starts PHP on `:8080`. (Docker multi-container uses `:8081`.)
+
 ## Pick your track
 
 | If you…                                | Start here                               |
@@ -61,6 +63,7 @@ Looking for the architecture deep-dive? See [Concepts](/reference/concepts/).
 ## Where to next?
 
 - **New to Spora?** → [Getting Started → Operators](/start/operators/) or pick your track above.
-- **Building a plugin?** → [Develop → Plugins](/develop/plugins/).
+- **Building on top of Spora?** → [Develop → Projects](/develop/projects/) — Spora grows with you.
+- **Authoring a tool plugin?** → [Develop → Plugins](/develop/plugins/).
 - **Running it in production?** → [Deploy](/deploy/).
-- **Reading the source?** → [Concepts](/reference/concepts/).
+- **Reading the source?** → [Reference → Architecture & concepts](/reference/concepts/).

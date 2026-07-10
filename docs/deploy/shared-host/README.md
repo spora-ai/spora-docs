@@ -141,7 +141,7 @@ curl https://yourdomain.com/api/v1/auth/me
 
 - **Updates:** SSH in, run `composer update spora-ai/spora`, then `php bin/spora spora:install` to apply any new migrations.
 - **Backups:** see [Backups](/start/operators/backups). SQLite is one file; `.env` and `storage/secret.key` are the other essentials.
-- **Logs:** `tail -f storage/spora.log` (Monolog) and `tail -f storage/php.log` (PHP errors). Most cPanels also expose these via the control panel.
+- **Logs:** `tail -f storage/spora.log` (Monolog). Most cPanels also expose this via the control panel.
 
 ## Cron workers
 

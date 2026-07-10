@@ -13,7 +13,7 @@ Social-media scheduling and publishing for [Spora](https://github.com/spora-ai/s
 php bin/spora plugin:install spora-ai/spora-plugin-zernio
 ```
 
-For local development, install from a path repository or point `SPORA_PLUGINS_PATHS` at a checkout.
+For local development, install from a Composer path repository — see [Local plugin development](/develop/plugins/local-development).
 
 ## Configuration
 
@@ -31,41 +31,93 @@ Create an API key in your Zernio dashboard (`Settings → API keys`). Keys are s
 
 ## Tools
 
-All tools are grouped multi-operation tools; the LLM selects the operation via the `action` argument. Publishing and destructive operations require approval by default.
+Seven grouped multi-operation tools; the LLM selects the operation via the `action` argument. Publishing and destructive operations require approval by default.
 
-### `zernio_accounts` — discovery (read-only)
+### `zernio_accounts` — discovery, profiles, account management
 
-| Operation       | Purpose                                                             |
-| --------------- | ------------------------------------------------------------------- |
-| `list_accounts` | List connected social accounts (optionally filter by `profile_id`). |
-| `list_profiles` | List Zernio profiles (brand/project workspaces).                    |
+| Operation            | Approval | Purpose                                                                             |
+| -------------------- | -------- | ----------------------------------------------------------------------------------- |
+| `list_accounts`      | —        | List connected social accounts (optionally filter by `profile_id`).                 |
+| `list_profiles`      | —        | List Zernio profiles (brand/project workspaces).                                    |
+| `create_profile`     | ✅       | Create a new Zernio profile.                                                        |
+| `update_profile`     | ✅       | Update a Zernio profile.                                                            |
+| `delete_profile`     | ✅       | Delete a Zernio profile.                                                            |
+| `update_account`     | ✅       | Update a connected social account (username, display name, X capabilities).         |
+| `move_account`       | ✅       | Move a social account to a different profile.                                       |
+| `disconnect_account` | ✅       | Disconnect a social account from Zernio.                                            |
+| `account_health`     | —        | Bulk health snapshot across accounts (token status, posting/analytics permissions). |
 
-Use this first to obtain the `account_ids` and platforms to target.
+Use `list_accounts` first to obtain the `account_ids` and platforms to target.
 
 ### `zernio_post` — post lifecycle
 
-| Operation     | Approval | Purpose                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `create_post` | ✅       | Create a post. `publish_now: true` publishes immediately; `scheduled_for` + `timezone` schedules; neither saves a draft. Accepts `platforms` (per-platform targets, preferred) or `account_ids` + `platform`, `content` (required unless `media_items` or `customContent` cover every platform), and optional `media_items` ([{url, type (image\|video), thumbnailUrl?, alt?}, …]). |
-| `list_posts`  | —        | List posts (filter by `status`, `profile_id`).                                                                                                                                                                                                                                                                                                                                      |
-| `get_post`    | —        | Get a single post by `post_id`.                                                                                                                                                                                                                                                                                                                                                     |
-| `delete_post` | ✅       | Delete a post by `post_id`.                                                                                                                                                                                                                                                                                                                                                         |
+| Operation              | Approval | Purpose                                                                                 |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------- |
+| `create_post`          | ✅       | Create a draft, schedule, or publish a post.                                            |
+| `list_posts`           | —        | List posts (filter by `status`, `profile_id`).                                          |
+| `get_post`             | —        | Get a single post by ID.                                                                |
+| `update_post`          | ✅       | Update a draft, scheduled, or failed post.                                              |
+| `delete_post`          | ✅       | Delete a draft or scheduled post (use `unpublish_post` for published ones).             |
+| `retry_post`           | ✅       | Retry a failed post.                                                                    |
+| `unpublish_post`       | ✅       | Unpublish a published post from a specific platform.                                    |
+| `edit_post`            | ✅       | Edit the text of an X (Twitter) Premium post (within ~1h, max 5 edits).                 |
+| `update_post_metadata` | ✅       | Update YouTube video metadata (title, description, tags, privacy, thumbnail, playlist). |
+
+`create_post` accepts `publish_now: true` to publish immediately; `scheduled_for` + `timezone` to schedule; neither saves a draft. Pass `platforms` (per-platform targets, preferred) or `account_ids` + `platform`, plus `content` (required unless `media_items` or `customContent` cover every platform) and optional `media_items` ([{url, type (image\|video), thumbnailUrl?, alt?}, …]).
 
 ### `zernio_queue` — recurring schedule
 
-| Operation                                     | Approval | Purpose                                         |
-| --------------------------------------------- | -------- | ----------------------------------------------- |
-| `list_slots` / `preview_queue` / `next_slot`  | —        | Inspect the posting queue.                      |
-| `create_slot` / `update_slot` / `delete_slot` | ✅       | Manage recurring `day`/`time`/`timezone` slots. |
+| Operation       | Approval | Purpose                                                                   |
+| --------------- | -------- | ------------------------------------------------------------------------- |
+| `list_slots`    | —        | List queue schedules for a profile (use `all=true` to list every queue).  |
+| `preview_queue` | —        | Preview upcoming scheduled slot times for a queue.                        |
+| `next_slot`     | —        | Get the next available queue slot.                                        |
+| `create_slot`   | ✅       | Create a new queue schedule (the first call creates the profile default). |
+| `update_slot`   | ✅       | Update an existing queue (or the default one if `queue_id` is omitted).   |
+| `delete_slot`   | ✅       | Delete a queue schedule.                                                  |
 
 ### `zernio_analytics` — insights (read-only)
 
-| Operation            | Purpose                                                    |
-| -------------------- | ---------------------------------------------------------- |
-| `post_analytics`     | Post performance metrics (by `post_id` and/or date range). |
-| `follower_analytics` | Follower statistics for an `account_id`.                   |
+| Operation            | Purpose                                                   |
+| -------------------- | --------------------------------------------------------- |
+| `post_analytics`     | Per-post or per-account performance metrics.              |
+| `follower_analytics` | Follower count history for one or more accounts.          |
+| `best_time_to_post`  | Best times of day to post for a given account/platform.   |
+| `content_decay`      | Performance decay curve for a post or account.            |
+| `daily_metrics`      | Cross-platform daily metrics rollup for a profile.        |
+| `posting_frequency`  | Posting frequency vs engagement for a profile.            |
+| `account_health`     | Bulk account health snapshot (token status, permissions). |
 
 > The analytics endpoint paths follow Zernio's documented `/analytics/*` surface; confirm the exact fields against [docs.zernio.com](https://docs.zernio.com/) for your account.
+
+### `zernio_media` — media library (upload)
+
+| Operation       | Approval | Purpose                                                                     |
+| --------------- | -------- | --------------------------------------------------------------------------- |
+| `presign_media` | ✅       | Get a presigned S3 URL for uploading a file (your app does the binary PUT). |
+| `upload_media`  | ✅       | Upload a small file directly to Zernio (JSON body, base64 in `data`).       |
+
+The two-step flow for larger files: `presign_media` → your application PUTs the file to the returned URL → use the returned `public_url` in `media_items[].url` when creating a post. `upload_media` is for small single-shot uploads that fit in a JSON body.
+
+### `zernio_webhooks` — webhook subscriptions
+
+| Operation          | Approval | Purpose                                         |
+| ------------------ | -------- | ----------------------------------------------- |
+| `list_webhooks`    | —        | List all configured webhooks.                   |
+| `create_webhook`   | ✅       | Create a new webhook subscription.              |
+| `update_webhook`   | ✅       | Update an existing webhook (partial body).      |
+| `delete_webhook`   | ✅       | Delete a webhook.                               |
+| `get_webhook_logs` | —        | Get delivery logs for webhooks.                 |
+| `test_webhook`     | ✅       | Fire a synthetic `webhook.test` event to a URL. |
+
+### `zernio_validate` — pre-flight validation (read-only)
+
+| Operation              | Purpose                                                         |
+| ---------------------- | --------------------------------------------------------------- |
+| `validate_post`        | Validate a post (content + media items) against platform rules. |
+| `validate_post_length` | Check whether the content fits a platform character limit.      |
+| `validate_media`       | Check whether a media URL is reachable.                         |
+| `validate_subreddit`   | Check whether a subreddit exists on Reddit.                     |
 
 ## Development
 

@@ -148,6 +148,7 @@ export default defineUserConfig({
           items: [
             { text: 'Overview', link: '/develop/plugins/' },
             { text: 'Author guide', link: '/develop/plugins/author-guide' },
+            { text: 'Local development', link: '/develop/plugins/local-development' },
             { text: 'Install API', link: '/develop/plugins/install-api' },
             {
               text: 'Reference',

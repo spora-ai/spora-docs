@@ -24,26 +24,13 @@ This page covers the local LLM path. The PHP server path is the same as the stan
 
 ## Path A — Pure PHP server (hosted LLM)
 
-The skeleton's `composer dev` starts the PHP built-in server:
-
-```bash
-composer create-project spora-ai/spora my-spora
-cd my-spora
-composer install
-cp .env.example .env
-# Edit .env: set SPORA_SECRET_KEY, leave SPORA_DB_DRIVER=sqlite
-php bin/spora spora:install
-php bin/spora db:seed   # creates a sample admin user (see output for credentials)
-composer dev
-```
-
-The site is at `http://127.0.0.1:8080`. The actual command (from `composer.json:33`) is:
+The skeleton's `composer dev` starts the PHP built-in server. For the full Standard install (create-project, install, seed), see [Installation → Standard install](/start/operators/install#standard-install-packagist). The actual command (from `composer.json:33`) is:
 
 ```bash
 php -S ${PHP_HOST:-127.0.0.1}:${PHP_PORT:-8080} -t public/dist public/index.php
 ```
 
-For a more production-like local server, use the Docker image from [Custom build](/deploy/docker/custom-build) or the [Docker — single container](/deploy/docker/single-container) path.
+The site is at `http://127.0.0.1:8080`. For a more production-like local server, use the Docker image from [Custom build](/deploy/docker/custom-build) or the [Docker — single container](/deploy/docker/single-container) path.
 
 ## Path B — Local LLM with Ollama
 

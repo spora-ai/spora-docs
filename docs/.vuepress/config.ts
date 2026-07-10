@@ -147,7 +147,19 @@ export default defineUserConfig({
           text: 'Plugins',
           items: [
             { text: 'Overview', link: '/develop/plugins/' },
-            { text: 'Author guide', link: '/develop/plugins/author-guide' },
+            {
+              text: 'Author guide',
+              items: [
+                { text: 'Overview', link: '/develop/plugins/author-guide' },
+                { text: 'Foundations', link: '/develop/plugins/author-guide/foundations' },
+                { text: 'Tools', link: '/develop/plugins/author-guide/tools' },
+                { text: 'LLM drivers', link: '/develop/plugins/author-guide/drivers' },
+                { text: 'Migrations', link: '/develop/plugins/author-guide/migrations' },
+                { text: 'Admin UI', link: '/develop/plugins/author-guide/admin-ui' },
+                { text: 'Recipes (WIP)', link: '/develop/plugins/author-guide/recipes' },
+                { text: 'Distribution', link: '/develop/plugins/author-guide/distribution' },
+              ],
+            },
             { text: 'Local development', link: '/develop/plugins/local-development' },
             { text: 'Install API', link: '/develop/plugins/install-api' },
             {

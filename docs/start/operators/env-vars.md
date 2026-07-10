@@ -98,7 +98,7 @@ Mail transport itself is configured through the `SPORA_MAIL_*` env vars (read by
 | `SPORA_PLUGIN_CATALOG_ENABLED` | `true`           | `plugin_catalog_enabled` | When `false`, the Browse tab in `/apps/plugins` is hidden and `GET /api/v1/plugins/catalog` returns `404`. Already-installed plugins are unaffected — only the discovery surface is gated.                    |
 | `SPORA_PLUGIN_CATALOG_TTL`     | `3600`           | `plugin_catalog_ttl`     | Cache TTL (seconds) for the on-disk Packagist cache at `storage/.spora_plugin_catalog.json`. Different queries share the file but each gets its own entry keyed by a SHA-256 fingerprint of the query string. |
 
-See [Plugin author guide](/develop/plugins/author-guide#2-plugin-catalog) for what authors need to ship so their plugin shows up under Browse, and [Plugin system](/develop/plugins/concepts) for the runtime side (manifest, auto-discovery).
+See [Plugin author guide → Distribution](/develop/plugins/author-guide/distribution#the-spora-plugin-keyword) for what authors need to ship so their plugin shows up under Browse, and [Plugin system](/develop/plugins/concepts) for the runtime side (manifest, auto-discovery).
 
 ## Config path
 

@@ -5,7 +5,7 @@ description: Pick the right scenario — Docker, shared host, classical server, 
 
 # Deployment
 
-Spora runs anywhere PHP 8.4+ runs. Pick the scenario that matches your environment.
+Spora runs anywhere PHP 8.4+ runs. These are the **host-side setups** (Docker, Apache, shared host, local). For what to do after Spora is running (env-vars, security, day-2 ops, backups), see [Operators](/start/operators/).
 
 ## Decision matrix
 

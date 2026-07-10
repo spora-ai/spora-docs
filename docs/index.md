@@ -41,11 +41,12 @@ Starts PHP on `:8080`. (Docker multi-container uses `:8081`.)
 
 ## Pick your track
 
-| If you…                                | Start here                               |
-| -------------------------------------- | ---------------------------------------- |
-| Are deploying Spora for yourself/team  | [Operators guide →](/start/operators/)   |
-| Are setting up a local dev environment | [Developers guide →](/start/developers/) |
-| Are using the admin UI to chat         | [End user guide →](/start/end-users/)    |
+| If you…                                                                           | Start here                               |
+| --------------------------------------------------------------------------------- | ---------------------------------------- |
+| Are setting up a host environment (Docker, Apache, shared host)                   | [Deploy](/deploy/)                       |
+| Are operating an already-installed Spora (env-vars, security, day-2 ops, backups) | [Operators guide →](/start/operators/)   |
+| Are developing Spora plugins or projects                                          | [Develop → Projects](/develop/projects/) |
+| Are using the admin UI to chat                                                    | [End user guide →](/start/end-users/)    |
 
 Looking for the architecture deep-dive? See [Concepts](/reference/concepts/).
 

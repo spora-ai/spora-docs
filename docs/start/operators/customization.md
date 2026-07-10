@@ -91,12 +91,4 @@ The admin UI is a prebuilt Composer package. To customize:
 
 ## Environment variables
 
-All configuration is `.env`-driven. See `.env.example` for the full list. Key vars:
-
-- `SPORA_DB_*` — database connection (SQLite or MySQL).
-- `SPORA_MERCURE_URL` — Mercure hub URL for real-time UI updates.
-- `SPORA_SYNC_MODE` — `true` for inline (dev), `false` for queued (prod).
-- `SPORA_PLUGIN_INSTALL_ENABLED` — `true` to expose the install-via-UI feature.
-- `SPORA_FRONTEND_DEV` — `1` to force Vite HMR mode in `bin/dev`.
-
-For the full reference, see [Environment variables](/start/operators/env-vars).
+All configuration is `.env`-driven. See [Environment variables](/start/operators/env-vars) for the full reference (every `SPORA_*` var with its default and its effect).

@@ -82,7 +82,7 @@ If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set bu
 | `autoload.psr-4` | object           | PSR-4 namespace → path mappings. Multiple entries supported.                                                                                                             |
 | `autoload.files` | array of strings | PHP files to `require_once` before the plugin is instantiated. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4`. |
 
-**Important:** PSR-4 mappings belong in `composer.json`, not `plugin.json`. The manifest's `autoload` is a fallback for the legacy `SPORA_PLUGINS_PATHS=/path/to/checkout` dev workflow (env var points Spora at an external plugin clone, not installed via Composer). The `PluginLoader` reads `composer.json`'s autoload first; the manifest's `autoload` is a backstop for that env-var case. For the recommended Composer path-repository workflow, see [Local plugin development](/develop/plugins/local-development).
+**Important:** PSR-4 mappings belong in `composer.json`, not `plugin.json`. `PluginLoader` registers the manifest's `autoload` after `composer.json`'s, so the manifest entries serve as a plugin-author override — useful for vendoring extra packages locally or pointing at non-Composer source trees. For the recommended Composer path-repository workflow, see [Local plugin development](/develop/plugins/local-development).
 
 ## Full example
 

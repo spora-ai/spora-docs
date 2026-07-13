@@ -82,9 +82,7 @@ Composer uses the stricter of the two constraints, so this upgrades the frontend
 
 ## Declaring the install destination slug
 
-The `SporaPluginFrontendInstaller` (in `spora-installer`) copies the frontend's `frontend/` directory into `public/plugins/<slug>/`. The slug **must** match the parent PHP plugin's `plugin.json#slug` exactly — the host SPA reads `AppsController`'s response and lazy-loads `/plugins/<slug>/main.js`. A mismatch leaves the bundle unreachable and the SPA renders "Plugin uninstalled".
-
-The frontend package declares the slug in `composer.json#extra.spora-plugin-slug`:
+The [`SporaPluginFrontendInstaller`](https://github.com/spora-ai/spora-installer/blob/main/src/Composer/SporaPluginFrontendInstaller.php) (in `spora-installer`) reads the destination slug from `composer.json#extra.spora-plugin-slug` on the frontend package. The slug **must** match the parent PHP plugin's `plugin.json#slug` exactly — the host SPA's `/api/v1/apps` response (emitted by `AppsController`) carries that slug, and the SPA lazy-loads `/plugins/<slug>/main.js`. A mismatch leaves the bundle unreachable and the SPA renders "Plugin uninstalled".
 
 ```json
 {
@@ -95,11 +93,12 @@ The frontend package declares the slug in `composer.json#extra.spora-plugin-slug
 }
 ```
 
-- The value MUST equal the parent PHP plugin's `plugin.json#slug`.
-- The installer **fails loud** if the field is missing or empty — there is no fallback to the package short name. A silent fallback produced exactly this bug in v0.1.0–v0.1.2 (the frontend package's short name `spora-plugin-foo-frontend` did not match the parent plugin's slug `foo`, so the SPA requested a path the installer had not populated).
-- Slugs containing `/`, `\`, or `..` are rejected as path-traversal protection under the public web root.
+- The value MUST equal the parent PHP plugin's `plugin.json#slug` (which must match `^[a-z0-9][a-z0-9_-]*$` per `spora-core/plugin.schema.json`).
+- The installer **fails loud at install time** (`InvalidArgumentException`) if the field is missing or empty — there is no fallback to the package short name. A silent fallback produced exactly this bug in pre-v0.2.0 installer releases (the frontend package's short name `spora-plugin-foo-frontend` did not match the parent plugin's slug `foo`, so the SPA requested a path the installer had not populated).
+- Slugs containing `/`, `\`, or `..` are rejected at install time as path-traversal protection under the public web root — belt-and-braces against hand-rolled `composer.json` overrides, since the schema regex already excludes those characters from well-formed slugs.
+- This contract shipped in `spora-installer` v0.2.0 (companion PR [`spora-ai/spora-installer#10`](https://github.com/spora-ai/spora-installer/pull/10)). Frontend packages whose install previously routed by short name will throw on the next `composer update` after the operator upgrades the installer — declare the slug before upgrading.
 
-Canonical worked example: [`spora-plugin-media-archive-frontend`](https://github.com/spora-ai/spora-plugin-media-archive-frontend) declares `"spora-plugin-slug": "media-archive"` to match [`spora-plugin-media-archive`](https://github.com/spora-ai/spora-plugin-media-archive)'s `plugin.json#slug`.
+Canonical worked example: [`spora-plugin-media-archive-frontend`](https://github.com/spora-ai/spora-plugin-media-archive-frontend) declares `"spora-plugin-slug": "media-archive"` to match [`spora-plugin-media-archive`](https://github.com/spora-ai/spora-plugin-media-archive)'s `plugin.json#slug` (companion PR [`spora-ai/spora-plugin-media-archive-frontend#9`](https://github.com/spora-ai/spora-plugin-media-archive-frontend/pull/9), merged).
 
 ## Publishing sequencing
 

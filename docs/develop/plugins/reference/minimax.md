@@ -20,14 +20,7 @@ php bin/spora plugin:install spora-ai/spora-plugin-minimax --path=/abs/path/to/c
 # Alternative — drop a clone into the Spora repo
 git clone https://github.com/spora-ai/spora-plugin-minimax.git plugins/minimax
 php bin/spora spora:install
-
-# Alternative — external path (no Spora checkout changes)
-git clone https://github.com/spora-ai/spora-plugin-minimax.git /opt/spora-plugins/minimax
-echo 'SPORA_PLUGINS_PATHS=/opt/spora-plugins/minimax' >> .env   # see note below
-php bin/spora spora:install
 ```
-
-> `SPORA_PLUGINS_PATHS` is a legacy env var for pointing Spora at extra plugin directories. The recommended local-dev workflow is a [Composer path repository](/develop/plugins/local-development); use the env var only when you cannot edit the host skeleton's `composer.json`.
 
 After install, tools are exposed as `minimax:image`, `minimax:speech`, `minimax:music`, `minimax:video`.
 

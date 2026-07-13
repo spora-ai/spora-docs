@@ -33,7 +33,7 @@ Plugins ship as Composer packages of `type: "spora-plugin"`. The Spora org publi
 
 **Q: How do I install a plugin?**
 
-CLI: `php bin/spora plugin:install vendor/package`. Web UI: **Plugins → Browse → Install** (requires `SPORA_PLUGIN_INSTALL_ENABLED=true`). For local development of a plugin you author, the recommended workflow is a [Composer path repository](/develop/plugins/local-development) — `SPORA_PLUGINS_PATHS` is the legacy env-var approach. See [Install API](/develop/plugins/install-api) for the full contract.
+CLI: `php bin/spora plugin:install vendor/package`. Web UI: **Plugins → Browse → Install** (requires `SPORA_PLUGIN_INSTALL_ENABLED=true`). For local development of a plugin you author, the recommended workflow is a [Composer path repository](/develop/plugins/local-development). See [Install API](/develop/plugins/install-api) for the full contract.
 
 **Q: How do I author my own plugin?**
 

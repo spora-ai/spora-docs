@@ -18,26 +18,9 @@ plugins/
     └── vendor/            ← optional: plugin's own Composer dependencies
 ```
 
-Plugins live in the directory configured as the plugin path (default: `plugins/` at the repo root). Each plugin must occupy its own subdirectory and ship a `plugin.json` manifest.
+Plugins live in `<base>/plugins/`. Each plugin must occupy its own subdirectory and ship a `plugin.json` manifest.
 
-### Loading from external paths
-
-By default, `PluginLoader` only scans the in-repo `plugins/` directory. Operators can point Spora at additional directories — e.g. sibling git checkouts of community plugins — via the `SPORA_PLUGINS_PATHS` env var (or the `plugins_paths` key in `config.php`).
-
-```bash
-# Comma-separated absolute paths. Whitespace is trimmed; empty entries are dropped.
-export SPORA_PLUGINS_PATHS="/var/spora-plugins/spora-plugin-minimax,/opt/spora/community-plugins"
-```
-
-```php
-// config.php (equivalent)
-'plugins_paths' => [
-    '/var/spora-plugins/spora-plugin-minimax',
-    '/opt/spora/community-plugins',
-],
-```
-
-The in-repo `BASE_PATH/plugins` directory is always scanned first. External paths are appended in declaration order. If the same `slug` appears in multiple directories, the first one wins (later manifests with the same slug are silently skipped, matching the existing duplicate-slug guard). Non-existent directories are silently skipped — never throw — so an uninstalled optional plugin doesn't break the boot.
+For local development of a plugin you author, the recommended workflow is a [Composer path repository](/develop/plugins/local-development) — the sibling git checkout is added to the host skeleton's `composer.json` and a regular `composer require` installs it into `plugins/<slug>/`. The PluginLoader then picks it up like any other plugin.
 
 ## plugin.json manifest
 
@@ -255,13 +238,13 @@ For the broader security model (credential encryption, API auth, rate limiting),
 
 ### Boot-time stamp cache
 
-`PluginLoader` writes a sha256 stamp to `storage/.plugins_stamp` after each successful boot. The stamp hashes every discovered manifest (path, mtime, content hash) across all configured directories. On the next boot with an unchanged stamp, the loader re-instantiates plugins from a sidecar JSON (`storage/.plugins_stamp.cache.json`), skipping the manifest re-discovery. This eliminates the per-request cost of N file reads + N JSON parses for operators with many plugins.
+`PluginLoader` writes a sha256 stamp to `storage/.plugins_stamp` after each successful boot. The stamp hashes every discovered manifest (path, mtime, content hash) across `<base>/plugins/`. On the next boot with an unchanged stamp, the loader re-instantiates plugins from a sidecar JSON (`storage/.plugins_stamp.cache.json`), skipping the manifest re-discovery. This eliminates the per-request cost of N file reads + N JSON parses for operators with many plugins.
 
 The cache is invalidated automatically when any manifest's path, mtime, or content changes. It is also invalidated by a corrupt or missing sidecar (the loader falls back to full discovery and rewrites both files). The stamp path is currently non-configurable; advanced operators can clear it by removing the two files.
 
 ## Installing third-party plugins
 
-Spora plugins are distributed as standalone PHP packages. The canonical way to install one is the `plugin:install` CLI command — it wraps `composer require` with the `spora-ai/installer` package so the plugin lands in the right place and its manifest is picked up on the next request. The `plugins/` directory and `SPORA_PLUGINS_PATHS` env var are still supported as escape hatches for plugin authors iterating on a sibling git checkout; see the options below.
+Spora plugins are distributed as standalone PHP packages. The canonical way to install one is the `plugin:install` CLI command — it wraps `composer require` with the `spora-ai/installer` package so the plugin lands in the right place and its manifest is picked up on the next request. The `plugins/` directory is still supported as an escape hatch for plugin authors iterating on a sibling git checkout; see the options below.
 
 The canonical reference implementation is [`spora-ai/spora-plugin-minimax`](https://github.com/spora-ai/spora-plugin-minimax) — it ships five multimodal tools (image, speech, music, lyrics, video) and a migration. Use it as a starting point when authoring your own plugin.
 
@@ -292,22 +275,6 @@ php bin/spora spora:install   # applies the plugin's migration
 
 Useful for plugin authors iterating on a plugin before tagging a release, or when you need the plugin's source visible at a stable path for debugging. The `plugins/` directory is gitignored by the operator skeleton.
 
-### Option B — External path via `SPORA_PLUGINS_PATHS`
-
-```bash
-git clone https://github.com/spora-ai/spora-plugin-minimax.git /opt/spora-plugins/minimax
-echo 'SPORA_PLUGINS_PATHS=/opt/spora-plugins/minimax' >> .env
-php bin/spora spora:install
-```
-
-Useful when you want the plugin's versioning completely decoupled from your Spora deployment. Multiple paths are supported — comma-separate them:
-
-```bash
-SPORA_PLUGINS_PATHS=/opt/spora-plugins/minimax,/srv/spora/community
-```
-
-`SPORA_PLUGINS_PATHS` is also accepted via `config.php` under the `plugins_paths` key (list of absolute paths).
-
 ### Install via Composer (`composer require`)
 
 For a minimal install — no CLI wrapper — `composer require` works directly when the operator skeleton is in use (the bundled `spora-ai/installer` Composer plugin routes `spora-plugin` packages to `plugins/{$name}/` automatically):
@@ -335,7 +302,7 @@ The `storage/.plugins_stamp` cache invalidates automatically when the manifest c
 
 ### Uninstalling a plugin
 
-1. `php bin/spora plugin:uninstall <package>` for a CLI-installed plugin, or drop the plugin directory (or remove the entry from `SPORA_PLUGINS_PATHS`) for a path-based install.
+1. `php bin/spora plugin:uninstall <package>` for a CLI-installed plugin, or drop the plugin directory for a path-based install.
 2. Manually roll back any plugin-specific migrations (Spora does not auto-rollback plugin migrations on uninstall — see [Database migrations](#database-migrations)).
 3. Optional: drop the plugin's database tables if you don't need the historical data.
 

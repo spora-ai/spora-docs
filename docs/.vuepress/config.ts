@@ -156,7 +156,7 @@ export default defineUserConfig({
                 { text: 'LLM drivers', link: '/develop/plugins/author-guide/drivers' },
                 { text: 'Migrations', link: '/develop/plugins/author-guide/migrations' },
                 { text: 'Admin UI', link: '/develop/plugins/author-guide/admin-ui' },
-                { text: 'Recipes (WIP)', link: '/develop/plugins/author-guide/recipes' },
+                { text: 'Agent templates', link: '/develop/plugins/author-guide/agent-templates' },
                 { text: 'Distribution', link: '/develop/plugins/author-guide/distribution' },
               ],
             },

@@ -16,7 +16,7 @@ A Spora plugin is a Composer package — installable via `composer require` and 
 - **Tools** callable by an agent (web search, image generation, calendar ops).
 - **LLM drivers** that plug into the driver factory alongside OpenAI and Anthropic.
 - **Migrations** that create plugin-owned database tables.
-- **Recipes** _(WIP — not yet shipped)_ that bundle a system prompt + tool allowlist into a one-click agent. The hook is declared and `RecipeScanner` exists, but no recipes are bundled or shipped in this release. See the [Recipes](/develop/plugins/author-guide/recipes) chapter for the WIP status.
+- **Agent templates** that bundle a system prompt + tool activations + per-operation auto-approve defaults into a one-click Agent. See [Agent templates](/develop/plugins/author-guide/agent-templates).
 
 A plugin is identified by a **Composer package** with `type: "spora-plugin"`. On install, the `spora-ai/installer` Composer plugin routes the package to the host Spora's `plugins/{slug}/` directory and the host's `PluginLoader` picks up its manifest on the next request.
 
@@ -39,8 +39,8 @@ spora-plugin-foo/
 ├── database/
 │   └── migrations/
 │       └── foo_000001_create_xyz_table.php
-├── recipes/                ← WIP — not yet shipped
-│   └── default.yaml
+├── agent-templates/         ← optional: ship curated Agent templates
+│   └── research-assistant.json
 └── tests/
     └── Unit/
         └── Tools/
@@ -141,7 +141,8 @@ All hooks live on `Spora\Plugins\PluginInterface` (re-exported from `Spora\Exten
 | `autoload()`                               | `array<string, string>` (ns → path) | Additional PSR-4 namespace → path mappings registered at boot.                   |
 | `tools()`                                  | `class-string<ToolInterface>[]`     | Tools contributed to the tool registry.                                          |
 | `drivers()`                                | `string[]` (id → FQCN)              | LLM drivers contributed to the driver factory.                                   |
-| `recipePaths()`                            | `string[]`                          | Absolute paths to recipe YAML directories or files. _(WIP — not yet shipped.)_   |
+| `recipePaths()`                            | `string[]`                          | Absolute paths to recipe YAML directories or files. _(Deprecated — use `agentTemplatePaths()` instead.)_   |
+| `agentTemplatePaths()`                     | `string[]`                          | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates). |
 | `apps()`                                   | `class-string<AppInterface>[]`      | UI side-panels contributed to the App registry.                                  |
 | `migrationsPath()`                         | `?string`                           | Absolute path to plugin migrations directory, or `null` if no schema.            |
 | `schemaVersion()`                          | `int`                               | Bump every time a new migration file is added. `0` if no schema.                 |

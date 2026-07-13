@@ -88,10 +88,10 @@ The frontend package declares the slug in `composer.json#extra.spora-plugin-slug
 
 ```json
 {
-    "name": "spora-ai/spora-plugin-foo-frontend",
-    "extra": {
-        "spora-plugin-slug": "foo"
-    }
+  "name": "spora-ai/spora-plugin-foo-frontend",
+  "extra": {
+    "spora-plugin-slug": "foo"
+  }
 }
 ```
 

@@ -58,16 +58,14 @@ The full schema lives at [`https://spora.dev/agent-template.schema.json`](https:
     {
       "tool_class": "Spora\\Tools\\CalculatorTool",
       "enabled": true,
-      "operations": [
-        { "name": "calculate", "enabled": true, "auto_approve": true }
-      ]
+      "operations": [{ "name": "calculate", "enabled": true, "auto_approve": true }]
     },
     {
       "tool_class": "Spora\\Plugins\\WebSearch\\Tools\\SearchTool",
       "enabled": true,
       "operations": [
-        { "name": "search",  "enabled": true, "auto_approve": false },
-        { "name": "fetch",   "enabled": true, "auto_approve": false }
+        { "name": "search", "enabled": true, "auto_approve": false },
+        { "name": "fetch", "enabled": true, "auto_approve": false }
       ]
     }
   ],
@@ -94,14 +92,14 @@ YAML is accepted for third-party plugins. The framework itself ships JSON so dif
 
 ## Warning codes
 
-| Code                          | Severity | Meaning                                                                |
-| ----------------------------- | -------- | ---------------------------------------------------------------------- |
-| `PLUGIN_MISSING`              | warning  | A `required_plugins` slug is not loaded.                               |
-| `TOOL_PLUGIN_MISSING`         | warning  | A `tool_class` is not currently registered. Skipped silently.          |
-| `TOOL_NEEDS_CONFIGURATION`    | warning  | The tool will be enabled but is missing required settings.             |
-| `OPERATION_UNKNOWN`           | warning  | An operation name is not declared by the tool. Skipped silently.      |
-| `SYSTEM_PROMPT_MISSING`       | warning  | The template did not declare a `system_prompt`.                        |
-| `METADATA_CATEGORY_UNKNOWN`   | warning  | `metadata.category` is not in the known enum.                          |
+| Code                        | Severity | Meaning                                                          |
+| --------------------------- | -------- | ---------------------------------------------------------------- |
+| `PLUGIN_MISSING`            | warning  | A `required_plugins` slug is not loaded.                         |
+| `TOOL_PLUGIN_MISSING`       | warning  | A `tool_class` is not currently registered. Skipped silently.    |
+| `TOOL_NEEDS_CONFIGURATION`  | warning  | The tool will be enabled but is missing required settings.       |
+| `OPERATION_UNKNOWN`         | warning  | An operation name is not declared by the tool. Skipped silently. |
+| `SYSTEM_PROMPT_MISSING`     | warning  | The template did not declare a `system_prompt`.                  |
+| `METADATA_CATEGORY_UNKNOWN` | warning  | `metadata.category` is not in the known enum.                    |
 
 None of these abort the import. The importer collects them all and returns them in `ImportResult.warnings[]`.
 

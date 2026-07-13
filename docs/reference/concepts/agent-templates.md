@@ -36,13 +36,13 @@ The scanner walks each directory depth-0, parses `.json` / `.yaml` / `.yml` file
 
 ## HTTP surface
 
-| Method  | Path                                | Purpose                                       |
-| ------- | ----------------------------------- | --------------------------------------------- |
-| `GET`   | `/api/v1/agent-templates`           | List built-in + plugin templates              |
-| `GET`   | `/api/v1/agent-templates/{id}`      | Get one template (full payload + warnings)    |
-| `POST`  | `/api/v1/agent-templates/validate`  | Dry-run validation of a raw payload           |
-| `POST`  | `/api/v1/agent-templates/import`    | Create an Agent from a payload                |
-| `GET`   | `/api/v1/agents/{id}/export`        | Export an Agent as a template JSON            |
+| Method | Path                               | Purpose                                    |
+| ------ | ---------------------------------- | ------------------------------------------ |
+| `GET`  | `/api/v1/agent-templates`          | List built-in + plugin templates           |
+| `GET`  | `/api/v1/agent-templates/{id}`     | Get one template (full payload + warnings) |
+| `POST` | `/api/v1/agent-templates/validate` | Dry-run validation of a raw payload        |
+| `POST` | `/api/v1/agent-templates/import`   | Create an Agent from a payload             |
+| `GET`  | `/api/v1/agents/{id}/export`       | Export an Agent as a template JSON         |
 
 The export endpoint always returns an `inline_warning` field reminding the caller that passwords and API keys are not included.
 

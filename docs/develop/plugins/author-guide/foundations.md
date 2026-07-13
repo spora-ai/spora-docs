@@ -135,20 +135,20 @@ final class AcmeSearchPlugin extends AbstractPlugin
 
 All hooks live on `Spora\Plugins\PluginInterface` (re-exported from `Spora\Extensions\SporaExtensionInterface`). Most plugins override one or two; the rest stay at their `AbstractPlugin` no-op defaults.
 
-| Hook                                       | Returns                             | Purpose                                                                          |
-| ------------------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------- |
-| `getName()`                                | `string`                            | Human-facing name shown in admin UIs.                                            |
-| `autoload()`                               | `array<string, string>` (ns → path) | Additional PSR-4 namespace → path mappings registered at boot.                   |
-| `tools()`                                  | `class-string<ToolInterface>[]`     | Tools contributed to the tool registry.                                          |
-| `drivers()`                                | `string[]` (id → FQCN)              | LLM drivers contributed to the driver factory.                                   |
-| `recipePaths()`                            | `string[]`                          | Absolute paths to recipe YAML directories or files. _(Deprecated — use `agentTemplatePaths()` instead.)_   |
+| Hook                                       | Returns                             | Purpose                                                                                                                                    |
+| ------------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `getName()`                                | `string`                            | Human-facing name shown in admin UIs.                                                                                                      |
+| `autoload()`                               | `array<string, string>` (ns → path) | Additional PSR-4 namespace → path mappings registered at boot.                                                                             |
+| `tools()`                                  | `class-string<ToolInterface>[]`     | Tools contributed to the tool registry.                                                                                                    |
+| `drivers()`                                | `string[]` (id → FQCN)              | LLM drivers contributed to the driver factory.                                                                                             |
+| `recipePaths()`                            | `string[]`                          | Absolute paths to recipe YAML directories or files. _(Deprecated — use `agentTemplatePaths()` instead.)_                                   |
 | `agentTemplatePaths()`                     | `string[]`                          | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates). |
-| `apps()`                                   | `class-string<AppInterface>[]`      | UI side-panels contributed to the App registry.                                  |
-| `migrationsPath()`                         | `?string`                           | Absolute path to plugin migrations directory, or `null` if no schema.            |
-| `schemaVersion()`                          | `int`                               | Bump every time a new migration file is added. `0` if no schema.                 |
-| `register(ContainerBuilder $builder)`      | `void`                              | Hook for arbitrary DI bindings, middleware, or services.                         |
-| `boot()`                                   | `void`                              | Lifecycle hook fired once after DI container is built, before the first request. |
-| `routes(MiddlewareRouteCollector $routes)` | `void`                              | Register HTTP routes into the running middleware collector.                      |
+| `apps()`                                   | `class-string<AppInterface>[]`      | UI side-panels contributed to the App registry.                                                                                            |
+| `migrationsPath()`                         | `?string`                           | Absolute path to plugin migrations directory, or `null` if no schema.                                                                      |
+| `schemaVersion()`                          | `int`                               | Bump every time a new migration file is added. `0` if no schema.                                                                           |
+| `register(ContainerBuilder $builder)`      | `void`                              | Hook for arbitrary DI bindings, middleware, or services.                                                                                   |
+| `boot()`                                   | `void`                              | Lifecycle hook fired once after DI container is built, before the first request.                                                           |
+| `routes(MiddlewareRouteCollector $routes)` | `void`                              | Register HTTP routes into the running middleware collector.                                                                                |
 
 For the new hook surface and why `PluginInterface` is now a marker (with `SporaExtensionInterface` carrying the contract), see the docblock on [PluginInterface](https://github.com/spora-ai/spora-core/blob/main/app/Plugins/PluginInterface.php) in the framework repo.
 

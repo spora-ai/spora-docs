@@ -73,13 +73,13 @@ See [Concepts → Architecture](/reference/concepts/architecture) for the full H
 
 ### Agent templates
 
-| Method  | Path                                | Auth         | Purpose                                                  |
-| ------- | ----------------------------------- | ------------ | -------------------------------------------------------- |
-| `GET`   | `/api/v1/agent-templates`           | session      | List built-in + plugin templates                         |
-| `GET`   | `/api/v1/agent-templates/{id}`      | session      | Get one template (full payload + warnings)               |
-| `POST`  | `/api/v1/agent-templates/validate`  | session + CSRF | Validate a raw payload without importing               |
-| `POST`  | `/api/v1/agent-templates/import`    | session + CSRF | Create an agent from a payload                         |
-| `GET`   | `/api/v1/agents/{id}/export`        | session      | Export an agent as a template JSON                       |
+| Method | Path                               | Auth           | Purpose                                    |
+| ------ | ---------------------------------- | -------------- | ------------------------------------------ |
+| `GET`  | `/api/v1/agent-templates`          | session        | List built-in + plugin templates           |
+| `GET`  | `/api/v1/agent-templates/{id}`     | session        | Get one template (full payload + warnings) |
+| `POST` | `/api/v1/agent-templates/validate` | session + CSRF | Validate a raw payload without importing   |
+| `POST` | `/api/v1/agent-templates/import`   | session + CSRF | Create an agent from a payload             |
+| `GET`  | `/api/v1/agents/{id}/export`       | session        | Export an agent as a template JSON         |
 
 > **Settings are not exported.** Exporting an agent produces a JSON template that includes tool activations and per-operation auto-approve defaults only. Passwords, API keys, and other secrets must be reconfigured in **Settings → Tools** after import. The `inline_warning` field in the export response reminds the caller to communicate this.
 

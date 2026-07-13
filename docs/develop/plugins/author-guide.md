@@ -23,15 +23,15 @@ Skip [LLM drivers](/develop/plugins/author-guide/drivers), [Migrations](/develop
 
 ## Chapter index
 
-| Chapter                                                    | What it covers                                                                                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| [Foundations](/develop/plugins/author-guide/foundations)   | The package shape, the `plugin.json` manifest, the entry-point class, and every hook on `PluginInterface`.         |
-| [Tools](/develop/plugins/author-guide/tools)               | Adding a tool — the canonical callable surface. The `#[Tool]` / `#[ToolParameter]` attribute surface.              |
-| [LLM drivers](/develop/plugins/author-guide/drivers)       | Adding a new LLM provider. Most plugins should not need this — built-in OpenAI/Anthropic drivers cover most cases. |
-| [Migrations](/develop/plugins/author-guide/migrations)     | Schema versions, filename prefixes, the `up()` / `down()` convention.                                              |
-| [Admin UI](/develop/plugins/author-guide/admin-ui)         | The two-package Vue IIFE pattern, the `apps()` hook, the auto-require convention, publishing sequencing.           |
-| [Agent templates](/develop/plugins/author-guide/agent-templates) | Ship curated Agent templates with your plugin. Operator gallery, auto-install policy, warning codes.         |
-| [Distribution](/develop/plugins/author-guide/distribution) | The `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, SemVer, the release checklist.                   |
+| Chapter                                                          | What it covers                                                                                                     |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| [Foundations](/develop/plugins/author-guide/foundations)         | The package shape, the `plugin.json` manifest, the entry-point class, and every hook on `PluginInterface`.         |
+| [Tools](/develop/plugins/author-guide/tools)                     | Adding a tool — the canonical callable surface. The `#[Tool]` / `#[ToolParameter]` attribute surface.              |
+| [LLM drivers](/develop/plugins/author-guide/drivers)             | Adding a new LLM provider. Most plugins should not need this — built-in OpenAI/Anthropic drivers cover most cases. |
+| [Migrations](/develop/plugins/author-guide/migrations)           | Schema versions, filename prefixes, the `up()` / `down()` convention.                                              |
+| [Admin UI](/develop/plugins/author-guide/admin-ui)               | The two-package Vue IIFE pattern, the `apps()` hook, the auto-require convention, publishing sequencing.           |
+| [Agent templates](/develop/plugins/author-guide/agent-templates) | Ship curated Agent templates with your plugin. Operator gallery, auto-install policy, warning codes.               |
+| [Distribution](/develop/plugins/author-guide/distribution)       | The `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, SemVer, the release checklist.                   |
 
 ## Looking for an older link?
 

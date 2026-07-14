@@ -156,7 +156,7 @@ export default defineUserConfig({
                 { text: 'LLM drivers', link: '/develop/plugins/author-guide/drivers' },
                 { text: 'Migrations', link: '/develop/plugins/author-guide/migrations' },
                 { text: 'Admin UI', link: '/develop/plugins/author-guide/admin-ui' },
-                { text: 'Recipes (WIP)', link: '/develop/plugins/author-guide/recipes' },
+                { text: 'Agent templates', link: '/develop/plugins/author-guide/agent-templates' },
                 { text: 'Distribution', link: '/develop/plugins/author-guide/distribution' },
               ],
             },
@@ -212,6 +212,7 @@ export default defineUserConfig({
           items: [
             { text: 'Overview', link: '/reference/concepts/' },
             { text: 'Architecture', link: '/reference/concepts/architecture' },
+            { text: 'Agent templates', link: '/reference/concepts/agent-templates' },
             { text: 'Agent loop & async', link: '/reference/concepts/agent-loop-async' },
             { text: 'App extensions', link: '/reference/concepts/app-extension' },
             { text: 'Code documentation', link: '/reference/concepts/code-documentation' },

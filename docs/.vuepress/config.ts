@@ -212,6 +212,7 @@ export default defineUserConfig({
           items: [
             { text: 'Overview', link: '/reference/concepts/' },
             { text: 'Architecture', link: '/reference/concepts/architecture' },
+            { text: 'Agent templates', link: '/reference/concepts/agent-templates' },
             { text: 'Agent loop & async', link: '/reference/concepts/agent-loop-async' },
             { text: 'App extensions', link: '/reference/concepts/app-extension' },
             { text: 'Code documentation', link: '/reference/concepts/code-documentation' },

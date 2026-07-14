@@ -102,14 +102,12 @@ Boot sequence (`app/Plugins/PluginLoader.php`):
 3. `require_once` bootstrap files from `autoload.files` (e.g. the plugin's own `vendor/autoload.php`)
 4. `require_once` the manifest's `file` (default `Plugin.php`)
 5. Instantiate the declared class; call its `autoload()` for additional PSR-4 bindings
-6. `tools()`, `drivers()`, `recipePaths()`, `schemaVersion()`, `migrationsPath()` → register contributions
+6. `tools()`, `drivers()`, `agentTemplatePaths()`, `schemaVersion()`, `migrationsPath()` → register contributions. `recipePaths()` is retained on the interface but deprecated in favour of `agentTemplatePaths()`.
 7. `register(ContainerBuilder)` → arbitrary DI bindings
 
-Plugins can contribute: tools, LLM drivers, recipes, and database migrations. See `app/Plugins/PluginInterface.php` and the [Plugin system](/reference/concepts/plugins-system) page.
+Plugins can contribute: tools, LLM drivers, agent templates, and database migrations. See `app/Plugins/PluginInterface.php` and the [Plugin system](/reference/concepts/plugins-system) page.
 
-> **Status: WIP** — the plugin system is currently a work-in-progress. The hook methods (`tools()`, `drivers()`, `recipePaths()`, `register()`) are declared on the interface and surfaced by the manifest, but the explicit `PluginLoader → DI container` injection path is not yet fully wired up. New drivers, tools, and recipes contributed via plugins may not take effect without additional glue in `app/Plugins/PluginLoader.php` or direct registration via `config.php`.
->
-> Three open PRs are landing this. The WIP note is preserved verbatim so readers know the limitations.
+> **Status:** wired. `PluginLoader` now fully wires every contribution surface from a plugin's manifest entry point: agent templates (`agentTemplatePaths()`), drivers (`drivers()`), tools (`tools()`), database migrations (`migrationsPath()` + `schemaVersion()`), and arbitrary DI bindings (`register(ContainerBuilder)`). New drivers, tools, templates, and migrations contributed via plugins take effect automatically once the plugin is installed — no additional glue in `app/Plugins/PluginLoader.php` or `config.php` is required. The historical `recipePaths()` hook is kept on the interface for compatibility but is superseded by `agentTemplatePaths()`.
 
 **Plugin conflicts:** duplicate slugs or duplicate entry-point FQCNs are silently skipped — first-loaded wins. Plugin Composer dependencies are isolated by shipping a separate `vendor/` per plugin (declared in `autoload.files`); the host vendor tree is not affected.
 

@@ -42,7 +42,7 @@ The full schema lives at [`https://spora.dev/agent-template.schema.json`](https:
 ```json
 {
   "$schema": "https://spora.dev/agent-template.schema.json",
-  "id": "research-assistant",
+  "id": "web-search/research-assistant",
   "name": "Research Assistant",
   "description": "Looks things up on the web and reports back.",
   "version": "1.0.0",
@@ -76,6 +76,8 @@ The full schema lives at [`https://spora.dev/agent-template.schema.json`](https:
   }
 }
 ```
+
+> **Namespace prefix required.** Plugin templates must declare an `id` of the form `<plugin-slug>/<slug>` — e.g. `"id": "web-search/research-assistant"` for a plugin whose slug is `web-search`. Bare slugs (no `/`) are reserved for user-exported uploads and trigger a `NAMESPACE_MISMATCH` warning at scan time. See [Agent template schema → `id`](/reference/agent-template-schema) for the exact regex.
 
 YAML is accepted for third-party plugins. The framework itself ships JSON so diffs stay clean.
 

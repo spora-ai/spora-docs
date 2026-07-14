@@ -5,7 +5,7 @@ description: Run Spora on a laptop — with optional local LLM via Ollama or LM 
 
 # Local — PHP / Ollama / LM Studio
 
-Run Spora on your laptop. No Docker, no VPS, no shared host. The skeleton's `composer dev` command starts the PHP built-in server against the prebuilt `public/dist/` (the host's compiled admin SPA + index.php front controller). You can also use the canonical FrankenPHP image via [Docker — single container](/deploy/docker/single-container).
+Run Spora on your laptop. No Docker, no VPS, no shared host. The skeleton's `composer dev` command starts the PHP built-in server with doc root `public/`, so the prebuilt `public/dist/` (the host's compiled admin SPA + index.php front controller) **and** any `spora-plugin-frontend` packages installed under `public/plugins/<slug>/` are both served correctly. This matches the installer's contract — the same as production (FrankenPHP, `root * /app/public`). You can also use the canonical FrankenPHP image via [Docker — single container](/deploy/docker/single-container).
 
 Two paths for the LLM:
 
@@ -27,7 +27,7 @@ This page covers the local LLM path. The PHP server path is the same as the stan
 The skeleton's `composer dev` starts the PHP built-in server. For the full Standard install (create-project, install, seed), see [Installation → Standard install](/start/operators/install#standard-install-packagist). The actual command (from `composer.json:33`) is:
 
 ```bash
-php -S ${PHP_HOST:-127.0.0.1}:${PHP_PORT:-8080} -t public/dist public/index.php
+php -S ${PHP_HOST:-127.0.0.1}:${PHP_PORT:-8080} -t public public/index.php
 ```
 
 The site is at `http://127.0.0.1:8080`. For a more production-like local server, use the Docker image from [Custom build](/deploy/docker/custom-build) or the [Docker — single container](/deploy/docker/single-container) path.

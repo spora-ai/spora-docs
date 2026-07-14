@@ -48,7 +48,7 @@ composer dev
 
 This starts two processes concurrently:
 
-- **PHP** — `php -S 127.0.0.1:8080 -t public/dist public/index.php`
+- **PHP** — `php -S 127.0.0.1:8080 -t public public/index.php`
 - **Vite** — only if `spora-frontend` is path-installed (a sibling clone, not the Packagist release). The skeleton's `bin/dev` auto-detects path installs.
 
 The site is at `http://localhost:8080`. The SPA's Vite HMR is at `http://localhost:5173` (path install only).

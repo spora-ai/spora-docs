@@ -57,11 +57,12 @@ cd /path/to/your-spora-skeleton    # e.g. spora-local
 composer dev
 # PHP built-in server: http://127.0.0.1:8080
 # This serves the host's compiled public/dist/ (the index.php + the
-# spora-frontend dist that spora-installer dropped there).
+# spora-frontend dist that spora-installer dropped there) and any
+# spora-plugin-frontend bundles in public/plugins/<slug>/.
 # API endpoints under /api/v1/...
 ```
 
-The skeleton's `composer.json:33` runs `php -S ${PHP_HOST:-127.0.0.1}:${PHP_PORT:-8080} -t public/dist public/index.php`. PHP edits to the host or to the plugin (symlinked into `plugins/`) show up on the next request.
+The skeleton's `composer.json:33` runs `php -S ${PHP_HOST:-127.0.0.1}:${PHP_PORT:-8080} -t public public/index.php`. PHP edits to the host or to the plugin (symlinked into `plugins/`) show up on the next request; plugin-frontend bundles installed into `public/plugins/<slug>/` (line 47) are served by the same dev server.
 
 ### Terminal 2 — Plugin's Vue dev server (HMR for the plugin bundle)
 

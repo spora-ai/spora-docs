@@ -117,23 +117,23 @@ Your `vite.config.ts` then maps the externals to those globals so Rollup emits t
 
 ```ts
 export default defineConfig({
-    build: {
-        lib: { entry: 'src/main.ts', formats: ['iife'], name: 'SporaAppFoo' },
-        rollupOptions: {
-            external: ['vue', 'pinia'],
-            output: {
-                // Property access resolves at evaluation time against the
-                // host's already-published globals. Without this the default
-                // IIFE wrapper passes bare identifiers (`})(Vue, Pinia);`)
-                // and the bundle throws `Vue is not defined` when loaded
-                // via `import('/plugins/<slug>/main.js')`.
-                globals: {
-                    vue: 'window.Vue',
-                    pinia: 'window.Pinia',
-                },
-            },
+  build: {
+    lib: { entry: 'src/main.ts', formats: ['iife'], name: 'SporaAppFoo' },
+    rollupOptions: {
+      external: ['vue', 'pinia'],
+      output: {
+        // Property access resolves at evaluation time against the
+        // host's already-published globals. Without this the default
+        // IIFE wrapper passes bare identifiers (`})(Vue, Pinia);`)
+        // and the bundle throws `Vue is not defined` when loaded
+        // via `import('/plugins/<slug>/main.js')`.
+        globals: {
+          vue: 'window.Vue',
+          pinia: 'window.Pinia',
         },
+      },
     },
+  },
 })
 ```
 

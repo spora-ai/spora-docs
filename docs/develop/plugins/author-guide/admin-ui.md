@@ -100,6 +100,47 @@ The [`SporaPluginFrontendInstaller`](https://github.com/spora-ai/spora-installer
 
 Canonical worked example: [`spora-plugin-media-archive-frontend`](https://github.com/spora-ai/spora-plugin-media-archive-frontend) declares `"spora-plugin-slug": "media-archive"` to match [`spora-plugin-media-archive`](https://github.com/spora-ai/spora-plugin-media-archive)'s `plugin.json#slug` (companion PR [`spora-ai/spora-plugin-media-archive-frontend#9`](https://github.com/spora-ai/spora-plugin-media-archive-frontend/pull/9), merged).
 
+## Sharing Vue + Pinia with the host SPA
+
+The host SPA **already has Vue and Pinia running**. Bundling your own copies would create two reactive systems and break shared state (the plugin couldn't read the host's auth/theme store, and a `createApp()` call from one Vue couldn't mount a component compiled against the other). The build therefore keeps Vue and Pinia **external** and reads them off the host's globals at evaluation time.
+
+The host publishes the references in its `main.ts` after `app.mount(...)`:
+
+```ts
+import * as Vue from 'vue'
+import * as Pinia from 'pinia'
+;(window as unknown as { Vue: typeof Vue }).Vue = Vue
+;(window as unknown as { Pinia: typeof Pinia }).Pinia = Pinia
+```
+
+Your `vite.config.ts` then maps the externals to those globals so Rollup emits the right call site:
+
+```ts
+export default defineConfig({
+  build: {
+    lib: { entry: 'src/main.ts', formats: ['iife'], name: 'SporaAppFoo' },
+    rollupOptions: {
+      external: ['vue', 'pinia'],
+      output: {
+        // Property access resolves at evaluation time against the
+        // host's already-published globals. Without this the default
+        // IIFE wrapper passes bare identifiers (`})(Vue, Pinia);`)
+        // and the bundle throws `Vue is not defined` when loaded
+        // via `import('/plugins/<slug>/main.js')`.
+        globals: {
+          vue: 'window.Vue',
+          pinia: 'window.Pinia',
+        },
+      },
+    },
+  },
+})
+```
+
+The resulting `frontend/main.js` ends with `})(window.Vue, window.Pinia);`. Plugins don't share the host's Pinia state — they instantiate a local one inside their own `mount()` — but they read `Vue.createApp` and `Pinia.createPinia` off the host's modules, which is what makes identity equality work.
+
+If you skip the `output.globals` block, the build still succeeds but the runtime throws `Vue is not defined` the moment the host dynamic-imports your bundle. The canonical worked example is [`spora-plugin-media-archive-frontend`](https://github.com/spora-ai/spora-plugin-media-archive-frontend)'s [`vite.config.ts`](https://github.com/spora-ai/spora-plugin-media-archive-frontend/blob/main/vite.config.ts).
+
 ## Publishing sequencing
 
 The frontend must be **tagged and on Packagist** before the PHP plugin's CI can resolve the require. Recommended sequence:

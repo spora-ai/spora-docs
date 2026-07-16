@@ -42,6 +42,35 @@ The API surface splits into three areas: auth, agents, and tools/plugins. Auth a
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
+#### Agent resource
+
+Every `GET` and `PATCH` response (and each entry of `GET /api/v1/agents`) carries an `agent` object with the following wire-format fields. Fields introduced in this release are marked **(new)**.
+
+| Field                   | Type                             | Notes                                                                                    |
+| ----------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
+| `id`                    | integer                          | Owning agent id.                                                                         |
+| `name`                  | string                           | Display name.                                                                            |
+| `description`           | string \| null                   | Short summary, up to 2000 chars.                                                         |
+| `system_prompt`         | string \| null                   | System prompt (Markdown allowed).                                                        |
+| `llm_driver_config_id`  | integer \| null                  | Bound LLM config; `null` means inherit the global default.                               |
+| `max_steps`             | integer                          | Max LLM turns per task (1-100). Default `10`.                                            |
+| `is_active`             | boolean                          | Whether the agent accepts new tasks.                                                     |
+| `allow_followup`        | boolean                          | Whether the agent can be re-engaged in the same task.                                    |
+| `retry_after_minutes`   | integer                          | Delay between scheduled retries (≥ 0).                                                   |
+| `max_retries`           | integer                          | Max retries per task (≥ 0).                                                              |
+| `is_pinned` **(new)**   | boolean                          | `true` keeps the agent at the top of the dashboard list. Default `false`.                |
+| `is_archived` **(new)** | boolean                          | `true` hides the agent from the default view; row + tasks are retained. Default `false`. |
+| `created_at` **(new)**  | string \| null (ATOM / ISO 8601) | When the agent row was created. `null` for stub/test fixtures.                           |
+| `tools`                 | array                            | See [Tool allowlist](#tool-allowlist-on-an-agent).                                       |
+
+`PATCH /api/v1/agents/{id}` accepts any subset of the fields above. `is_pinned` and `is_archived` accept JSON booleans or the strings `"true"` / `"false"` — both are coerced via `FILTER_VALIDATE_BOOLEAN` server-side, so the form layer and curl both work.
+
+> No dedicated HTTP endpoints exist for toggling pin/archive in isolation. To flip just one flag without touching other fields, send a `PATCH` with the single boolean (e.g. `{"is_pinned": true}`).
+
+#### Tool allowlist on an agent
+
+The `tools` array on an agent lists the tool activations for that agent. Each entry has `tool_class`, `tool_name`, and the per-operation `auto_approve` / `enabled` flags. Editing the allowlist is done through the agent's edit form, not via the wire.
+
 ### Tasks
 
 | Method   | Path                                 | Auth    | Purpose                                                |

@@ -11,15 +11,53 @@ For the underlying architecture (what an agent IS in the codebase), see [Concept
 
 ## List view
 
-**Agents → List** shows every agent in the system, with:
+**Agents → List** (the home page after sign-in) shows every agent in the system. Click an agent to open the edit view.
 
-- **Name** — display name
-- **Driver / model** — which LLM config the agent is using
-- **Tools** — number of tools enabled
-- **Last used** — when the agent last received a message
-- **Status** — enabled / disabled
+### Dashboard sections
 
-Click an agent to open the edit view.
+The list is grouped into sections so the operator can scan recent activity at a glance:
+
+- **Pinned** — agents you pinned to the top. Always visible at the top of the list.
+- **Today** — agents whose most recent task (or, if no task yet, creation date) is today.
+- **This Week** — agents with recent activity in the last 7 days.
+- **Older** — agents with no activity for more than a week.
+- **Archived** — agents you archived. Visible when the **Archived** filter chip is active.
+
+Sections with no agents are hidden — the list never shows a "Today — 0 agents" heading. The **Pinned** and **Archived** sections themselves only appear once at least one agent carries the corresponding flag.
+
+### Filter chips and sort
+
+Beneath the KPI strip, a row of filter chips narrows what you see:
+
+- **All** — default; shows every section.
+- **Pinned** — shows only the Pinned section.
+- **Archived** — shows only the Archived section.
+
+The **Pinned** and **Archived** chips also only appear once at least one loaded agent carries the flag.
+
+Use the sort dropdown (top right) to order the visible agents:
+
+- **Last activity** (default) — most recently used first; preserves the section grouping above.
+- **Name** — alphabetical. The sections collapse into a single sorted list titled "All agents — sorted by Name".
+- **Recently created** — newest agents first; same single-grid behaviour.
+- **Task count** — most-run agents first; same single-grid behaviour.
+
+Switching to **Pinned** or **Archived** while a non-activity sort is active restores the sectioned view, so pinned agents stay grouped at the top.
+
+### KPI strip
+
+A row of cards above the list summarises fleet activity:
+
+- **Agents** — total agent count.
+- **Running** — tasks in flight. Shows a pulse indicator when count > 0.
+- **Awaiting input** — tasks waiting for your approval. Shows a pulse indicator when count > 0.
+- **Scheduled today** — agents scheduled to fire today. Shows a pulse indicator when count > 0.
+
+Pulse indicators only appear when the count is non-zero — a card with no activity of that type shows just the number, with no badge.
+
+### Layout
+
+The dashboard's content sits in a centered, max-width container so the agent cards stay readable on wide monitors. The chrome (navbar, footer) is still flush to the viewport.
 
 ## Create a new agent
 
@@ -96,6 +134,8 @@ For details on the recipe format (when it's documented), see [Concepts → Archi
 
 - **Edit** — change config, save. The agent picks up the new config on its next task.
 - **Disable** — toggle `enabled = false` in the Identity tab. The agent won't appear in the UI's chat list. Existing tasks complete normally.
+- **Pin / Unpin** — pin keeps the agent anchored at the top of the list. Useful for agents you reach for daily.
+- **Archive / Unarchive** — archive hides the agent from the default view while keeping the row and its task history. Use archive instead of delete when the agent has historical tasks you may want to consult later; unarchive to bring it back.
 
 Disable (don't delete) when:
 
@@ -107,6 +147,8 @@ Delete only when:
 
 - The agent is brand new and never used
 - You're sure the historical tasks aren't needed
+
+> Pin and archive are independent of `enabled`: a pinned-and-archived agent still floats to the top when the Archived filter is on, and an unarchived agent with `enabled = false` still surfaces in the default list (greyed out) but does not respond to new messages. To take an agent fully offline, disable it; archive is for decluttering, not for stopping it.
 
 ## Recipes and the plugin system _(WIP — not yet shipped)_
 

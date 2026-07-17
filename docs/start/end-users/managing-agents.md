@@ -119,6 +119,8 @@ For a new agent, **start with no tools**. Add tools one at a time to see how eac
 
 Each tool has operator-configurable settings (API keys, hostnames). Configure these under **Settings → Tools** before enabling the tool on an agent.
 
+Each tool tile in the picker shows an icon determined by the tool's `#[Tool]` attribute (or the owning plugin's `plugin.json` icon, or the default puzzle icon) — see the [`icon` field](/reference/api#agent-resource) on the Agent resource for the resolution chain.
+
 ## Recipes _(WIP — not yet shipped)_
 
 > **Status: WIP** — recipes are not yet shipped in this release. The recipe scaffolding exists in the codebase (`RecipeScanner`, `RecipeController`, `agents.recipe_id`, `PluginInterface::recipePaths()`), but the system is **not usable**: `recipes/` is empty, the agent create/edit UI does not yet wire up the `recipe_id` field, and no recipe picker drives the run flow yet. See [Roadmap → Medium](/about/roadmap) for the open work items.

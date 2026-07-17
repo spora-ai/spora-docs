@@ -23,6 +23,7 @@ use Spora\Tools\ValueObjects\ToolResult;
     description: 'Search the web.',
     displayName: 'Web Search',
     category: 'research',
+    icon: 'search',  // bundled icon key (optional; see below)
 )]
 #[ToolOperation(name: 'search', description: 'Run a search', enabledByDefault: true, requiresApprovalByDefault: false)]
 #[ToolParameter(name: 'query', type: 'string', description: 'The search query.', required: true)]
@@ -146,6 +147,18 @@ Names must match `/^[a-z][a-z0-9_]*$/` (lowercase alphanumeric + underscore, sta
 This ensures global uniqueness — two plugins can never produce a tool name collision. The prefix is derived automatically from `plugin.json` and requires no changes to the plugin's `#[Tool]` attribute.
 
 > **Note:** core tools intentionally do **not** use a `core:` prefix. Adding it would change every tool name currently known to the LLM, breaking existing agents. Only plugin tools get the slug prefix.
+
+## Icon resolution
+
+A tool may declare a `?string $icon` argument on the `#[Tool(...)]` attribute — a kebab-case key from the [bundled icon palette](/reference/plugin-schema#icon-field--three-forms) (e.g. `'calendar'`, `'mail'`, `'search'`, `'globe'`). The icon is surfaced on the Agent resource (`GET /api/v1/agents` / `GET /api/v1/agents/{id}`) so the admin UI can render a matching tile for the tool.
+
+Resolution is a 3-layer chain, evaluated server-side:
+
+1. The `*Tool` class's `#[Tool(icon: ...)]` argument (most specific — wins for multi-tool plugins).
+2. The owning plugin's [`plugin.json` `icon`](/reference/plugin-schema#icon-field--three-forms) field (plugin-level identity — covers single-tool plugins automatically).
+3. `null` — the frontend `<Icon>` component falls back to `'puzzle'`.
+
+Single-tool plugins don't need to set `#[Tool(icon: ...)]` — their `plugin.json` `icon` field is enough via the layer-2 fallback. Multi-tool plugins should set both: `plugin.json` for the plugin's overall identity and `#[Tool(icon: ...)]` per tool for the per-tool override.
 
 ## Tool Settings Key Convention
 

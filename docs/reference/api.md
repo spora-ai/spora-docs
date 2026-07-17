@@ -154,3 +154,49 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Concepts → Error handling](/reference/concepts/error-handling) — full error code registry and envelope spec
 - [Install API](/develop/plugins/install-api) — the plugin install endpoints in detail
 - [Operations → Day-2 ops](/start/operators/operations) — operator-facing workflows
+
+<!-- API:GENERATED:START -->
+
+## Spora API (stub) — endpoint catalogue
+
+> This table is generated from `docs/.vuepress/openapi.json`. To refresh, run `npm run gen:api`.
+
+### Security schemes
+
+| Scheme       | Where  | Key            | Description                                 |
+| ------------ | ------ | -------------- | ------------------------------------------- |
+| `cookieAuth` | cookie | `PHPSESSID`    | Session cookie issued by `delight-im/auth`. |
+| `csrfToken`  | header | `X-CSRF-Token` | CSRF token issued alongside the session.    |
+
+### Endpoints
+
+| Method | Path                  | Auth        | Purpose                               | Tags |
+| ------ | --------------------- | ----------- | ------------------------------------- | ---- |
+| `POST` | `/api/v1/auth/login`  | —           | Authenticate (issues data.csrf_token) | Auth |
+| `POST` | `/api/v1/auth/logout` | `csrfToken` | End session                           | Auth |
+
+### Per-endpoint detail
+
+#### `POST /api/v1/auth/login` — Authenticate (issues data.csrf_token)
+
+Placeholder operation; real operations land after spora-core PR #140 merges.
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/logout` — End session
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description    |
+| --------- | -------------- |
+| `default` | JSON envelope. |
+
+<!-- API:GENERATED:END -->

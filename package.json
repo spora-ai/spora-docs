@@ -12,12 +12,14 @@
     "typecheck": "vuepress typecheck docs",
     "lint:md": "markdownlint-cli2 \"docs/**/*.md\" \".github/**/*.md\" \"*.md\"",
     "format": "prettier --write \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",
-    "format:check": "prettier --check \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\""
+    "format:check": "prettier --check \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",
+    "gen:api": "node scripts/gen-api.mjs",
+    "gen:api:check": "node scripts/gen-api.mjs --check"
   },
   "dependencies": {
+    "@vuepress/bundler-vite": "2.0.0-rc.30",
     "vuepress": "2.0.0-rc.30",
-    "vuepress-theme-plume": "1.0.0-rc.204",
-    "@vuepress/bundler-vite": "2.0.0-rc.30"
+    "vuepress-theme-plume": "1.0.0-rc.204"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

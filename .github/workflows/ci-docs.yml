@@ -49,6 +49,26 @@ jobs:
       - name: Prettier check
         run: npm run format:check
 
+  api-md-drift:
+    name: API reference drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      # Fails the build when docs/reference/api.md is out of date with the
+      # vendored spec in docs/.vuepress/openapi.json. Equivalent to the
+      # `composer openapi-check` drift guard on the spora-core side.
+      - name: gen:api:check
+        run: npm run gen:api:check
+
   typecheck:
     name: TypeScript typecheck
     runs-on: ubuntu-latest

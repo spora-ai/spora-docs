@@ -9,7 +9,7 @@ The `bin/spora` CLI, the test framework, and the project's hard development rule
 
 ## `bin/spora` commands
 
-`bin/spora` is the single CLI entry point. Every operational task — install, plugin management, database ops, worker control — is a subcommand. To see the full list:
+`bin/spora` is the runtime CLI entry point. Every operational task — install, plugin management, database ops, worker control — is a subcommand. To see the full list:
 
 ```bash
 php bin/spora list
@@ -34,8 +34,22 @@ The most-used commands:
 | `media:archive:list` / `media:archive:gc` | List / garbage-collect archived media.                                                                          |
 | `assets:gc`                               | Garbage-collect unreferenced assets.                                                                            |
 | `tool:settings:migrate`                   | One-shot tool settings migration (if you upgrade across a settings-schema change).                              |
+| `spora:openapi [--output] [--check]`      | Generate / drift-check the OpenAPI 3.0 spec from `RouteDefinitions`. Dev-only — gated on `zircote/swagger-php`. |
 
-The `spora:` prefix on the install/setup commands is convention — the plugin namespace is unprefixed (`plugin:install` not `spora:plugin:install`). Older docs sometimes use the prefixed form; both work in current versions.
+The `spora:` prefix on the install/setup/openapi commands is convention — the plugin namespace is unprefixed (`plugin:install` not `spora:plugin:install`). Older docs sometimes use the prefixed form; both work in current versions.
+
+## `bin/spora-build` — build-time CLI
+
+`bin/spora-build` is the build-time companion to `bin/spora`. It deliberately skips the Kernel / DI / `storage/secret.key` boot because downstream tooling (CI, sibling-repo docs builds) checks out spora-core into a sibling directory and runs this binary without an installed app. New commands land under `app/Build/`; today the binary ships:
+
+```bash
+php bin/spora-build list                                # show commands
+php bin/spora-build openapi:generate [output]           # emit openapi.json
+composer openapi                                        # alias for openapi:generate
+php bin/spora-build openapi:check [reference]           # exit non-zero on drift
+```
+
+Why a second binary at all? Because `bin/spora` would refuse to boot without `storage/secret.key`, the DI container, and the database — and build-time tools can't have any of those. Keeping the two binaries separate makes the runtime / build-time boundary explicit; the full rationale lives in `spora-core/AGENTS.md` → "CLI Entry Points".
 
 ## Testing
 

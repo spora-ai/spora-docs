@@ -15,16 +15,19 @@ The source of truth for the tree is `spora-core/AGENTS.md` § "Project Structure
 /app               — PHP application code (MVC-style)
   /Agents          — Agent models and orchestration logic
   /Auth            — Authentication (AuthService, AuthController)
+  /Build           — Build-time CLI commands (skips Kernel/DI boot; consumed by CI)
   /Console         — CLI commands (install, worker, etc.)
   /Core            — Kernel, Router, DI container, base classes
   /Drivers         — LLM driver implementations (OpenAI, Anthropic)
   /Http            — Controllers, middleware, request/response handling
   /Models          — Eloquent models
+  /OpenApi         — OpenAPI generator (RouteSpecCollector, RouteToOpenApi)
   /Plugins         — Plugin loader and hooks
   /Recipes         — Recipe scanner
   /Services        — Business logic (ToolConfigService, NotificationService, etc.)
   /Tools           — Built-in tool implementations
-/bin/spora        — CLI entry point
+/bin/spora         — Runtime CLI entry point
+/bin/spora-build   — Build-time CLI entry point (companion to bin/spora)
 /config.php        — Application configuration
 /database          — Migrations and seeders
 /frontend          — Vue 3 + Vite + Tailwind frontend
@@ -42,16 +45,19 @@ The source of truth for the tree is `spora-core/AGENTS.md` § "Project Structure
 | `app/Agents`          | The Orchestrator, agent models, tick state machine                                    | `Orchestrator.php`, `Agent.php`, `TaskStateMachine.php`                         |
 | `app/Auth`            | Login, registration, session, password reset                                          | `AuthService.php`, `AuthController.php`                                         |
 | `app/Console`         | `bin/spora` commands — install, db:reset, plugin:_, worker:_, etc.                    | Adding a new command = new file here                                            |
+| `app/Build`           | `bin/spora-build` commands — build-time tools (no Kernel/DI/secret-key boot)          | Adding a new build command = new file here                                      |
 | `app/Core`            | The framework: kernel, router, DI container, base classes                             | `Kernel.php`, `Router.php`, `ContainerDefinitions.php`, `AbstractExtension.php` |
 | `app/Drivers`         | LLM driver implementations                                                            | `OpenAICompatibleDriver.php`, `AnthropicCompatibleDriver.php`                   |
 | `app/Http`            | HTTP controllers + middleware                                                         | `Controllers/`, `Middleware/`                                                   |
 | `app/Models`          | Eloquent models — User, Agent, Task, ToolCall, etc.                                   | Schema is auto-generated; don't edit manually                                   |
+| `app/OpenApi`         | OpenAPI 3.0 spec generator — `RouteSpecCollector`, `RouteToOpenApi`                   | Editing routes? The generator reads `RouteDefinitions` directly.                |
 | `app/Plugins`         | `PluginLoader` — reads `plugins/*/plugin.json` at boot                                | The framework's plugin machinery                                                |
 | `app/Recipes`         | Recipe scanner — picks up YAML files from `recipes/` and plugins                      | `RecipeScanner.php`                                                             |
 | `app/Services`        | Business logic that isn't a controller or model                                       | `ToolConfigService.php`, `NotificationService.php`                              |
 | `app/Tools`           | Built-in tool implementations (Calculator, Memory, Handover, ReadUrl, UserInfo, etc.) | Adding a new core tool = new file here                                          |
 | `app/Extensions`      | Base interfaces for App extensions and plugins                                        | `SporaExtensionInterface.php`, `AbstractExtension.php`                          |
-| `bin/spora`           | The CLI entry point — Symfony Console application                                     | Add a new command → register in `bin/spora`                                     |
+| `bin/spora`           | The runtime CLI entry point — Symfony Console application, boots Kernel/DI            | Add a new command → register in `bin/spora`                                     |
+| `bin/spora-build`     | The build-time CLI entry point — no Kernel/DI/secret-key boot                         | Add a new command → register in `bin/spora-build`                               |
 | `config.php`          | App configuration (env-first, with `config.php` fallbacks)                            | `db_*`, `app_*`, `mercure_*` keys                                               |
 | `database/migrations` | Laravel migrations (anonymous-class pattern)                                          | Add a new migration with the highest sequence number                            |
 | `frontend/`           | Vue 3 + Vite + Tailwind admin SPA                                                     | Modifying the UI? This is where you work                                        |

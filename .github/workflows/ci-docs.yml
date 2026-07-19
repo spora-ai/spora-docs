@@ -80,9 +80,21 @@ jobs:
 
       # Bypasses bin/spora (and therefore the Kernel/DI/secret-key boot) so a
       # clean checkout with no storage/secret.key can still emit the spec.
+      #
+      # `bin/openapi-generate.php` only exists on spora-core's `main` branch
+      # AFTER spora-core PR #140 merges. Until then the spec-build step fails
+      # here by design — the docs PR's CI turns green the moment spora-core
+      # PR #140 lands on main and this run is retriggered.
       - name: Generate openapi.json
         working-directory: spora-core
-        run: php bin/openapi-generate.php "$GITHUB_WORKSPACE/docs/.vuepress/openapi.json"
+        run: |
+          if [ ! -f bin/openapi-generate.php ]; then
+            echo "::error::bin/openapi-generate.php not found on spora-core@${{ github.sha }}-external."
+            echo "::error::This workflow requires spora-core PR #140 (the spora:openapi generator) to be merged into main first."
+            echo "::error::After spora-core PR #140 merges, retrigger this PR's CI (the 'api-spec' job will then succeed)."
+            exit 1
+          fi
+          php bin/openapi-generate.php "$GITHUB_WORKSPACE/docs/.vuepress/openapi.json"
 
       - name: Upload spec artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

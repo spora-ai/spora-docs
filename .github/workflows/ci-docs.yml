@@ -49,8 +49,52 @@ jobs:
       - name: Prettier check
         run: npm run format:check
 
+  api-spec:
+    name: Generate OpenAPI spec from spora-core
+    runs-on: ubuntu-latest
+    steps:
+      # spora-core is a sibling repo under the spora-ai GitHub org. Check it out
+      # into ./spora-core so the rest of the job can run its PHP tooling against
+      # the latest main.
+      - name: Checkout spora-core
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: spora-ai/spora-core
+          ref: main
+          path: spora-core
+
+      # Both repos are public within the spora-ai org, so the default
+      # GITHUB_TOKEN has read access. If spora-core ever moves behind a private
+      # visibility, swap in `token: ${{ secrets.CROSS_REPO_READ_TOKEN }}`
+      # below — a PAT with `contents:read` on spora-ai/spora-core.
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, zip
+          coverage: none
+
+      - name: Composer install (spora-core)
+        working-directory: spora-core
+        run: composer install --no-interaction --prefer-dist
+
+      # Bypasses bin/spora (and therefore the Kernel/DI/secret-key boot) so a
+      # clean checkout with no storage/secret.key can still emit the spec.
+      - name: Generate openapi.json
+        working-directory: spora-core
+        run: php bin/openapi-generate.php "$GITHUB_WORKSPACE/docs/.vuepress/openapi.json"
+
+      - name: Upload spec artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: openapi-spec
+          path: docs/.vuepress/openapi.json
+          if-no-files-found: error
+          retention-days: 7
+
   api-md-drift:
     name: API reference drift check
+    needs: api-spec
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -63,9 +107,15 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Download generated spec
+        uses: actions/download-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: openapi-spec
+          path: docs/.vuepress/openapi.json
+
       # Fails the build when docs/reference/api.md is out of date with the
-      # vendored spec in docs/.vuepress/openapi.json. Equivalent to the
-      # `composer openapi-check` drift guard on the spora-core side.
+      # just-regenerated spec. Same semantics as the previous locally-vendored
+      # copy.
       - name: gen:api:check
         run: npm run gen:api:check
 
@@ -88,6 +138,7 @@ jobs:
 
   build:
     name: Build site
+    needs: api-spec
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -99,6 +150,17 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Download generated spec
+        uses: actions/download-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: openapi-spec
+          path: docs/.vuepress/openapi.json
+
+      # Render the page from the freshly-generated spec before VuePress builds,
+      # so the published api.md reflects the current spora-core route surface.
+      - name: gen:api
+        run: npm run gen:api
 
       - name: Build
         run: npm run build

@@ -140,7 +140,7 @@ async function main() {
   const formatted = await prettier.format(rendered, {
     parser: "markdown",
     proseWrap: "preserve",
-    printWidth: 120,
+    printWidth: 200,
   });
 
   const updated =

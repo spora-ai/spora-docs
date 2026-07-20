@@ -256,21 +256,14 @@ async function main() {
   const sidebarBody = JSON.stringify(sidebarManifest, null, 2) + "\n";
 
   if (checkOnly) {
+    // Per-tag files under docs/reference/api/ are gitignored and regenerated
+    // on every `npm run gen:api` (called by predev/prebuild hooks and by the
+    // build CI job). The drift check therefore only validates the committed
+    // artifacts: api.md shell + api-sidebar.json manifest. If a per-tag page
+    // renders incorrectly, the build job fails — that's the safety net.
     const drift = [];
     if (newApiMd !== target) {
       drift.push("docs/reference/api.md");
-    }
-    for (const [path, body] of tagFiles) {
-      const onDisk = existsSync(path) ? readFileSync(path, "utf8") : null;
-      if (onDisk !== body) drift.push(path);
-    }
-    if (existsSync(API_DIR)) {
-      for (const entry of readdirSync(API_DIR)) {
-        if (!entry.endsWith(".md")) continue;
-        if (!tagFiles.has(`${API_DIR}/${entry}`)) {
-          drift.push(`${API_DIR}/${entry} (stale — no matching tag in spec)`);
-        }
-      }
     }
     const sidebarOnDisk = existsSync(SIDEBAR)
       ? readFileSync(SIDEBAR, "utf8")

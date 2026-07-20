@@ -2,7 +2,7 @@
   "name": "spora-docs",
   "version": "0.0.0",
   "private": true,
-  "description": "Spora documentation site — https://docs.spora-ai.com",
+  "description": "Spora documentation site \u2014 https://docs.spora-ai.com",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -14,7 +14,9 @@
     "format": "prettier --write \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",
     "format:check": "prettier --check \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",
     "gen:api": "node scripts/gen-api.mjs",
-    "gen:api:check": "node scripts/gen-api.mjs --check"
+    "gen:api:check": "node scripts/gen-api.mjs --check",
+    "predev": "npm run gen:api",
+    "prebuild": "npm run gen:api"
   },
   "dependencies": {
     "@vuepress/bundler-vite": "2.0.0-rc.30",

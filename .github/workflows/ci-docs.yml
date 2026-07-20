@@ -131,7 +131,11 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: openapi-spec
-          path: docs/.vuepress/openapi.json
+          # Extract the artifact into the parent directory; actions/download-artifact
+          # treats `path:` as a directory, so the file lands at openapi.json
+          # inside it. Pointing `path:` at the file itself causes EISDIR
+          # downstream when gen-api.mjs reads the spec.
+          path: docs/.vuepress/
 
       # Fails the build when docs/reference/api.md is out of date with the
       # just-regenerated spec. Same semantics as the previous locally-vendored
@@ -175,7 +179,11 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: openapi-spec
-          path: docs/.vuepress/openapi.json
+          # Extract the artifact into the parent directory; actions/download-artifact
+          # treats `path:` as a directory, so the file lands at openapi.json
+          # inside it. Pointing `path:` at the file itself causes EISDIR
+          # downstream when gen-api.mjs reads the spec.
+          path: docs/.vuepress/
 
       # Render the page from the freshly-generated spec before VuePress builds,
       # so the published api.md reflects the current spora-core route surface.

@@ -56,6 +56,12 @@ jobs:
       # spora-core is a sibling repo under the spora-ai GitHub org. Check it out
       # into ./spora-core so the rest of the job can run its PHP tooling against
       # the latest main.
+      # Checkout spora-docs itself so $GITHUB_WORKSPACE resolves to this repo
+      # and docs/.vuepress/ exists on disk for the write target. Without this
+      # the inner spora-core checkout leaves the spora-docs workspace empty
+      # and the spec generator's file_put_contents fails.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
       - name: Checkout spora-core
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

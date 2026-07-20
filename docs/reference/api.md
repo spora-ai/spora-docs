@@ -173,132 +173,132 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | Method   | Path                                                        | Auth                       | Purpose                              | Tags             |
 | -------- | ----------------------------------------------------------- | -------------------------- | ------------------------------------ | ---------------- |
 | `GET`    | `/api/health`                                               | —                          | Check Health                         |                  |
-| `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth` + `csrfToken` | Index AgentTemplate                  | Agent-templates  |
+| `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth`               | Index AgentTemplate                  | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/import`                            | `cookieAuth` + `csrfToken` | Import AgentTemplate                 | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/validate`                          | `cookieAuth` + `csrfToken` | ValidatePayload AgentTemplate        | Agent-templates  |
-| `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth` + `csrfToken` | Show AgentTemplate                   | Agent-templates  |
-| `GET`    | `/api/v1/agents`                                            | `cookieAuth` + `csrfToken` | Index Agent                          | Agents           |
+| `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                   | Agent-templates  |
+| `GET`    | `/api/v1/agents`                                            | `cookieAuth`               | Index Agent                          | Agents           |
 | `POST`   | `/api/v1/agents`                                            | `cookieAuth` + `csrfToken` | Store Agent                          | Agents           |
-| `GET`    | `/api/v1/agents/{agentId}/memories`                         | `cookieAuth` + `csrfToken` | Index AgentMemory                    | Agents           |
+| `GET`    | `/api/v1/agents/{agentId}/memories`                         | `cookieAuth`               | Index AgentMemory                    | Agents           |
 | `POST`   | `/api/v1/agents/{agentId}/memories`                         | `cookieAuth` + `csrfToken` | Store AgentMemory                    | Agents           |
 | `PATCH`  | `/api/v1/agents/{agentId}/memories/reorder`                 | `cookieAuth` + `csrfToken` | Reorder AgentMemory                  | Agents           |
-| `GET`    | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth` + `csrfToken` | Show AgentMemory                     | Agents           |
+| `GET`    | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth`               | Show AgentMemory                     | Agents           |
 | `PUT`    | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth` + `csrfToken` | Update AgentMemory                   | Agents           |
 | `DELETE` | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth` + `csrfToken` | Destroy AgentMemory                  | Agents           |
-| `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Show Agent                           | Agents           |
+| `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                           | Agents           |
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                         | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                        | Agents           |
-| `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth` + `csrfToken` | ExportAgent AgentTemplate            | Agents           |
-| `GET`    | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth` + `csrfToken` | Index ScheduledRun                   | Agents           |
+| `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate            | Agents           |
+| `GET`    | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth`               | Index ScheduledRun                   | Agents           |
 | `POST`   | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth` + `csrfToken` | Store ScheduledRun                   | Agents           |
-| `GET`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth` + `csrfToken` | Show ScheduledRun                    | Agents           |
+| `GET`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth`               | Show ScheduledRun                    | Agents           |
 | `PUT`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth` + `csrfToken` | Update ScheduledRun                  | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth` + `csrfToken` | Destroy ScheduledRun                 | Agents           |
 | `POST`   | `/api/v1/agents/{id}/scheduled-runs/{runId}/trigger`        | `cookieAuth` + `csrfToken` | Trigger ScheduledRun                 | Agents           |
-| `GET`    | `/api/v1/agents/{id}/templates`                             | `cookieAuth` + `csrfToken` | Index PromptTemplate                 | Agents           |
+| `GET`    | `/api/v1/agents/{id}/templates`                             | `cookieAuth`               | Index PromptTemplate                 | Agents           |
 | `POST`   | `/api/v1/agents/{id}/templates`                             | `cookieAuth` + `csrfToken` | Store PromptTemplate                 | Agents           |
-| `GET`    | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth` + `csrfToken` | Show PromptTemplate                  | Agents           |
+| `GET`    | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth`               | Show PromptTemplate                  | Agents           |
 | `PUT`    | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth` + `csrfToken` | Update PromptTemplate                | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth` + `csrfToken` | Destroy PromptTemplate               | Agents           |
-| `GET`    | `/api/v1/agents/{id}/tools/operations`                      | `cookieAuth` + `csrfToken` | GetToolsOperations AgentTool         | Agents           |
-| `GET`    | `/api/v1/agents/{id}/tools/status`                          | `cookieAuth` + `csrfToken` | GetToolsStatus AgentTool             | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/operations`                      | `cookieAuth`               | GetToolsOperations AgentTool         | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/status`                          | `cookieAuth`               | GetToolsStatus AgentTool             | Agents           |
 | `POST`   | `/api/v1/agents/{id}/tools/{toolId}/enable`                 | `cookieAuth` + `csrfToken` | EnableTool AgentTool                 | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/enable`                 | `cookieAuth` + `csrfToken` | DisableTool AgentTool                | Agents           |
-| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/operations/{operation}` | `cookieAuth` + `csrfToken` | GetOperationOverride AgentOverride   | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/operations/{operation}` | `cookieAuth`               | GetOperationOverride AgentOverride   | Agents           |
 | `PATCH`  | `/api/v1/agents/{id}/tools/{toolId}/operations/{operation}` | `cookieAuth` + `csrfToken` | PatchOperationOverride AgentOverride | Agents           |
-| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | GetOverride AgentOverride            | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth`               | GetOverride AgentOverride            | Agents           |
 | `PUT`    | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | PutOverride AgentOverride            | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | DeleteOverride AgentOverride         | Agents           |
-| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/status`                 | `cookieAuth` + `csrfToken` | GetToolStatus AgentTool              | Agents           |
-| `GET`    | `/api/v1/apps`                                              | `cookieAuth` + `csrfToken` | Index Apps                           | Apps             |
+| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/status`                 | `cookieAuth`               | GetToolStatus AgentTool              | Agents           |
+| `GET`    | `/api/v1/apps`                                              | `cookieAuth`               | Index Apps                           | Apps             |
 | `GET`    | `/api/v1/assets/{filename}`                                 | `cookieAuth`               | Show Asset                           | Assets           |
-| `PATCH`  | `/api/v1/auth/account`                                      | `csrfToken`                | Account Auth                         | Auth             |
-| `POST`   | `/api/v1/auth/email/change-request`                         | `csrfToken`                | RequestEmailChange Auth              | Auth             |
+| `PATCH`  | `/api/v1/auth/account`                                      | `cookieAuth` + `csrfToken` | Account Auth                         | Auth             |
+| `POST`   | `/api/v1/auth/email/change-request`                         | `cookieAuth` + `csrfToken` | RequestEmailChange Auth              | Auth             |
 | `POST`   | `/api/v1/auth/email/confirm`                                | —                          | ConfirmEmailChange Auth              | Auth             |
 | `POST`   | `/api/v1/auth/forgot-password`                              | —                          | ForgotPassword Auth                  | Auth             |
 | `POST`   | `/api/v1/auth/login`                                        | —                          | Login Auth                           | Auth             |
-| `POST`   | `/api/v1/auth/logout`                                       | `csrfToken`                | Logout Auth                          | Auth             |
-| `GET`    | `/api/v1/auth/me`                                           | `csrfToken`                | Me Auth                              | Auth             |
-| `PATCH`  | `/api/v1/auth/password`                                     | `csrfToken`                | Password Auth                        | Auth             |
+| `POST`   | `/api/v1/auth/logout`                                       | `cookieAuth` + `csrfToken` | Logout Auth                          | Auth             |
+| `GET`    | `/api/v1/auth/me`                                           | `cookieAuth`               | Me Auth                              | Auth             |
+| `PATCH`  | `/api/v1/auth/password`                                     | `cookieAuth` + `csrfToken` | Password Auth                        | Auth             |
 | `POST`   | `/api/v1/auth/register`                                     | —                          | Register Auth                        | Auth             |
 | `POST`   | `/api/v1/auth/reset-password`                               | —                          | ResetPassword Auth                   | Auth             |
 | `POST`   | `/api/v1/auth/verification/resend`                          | —                          | ResendVerification Auth              | Auth             |
 | `GET`    | `/api/v1/auth/verify/{selector}`                            | —                          | Verify Auth                          | Auth             |
 | `GET`    | `/api/v1/config`                                            | —                          | Index Config                         | Config           |
-| `GET`    | `/api/v1/llm-configs`                                       | `cookieAuth` + `csrfToken` | Index LLMConfig                      | Llm-configs      |
+| `GET`    | `/api/v1/llm-configs`                                       | `cookieAuth`               | Index LLMConfig                      | Llm-configs      |
 | `POST`   | `/api/v1/llm-configs`                                       | `cookieAuth` + `csrfToken` | Store LLMConfig                      | Llm-configs      |
-| `GET`    | `/api/v1/llm-configs/global`                                | `cookieAuth` + `csrfToken` | GlobalConfigs LLMConfig              | Llm-configs      |
-| `GET`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Show LLMConfig                       | Llm-configs      |
+| `GET`    | `/api/v1/llm-configs/global`                                | `cookieAuth`               | GlobalConfigs LLMConfig              | Llm-configs      |
+| `GET`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth`               | Show LLMConfig                       | Llm-configs      |
 | `PUT`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Update LLMConfig                     | Llm-configs      |
 | `DELETE` | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Destroy LLMConfig                    | Llm-configs      |
 | `POST`   | `/api/v1/llm-configs/{id}/set-default`                      | `cookieAuth` + `csrfToken` | SetDefault LLMConfig                 | Llm-configs      |
-| `GET`    | `/api/v1/llm-drivers`                                       | `cookieAuth` + `csrfToken` | Drivers LLMConfig                    | Llm-drivers      |
-| `GET`    | `/api/v1/mail-config`                                       | `cookieAuth` + `csrfToken` | Index MailConfig                     | Mail-config      |
+| `GET`    | `/api/v1/llm-drivers`                                       | `cookieAuth`               | Drivers LLMConfig                    | Llm-drivers      |
+| `GET`    | `/api/v1/mail-config`                                       | `cookieAuth`               | Index MailConfig                     | Mail-config      |
 | `PUT`    | `/api/v1/mail-config`                                       | `cookieAuth` + `csrfToken` | Update MailConfig                    | Mail-config      |
 | `POST`   | `/api/v1/mail-config/test`                                  | `cookieAuth` + `csrfToken` | Test MailConfig                      | Mail-config      |
-| `GET`    | `/api/v1/mail-templates`                                    | `cookieAuth` + `csrfToken` | Index MailTemplate                   | Mail-templates   |
+| `GET`    | `/api/v1/mail-templates`                                    | `cookieAuth`               | Index MailTemplate                   | Mail-templates   |
 | `POST`   | `/api/v1/mail-templates`                                    | `cookieAuth` + `csrfToken` | Store MailTemplate                   | Mail-templates   |
-| `GET`    | `/api/v1/mail-templates/{id}`                               | `cookieAuth` + `csrfToken` | Show MailTemplate                    | Mail-templates   |
+| `GET`    | `/api/v1/mail-templates/{id}`                               | `cookieAuth`               | Show MailTemplate                    | Mail-templates   |
 | `PUT`    | `/api/v1/mail-templates/{id}`                               | `cookieAuth` + `csrfToken` | Update MailTemplate                  | Mail-templates   |
 | `DELETE` | `/api/v1/mail-templates/{id}`                               | `cookieAuth` + `csrfToken` | Destroy MailTemplate                 | Mail-templates   |
-| `GET`    | `/api/v1/mail-templates/{name}/preview`                     | `cookieAuth` + `csrfToken` | Preview MailTemplate                 | Mail-templates   |
-| `GET`    | `/api/v1/me/locations`                                      | `cookieAuth` + `csrfToken` | GetLocations UserProfile             | Me               |
+| `GET`    | `/api/v1/mail-templates/{name}/preview`                     | `cookieAuth`               | Preview MailTemplate                 | Mail-templates   |
+| `GET`    | `/api/v1/me/locations`                                      | `cookieAuth`               | GetLocations UserProfile             | Me               |
 | `POST`   | `/api/v1/me/locations`                                      | `cookieAuth` + `csrfToken` | PostLocation UserProfile             | Me               |
 | `PUT`    | `/api/v1/me/locations/{id}`                                 | `cookieAuth` + `csrfToken` | PutLocation UserProfile              | Me               |
 | `DELETE` | `/api/v1/me/locations/{id}`                                 | `cookieAuth` + `csrfToken` | DeleteLocation UserProfile           | Me               |
-| `GET`    | `/api/v1/me/profile`                                        | `cookieAuth` + `csrfToken` | GetProfile UserProfile               | Me               |
+| `GET`    | `/api/v1/me/profile`                                        | `cookieAuth`               | GetProfile UserProfile               | Me               |
 | `PUT`    | `/api/v1/me/profile`                                        | `cookieAuth` + `csrfToken` | PutProfile UserProfile               | Me               |
-| `GET`    | `/api/v1/media`                                             | `cookieAuth` + `csrfToken` | Index MediaArchive                   | Media            |
+| `GET`    | `/api/v1/media`                                             | `cookieAuth`               | Index MediaArchive                   | Media            |
 | `POST`   | `/api/v1/media`                                             | `cookieAuth` + `csrfToken` | Store MediaUpload                    | Media            |
 | `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes              | Media            |
-| `GET`    | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Show MediaArchive                    | Media            |
+| `GET`    | `/api/v1/media/{id}`                                        | `cookieAuth`               | Show MediaArchive                    | Media            |
 | `PATCH`  | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Update MediaArchive                  | Media            |
 | `DELETE` | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Destroy MediaArchive                 | Media            |
 | `POST`   | `/api/v1/media/{id}/public-token/refresh`                   | `cookieAuth` + `csrfToken` | RefreshPublicToken MediaArchive      | Media            |
-| `GET`    | `/api/v1/memories`                                          | `cookieAuth` + `csrfToken` | Index Memory                         | Memories         |
+| `GET`    | `/api/v1/memories`                                          | `cookieAuth`               | Index Memory                         | Memories         |
 | `POST`   | `/api/v1/memories`                                          | `cookieAuth` + `csrfToken` | Store Memory                         | Memories         |
 | `PATCH`  | `/api/v1/memories/reorder`                                  | `cookieAuth` + `csrfToken` | Reorder Memory                       | Memories         |
-| `GET`    | `/api/v1/memories/{id}`                                     | `cookieAuth` + `csrfToken` | Show Memory                          | Memories         |
+| `GET`    | `/api/v1/memories/{id}`                                     | `cookieAuth`               | Show Memory                          | Memories         |
 | `PUT`    | `/api/v1/memories/{id}`                                     | `cookieAuth` + `csrfToken` | Update Memory                        | Memories         |
 | `DELETE` | `/api/v1/memories/{id}`                                     | `cookieAuth` + `csrfToken` | Destroy Memory                       | Memories         |
-| `GET`    | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | Index Notification                   | Notifications    |
+| `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                   | Notifications    |
 | `DELETE` | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | DestroyAll Notification              | Notifications    |
 | `POST`   | `/api/v1/notifications/read-all`                            | `cookieAuth` + `csrfToken` | MarkAllRead Notification             | Notifications    |
 | `DELETE` | `/api/v1/notifications/{id}`                                | `cookieAuth` + `csrfToken` | Destroy Notification                 | Notifications    |
 | `POST`   | `/api/v1/notifications/{id}/read`                           | `cookieAuth` + `csrfToken` | MarkRead Notification                | Notifications    |
-| `GET`    | `/api/v1/plugins`                                           | `cookieAuth` + `csrfToken` | Index Plugins                        | Plugins          |
+| `GET`    | `/api/v1/plugins`                                           | `cookieAuth`               | Index Plugins                        | Plugins          |
 | `POST`   | `/api/v1/plugins`                                           | `cookieAuth` + `csrfToken` | Store Plugins                        | Plugins          |
 | `GET`    | `/api/v1/plugins/catalog`                                   | `cookieAuth`               | Catalog Plugins                      | Plugins          |
 | `PATCH`  | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Update Plugins                       | Plugins          |
 | `DELETE` | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Destroy Plugins                      | Plugins          |
 | `GET`    | `/api/v1/public/media/{id}`                                 | —                          | Show PublicMedia                     | Public           |
-| `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth` + `csrfToken` | Auth Sse                             | Sse              |
-| `GET`    | `/api/v1/sse/status`                                        | `cookieAuth` + `csrfToken` | Status Sse                           | Sse              |
-| `GET`    | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Index Task                           | Tasks            |
+| `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                             | Sse              |
+| `GET`    | `/api/v1/sse/status`                                        | `cookieAuth`               | Status Sse                           | Sse              |
+| `GET`    | `/api/v1/tasks`                                             | `cookieAuth`               | Index Task                           | Tasks            |
 | `POST`   | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Store Task                           | Tasks            |
-| `GET`    | `/api/v1/tasks/{taskId}`                                    | `cookieAuth` + `csrfToken` | Show Task                            | Tasks            |
+| `GET`    | `/api/v1/tasks/{taskId}`                                    | `cookieAuth`               | Show Task                            | Tasks            |
 | `DELETE` | `/api/v1/tasks/{taskId}`                                    | `cookieAuth` + `csrfToken` | Destroy Task                         | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/approve`                            | `cookieAuth` + `csrfToken` | Approve Task                         | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/continue`                           | `cookieAuth` + `csrfToken` | Continue Task                        | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/reject`                             | `cookieAuth` + `csrfToken` | Reject Task                          | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/retry`                              | `cookieAuth` + `csrfToken` | Retry Task                           | Tasks            |
 | `DELETE` | `/api/v1/tasks/{taskId}/retry-chain`                        | `cookieAuth` + `csrfToken` | CancelRetryChain Task                | Tasks            |
-| `GET`    | `/api/v1/tools`                                             | `cookieAuth` + `csrfToken` | Index Tool                           | Tools            |
-| `GET`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth` + `csrfToken` | GetSettings Tool                     | Tools            |
+| `GET`    | `/api/v1/tools`                                             | `cookieAuth`               | Index Tool                           | Tools            |
+| `GET`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth`               | GetSettings Tool                     | Tools            |
 | `PUT`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth` + `csrfToken` | PutSettings Tool                     | Tools            |
 | `DELETE` | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth` + `csrfToken` | DeleteSettings Tool                  | Tools            |
-| `GET`    | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth` + `csrfToken` | GetUserSettings Tool                 | Tools            |
+| `GET`    | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth`               | GetUserSettings Tool                 | Tools            |
 | `PUT`    | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth` + `csrfToken` | PutUserSettings Tool                 | Tools            |
 | `DELETE` | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth` + `csrfToken` | DeleteUserSettings Tool              | Tools            |
-| `GET`    | `/api/v1/user-preferences/llm`                              | `cookieAuth` + `csrfToken` | Show UserPreference                  | User-preferences |
+| `GET`    | `/api/v1/user-preferences/llm`                              | `cookieAuth`               | Show UserPreference                  | User-preferences |
 | `PUT`    | `/api/v1/user-preferences/llm`                              | `cookieAuth` + `csrfToken` | Update UserPreference                | User-preferences |
-| `GET`    | `/api/v1/users`                                             | `cookieAuth` + `csrfToken` | Index User                           | Users            |
+| `GET`    | `/api/v1/users`                                             | `cookieAuth`               | Index User                           | Users            |
 | `POST`   | `/api/v1/users`                                             | `cookieAuth` + `csrfToken` | Store User                           | Users            |
-| `GET`    | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Show User                            | Users            |
+| `GET`    | `/api/v1/users/{id}`                                        | `cookieAuth`               | Show User                            | Users            |
 | `PUT`    | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Update User                          | Users            |
 | `PATCH`  | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Update User                          | Users            |
 | `DELETE` | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Destroy User                         | Users            |
-| `GET`    | `/api/v1/users/{id}/roles`                                  | `cookieAuth` + `csrfToken` | ListRoles User                       | Users            |
+| `GET`    | `/api/v1/users/{id}/roles`                                  | `cookieAuth`               | ListRoles User                       | Users            |
 | `POST`   | `/api/v1/users/{id}/roles`                                  | `cookieAuth` + `csrfToken` | GrantRole User                       | Users            |
 | `DELETE` | `/api/v1/users/{id}/roles/{role}`                           | `cookieAuth` + `csrfToken` | RevokeRole User                      | Users            |
 

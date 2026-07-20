@@ -1,0 +1,96 @@
+{
+  "overview": {
+    "text": "Overview",
+    "link": "/reference/api"
+  },
+  "items": [
+    {
+      "text": "Agents",
+      "link": "/reference/api/agents"
+    },
+    {
+      "text": "Auth",
+      "link": "/reference/api/auth"
+    },
+    {
+      "text": "Tasks",
+      "link": "/reference/api/tasks"
+    },
+    {
+      "text": "Users",
+      "link": "/reference/api/users"
+    },
+    {
+      "text": "Llm-configs",
+      "link": "/reference/api/llm-configs"
+    },
+    {
+      "text": "Media",
+      "link": "/reference/api/media"
+    },
+    {
+      "text": "Tools",
+      "link": "/reference/api/tools"
+    },
+    {
+      "text": "Mail-templates",
+      "link": "/reference/api/mail-templates"
+    },
+    {
+      "text": "Me",
+      "link": "/reference/api/me"
+    },
+    {
+      "text": "Memories",
+      "link": "/reference/api/memories"
+    },
+    {
+      "text": "Notifications",
+      "link": "/reference/api/notifications"
+    },
+    {
+      "text": "Plugins",
+      "link": "/reference/api/plugins"
+    },
+    {
+      "text": "Agent-templates",
+      "link": "/reference/api/agent-templates"
+    },
+    {
+      "text": "Mail-config",
+      "link": "/reference/api/mail-config"
+    },
+    {
+      "text": "Sse",
+      "link": "/reference/api/sse"
+    },
+    {
+      "text": "User-preferences",
+      "link": "/reference/api/user-preferences"
+    },
+    {
+      "text": "Apps",
+      "link": "/reference/api/apps"
+    },
+    {
+      "text": "Assets",
+      "link": "/reference/api/assets"
+    },
+    {
+      "text": "Config",
+      "link": "/reference/api/config"
+    },
+    {
+      "text": "Health",
+      "link": "/reference/api/health"
+    },
+    {
+      "text": "Llm-drivers",
+      "link": "/reference/api/llm-drivers"
+    },
+    {
+      "text": "Public",
+      "link": "/reference/api/public"
+    }
+  ]
+}

@@ -155,3 +155,1919 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Concepts → Error handling](/reference/concepts/error-handling) — full error code registry and envelope spec
 - [Install API](/develop/plugins/install-api) — the plugin install endpoints in detail
 - [Operations → Day-2 ops](/start/operators/operations) — operator-facing workflows
+
+<!-- API:GENERATED:START -->
+
+## Spora API — endpoint catalogue
+
+> This table is generated from `docs/.vuepress/openapi.json`. To refresh, run `npm run gen:api`.
+
+### Security schemes
+
+| Scheme       | Where  | Key            | Description                                                                                  |
+| ------------ | ------ | -------------- | -------------------------------------------------------------------------------------------- |
+| `cookieAuth` | cookie | `PHPSESSID`    | Session cookie issued by `delight-im/auth`. Required by `AuthMiddleware`.                    |
+| `csrfToken`  | header | `X-CSRF-Token` | CSRF token issued alongside the session. Required by `CsrfMiddleware` on every write method. |
+
+### Endpoints
+
+| Method   | Path                                                        | Auth                       | Purpose                              | Tags             |
+| -------- | ----------------------------------------------------------- | -------------------------- | ------------------------------------ | ---------------- |
+| `GET`    | `/api/health`                                               | —                          | Check Health                         |                  |
+| `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth`               | Index AgentTemplate                  | Agent-templates  |
+| `POST`   | `/api/v1/agent-templates/import`                            | `cookieAuth` + `csrfToken` | Import AgentTemplate                 | Agent-templates  |
+| `POST`   | `/api/v1/agent-templates/validate`                          | `cookieAuth` + `csrfToken` | ValidatePayload AgentTemplate        | Agent-templates  |
+| `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                   | Agent-templates  |
+| `GET`    | `/api/v1/agents`                                            | `cookieAuth`               | Index Agent                          | Agents           |
+| `POST`   | `/api/v1/agents`                                            | `cookieAuth` + `csrfToken` | Store Agent                          | Agents           |
+| `GET`    | `/api/v1/agents/{agentId}/memories`                         | `cookieAuth`               | Index AgentMemory                    | Agents           |
+| `POST`   | `/api/v1/agents/{agentId}/memories`                         | `cookieAuth` + `csrfToken` | Store AgentMemory                    | Agents           |
+| `PATCH`  | `/api/v1/agents/{agentId}/memories/reorder`                 | `cookieAuth` + `csrfToken` | Reorder AgentMemory                  | Agents           |
+| `GET`    | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth`               | Show AgentMemory                     | Agents           |
+| `PUT`    | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth` + `csrfToken` | Update AgentMemory                   | Agents           |
+| `DELETE` | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth` + `csrfToken` | Destroy AgentMemory                  | Agents           |
+| `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                           | Agents           |
+| `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                         | Agents           |
+| `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                        | Agents           |
+| `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate            | Agents           |
+| `GET`    | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth`               | Index ScheduledRun                   | Agents           |
+| `POST`   | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth` + `csrfToken` | Store ScheduledRun                   | Agents           |
+| `GET`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth`               | Show ScheduledRun                    | Agents           |
+| `PUT`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth` + `csrfToken` | Update ScheduledRun                  | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth` + `csrfToken` | Destroy ScheduledRun                 | Agents           |
+| `POST`   | `/api/v1/agents/{id}/scheduled-runs/{runId}/trigger`        | `cookieAuth` + `csrfToken` | Trigger ScheduledRun                 | Agents           |
+| `GET`    | `/api/v1/agents/{id}/templates`                             | `cookieAuth`               | Index PromptTemplate                 | Agents           |
+| `POST`   | `/api/v1/agents/{id}/templates`                             | `cookieAuth` + `csrfToken` | Store PromptTemplate                 | Agents           |
+| `GET`    | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth`               | Show PromptTemplate                  | Agents           |
+| `PUT`    | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth` + `csrfToken` | Update PromptTemplate                | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth` + `csrfToken` | Destroy PromptTemplate               | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/operations`                      | `cookieAuth`               | GetToolsOperations AgentTool         | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/status`                          | `cookieAuth`               | GetToolsStatus AgentTool             | Agents           |
+| `POST`   | `/api/v1/agents/{id}/tools/{toolId}/enable`                 | `cookieAuth` + `csrfToken` | EnableTool AgentTool                 | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/enable`                 | `cookieAuth` + `csrfToken` | DisableTool AgentTool                | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/operations/{operation}` | `cookieAuth`               | GetOperationOverride AgentOverride   | Agents           |
+| `PATCH`  | `/api/v1/agents/{id}/tools/{toolId}/operations/{operation}` | `cookieAuth` + `csrfToken` | PatchOperationOverride AgentOverride | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth`               | GetOverride AgentOverride            | Agents           |
+| `PUT`    | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | PutOverride AgentOverride            | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | DeleteOverride AgentOverride         | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/{toolId}/status`                 | `cookieAuth`               | GetToolStatus AgentTool              | Agents           |
+| `GET`    | `/api/v1/apps`                                              | `cookieAuth`               | Index Apps                           | Apps             |
+| `GET`    | `/api/v1/assets/{filename}`                                 | `cookieAuth`               | Show Asset                           | Assets           |
+| `PATCH`  | `/api/v1/auth/account`                                      | `cookieAuth` + `csrfToken` | Account Auth                         | Auth             |
+| `POST`   | `/api/v1/auth/email/change-request`                         | `cookieAuth` + `csrfToken` | RequestEmailChange Auth              | Auth             |
+| `POST`   | `/api/v1/auth/email/confirm`                                | —                          | ConfirmEmailChange Auth              | Auth             |
+| `POST`   | `/api/v1/auth/forgot-password`                              | —                          | ForgotPassword Auth                  | Auth             |
+| `POST`   | `/api/v1/auth/login`                                        | —                          | Login Auth                           | Auth             |
+| `POST`   | `/api/v1/auth/logout`                                       | `cookieAuth` + `csrfToken` | Logout Auth                          | Auth             |
+| `GET`    | `/api/v1/auth/me`                                           | `cookieAuth`               | Me Auth                              | Auth             |
+| `PATCH`  | `/api/v1/auth/password`                                     | `cookieAuth` + `csrfToken` | Password Auth                        | Auth             |
+| `POST`   | `/api/v1/auth/register`                                     | —                          | Register Auth                        | Auth             |
+| `POST`   | `/api/v1/auth/reset-password`                               | —                          | ResetPassword Auth                   | Auth             |
+| `POST`   | `/api/v1/auth/verification/resend`                          | —                          | ResendVerification Auth              | Auth             |
+| `GET`    | `/api/v1/auth/verify/{selector}`                            | —                          | Verify Auth                          | Auth             |
+| `GET`    | `/api/v1/config`                                            | —                          | Index Config                         | Config           |
+| `GET`    | `/api/v1/llm-configs`                                       | `cookieAuth`               | Index LLMConfig                      | Llm-configs      |
+| `POST`   | `/api/v1/llm-configs`                                       | `cookieAuth` + `csrfToken` | Store LLMConfig                      | Llm-configs      |
+| `GET`    | `/api/v1/llm-configs/global`                                | `cookieAuth`               | GlobalConfigs LLMConfig              | Llm-configs      |
+| `GET`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth`               | Show LLMConfig                       | Llm-configs      |
+| `PUT`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Update LLMConfig                     | Llm-configs      |
+| `DELETE` | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Destroy LLMConfig                    | Llm-configs      |
+| `POST`   | `/api/v1/llm-configs/{id}/set-default`                      | `cookieAuth` + `csrfToken` | SetDefault LLMConfig                 | Llm-configs      |
+| `GET`    | `/api/v1/llm-drivers`                                       | `cookieAuth`               | Drivers LLMConfig                    | Llm-drivers      |
+| `GET`    | `/api/v1/mail-config`                                       | `cookieAuth`               | Index MailConfig                     | Mail-config      |
+| `PUT`    | `/api/v1/mail-config`                                       | `cookieAuth` + `csrfToken` | Update MailConfig                    | Mail-config      |
+| `POST`   | `/api/v1/mail-config/test`                                  | `cookieAuth` + `csrfToken` | Test MailConfig                      | Mail-config      |
+| `GET`    | `/api/v1/mail-templates`                                    | `cookieAuth`               | Index MailTemplate                   | Mail-templates   |
+| `POST`   | `/api/v1/mail-templates`                                    | `cookieAuth` + `csrfToken` | Store MailTemplate                   | Mail-templates   |
+| `GET`    | `/api/v1/mail-templates/{id}`                               | `cookieAuth`               | Show MailTemplate                    | Mail-templates   |
+| `PUT`    | `/api/v1/mail-templates/{id}`                               | `cookieAuth` + `csrfToken` | Update MailTemplate                  | Mail-templates   |
+| `DELETE` | `/api/v1/mail-templates/{id}`                               | `cookieAuth` + `csrfToken` | Destroy MailTemplate                 | Mail-templates   |
+| `GET`    | `/api/v1/mail-templates/{name}/preview`                     | `cookieAuth`               | Preview MailTemplate                 | Mail-templates   |
+| `GET`    | `/api/v1/me/locations`                                      | `cookieAuth`               | GetLocations UserProfile             | Me               |
+| `POST`   | `/api/v1/me/locations`                                      | `cookieAuth` + `csrfToken` | PostLocation UserProfile             | Me               |
+| `PUT`    | `/api/v1/me/locations/{id}`                                 | `cookieAuth` + `csrfToken` | PutLocation UserProfile              | Me               |
+| `DELETE` | `/api/v1/me/locations/{id}`                                 | `cookieAuth` + `csrfToken` | DeleteLocation UserProfile           | Me               |
+| `GET`    | `/api/v1/me/profile`                                        | `cookieAuth`               | GetProfile UserProfile               | Me               |
+| `PUT`    | `/api/v1/me/profile`                                        | `cookieAuth` + `csrfToken` | PutProfile UserProfile               | Me               |
+| `GET`    | `/api/v1/media`                                             | `cookieAuth`               | Index MediaArchive                   | Media            |
+| `POST`   | `/api/v1/media`                                             | `cookieAuth` + `csrfToken` | Store MediaUpload                    | Media            |
+| `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes              | Media            |
+| `GET`    | `/api/v1/media/{id}`                                        | `cookieAuth`               | Show MediaArchive                    | Media            |
+| `PATCH`  | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Update MediaArchive                  | Media            |
+| `DELETE` | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Destroy MediaArchive                 | Media            |
+| `POST`   | `/api/v1/media/{id}/public-token/refresh`                   | `cookieAuth` + `csrfToken` | RefreshPublicToken MediaArchive      | Media            |
+| `GET`    | `/api/v1/memories`                                          | `cookieAuth`               | Index Memory                         | Memories         |
+| `POST`   | `/api/v1/memories`                                          | `cookieAuth` + `csrfToken` | Store Memory                         | Memories         |
+| `PATCH`  | `/api/v1/memories/reorder`                                  | `cookieAuth` + `csrfToken` | Reorder Memory                       | Memories         |
+| `GET`    | `/api/v1/memories/{id}`                                     | `cookieAuth`               | Show Memory                          | Memories         |
+| `PUT`    | `/api/v1/memories/{id}`                                     | `cookieAuth` + `csrfToken` | Update Memory                        | Memories         |
+| `DELETE` | `/api/v1/memories/{id}`                                     | `cookieAuth` + `csrfToken` | Destroy Memory                       | Memories         |
+| `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                   | Notifications    |
+| `DELETE` | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | DestroyAll Notification              | Notifications    |
+| `POST`   | `/api/v1/notifications/read-all`                            | `cookieAuth` + `csrfToken` | MarkAllRead Notification             | Notifications    |
+| `DELETE` | `/api/v1/notifications/{id}`                                | `cookieAuth` + `csrfToken` | Destroy Notification                 | Notifications    |
+| `POST`   | `/api/v1/notifications/{id}/read`                           | `cookieAuth` + `csrfToken` | MarkRead Notification                | Notifications    |
+| `GET`    | `/api/v1/plugins`                                           | `cookieAuth`               | Index Plugins                        | Plugins          |
+| `POST`   | `/api/v1/plugins`                                           | `cookieAuth` + `csrfToken` | Store Plugins                        | Plugins          |
+| `GET`    | `/api/v1/plugins/catalog`                                   | `cookieAuth`               | Catalog Plugins                      | Plugins          |
+| `PATCH`  | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Update Plugins                       | Plugins          |
+| `DELETE` | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Destroy Plugins                      | Plugins          |
+| `GET`    | `/api/v1/public/media/{id}`                                 | —                          | Show PublicMedia                     | Public           |
+| `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                             | Sse              |
+| `GET`    | `/api/v1/sse/status`                                        | `cookieAuth`               | Status Sse                           | Sse              |
+| `GET`    | `/api/v1/tasks`                                             | `cookieAuth`               | Index Task                           | Tasks            |
+| `POST`   | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Store Task                           | Tasks            |
+| `GET`    | `/api/v1/tasks/{taskId}`                                    | `cookieAuth`               | Show Task                            | Tasks            |
+| `DELETE` | `/api/v1/tasks/{taskId}`                                    | `cookieAuth` + `csrfToken` | Destroy Task                         | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/approve`                            | `cookieAuth` + `csrfToken` | Approve Task                         | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/continue`                           | `cookieAuth` + `csrfToken` | Continue Task                        | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/reject`                             | `cookieAuth` + `csrfToken` | Reject Task                          | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/retry`                              | `cookieAuth` + `csrfToken` | Retry Task                           | Tasks            |
+| `DELETE` | `/api/v1/tasks/{taskId}/retry-chain`                        | `cookieAuth` + `csrfToken` | CancelRetryChain Task                | Tasks            |
+| `GET`    | `/api/v1/tools`                                             | `cookieAuth`               | Index Tool                           | Tools            |
+| `GET`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth`               | GetSettings Tool                     | Tools            |
+| `PUT`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth` + `csrfToken` | PutSettings Tool                     | Tools            |
+| `DELETE` | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth` + `csrfToken` | DeleteSettings Tool                  | Tools            |
+| `GET`    | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth`               | GetUserSettings Tool                 | Tools            |
+| `PUT`    | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth` + `csrfToken` | PutUserSettings Tool                 | Tools            |
+| `DELETE` | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth` + `csrfToken` | DeleteUserSettings Tool              | Tools            |
+| `GET`    | `/api/v1/user-preferences/llm`                              | `cookieAuth`               | Show UserPreference                  | User-preferences |
+| `PUT`    | `/api/v1/user-preferences/llm`                              | `cookieAuth` + `csrfToken` | Update UserPreference                | User-preferences |
+| `GET`    | `/api/v1/users`                                             | `cookieAuth`               | Index User                           | Users            |
+| `POST`   | `/api/v1/users`                                             | `cookieAuth` + `csrfToken` | Store User                           | Users            |
+| `GET`    | `/api/v1/users/{id}`                                        | `cookieAuth`               | Show User                            | Users            |
+| `PUT`    | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Update User                          | Users            |
+| `PATCH`  | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Update User                          | Users            |
+| `DELETE` | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Destroy User                         | Users            |
+| `GET`    | `/api/v1/users/{id}/roles`                                  | `cookieAuth`               | ListRoles User                       | Users            |
+| `POST`   | `/api/v1/users/{id}/roles`                                  | `cookieAuth` + `csrfToken` | GrantRole User                       | Users            |
+| `DELETE` | `/api/v1/users/{id}/roles/{role}`                           | `cookieAuth` + `csrfToken` | RevokeRole User                      | Users            |
+
+### Per-endpoint detail
+
+#### `GET /api/health` — Check Health
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agent-templates` — Index AgentTemplate
+
+**Tags:** Agent-templates
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agent-templates/import` — Import AgentTemplate
+
+**Tags:** Agent-templates
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agent-templates/validate` — ValidatePayload AgentTemplate
+
+**Tags:** Agent-templates
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agent-templates/{id}` — Show AgentTemplate
+
+**Tags:** Agent-templates
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents` — Index Agent
+
+**Tags:** Agents
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agents` — Store Agent
+
+**Tags:** Agents
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{agentId}/memories` — Index AgentMemory
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name      | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `agentId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agents/{agentId}/memories` — Store AgentMemory
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name      | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `agentId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/agents/{agentId}/memories/reorder` — Reorder AgentMemory
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name      | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `agentId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{agentId}/memories/{memoryId}` — Show AgentMemory
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name       | Type   | Required | Description |
+| ---------- | ------ | -------- | ----------- |
+| `agentId`  | string | yes      |             |
+| `memoryId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/agents/{agentId}/memories/{memoryId}` — Update AgentMemory
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name       | Type   | Required | Description |
+| ---------- | ------ | -------- | ----------- |
+| `agentId`  | string | yes      |             |
+| `memoryId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/agents/{agentId}/memories/{memoryId}` — Destroy AgentMemory
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name       | Type   | Required | Description |
+| ---------- | ------ | -------- | ----------- |
+| `agentId`  | string | yes      |             |
+| `memoryId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}` — Show Agent
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/agents/{id}` — Update Agent
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/agents/{id}` — Destroy Agent
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/export` — ExportAgent AgentTemplate
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/scheduled-runs` — Index ScheduledRun
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agents/{id}/scheduled-runs` — Store ScheduledRun
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/scheduled-runs/{runId}` — Show ScheduledRun
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name    | Type   | Required | Description |
+| ------- | ------ | -------- | ----------- |
+| `id`    | string | yes      |             |
+| `runId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/agents/{id}/scheduled-runs/{runId}` — Update ScheduledRun
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name    | Type   | Required | Description |
+| ------- | ------ | -------- | ----------- |
+| `id`    | string | yes      |             |
+| `runId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/agents/{id}/scheduled-runs/{runId}` — Destroy ScheduledRun
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name    | Type   | Required | Description |
+| ------- | ------ | -------- | ----------- |
+| `id`    | string | yes      |             |
+| `runId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agents/{id}/scheduled-runs/{runId}/trigger` — Trigger ScheduledRun
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name    | Type   | Required | Description |
+| ------- | ------ | -------- | ----------- |
+| `id`    | string | yes      |             |
+| `runId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/templates` — Index PromptTemplate
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agents/{id}/templates` — Store PromptTemplate
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/templates/{templateId}` — Show PromptTemplate
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name         | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `id`         | string | yes      |             |
+| `templateId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/agents/{id}/templates/{templateId}` — Update PromptTemplate
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name         | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `id`         | string | yes      |             |
+| `templateId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/agents/{id}/templates/{templateId}` — Destroy PromptTemplate
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name         | Type   | Required | Description |
+| ------------ | ------ | -------- | ----------- |
+| `id`         | string | yes      |             |
+| `templateId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/tools/operations` — GetToolsOperations AgentTool
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/tools/status` — GetToolsStatus AgentTool
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/agents/{id}/tools/{toolId}/enable` — EnableTool AgentTool
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `id`     | string | yes      |             |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/agents/{id}/tools/{toolId}/enable` — DisableTool AgentTool
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `id`     | string | yes      |             |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/tools/{toolId}/operations/{operation}` — GetOperationOverride AgentOverride
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name        | Type   | Required | Description |
+| ----------- | ------ | -------- | ----------- |
+| `id`        | string | yes      |             |
+| `toolId`    | string | yes      |             |
+| `operation` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/agents/{id}/tools/{toolId}/operations/{operation}` — PatchOperationOverride AgentOverride
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name        | Type   | Required | Description |
+| ----------- | ------ | -------- | ----------- |
+| `id`        | string | yes      |             |
+| `toolId`    | string | yes      |             |
+| `operation` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/tools/{toolId}/override` — GetOverride AgentOverride
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `id`     | string | yes      |             |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/agents/{id}/tools/{toolId}/override` — PutOverride AgentOverride
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `id`     | string | yes      |             |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/agents/{id}/tools/{toolId}/override` — DeleteOverride AgentOverride
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `id`     | string | yes      |             |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/agents/{id}/tools/{toolId}/status` — GetToolStatus AgentTool
+
+**Tags:** Agents
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `id`     | string | yes      |             |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/apps` — Index Apps
+
+**Tags:** Apps
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/assets/{filename}` — Show Asset
+
+**Tags:** Assets
+
+##### Path parameters
+
+| Name       | Type   | Required | Description |
+| ---------- | ------ | -------- | ----------- |
+| `filename` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/auth/account` — Account Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/email/change-request` — RequestEmailChange Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/email/confirm` — ConfirmEmailChange Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/forgot-password` — ForgotPassword Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/login` — Login Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/logout` — Logout Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/auth/me` — Me Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/auth/password` — Password Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/register` — Register Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/reset-password` — ResetPassword Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/auth/verification/resend` — ResendVerification Auth
+
+**Tags:** Auth
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/auth/verify/{selector}` — Verify Auth
+
+**Tags:** Auth
+
+##### Path parameters
+
+| Name       | Type   | Required | Description |
+| ---------- | ------ | -------- | ----------- |
+| `selector` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/config` — Index Config
+
+**Tags:** Config
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/llm-configs` — Index LLMConfig
+
+**Tags:** Llm-configs
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/llm-configs` — Store LLMConfig
+
+**Tags:** Llm-configs
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/llm-configs/global` — GlobalConfigs LLMConfig
+
+**Tags:** Llm-configs
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/llm-configs/{id}` — Show LLMConfig
+
+**Tags:** Llm-configs
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/llm-configs/{id}` — Update LLMConfig
+
+**Tags:** Llm-configs
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/llm-configs/{id}` — Destroy LLMConfig
+
+**Tags:** Llm-configs
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/llm-configs/{id}/set-default` — SetDefault LLMConfig
+
+**Tags:** Llm-configs
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/llm-drivers` — Drivers LLMConfig
+
+**Tags:** Llm-drivers
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/mail-config` — Index MailConfig
+
+**Tags:** Mail-config
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/mail-config` — Update MailConfig
+
+**Tags:** Mail-config
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/mail-config/test` — Test MailConfig
+
+**Tags:** Mail-config
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/mail-templates` — Index MailTemplate
+
+**Tags:** Mail-templates
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/mail-templates` — Store MailTemplate
+
+**Tags:** Mail-templates
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/mail-templates/{id}` — Show MailTemplate
+
+**Tags:** Mail-templates
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/mail-templates/{id}` — Update MailTemplate
+
+**Tags:** Mail-templates
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/mail-templates/{id}` — Destroy MailTemplate
+
+**Tags:** Mail-templates
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/mail-templates/{name}/preview` — Preview MailTemplate
+
+**Tags:** Mail-templates
+
+##### Path parameters
+
+| Name   | Type   | Required | Description |
+| ------ | ------ | -------- | ----------- |
+| `name` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/me/locations` — GetLocations UserProfile
+
+**Tags:** Me
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/me/locations` — PostLocation UserProfile
+
+**Tags:** Me
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/me/locations/{id}` — PutLocation UserProfile
+
+**Tags:** Me
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/me/locations/{id}` — DeleteLocation UserProfile
+
+**Tags:** Me
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/me/profile` — GetProfile UserProfile
+
+**Tags:** Me
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/me/profile` — PutProfile UserProfile
+
+**Tags:** Me
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/media` — Index MediaArchive
+
+**Tags:** Media
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/media` — Store MediaUpload
+
+**Tags:** Media
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/media/allowed-types` — Index MediaAllowedTypes
+
+**Tags:** Media
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/media/{id}` — Show MediaArchive
+
+**Tags:** Media
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/media/{id}` — Update MediaArchive
+
+**Tags:** Media
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/media/{id}` — Destroy MediaArchive
+
+**Tags:** Media
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/media/{id}/public-token/refresh` — RefreshPublicToken MediaArchive
+
+**Tags:** Media
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/memories` — Index Memory
+
+**Tags:** Memories
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/memories` — Store Memory
+
+**Tags:** Memories
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/memories/reorder` — Reorder Memory
+
+**Tags:** Memories
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/memories/{id}` — Show Memory
+
+**Tags:** Memories
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/memories/{id}` — Update Memory
+
+**Tags:** Memories
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/memories/{id}` — Destroy Memory
+
+**Tags:** Memories
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/notifications` — Index Notification
+
+**Tags:** Notifications
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/notifications` — DestroyAll Notification
+
+**Tags:** Notifications
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/notifications/read-all` — MarkAllRead Notification
+
+**Tags:** Notifications
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/notifications/{id}` — Destroy Notification
+
+**Tags:** Notifications
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/notifications/{id}/read` — MarkRead Notification
+
+**Tags:** Notifications
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/plugins` — Index Plugins
+
+**Tags:** Plugins
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/plugins` — Store Plugins
+
+**Tags:** Plugins
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/plugins/catalog` — Catalog Plugins
+
+**Tags:** Plugins
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/plugins/{package}` — Update Plugins
+
+**Tags:** Plugins
+
+##### Path parameters
+
+| Name      | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `package` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/plugins/{package}` — Destroy Plugins
+
+**Tags:** Plugins
+
+##### Path parameters
+
+| Name      | Type   | Required | Description |
+| --------- | ------ | -------- | ----------- |
+| `package` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/public/media/{id}` — Show PublicMedia
+
+**Tags:** Public
+
+##### Path parameters
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/sse/auth` — Auth Sse
+
+**Tags:** Sse
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/sse/status` — Status Sse
+
+**Tags:** Sse
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/tasks` — Index Task
+
+**Tags:** Tasks
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/tasks` — Store Task
+
+**Tags:** Tasks
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/tasks/{taskId}` — Show Task
+
+**Tags:** Tasks
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `taskId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/tasks/{taskId}` — Destroy Task
+
+**Tags:** Tasks
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `taskId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/tasks/{taskId}/approve` — Approve Task
+
+**Tags:** Tasks
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `taskId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/tasks/{taskId}/continue` — Continue Task
+
+**Tags:** Tasks
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `taskId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/tasks/{taskId}/reject` — Reject Task
+
+**Tags:** Tasks
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `taskId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/tasks/{taskId}/retry` — Retry Task
+
+**Tags:** Tasks
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `taskId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/tasks/{taskId}/retry-chain` — CancelRetryChain Task
+
+**Tags:** Tasks
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `taskId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/tools` — Index Tool
+
+**Tags:** Tools
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/tools/{toolId}/settings` — GetSettings Tool
+
+**Tags:** Tools
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/tools/{toolId}/settings` — PutSettings Tool
+
+**Tags:** Tools
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/tools/{toolId}/settings` — DeleteSettings Tool
+
+**Tags:** Tools
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/tools/{toolId}/user-settings` — GetUserSettings Tool
+
+**Tags:** Tools
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/tools/{toolId}/user-settings` — PutUserSettings Tool
+
+**Tags:** Tools
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/tools/{toolId}/user-settings` — DeleteUserSettings Tool
+
+**Tags:** Tools
+
+##### Path parameters
+
+| Name     | Type   | Required | Description |
+| -------- | ------ | -------- | ----------- |
+| `toolId` | string | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/user-preferences/llm` — Show UserPreference
+
+**Tags:** User-preferences
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/user-preferences/llm` — Update UserPreference
+
+**Tags:** User-preferences
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/users` — Index User
+
+**Tags:** Users
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/users` — Store User
+
+**Tags:** Users
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/users/{id}` — Show User
+
+**Tags:** Users
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PUT /api/v1/users/{id}` — Update User
+
+**Tags:** Users
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `PATCH /api/v1/users/{id}` — Update User
+
+**Tags:** Users
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/users/{id}` — Destroy User
+
+**Tags:** Users
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `GET /api/v1/users/{id}/roles` — ListRoles User
+
+**Tags:** Users
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `POST /api/v1/users/{id}/roles` — GrantRole User
+
+**Tags:** Users
+
+##### Path parameters
+
+| Name | Type    | Required | Description |
+| ---- | ------- | -------- | ----------- |
+| `id` | integer | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+#### `DELETE /api/v1/users/{id}/roles/{role}` — RevokeRole User
+
+**Tags:** Users
+
+##### Path parameters
+
+| Name   | Type    | Required | Description |
+| ------ | ------- | -------- | ----------- |
+| `id`   | integer | yes      |             |
+| `role` | string  | yes      |             |
+
+##### Responses
+
+| Status    | Description                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| `default` | JSON envelope: `{data: ...}` on success, `{error: {code, message}}` on error. |
+
+<!-- API:GENERATED:END -->

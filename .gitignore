@@ -21,3 +21,8 @@ yarn-error.log*
 
 # Lock files
 # Note: package-lock.json is committed for reproducible CI builds
+
+# OpenAPI spec emitted by spora-core's bin/spora-build during the
+# api-spec CI job. Never committed — it's a build artifact that
+# gen:api consumes on the next step.
+docs/.vuepress/openapi.json

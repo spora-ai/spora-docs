@@ -164,7 +164,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 33 routes
+- [Agents](/reference/api/agents) — 27 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Tasks](/reference/api/tasks) — 9 routes
 - [Users](/reference/api/users) — 9 routes
@@ -173,7 +173,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Tools](/reference/api/tools) — 7 routes
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
 - [Me](/reference/api/me) — 6 routes
-- [Memories](/reference/api/memories) — 6 routes
 - [Notifications](/reference/api/notifications) — 5 routes
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
@@ -205,12 +204,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                   | Agent-templates  |
 | `GET`    | `/api/v1/agents`                                            | `cookieAuth`               | Index Agent                          | Agents           |
 | `POST`   | `/api/v1/agents`                                            | `cookieAuth` + `csrfToken` | Store Agent                          | Agents           |
-| `GET`    | `/api/v1/agents/{agentId}/memories`                         | `cookieAuth`               | Index AgentMemory                    | Agents           |
-| `POST`   | `/api/v1/agents/{agentId}/memories`                         | `cookieAuth` + `csrfToken` | Store AgentMemory                    | Agents           |
-| `PATCH`  | `/api/v1/agents/{agentId}/memories/reorder`                 | `cookieAuth` + `csrfToken` | Reorder AgentMemory                  | Agents           |
-| `GET`    | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth`               | Show AgentMemory                     | Agents           |
-| `PUT`    | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth` + `csrfToken` | Update AgentMemory                   | Agents           |
-| `DELETE` | `/api/v1/agents/{agentId}/memories/{memoryId}`              | `cookieAuth` + `csrfToken` | Destroy AgentMemory                  | Agents           |
 | `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                           | Agents           |
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                         | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                        | Agents           |
@@ -281,12 +274,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Update MediaArchive                  | Media            |
 | `DELETE` | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Destroy MediaArchive                 | Media            |
 | `POST`   | `/api/v1/media/{id}/public-token/refresh`                   | `cookieAuth` + `csrfToken` | RefreshPublicToken MediaArchive      | Media            |
-| `GET`    | `/api/v1/memories`                                          | `cookieAuth`               | Index Memory                         | Memories         |
-| `POST`   | `/api/v1/memories`                                          | `cookieAuth` + `csrfToken` | Store Memory                         | Memories         |
-| `PATCH`  | `/api/v1/memories/reorder`                                  | `cookieAuth` + `csrfToken` | Reorder Memory                       | Memories         |
-| `GET`    | `/api/v1/memories/{id}`                                     | `cookieAuth`               | Show Memory                          | Memories         |
-| `PUT`    | `/api/v1/memories/{id}`                                     | `cookieAuth` + `csrfToken` | Update Memory                        | Memories         |
-| `DELETE` | `/api/v1/memories/{id}`                                     | `cookieAuth` + `csrfToken` | Destroy Memory                       | Memories         |
 | `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                   | Notifications    |
 | `DELETE` | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | DestroyAll Notification              | Notifications    |
 | `POST`   | `/api/v1/notifications/read-all`                            | `cookieAuth` + `csrfToken` | MarkAllRead Notification             | Notifications    |

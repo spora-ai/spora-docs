@@ -16,7 +16,7 @@ row without throwing.
 
 The connection default is `utf8mb4` / `utf8mb4_unicode_ci` (see
 [`Spora\Core\Database`](https://github.com/spora-ai/spora-core/blob/main/app/Core/Database.php)),
-but that only governs *new* bytes. A row that was written before the column
+but that only governs _new_ bytes. A row that was written before the column
 was utf8mb4, or that arrived through a code path that dropped raw bytes
 without validating them, can still contain stray `0x80` / `0xC0` / Latin-1
 sequences.
@@ -124,7 +124,7 @@ inside `spora-ai/spora-core`. Any plugin that already requires
 - Detect homograph attacks (visually-confusable characters from different
   scripts). That's a separate concern — see the URL allowlist.
 - Repair mojibake (a string that was double-encoded UTF-8 → Latin-1 →
-  UTF-8). The salvager interprets raw bytes as the *first* non-UTF-8
+  UTF-8). The salvager interprets raw bytes as the _first_ non-UTF-8
   encoding it recognises, never reverses a known re-encoding.
 - Normalise Unicode (NFC / NFD / NFKC). A string like `café` written as
   the four code points `é` stays that way; the utility makes

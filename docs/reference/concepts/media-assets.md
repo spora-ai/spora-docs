@@ -61,6 +61,8 @@ $content = "Generated image:\n\n" . MediaEmbed::image($cdnUrl, "alt text");
 
 `MediaEmbed::image()` produces `![alt text](https://cdn.example/…)` — standard markdown that the renderer turns into `<img>`. No `AssetStore` involvement, no bytes in the DB, no auth surface.
 
+User-supplied filenames flowing into `media_assets.filename` are scrubbed by `Utf8Sanitizer::scrubString` in `MediaUploadController::store()` before `MediaIngestRequest` is built, with a defensive re-scrub in `MediaArchiveService::insertNew()`. The serializer re-scrubs on read as defense-in-depth. See [UTF-8 sanitizer](/reference/concepts/utf8-sanitizer).
+
 The same pattern works for already-hosted audio and video:
 
 ```php

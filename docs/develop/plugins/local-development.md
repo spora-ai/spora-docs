@@ -76,6 +76,8 @@ npm run dev
 
 The plugin's `index.html` (the dev entry) is what Vite serves — it loads `/src/dev-main.ts`, which mounts the Vue app with the in-memory mock API (sandbox mode; no backend round-trips). The plugin's `vite.config.ts` sets `base: '/plugins/<slug>/'` (hardcoded per-plugin — e.g. `'/plugins/media-archive/'` for the Media Archive plugin) so the served paths match the host's runtime contract. The slug here is a coupled pair with the PHP app's `<Plugin>App::name()` value, not derivable from package metadata.
 
+Because Vite injects the plugin stylesheet into the host document and keeps it for the module's lifetime, plugin Tailwind utilities must be isolated even during local development. Follow [Plugin author guide → Admin UI → Isolating plugin CSS](/develop/plugins/author-guide/admin-ui#isolating-plugin-css) before testing through the host proxy.
+
 > **`dev-main.ts` is the dev entry only.** Production builds emit a self-contained IIFE bundle at `frontend/main.js` (per `vite.config.ts`'s `build.lib.entry: 'src/main.ts'`). The `dev-main.ts` shim is excluded from coverage because it is dev tooling, not production code.
 
 ### Terminal 3 — Host SPA (proxies to the plugin's dev server)

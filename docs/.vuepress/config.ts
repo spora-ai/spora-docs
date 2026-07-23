@@ -231,6 +231,7 @@ export default defineUserConfig({
             { text: 'Schema', link: '/reference/concepts/schema' },
             { text: 'Testing', link: '/reference/concepts/testing' },
             { text: 'Tools', link: '/reference/concepts/tools' },
+            { text: 'UTF-8 sanitizer', link: '/reference/concepts/utf8-sanitizer' },
             { text: 'Worker deployment', link: '/reference/concepts/worker-deployment' },
           ],
         },

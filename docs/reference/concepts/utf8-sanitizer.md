@@ -60,24 +60,32 @@ final class Utf8Sanitizer
 
 ## What the algorithm does
 
-Three-step escalation, short-circuiting at the first success:
+Three-step escalation, each step short-circuited by the previous one:
 
 1. **`mb_check_encoding($value, 'UTF-8')`** — passes valid UTF-8 through
    unchanged. This is the hot path; every tool result that flows through
    the orchestrator is already valid UTF-8 and exits here in ~0.5 µs.
-2. **`mb_convert_encoding($value, 'UTF-8', $encoding)`** — salvage via
+2. **`iconv('UTF-8', 'UTF-8//IGNORE', $value)`** — cheap drop pass tried
+   first when the input is mostly valid UTF-8 with a few stray invalid
+   bytes. Those bytes are dropped and the surrounding text is preserved.
+   Only fall through if `iconv` dropped everything or returned an
+   invalid result.
+3. **`mb_convert_encoding($value, 'UTF-8', $encoding)`** — salvage via
    Windows-1252 (covers smart quotes, em-dashes, the Euro sign in the
-   0x80–0x9F range) then ISO-8859-1 as the universal fallback. Most
-   legacy Latin-1 strings exit here.
-3. **`iconv('UTF-8', 'UTF-8//IGNORE', $value)`** — last resort. Drops
-   every byte that isn't part of a valid UTF-8 sequence, preserving
-   surrounding ASCII.
+   0x80–0x9F range) then ISO-8859-1 as the universal fallback. Together
+   these cover every byte 0x00–0xFF, so the salvage chain always
+   produces a valid UTF-8 string for any PHP string input. A final
+   `iconv //IGNORE` pass in `scrubString` strips any bytes that
+   somehow survived — a defensive guard, not a reachable fallback.
 
-**Why:** The combined salvage + drop approach is the textbook recipe for
-mixed-encoding input. Windows-1252 first because it covers 0x80–0x9F (smart
-quotes, em-dashes, the Euro sign) that ISO-8859-1 leaves as control
-characters. Then ISO-8859-1 as the universal fallback. `iconv //IGNORE`
-handles the rare case where neither encoding matches.
+**Why:** `iconv //IGNORE` first because it's the cheapest of the three
+paths (one C-level syscall) and handles the common case of "mostly valid
+UTF-8 with a stray bad byte" without reinterpreting the rest of the
+input. Windows-1252 second because it covers 0x80–0x9F (smart quotes,
+em-dashes, the Euro sign) that ISO-8859-1 leaves as control characters.
+ISO-8859-1 last as the universal fallback — every byte 0x00–0xFF is
+defined in either Windows-1252 or ISO-8859-1, so the salvage chain
+always succeeds for any PHP string input.
 
 ## For plugin authors
 
@@ -122,7 +130,7 @@ inside `spora-ai/spora-core`. Any plugin that already requires
 `Utf8Sanitizer` does **not**:
 
 - Detect homograph attacks (visually-confusable characters from different
-  scripts). That's a separate concern — see the URL allowlist.
+  scripts). That's a separate concern — see the SSRF allowlist in core.
 - Repair mojibake (a string that was double-encoded UTF-8 → Latin-1 →
   UTF-8). The salvager interprets raw bytes as the _first_ non-UTF-8
   encoding it recognises, never reverses a known re-encoding.

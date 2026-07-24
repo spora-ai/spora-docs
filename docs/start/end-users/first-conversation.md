@@ -83,7 +83,7 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 ## What the chat timeline shows
 
 - **Your message** (right-aligned, plain text)
-- **The agent's "thinking"** (if the LLM returns a `reasoning` field — visible if the model is e.g. Claude with thinking enabled)
+- **The agent's "thinking"** — appears when the assistant message contains `content_blocks` entries of type `thinking` (Anthropic with thinking enabled) or `redacted_thinking`. Token counts are surfaced separately in the `usage` panel (`input_tokens`, `output_tokens`, `cache_creation_tokens`, `cache_read_tokens`, …).
 - **Tool calls** — the LLM's `tool_use` block, shown with the tool name, arguments, and the result
 - **The final reply** (left-aligned, the agent's actual response)
 

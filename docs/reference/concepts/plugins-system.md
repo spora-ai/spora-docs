@@ -149,6 +149,27 @@ final class Plugin implements PluginInterface
 >
 > To register a new LLM driver via a plugin, return its FQCN from `PluginInterface::drivers()` — see the [LLM drivers](/reference/concepts/drivers) page for the driver contract and the `llm_driver_classes` container key that plugins are intended to extend.
 
+## Stability contract
+
+Spora divides its PHP surface into two zones. Plugins should depend only on the public zone; reaching into the framework-internal zone is a breaking-change risk and is not covered by SemVer deprecation windows.
+
+### Plugin-stable (depend freely)
+
+- `Spora\Plugins\PluginInterface` and the seven hook methods (`getName`, `autoload`, `tools`, `drivers`, `recipePaths`, `schemaVersion`, `migrationsPath`, `register`).
+- The orchestrator and task services: `Spora\Agents\AgentOrchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
+- The `#[Tool]` attribute and the `ToolInterface` contract for declaring plugin-supplied tools.
+- The `plugin.json` manifest fields documented above. The `slug` field is the only one that must stay stable across releases.
+
+### Framework-internal (do not depend on)
+
+The driver / history value-object layer is **framework-internal** and may change between minor releases without deprecation:
+
+- `Spora\Drivers\ValueObjects\LLMResponse`, `Spora\Drivers\ValueObjects\ContentBlock`, `Spora\Drivers\ValueObjects\Usage`
+- `Spora\Agents\ValueObjects\HistoryMessageContext`
+- Anything else under `Spora\Drivers\` or `Spora\Agents\ValueObjects\`
+
+If your plugin needs a value the orchestrator surface does not already expose, open an issue describing the use case — the fix is to add a stable accessor on `TaskService`, not for plugins to reach into the internal layer.
+
 ## Database migrations
 
 Plugins that need their own tables declare a schema version and a migrations path:

@@ -35,9 +35,7 @@ Operators can ship skills with a plugin by overriding the hook:
 ```php
 public function skillPaths(): array
 {
-    // AbstractPlugin::pluginDir() resolves to the directory holding
-    // plugin.json — no ReflectionClass math needed.
-    return [$this->pluginDir() . '/skills'];
+    return [__DIR__ . '/../skills'];
 }
 ```
 

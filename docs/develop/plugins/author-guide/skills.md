@@ -9,6 +9,21 @@ Skills are versionable, file-backed bundles of operator knowledge the Agent can 
 
 Spora follows the open [agentskills.io](https://agentskills.io/specification) format — the on-disk layout, frontmatter fields, and progressive-disclosure model are spec-conformant.
 
+## Scaffolding
+
+The fastest way to create the SKILL.md + examples.md stub is the `make:skill` command from [spora-maker](https://github.com/spora-ai/spora-maker):
+
+```bash
+php bin/spora make:skill <slug>
+```
+
+The slug is validated against the agentskills.io name pattern (1-64 lowercase alphanumeric + hyphens, no leading/trailing hyphen, no consecutive hyphens). The command writes:
+
+- `skills/<slug>/SKILL.md` — frontmatter stub + body TODO blocks
+- `skills/<slug>/examples.md` — sidecar stub
+
+For **plugin-bundled** skills, write the files by hand instead — spora-maker scaffolds the project-level `skills/` directory, not plugin directories.
+
 ## Directory layout
 
 ```text
@@ -26,17 +41,14 @@ your-plugin/
 
 ## Declaring the path
 
-Override `skillPaths()` on your plugin entry point:
+Override `skillPaths()` on your plugin entry point. The framework looks at `<plugin>/skills/` by convention; for a custom layout, point at the directory depth-1 that holds your skill roots:
 
 ```php
 final class YourPlugin extends AbstractPlugin
 {
     public function skillPaths(): array
     {
-        // pluginDir() is provided by AbstractPlugin and resolves to the
-        // directory holding plugin.json — no ReflectionClass needed.
-        // Paths may point to directories (scanned depth-1) or individual files.
-        return [$this->pluginDir() . '/skills'];
+        return [__DIR__ . '/../skills'];
     }
 }
 ```
@@ -191,7 +203,7 @@ final class YourPlugin extends AbstractPlugin
 
     public function skillPaths(): array
     {
-        return [$this->pluginDir() . '/skills'];
+        return [__DIR__ . '/../skills'];
     }
 }
 ```

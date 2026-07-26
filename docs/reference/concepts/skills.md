@@ -28,7 +28,7 @@ Skills are discovered from three sources, scanned in priority order:
 2. The framework's bundled `<spora-core>/skills/` directory. The framework ships `time-arithmetic/` as a worked example.
 3. Every directory returned by any loaded plugin's `skillPaths()` hook.
 
-The scanner walks each directory depth-1, picks up every subdirectory that contains a `SKILL.md`, and validates the frontmatter. Project-level skills win on name conflict; same-priority conflicts surface a `SKILL_NAME_CONFLICT` warning rather than silent drops.
+The scanner walks each directory depth-1, picks up every subdirectory that contains a `SKILL.md`, and validates the frontmatter. Project-level skills win on name conflict; same-priority conflicts surface a `SKILL_NAME_CONFLICT` error rather than silent drops.
 
 Operators can ship skills with a plugin by overriding the hook:
 
@@ -62,11 +62,11 @@ your-plugin/
 | `license`       | No       | Short string (license name or filename). Informational.                                                                  |
 | `compatibility` | No       | ≤ 500 chars. Env requirements.                                                                                           |
 | `metadata`      | No       | Free-form `map<string,string>`.                                                                                          |
-| `allowed-tools` | No       | (Spec-experimental) Parsed but not enforced. Tracked in `backlog/skills-allowed-tools-enforcement.md`.                   |
+| `allowed-tools` | No       | (Spec-experimental) Parsed but not enforced. Tracked in the spora-workspace backlog.                                     |
 
 ### Body
 
-Markdown, no format restrictions. Spec recommends step-by-step instructions, examples, and edge cases. Keep `SKILL.md` under 500 lines / ~5000 tokens — Spora emits a soft `SKILL_BODY_OVERSIZE` warning above that, but never hard-rejects. Move long content to `references/` sidecar files.
+Markdown, no format restrictions. Spec recommends step-by-step instructions, examples, and edge cases. Keep `SKILL.md` under 500 lines / 50 KB — Spora emits a soft `SKILL_BODY_OVERSIZE` warning above that, but never hard-rejects. Move long content to `references/` sidecar files.
 
 ## The Skill tool
 
@@ -105,4 +105,5 @@ The framework ships a `time-arithmetic` skill at `<spora-core>/skills/time-arith
 - [Plugin author guide: Skills](/develop/plugins/author-guide/skills)
 - [agentskills.io specification](https://agentskills.io/specification) (the open format Spora follows)
 - [Agent templates](/reference/concepts/agent-templates) (complementary mechanism for Agent identity)
-- Backlog: [skills-allowed-tools-enforcement](/backlog/skills-allowed-tools-enforcement) (future enforcement of the spec-experimental `allowed-tools` field)
+- **Chat-UI rendering**: when the Agent calls `skill_read` on `SKILL.md`, the chat UI replaces the standard "— result" suffix with a "Loaded skill: \<slug\>" badge. `skill_read` of any sidecar file and `skill_files` keep the standard tool-call card. The badge is driven by `tool_name` + `action` + `filename` matching in `TaskChatMessageList.vue`; no backend change.
+- **Future work**: enforcement of the spec-experimental `allowed-tools` field is tracked in the spora-workspace backlog (file lives outside this docs repo).

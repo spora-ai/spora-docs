@@ -84,7 +84,7 @@ metadata:
 
 Markdown, no format restrictions. The body is what the Agent reads when it calls `skill_read` against `SKILL.md`. Frontmatter is stripped on read.
 
-**Keep `SKILL.md` under the soft cap of ~500 lines / ~5000 tokens.** The agentskills.io spec recommends splitting long content into `references/` sidecar files. Spora emits a `SKILL_BODY_OVERSIZE` warning above the cap; the skill is never rejected for this.
+**Keep `SKILL.md` under the soft cap of 500 lines / 50 KB.** The agentskills.io spec recommends splitting long content into `references/` sidecar files. Spora emits a `SKILL_BODY_OVERSIZE` warning above the cap; the skill is never rejected for this.
 
 ```markdown
 # When to use this skill
@@ -119,7 +119,7 @@ scripts/extract.py
 
 - `filename` must be a relative path within the skill.
 - `SKILL.md` is special-cased: frontmatter is stripped on read.
-- 50 KB hard cap per file (returns `SKILL_FILE_TOO_LARGE` over).
+- 50 KB hard cap per file (the tool returns a `ToolResult(false, "...capped at 50000 bytes.")` over; no error code on the result payload today).
 
 The conventional subdirectories are `scripts/` (executable code), `references/` (additional docs), `assets/` (static resources), but any layout is accepted — the listing reflects the actual filesystem.
 
@@ -131,20 +131,37 @@ The Skill tool is shipped with `spora-core`; you don't need to ship a separate t
 
 ## Validation surface
 
-The `SkillScanner` calls `SkillValidator` on every `SKILL.md` it finds. Errors and warnings surface on the skill's summary, surfaced to operators in the admin UI:
+The `SkillScanner` calls `SkillValidator` on every `SKILL.md` it finds. Errors and warnings surface on the skill's summary, surfaced to operators in the admin UI.
+
+### SkillValidator (frontmatter rules)
+
+| Code                      | Severity | When                                                     |
+| ------------------------- | -------- | -------------------------------------------------------- |
+| `EMPTY_FRONTMATTER`       | error    | SKILL.md has no YAML frontmatter block.                  |
+| `UNKNOWN_TOP_LEVEL_KEY`   | error    | Frontmatter contains a key not in the allowed list.      |
+| `NAME_REQUIRED`           | error    | `name` is missing.                                       |
+| `NAME_INVALID`            | error    | `name` is not a non-empty string.                        |
+| `NAME_CONSECUTIVE_HYPHEN` | error    | `name` contains `--`.                                    |
+| `NAME_PATTERN`            | error    | `name` doesn't match the slug pattern.                   |
+| `NAME_DIR_MISMATCH`       | error    | `name` doesn't equal the parent directory name.          |
+| `DESCRIPTION_REQUIRED`    | error    | `description` is missing.                                |
+| `DESCRIPTION_INVALID`     | error    | `description` is not a non-empty string.                 |
+| `DESCRIPTION_TOO_LONG`    | error    | `description` exceeds 1024 chars.                        |
+| `LICENSE_INVALID`         | error    | `license` is set but not a string.                       |
+| `COMPATIBILITY_INVALID`   | error    | `compatibility` is set but not a string.                 |
+| `COMPATIBILITY_TOO_LONG`  | error    | `compatibility` exceeds 500 chars.                       |
+| `METADATA_INVALID`        | error    | `metadata` is set but not an object.                     |
+| `METADATA_VALUE_INVALID`  | error    | `metadata` contains a non-string key or value.           |
+| `ALLOWED_TOOLS_INVALID`   | error    | `allowed-tools` is set but not a space-separated string. |
+| `SKILL_BODY_OVERSIZE`     | warning  | `SKILL.md` body exceeds 500 lines or 50 KB.              |
+
+### SkillScanner (discovery rules)
 
 | Code                        | Severity | When                                                       |
 | --------------------------- | -------- | ---------------------------------------------------------- |
-| `EMPTY_FRONTMATTER`         | error    | SKILL.md has no YAML frontmatter block.                    |
+| `SKILL_MD_UNREADABLE`       | error    | `file_get_contents` failed on `SKILL.md`.                  |
 | `SKILL_FRONTMATTER_MISSING` | error    | The frontmatter delimiter (`---`) is missing or malformed. |
-| `NAME_REQUIRED`             | error    | `name` is missing.                                         |
-| `NAME_PATTERN`              | error    | `name` doesn't match the slug pattern.                     |
-| `NAME_CONSECUTIVE_HYPHEN`   | error    | `name` contains `--`.                                      |
-| `NAME_DIR_MISMATCH`         | error    | `name` doesn't equal the parent directory name.            |
-| `DESCRIPTION_REQUIRED`      | error    | `description` is missing.                                  |
-| `DESCRIPTION_TOO_LONG`      | error    | `description` exceeds 1024 chars.                          |
 | `SKILL_NAME_CONFLICT`       | error    | Two scan roots supply the same `(source, slug)` pair.      |
-| `SKILL_BODY_OVERSIZE`       | warning  | `SKILL.md` body exceeds 500 lines or 50 KB.                |
 
 Errors block the skill from being used; warnings are advisory.
 
@@ -160,7 +177,11 @@ Two skills with the same `name` from DIFFERENT sources are distinct entries (the
 
 ## The `allowed-tools` frontmatter (spec-experimental, MVP: ignored)
 
-The agentskills.io spec defines an `allowed-tools` field — a space-separated list of pre-approved tools the skill may invoke. Spora parses and surfaces it on the skill summary, but does **not** enforce it in MVP. Enforcing context-dependent tool approval requires a new mechanism (per-skill activation records in the Task context) tracked in `spora-workspace/backlog/skills-allowed-tools-enforcement.md`.
+The agentskills.io spec defines an `allowed-tools` field — a space-separated list of pre-approved tools the skill may invoke. Spora parses and surfaces it on the skill summary, but does **not** enforce it in MVP. Enforcing context-dependent tool approval requires a new mechanism (per-skill activation records in the Task context) — tracked in the spora-workspace backlog (file lives outside this docs repo).
+
+## Chat-UI affordance
+
+When an Agent calls `skill_read` against `SKILL.md` (the default filename), the chat transcript replaces the standard tool-call card with a compact `Loaded skill: <slug>` badge. `skill_read` of any sidecar file and `skill_files` keep the standard card. Plugin authors don't configure this — it's driven by the spora-frontend renderer (matching on `tool_name` + `action` + `filename`); no backend change.
 
 ## End-to-end example
 

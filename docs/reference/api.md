@@ -113,6 +113,15 @@ See [Concepts → Architecture](/reference/concepts/architecture) for the full H
 
 > **Settings are not exported.** Exporting an agent produces a JSON template that includes tool activations and per-operation auto-approve defaults only. Passwords, API keys, and other secrets must be reconfigured in **Settings → Tools** after import. The `inline_warning` field in the export response reminds the caller to communicate this.
 
+### Skills
+
+| Method | Path                    | Auth    | Purpose                                                           |
+| ------ | ----------------------- | ------- | ----------------------------------------------------------------- |
+| `GET`  | `/api/v1/skills`        | session | List discovered skills (powers the `allowed_skills` multi-select) |
+| `GET`  | `/api/v1/skills/{slug}` | session | One skill — full `files` listing + raw `SKILL.md` body            |
+
+Skills are auto-discovered from three sources (project, framework, plugin). See [Concepts → Skills](/reference/concepts/skills).
+
 ## Envelope
 
 Success:

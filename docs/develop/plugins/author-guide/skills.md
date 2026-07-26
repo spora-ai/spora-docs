@@ -11,7 +11,7 @@ Spora follows the open [agentskills.io](https://agentskills.io/specification) fo
 
 ## Directory layout
 
-```
+```text
 your-plugin/
 ├── plugin.json
 └── skills/
@@ -50,23 +50,23 @@ The framework's `SkillScanner` walks each returned directory depth-1 and treats 
 ```yaml
 ---
 name: my-skill
-description: "What the skill does and when to use it. Include trigger keywords."
+description: 'What the skill does and when to use it. Include trigger keywords.'
 license: Apache-2.0
 compatibility: Requires git 2.30+
 metadata:
   author: your-team
-  version: "1.0"
+  version: '1.0'
 ---
 ```
 
-| Field           | Required | Constraints                                                                                       |
-|-----------------|----------|---------------------------------------------------------------------------------------------------|
+| Field           | Required | Constraints                                                                                                              |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `name`          | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, no leading/trailing hyphen, no `--`. Must equal the parent directory name. |
-| `description`   | Yes      | 1-1024 chars. What + when to use. Include trigger keywords.                                          |
-| `license`       | No       | Informational.                                                                                     |
-| `compatibility` | No       | ≤ 500 chars.                                                                                       |
-| `metadata`      | No       | Free-form `map<string,string>`.                                                                   |
-| `allowed-tools` | No       | Spec-experimental. Parsed but not enforced in MVP.                                                 |
+| `description`   | Yes      | 1-1024 chars. What + when to use. Include trigger keywords.                                                              |
+| `license`       | No       | Informational.                                                                                                           |
+| `compatibility` | No       | ≤ 500 chars.                                                                                                             |
+| `metadata`      | No       | Free-form `map<string,string>`.                                                                                          |
+| `allowed-tools` | No       | Spec-experimental. Parsed but not enforced in MVP.                                                                       |
 
 ## SKILL.md body
 
@@ -78,6 +78,7 @@ Markdown, no format restrictions. The body is what the Agent reads when it calls
 # When to use this skill
 
 Trigger on any of:
+
 - "..."
 - "..."
 
@@ -95,7 +96,7 @@ Trigger on any of:
 
 Anything in the skill directory except `SKILL.md` is a sidecar. The Skill tool's `files` operation lists them as relative paths:
 
-```
+```text
 SKILL.md
 examples.md
 references/REFERENCE.md
@@ -120,18 +121,18 @@ The Skill tool is shipped with `spora-core`; you don't need to ship a separate t
 
 The `SkillScanner` calls `SkillValidator` on every `SKILL.md` it finds. Errors and warnings surface on the skill's summary, surfaced to operators in the admin UI:
 
-| Code                       | Severity | When                                                                                  |
-|----------------------------|----------|---------------------------------------------------------------------------------------|
-| `EMPTY_FRONTMATTER`        | error    | SKILL.md has no YAML frontmatter block.                                               |
-| `SKILL_FRONTMATTER_MISSING`| error    | The frontmatter delimiter (`---`) is missing or malformed.                            |
-| `NAME_REQUIRED`            | error    | `name` is missing.                                                                   |
-| `NAME_PATTERN`             | error    | `name` doesn't match the slug pattern.                                                |
-| `NAME_CONSECUTIVE_HYPHEN`  | error    | `name` contains `--`.                                                                 |
-| `NAME_DIR_MISMATCH`        | error    | `name` doesn't equal the parent directory name.                                      |
-| `DESCRIPTION_REQUIRED`     | error    | `description` is missing.                                                            |
-| `DESCRIPTION_TOO_LONG`     | error    | `description` exceeds 1024 chars.                                                    |
-| `SKILL_NAME_CONFLICT`      | error    | Two scan roots supply the same `(source, slug)` pair.                                |
-| `SKILL_BODY_OVERSIZE`      | warning  | `SKILL.md` body exceeds 500 lines or 50 KB.                                           |
+| Code                        | Severity | When                                                       |
+| --------------------------- | -------- | ---------------------------------------------------------- |
+| `EMPTY_FRONTMATTER`         | error    | SKILL.md has no YAML frontmatter block.                    |
+| `SKILL_FRONTMATTER_MISSING` | error    | The frontmatter delimiter (`---`) is missing or malformed. |
+| `NAME_REQUIRED`             | error    | `name` is missing.                                         |
+| `NAME_PATTERN`              | error    | `name` doesn't match the slug pattern.                     |
+| `NAME_CONSECUTIVE_HYPHEN`   | error    | `name` contains `--`.                                      |
+| `NAME_DIR_MISMATCH`         | error    | `name` doesn't equal the parent directory name.            |
+| `DESCRIPTION_REQUIRED`      | error    | `description` is missing.                                  |
+| `DESCRIPTION_TOO_LONG`      | error    | `description` exceeds 1024 chars.                          |
+| `SKILL_NAME_CONFLICT`       | error    | Two scan roots supply the same `(source, slug)` pair.      |
+| `SKILL_BODY_OVERSIZE`       | warning  | `SKILL.md` body exceeds 500 lines or 50 KB.                |
 
 Errors block the skill from being used; warnings are advisory.
 
@@ -153,7 +154,7 @@ The agentskills.io spec defines an `allowed-tools` field — a space-separated l
 
 A minimal plugin that ships one skill:
 
-```
+```text
 spora-plugin-your-plugin/
 ├── plugin.json
 ├── src/
@@ -169,13 +170,10 @@ spora-plugin-your-plugin/
 ```yaml
 ---
 name: my-skill
-description: "Does X. Use when the user asks for X or mentions X."
+description: 'Does X. Use when the user asks for X or mentions X.'
 ---
-
 # When to use this skill
-
 ...
-
 # Steps
 
 1. ...

@@ -7,13 +7,13 @@ description: How Spora's Skill system lets operators ship versionable, file-back
 
 A **Skill** is a versionable, file-backed bundle of operator knowledge an Agent can pull on demand. Skills are auto-discovered from three sources (project, framework, plugin), packaged as one normal Tool (`SkillTool`) the operator activates on an Agent, and gated per-Agent via a `multi-select` ToolSetting (mirrors `HandoverTool`'s `allowed_target_agents`).
 
-The Agent sees a small, curated list of skill *summaries* (name + short description) and can pull bodies / sidecar files on demand.
+The Agent sees a small, curated list of skill _summaries_ (name + short description) and can pull bodies / sidecar files on demand.
 
 The on-disk format follows the open [agentskills.io](https://agentskills.io/specification) spec. Spora adds the Tool wrapper, per-agent allowlist, and chat-UI affordances on top.
 
 ## When to use a skill vs. an agent template
 
-Agent templates bundle an Agent's *identity* (system prompt, tool activations). Skills bundle *procedural knowledge* the Agent reads on demand. Use:
+Agent templates bundle an Agent's _identity_ (system prompt, tool activations). Skills bundle _procedural knowledge_ the Agent reads on demand. Use:
 
 - An **agent template** for: "here's a fully-configured Agent you can spin up".
 - A **skill** for: "here's a chunk of expertise my existing Agent should know about".
@@ -43,7 +43,7 @@ public function skillPaths(): array
 
 ## On-disk format
 
-```
+```text
 your-plugin/
 └── skills/
     └── my-skill/
@@ -57,14 +57,14 @@ your-plugin/
 
 ### Frontmatter
 
-| Field            | Required | Constraints                                                                                       |
-|------------------|----------|---------------------------------------------------------------------------------------------------|
-| `name`           | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, no leading/trailing hyphen, no `--`. Must match the parent directory name. |
-| `description`    | Yes      | 1-1024 chars. Surface what the skill does AND when to use it; include trigger keywords.           |
-| `license`        | No       | Short string (license name or filename). Informational.                                            |
-| `compatibility`  | No       | ≤ 500 chars. Env requirements.                                                                    |
-| `metadata`       | No       | Free-form `map<string,string>`.                                                                  |
-| `allowed-tools`  | No       | (Spec-experimental) Parsed but not enforced. Tracked in `backlog/skills-allowed-tools-enforcement.md`. |
+| Field           | Required | Constraints                                                                                                              |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `name`          | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, no leading/trailing hyphen, no `--`. Must match the parent directory name. |
+| `description`   | Yes      | 1-1024 chars. Surface what the skill does AND when to use it; include trigger keywords.                                  |
+| `license`       | No       | Short string (license name or filename). Informational.                                                                  |
+| `compatibility` | No       | ≤ 500 chars. Env requirements.                                                                                           |
+| `metadata`      | No       | Free-form `map<string,string>`.                                                                                          |
+| `allowed-tools` | No       | (Spec-experimental) Parsed but not enforced. Tracked in `backlog/skills-allowed-tools-enforcement.md`.                   |
 
 ### Body
 
@@ -93,8 +93,8 @@ The `allowed_skills` setting has `exposeToLlm: true`. The LLM sees a list of `{n
 
 ## HTTP surface
 
-| Method | Path                    | Purpose                                                                                                              |
-|--------|-------------------------|----------------------------------------------------------------------------------------------------------------------|
+| Method | Path                    | Purpose                                                                                                               |
+| ------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `GET`  | `/api/v1/skills`        | List → `[{name, description, source, license, files_count, has_warnings}]`. Powers the `allowed_skills` multi-select. |
 | `GET`  | `/api/v1/skills/{slug}` | One skill, full `files` listing + raw `SKILL.md` body.                                                                |
 

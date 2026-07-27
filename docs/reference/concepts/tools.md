@@ -182,7 +182,7 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
       "description": "Perform arithmetic calculations.",
       "category": "productivity",
       "source": { "kind": "core", "slug": null, "name": null },
-      "enabled": false,
+      "enabled": true,
       "ready_to_enable": true,
       "missing_required": [],
       "operations": [
@@ -195,7 +195,7 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
       ]
     },
     {
-      "tool_class": "SomePlugin\\Tools\\TavilySearchTool",
+      "tool_class": "Spora\\Plugins\\Tavily\\Tools\\TavilySearchTool",
       "tool_name": "tavily_search",
       "call_name": "tavily:tavily_search",
       "display_name": "Tavily Search",
@@ -232,7 +232,7 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
 The agent-facing `get_available_tools` does **not** expose enable/disable operations. There is no `enable_tool` or `disable_tool` the LLM can call. To activate a tool:
 
 - For sub-agents, call `create_agent` with a payload whose `tools[]` entries reference the desired `tool_name`s (see [Agent Template schema](/reference/agent-template-schema)).
-- For the calling agent itself, the operator must enable the tool through the agent settings UI or the `POST /api/v1/agents/{id}/tools/{toolName}/enable` endpoint.
+- For the calling agent itself, the operator must enable the tool through the agent settings UI or the `POST /api/v1/agents/{id}/tools/{toolId}/enable` endpoint. The `{toolId}` path segment is the tool's `#[Tool(name:)]` value (e.g. `tavily_search` or `calculator`) — see [Route definitions](/reference/api#tool-routes) for the canonical mapping.
 
 This split keeps tool activation on the calling agent under explicit operator control while still letting the agent self-compose a sub-agent when it needs capabilities beyond its current set.
 

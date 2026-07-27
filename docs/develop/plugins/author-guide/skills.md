@@ -82,7 +82,7 @@ metadata:
 
 ## SKILL.md body
 
-Markdown, no format restrictions. The body is what the Agent reads when it calls `skill_read` against `SKILL.md`. Frontmatter is stripped on read.
+Markdown, no format restrictions. The body is what the Agent reads when it calls `skill(action: "read", name: "<slug>", filename: "SKILL.md")`. Frontmatter is stripped on read.
 
 **Keep `SKILL.md` under the soft cap of 500 lines / 50 KB.** The agentskills.io spec recommends splitting long content into `references/` sidecar files. Spora emits a `SKILL_BODY_OVERSIZE` warning above the cap; the skill is never rejected for this.
 
@@ -115,7 +115,7 @@ references/REFERENCE.md
 scripts/extract.py
 ```
 
-`skill_read` reads them on demand:
+`skill(action: "read", name: "<slug>", filename: "<file>")` reads them on demand:
 
 - `filename` must be a relative path within the skill.
 - `SKILL.md` is special-cased: frontmatter is stripped on read.
@@ -141,9 +141,11 @@ When a SKILL.md body describes a tool call, write the call shape the LLM actuall
 
 So the SKILL.md body should reference this tool as `skill(action: "read", name: "<slug>", filename: "examples.md")` — never `skill_read` (no such tool exists in the LLM schema) and never `skill.read(filename: "...")` (the dot is a useful prose shortcut, but parameter lists shaped like method calls confuse the LLM).
 
-The same rule applies to every other multi-operation tool: `time`, `calculator`, `agent`, `user_info`, `media`. The prose shortcut `<tool>.<operation>` is fine in headings for readability, but worked examples in code blocks must show the JSON-call shape (`tool(action: "op", param: "value")`).
+The same rule applies to every multi-operation tool — these tools declare an `action` discriminator field because they ship more than one `#[ToolOperation]`: `time` (`now`, `format`), `skill` (`read`, `files`), `agent` (`read_notes`, `write_notes`, …), `user_info` (`get_health_data`, `get_locations`, …), `media` (`upload`, `retrieve`, `list`, …). The prose shortcut `<tool>.<operation>` is fine in headings for readability, but worked examples in code blocks must show the JSON-call shape (`tool(action: "op", param: "value")`).
 
-This is a real trap — see the time-arithmetic skill's v2.0 revision for an example of fixing skill prose that referenced `current_time.now()` (a tool that doesn't exist) and `skill_read` (the synthetic discriminator name, not a real tool).
+Single-operation tools (one `#[ToolOperation]`) — for example `calculator` with its single `calculate` op — do **not** expose an `action` discriminator. Their call shape is parameter-only: `calculator(expression: "100 * 2.5 + 50")`, not `calculator(action: "calculate", expression: "…")`. The `action:` dance is a multi-op-only pattern; using it on a single-op tool produces an unexpected-argument validation error from the runtime schema validator.
+
+This is a real trap — see the time-arithmetic skill's v2.0 revision for an example of fixing skill prose that referenced `current_time.now()` (a tool that doesn't exist) and `skill_read` (the synthetic discriminator name, not a real tool). The same trap recurs whenever an LLM tool name follows a `<verb>_<noun>` convention — only the discriminator-action shape works.
 
 ## Per-agent activation
 
@@ -203,7 +205,7 @@ The agentskills.io spec defines an `allowed-tools` field — a space-separated l
 
 ## Chat-UI affordance
 
-When an Agent calls `skill_read` against `SKILL.md` (the default filename), the chat transcript replaces the standard tool-call card with a compact `Loaded skill: <slug>` badge. `skill_read` of any sidecar file and `skill_files` keep the standard card. Plugin authors don't configure this — it's driven by the spora-frontend renderer (matching on `tool_name` + `action` + `filename`); no backend change.
+When an Agent calls `skill(action: "read", name: "<slug>", filename: "SKILL.md")` (the default filename), the chat transcript replaces the standard tool-call card with a compact `Loaded skill: <slug>` badge. The same op against a sidecar file, and `skill(action: "files", …)` listings, keep the standard card. Plugin authors don't configure this — it's driven by the spora-frontend renderer (matching on `tool_name` + `action` + `filename`); no backend change.
 
 ## End-to-end example
 

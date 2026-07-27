@@ -50,6 +50,12 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 | `enabled`    | boolean | **yes**  | Whether to enable the tool. Disabled tools get no row inserted on import. |
 | `operations` | array   | **yes**  | Per-operation overrides.                                                  |
 
+> **LLM authoring note:** the `AgentTool.get_available_tools` operation returns
+> `tool_class` for every registered tool. An agent that wants to spawn a
+> sub-agent with a chosen toolset should pull `tool_class` straight out of
+> the discovery response and use it verbatim in the `tools[]` block. Do not
+> invent FQCNs — only registered classes can be enabled.
+
 ### `tools[].operations[]` entries
 
 | Field          | Type    | Required | Notes                                                                           |

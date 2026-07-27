@@ -86,6 +86,14 @@ The `tools` array on an agent lists the tool activations for that agent. Each en
 | `DELETE` | `/api/v1/tasks/{taskId}/retry-chain` | + CSRF  | Cancel a scheduled retry chain                         |
 | `DELETE` | `/api/v1/tasks/{taskId}`             | + CSRF  | Delete a task (and cancel if in flight)                |
 
+The `tool_calls[]` array on every task response is the canonical
+`ToolCallSerializer::toArray()` shape — `operation`, `operation_description`,
+and a live-derived `parameter_schema` (from the registered `ToolInterface`
+instance or reflection fallback) are all present on both `GET
+/api/v1/tasks/{taskId}` and the Mercure live-update stream. See
+[Concepts → Tools → Discovery from the LLM](/reference/concepts/tools#discovery-from-the-llm)
+for the per-tool LLM-facing contract returned by `AgentTool.get_available_tools`.
+
 ### Plugins (operator, gated by `SPORA_PLUGIN_INSTALL_ENABLED`)
 
 | Method   | Path                        | Auth         | Purpose                                      |

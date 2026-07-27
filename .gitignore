@@ -34,3 +34,4 @@ docs/.vuepress/openapi.json
 # `prebuild` / `predev` npm hooks run gen:api before VuePress starts,
 # so the pages always exist locally and in CI.
 docs/reference/api/
+.worktrees/

@@ -96,17 +96,32 @@ The concrete `AgentMemoryTool` schema includes `action`, `name`, and `content` a
 
 ### `#[ToolParameter]` reference
 
-| Field                 | Type                     | Notes                                                                                                                     |
-| --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `name`                | `string`                 | Argument key the LLM sends.                                                                                               |
-| `type`                | `string`                 | One of `string`, `number`, `integer`, `boolean`, `array`, `object`.                                                       |
-| `description`         | `string`                 | Sent to the LLM.                                                                                                          |
-| `required`            | `bool` (default `true`)  | Adds the name to `required[]` in the schema.                                                                              |
-| `default`             | `mixed` (default `null`) | Emitted as JSON Schema `default`. When set, the parameter is omitted from `required[]` regardless of the `required` flag. |
-| `enum`                | `list<string>`           | Value allowlist (string types).                                                                                           |
-| `minimum` / `maximum` | `int\|float\|null`       | Numeric bounds.                                                                                                           |
-| `format`              | `?string`                | JSON Schema format hint (e.g. `'date'`, `'email'`).                                                                       |
-| `items`               | `?array`                 | Sub-schema for `array` types, e.g. `['type' => 'string']`.                                                                |
+| Field                 | Type                                  | Notes                                                                                                                                                                                                                                                                                            |
+| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`                | `string`                              | Argument key the LLM sends.                                                                                                                                                                                                                                                                      |
+| `type`                | `string`                              | One of `string`, `number`, `integer`, `boolean`, `array`, `object`.                                                                                                                                                                                                                              |
+| `description`         | `string`                              | Sent to the LLM.                                                                                                                                                                                                                                                                                 |
+| `required`            | `bool\|list<string>` (default `true`) | `true`/`false` keep the global behaviour; a non-empty list of operation names binds the parameter to those operations only — e.g. `required: ['format']` makes the param required when the dispatcher is `format`. `required: []` is coerced to `true`; use `false` for the truly optional case. |
+| `default`             | `mixed` (default `null`)              | Emitted as JSON Schema `default`. When set, the parameter is omitted from `required[]` regardless of the `required` flag.                                                                                                                                                                        |
+| `enum`                | `list<string>`                        | Value allowlist (string types).                                                                                                                                                                                                                                                                  |
+| `minimum` / `maximum` | `int\|float\|null`                    | Numeric bounds.                                                                                                                                                                                                                                                                                  |
+| `format`              | `?string`                             | JSON Schema format hint (e.g. `'date'`, `'email'`).                                                                                                                                                                                                                                              |
+| `items`               | `?array`                              | Sub-schema for `array` types, e.g. `['type' => 'string']`.                                                                                                                                                                                                                                       |
+
+### Worked example: `required: list<string>`
+
+`TimeTool::epoch` is shared across operations but required only by `format`, so it uses a per-operation binding:
+
+```php
+#[ToolParameter(
+    name: 'epoch',
+    type: 'integer',
+    description: 'Unix timestamp to format.',
+    required: ['format'],
+)]
+```
+
+The generated schema requires `epoch` when the `action` dispatcher is `format`, while leaving it optional for other operations.
 
 ### Plugin tools
 

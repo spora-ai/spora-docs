@@ -86,6 +86,14 @@ The `tools` array on an agent lists the tool activations for that agent. Each en
 | `DELETE` | `/api/v1/tasks/{taskId}/retry-chain` | + CSRF  | Cancel a scheduled retry chain                         |
 | `DELETE` | `/api/v1/tasks/{taskId}`             | + CSRF  | Delete a task (and cancel if in flight)                |
 
+The `tool_calls[]` array on every task response is the canonical
+`ToolCallSerializer::toArray()` shape — `operation`, `operation_description`,
+and a live-derived `parameter_schema` (from the registered `ToolInterface`
+instance or reflection fallback) are all present on both `GET
+/api/v1/tasks/{taskId}` and the Mercure live-update stream. See
+[Concepts → Tools → Discovery from the LLM](/reference/concepts/tools#discovery-from-the-llm)
+for the per-tool LLM-facing contract returned by `AgentTool.get_available_tools`.
+
 ### Plugins (operator, gated by `SPORA_PLUGIN_INSTALL_ENABLED`)
 
 | Method   | Path                        | Auth         | Purpose                                      |
@@ -186,6 +194,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
+- [Skills](/reference/api/skills) — 2 routes
 - [Sse](/reference/api/sse) — 2 routes
 - [User-preferences](/reference/api/user-preferences) — 2 routes
 - [Apps](/reference/api/apps) — 1 route
@@ -294,6 +303,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Update Plugins                       | Plugins          |
 | `DELETE` | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Destroy Plugins                      | Plugins          |
 | `GET`    | `/api/v1/public/media/{id}`                                 | —                          | Show PublicMedia                     | Public           |
+| `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                          | Skills           |
+| `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                           | Skills           |
 | `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                             | Sse              |
 | `GET`    | `/api/v1/sse/status`                                        | `cookieAuth`               | Status Sse                           | Sse              |
 | `GET`    | `/api/v1/tasks`                                             | `cookieAuth`               | Index Task                           | Tasks            |

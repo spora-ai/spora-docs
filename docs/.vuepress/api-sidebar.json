@@ -57,6 +57,10 @@
       "link": "/reference/api/mail-config"
     },
     {
+      "text": "Skills",
+      "link": "/reference/api/skills"
+    },
+    {
       "text": "Sse",
       "link": "/reference/api/sse"
     },

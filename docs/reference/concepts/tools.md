@@ -163,6 +163,79 @@ This ensures global uniqueness — two plugins can never produce a tool name col
 
 > **Note:** core tools intentionally do **not** use a `core:` prefix. Adding it would change every tool name currently known to the LLM, breaking existing agents. Only plugin tools get the slug prefix.
 
+## Discovery from the LLM
+
+The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_tools` operation that returns a compact, versioned JSON payload describing every registered tool on the agent. The LLM can call this operation to plan which tools to use or to spawn a sub-agent with a chosen toolset via `create_agent`.
+
+### Response contract (version 1)
+
+```json
+{
+  "version": 1,
+  "count": 2,
+  "tools": [
+    {
+      "tool_class": "Spora\\Tools\\CalculatorTool",
+      "tool_name": "calculator",
+      "call_name": "calculator",
+      "display_name": "Calculator",
+      "description": "Perform arithmetic calculations.",
+      "category": "productivity",
+      "source": { "kind": "core", "slug": null, "name": null },
+      "enabled": true,
+      "ready_to_enable": true,
+      "missing_required": [],
+      "operations": [
+        {
+          "name": "calculate",
+          "description": "Evaluate an expression.",
+          "enabled": true,
+          "requires_approval": false
+        }
+      ]
+    },
+    {
+      "tool_class": "Spora\\Plugins\\Tavily\\Tools\\TavilySearchTool",
+      "tool_name": "tavily_search",
+      "call_name": "tavily:tavily_search",
+      "display_name": "Tavily Search",
+      "description": "Search the web via Tavily.",
+      "category": "research",
+      "source": { "kind": "plugin", "slug": "tavily", "name": "Tavily" },
+      "enabled": false,
+      "ready_to_enable": false,
+      "missing_required": ["api_key"],
+      "operations": [
+        {
+          "name": "search",
+          "description": "Run a search.",
+          "enabled": true,
+          "requires_approval": false
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Field semantics
+
+- `call_name` is the exact LLM-facing identifier (the one the LLM should use to call the tool). For core tools this equals `tool_name`; for plugin tools it is `"<pluginSlug>:<toolName>"`. Two plugins that share a plain name produce distinct `call_name`s, so the LLM never confuses them.
+- `source.kind` is `core` for built-in tools, `plugin` for plugin-owned tools, and `app` for tools registered by the operator's `app/App.php` extension. `source.slug` and `source.name` are only populated for `kind: "plugin"`.
+- `enabled` mirrors the current `agent_tools` row presence.
+- `ready_to_enable` is `true` when no required settings are missing. A tool with `enabled: false, ready_to_enable: false` needs configuration before the operator can enable it; the agent cannot enable it on its own.
+- `missing_required` lists only the required setting **keys**; no effective values are exposed to avoid leaking credentials.
+- `operations[]` carries per-operation `enabled` / `requires_approval` state, resolved against the effective override (or the operation's `enabledByDefault` / `requiresApprovalByDefault` when no override exists).
+
+### Tool activation is operator-only
+
+The agent-facing `get_available_tools` does **not** expose enable/disable operations. There is no `enable_tool` or `disable_tool` the LLM can call. To activate a tool:
+
+- For sub-agents, call `create_agent` with a payload whose `tools[]` entries reference the desired `tool_name`s (see [Agent Template schema](/reference/agent-template-schema)).
+- For the calling agent itself, the operator must enable the tool through the agent settings UI or the `POST /api/v1/agents/{id}/tools/{toolId}/enable` endpoint. The `{toolId}` path segment is the tool's `#[Tool(name:)]` value (e.g. `tavily_search` or `calculator`) — see [Route definitions](/reference/api#tool-routes) for the canonical mapping.
+
+This split keeps tool activation on the calling agent under explicit operator control while still letting the agent self-compose a sub-agent when it needs capabilities beyond its current set.
+
 ## Icon resolution
 
 A tool may declare a `?string $icon` argument on the `#[Tool(...)]` attribute — a kebab-case key from the [bundled icon palette](/reference/plugin-schema#icon-field--three-forms) (e.g. `'calendar'`, `'mail'`, `'search'`, `'globe'`). The icon is surfaced on the Agent resource (`GET /api/v1/agents` / `GET /api/v1/agents/{id}`) so the admin UI can render a matching tile for the tool.

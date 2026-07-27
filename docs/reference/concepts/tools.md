@@ -186,7 +186,12 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
       "ready_to_enable": true,
       "missing_required": [],
       "operations": [
-        { "name": "calculate", "description": "Evaluate an expression.", "enabled": true, "requires_approval": false }
+        {
+          "name": "calculate",
+          "description": "Evaluate an expression.",
+          "enabled": true,
+          "requires_approval": false
+        }
       ]
     },
     {
@@ -201,7 +206,12 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
       "ready_to_enable": false,
       "missing_required": ["api_key"],
       "operations": [
-        { "name": "search", "description": "Run a search.", "enabled": true, "requires_approval": false }
+        {
+          "name": "search",
+          "description": "Run a search.",
+          "enabled": true,
+          "requires_approval": false
+        }
       ]
     }
   ]

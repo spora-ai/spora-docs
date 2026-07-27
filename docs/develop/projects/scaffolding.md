@@ -1,6 +1,6 @@
 ---
 title: Scaffolding
-description: spora-maker commands — make:tool, make:controller, make:app, plus how to add a new make:* command.
+description: spora-maker commands — make:tool, make:controller, make:skill, make:app, plus how to add a new make:* command.
 ---
 
 # Scaffolding
@@ -142,6 +142,16 @@ $r->addRoute(
 ```
 
 The middleware stack (`AuthMiddleware` + `CsrfMiddleware`) matches every other admin route. Change the HTTP verb, add a new route for another verb, or strip the auth/CSRF stack for a public route by editing the snippet before pasting.
+
+## `make:skill <slug>`
+
+```bash
+php bin/spora make:skill time-arithmetic
+```
+
+Creates `skills/time-arithmetic/SKILL.md` and `skills/time-arithmetic/examples.md` for a project-local skill. The slug must follow the agentskills.io name pattern: 1–64 lowercase alphanumeric characters and hyphens, with no leading, trailing, or consecutive hyphens; validation is enforced by `SkillValidator`.
+
+After creation, the scaffolder prints a TODO to configure the skill under **Settings → Tools → Skill → `allowed_skills`** so agents can use it.
 
 ## `make:app`
 

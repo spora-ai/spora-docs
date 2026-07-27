@@ -72,8 +72,8 @@ Markdown, no format restrictions. Spec recommends step-by-step instructions, exa
 
 When the operator activates the Skill tool on an Agent, the Agent gets two operations:
 
-- `skill_read` (action `read`) — read one file from a skill. Default `filename` is `SKILL.md`; the frontmatter is stripped from that file. Sidecar files (e.g. `examples.md`) are returned verbatim. 50 KB hard cap.
-- `skill_files` (action `files`) — list every file under the skill directory as `[{path, bytes}]`. Paths are relative to the skill root; subdirectories (`scripts/`, `references/`) are visible so the Agent can dive in.
+- `skill(action: "read", …)` — read one file from a skill. Default `filename` is `SKILL.md`; the frontmatter is stripped from that file. Sidecar files (e.g. `examples.md`) are returned verbatim. 50 KB hard cap.
+- `skill(action: "files", …)` — list every file under the skill directory as `[{path, bytes}]`. Paths are relative to the skill root; subdirectories (`scripts/`, `references/`) are visible so the Agent can dive in.
 
 ### Per-agent allowlist
 
@@ -81,7 +81,7 @@ The Skill tool's only setting is `allowed_skills: multi-select`. Operators pick 
 
 ### LLM exposure
 
-The `allowed_skills` setting has `exposeToLlm: true`. The LLM sees a list of `{name, description}` pairs (description truncated to ~80 chars) appended to the tool's description in the system message — Stage 1 of the [agentskills.io progressive disclosure](https://agentskills.io/specification#progressive-disclosure) model. The skill body is read on demand via `skill_read` (Stage 2); sidecar files are loaded as the Agent needs them (Stage 3).
+The `allowed_skills` setting has `exposeToLlm: true`. The LLM sees a list of `{name, description}` pairs (description truncated to ~80 chars) appended to the tool's description in the system message — Stage 1 of the [agentskills.io progressive disclosure](https://agentskills.io/specification#progressive-disclosure) model. The skill body is read on demand via `skill(action: "read", …)` (Stage 2); sidecar files are loaded as the Agent needs them (Stage 3).
 
 ### Security
 
@@ -105,5 +105,5 @@ The framework ships a `time-arithmetic` skill at `<spora-core>/skills/time-arith
 - [Plugin author guide: Skills](/develop/plugins/author-guide/skills)
 - [agentskills.io specification](https://agentskills.io/specification) (the open format Spora follows)
 - [Agent templates](/reference/concepts/agent-templates) (complementary mechanism for Agent identity)
-- **Chat-UI rendering**: when the Agent calls `skill_read` on `SKILL.md`, the chat UI replaces the standard "— result" suffix with a "Loaded skill: \<slug\>" badge. `skill_read` of any sidecar file and `skill_files` keep the standard tool-call card. The badge is driven by `tool_name` + `action` + `filename` matching in `TaskChatMessageList.vue`; no backend change.
+- **Chat-UI rendering**: when the Agent calls `skill(action: "read", …)` on `SKILL.md`, the chat UI renders a compact `Loaded skill: <slug>` badge in place of the standard tool-call card. `skill(action: "read", …)` of any sidecar file and `skill(action: "files", …)` keep the standard tool-call card. The badge is driven by `tool_name` + `action` + `filename` matching in `TaskChatMessageList.vue`; no backend change.
 - **Future work**: enforcement of the spec-experimental `allowed-tools` field is tracked in the spora-workspace backlog (file lives outside this docs repo).

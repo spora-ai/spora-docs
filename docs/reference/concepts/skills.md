@@ -98,7 +98,7 @@ The `allowed_skills` setting has `exposeToLlm: true`. The LLM sees a list of `{n
 
 ## Worked example: `time-arithmetic`
 
-The framework ships a `time-arithmetic` skill at `<spora-core>/skills/time-arithmetic/`. It uses only `CurrentTimeTool` + `CalculatorTool` and is the canonical reference for plugin authors writing their first skill.
+The framework ships a `time-arithmetic` skill at `<spora-core>/skills/time-arithmetic/`. It uses only the `time` tool (with the `now` and `format` operations) and the `calculator` tool, and is the canonical reference for plugin authors writing their first skill. The skill's v2.0 revision also doubles as a worked example of how to [reference tools correctly in skill prose](/develop/plugins/author-guide/skills#tool-reference-style) — earlier versions referenced tool names that don't exist in the LLM schema (`current_time.now()`, `skill_read`).
 
 ## See also
 

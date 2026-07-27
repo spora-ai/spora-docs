@@ -123,6 +123,28 @@ scripts/extract.py
 
 The conventional subdirectories are `scripts/` (executable code), `references/` (additional docs), `assets/` (static resources), but any layout is accepted — the listing reflects the actual filesystem.
 
+## Tool reference style
+
+When a SKILL.md body describes a tool call, write the call shape the LLM actually sees in its function-calling schema — not the human-friendly shortcut. The LLM schema is synthesised from `#[Tool]` and `#[ToolOperation]` attributes; the discriminator is the operation's `discriminatorKey` (default `action`) and lives next to the tool's other parameters. For example, the bundled `skill` tool exposes:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": { "type": "string", "enum": ["read", "files"] },
+    "name":   { "type": "string" },
+    "filename": { "type": "string", "default": "SKILL.md" }
+  },
+  "required": ["action", "name"]
+}
+```
+
+So the SKILL.md body should reference this tool as `skill(action: "read", name: "<slug>", filename: "examples.md")` — never `skill_read` (no such tool exists in the LLM schema) and never `skill.read(filename: "...")` (the dot is a useful prose shortcut, but parameter lists shaped like method calls confuse the LLM).
+
+The same rule applies to every other multi-operation tool: `time`, `calculator`, `agent`, `user_info`, `media`. The prose shortcut `<tool>.<operation>` is fine in headings for readability, but worked examples in code blocks must show the JSON-call shape (`tool(action: "op", param: "value")`).
+
+This is a real trap — see the time-arithmetic skill's v2.0 revision for an example of fixing skill prose that referenced `current_time.now()` (a tool that doesn't exist) and `skill_read` (the synthetic discriminator name, not a real tool).
+
 ## Per-agent activation
 
 Operators don't activate skills directly. They activate the **Skill tool** on an Agent and pick which skills are available via the tool's `allowed_skills` multi-select. That's it — no per-skill config, no per-skill onboarding. The skill is either available to the Agent or not.

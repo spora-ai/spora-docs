@@ -132,7 +132,7 @@ When a SKILL.md body describes a tool call, write the call shape the LLM actuall
   "type": "object",
   "properties": {
     "action": { "type": "string", "enum": ["read", "files"] },
-    "name":   { "type": "string" },
+    "name": { "type": "string" },
     "filename": { "type": "string", "default": "SKILL.md" }
   },
   "required": ["action", "name"]

@@ -30,7 +30,7 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 | `description`         | string  | —       | Up to 2000 chars.                                                                |
 | `system_prompt`       | string  | —       | System prompt. Omitting this produces a `SYSTEM_PROMPT_MISSING` warning at scan. |
 | `max_steps`           | integer | `10`    | 1-100.                                                                           |
-| `allow_continuation`  | boolean | `true`  | Maps to DB `allow_followup`.                                                     |
+| `allow_followup`      | boolean | `true`  | Maps to DB `allow_followup`.                                                     |
 | `retry_after_minutes` | integer | `0`     | ≥ 0.                                                                             |
 | `max_retries`         | integer | `0`     | ≥ 0.                                                                             |
 

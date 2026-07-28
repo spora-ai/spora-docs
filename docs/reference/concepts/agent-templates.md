@@ -9,7 +9,7 @@ An **Agent template** is a JSON or YAML file that bundles an Agent's identity, s
 
 **What travels in a template:**
 
-- Agent identity: name, description, system prompt, max steps, allow continuation, retry config.
+- Agent identity: name, description, system prompt, max steps, allow followup, retry config.
 - Tool activations: per-tool `enabled` flag.
 - Per-operation `auto_approve` flag (mapped from the agent's `agent_tool_operation_overrides` row).
 
@@ -50,7 +50,7 @@ The export endpoint always returns an `inline_warning` field reminding the calle
 
 `AgentTemplateImporter` applies a template in a single transaction:
 
-1. Insert the Agent row mirroring the template's `agent` block. Map `allow_continuation` → DB `allow_followup`.
+1. Insert the Agent row mirroring the template's `agent` block.
 2. For each tool entry:
    - **Tool class not registered** (plugin missing) → emit `TOOL_PLUGIN_MISSING` warning + skip.
    - **Tool registered but missing global config** → still insert the row + emit `TOOL_NEEDS_CONFIGURATION`.

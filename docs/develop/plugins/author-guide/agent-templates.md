@@ -50,7 +50,7 @@ The full schema lives at [`https://spora.dev/agent-template.schema.json`](https:
     "description": "Default research workflow.",
     "system_prompt": "You are a research assistant. Cite your sources.",
     "max_steps": 12,
-    "allow_continuation": true,
+    "allow_followup": true,
     "retry_after_minutes": 5,
     "max_retries": 2
   },

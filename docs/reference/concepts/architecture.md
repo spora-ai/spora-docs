@@ -23,7 +23,13 @@ Approval resolution for an operation:
 1. `agent_tool_operation_overrides.default_requires_approval` per-agent, per-operation override (0/1/null)
 2. Fall back to the operation's `#[ToolOperation(requiresApprovalByDefault:)]` class default
 
-If approval required → serialize `AgentState` to DB as `PENDING_APPROVAL`, PHP process exits. On full human approval → status set to `RUNNING` (Sync) or `QUEUED` (Worker). `tick()` is invoked again only in sync mode; in worker mode the daemon picks up the task on its next drain cycle (see `Orchestrator::resume()` at `app/Agents/Orchestrator.php:220-223`).
+If approval required → serialize `AgentState` to DB as `PENDING_APPROVAL`, PHP process exits. The operator submits per-call decisions in a single batch via `POST /tasks/{id}/approve`: `{decisions: [{provider_call_id, decision: 'approve'|'reject', arguments?, reason?}]}`. `Orchestrator::resume()` (via `AgentDecisionProcessor`) splits the batch:
+
+- **All approved, no leftovers** → `ApprovedBatchExecutor` runs the tools, status → `RUNNING` (Sync) / `QUEUED` (Worker).
+- **All rejected, no leftovers** → status → `RUNNING` (Sync) / `QUEUED` (Worker); `tick()` is invoked again only in sync mode so the LLM round-trip doesn't hold the lock.
+- **Mixed (some approved + some rejected + leftovers)** → `ApprovedBatchExecutor` runs the approved calls; rejected rows are stamped `REJECTED` with `rejected_at` / `rejected_by` / `reject_reason`; the task stays `PENDING_APPROVAL` until the remaining undecided calls are also decided.
+
+In worker mode, `ApprovedBatchExecutor` records approvals with `executed_at IS NULL` as the "approved, awaiting execution" sentinel; the daemon's next `task:run` drain picks them up (see `Orchestrator::resume()` at `app/Agents/Orchestrator.php:221`).
 
 On **partial** approval — the operator approves some but not all of the parallel tool calls — `resume()` keeps the task in `PENDING_APPROVAL`, rewrites `pending_state` with only the un-approved calls, and returns. The un-approved `tool_calls` rows stay `status='PENDING_APPROVAL'`. The operator can keep deciding on later rounds until the batch is empty.
 

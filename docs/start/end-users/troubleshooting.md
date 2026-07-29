@@ -62,7 +62,7 @@ The LLM is hallucinating, returning stale info, or refusing to answer. This is *
 
 ## "Approval required" prompt never appears
 
-The agent is calling a tool, but the admin UI doesn't show the Approve / Reject button. This means:
+The agent is calling a tool, but the admin UI doesn't show the approval cards or the **Approve**, **Submit Decisions**, and **Reject All** controls. This means:
 
 - **WebSocket / Mercure broken** — the UI uses Mercure to push the approval prompt in real-time. If Mercure is down, you need to refresh the page to see the prompt.
 - **The task is in a different state** — check the **Tasks** view. If the task is `RUNNING`, the approval is pending. If `COMPLETED`, the agent finished without approval. If `FAILED`, the task died.

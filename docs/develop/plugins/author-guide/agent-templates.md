@@ -9,6 +9,8 @@ Agent templates are reusable agent definitions that bundle name, system prompt, 
 
 **What travels in a template:** activation (`enabled`) and per-operation `auto_approve`. **What does NOT travel:** tool settings, including passwords and API keys. Recipients must configure those in **Settings → Tools** after importing — the template UI surfaces this prominently before download.
 
+> **Operator-upload shape.** This page documents the operator-upload shape consumed by `POST /api/v1/agent-templates/import` and the bundled templates. The LLM-facing `create_agent` tool uses a **slim** subset (top-level `name` / `description` / `system_prompt` / `max_steps` / `allow_followup` / `retry_after_minutes` / `max_retries`) — see [Concepts → Tool system → Slim two-phase agent creation](/reference/concepts/tools#slim-two-phase-agent-creation). `tools[]` is optional on both surfaces; on the operator-upload path an empty / missing `tools[]` produces an agent with no tool activations, and the operator adds them through the agent edit form.
+
 ## Directory layout
 
 ```text

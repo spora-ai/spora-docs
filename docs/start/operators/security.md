@@ -50,3 +50,13 @@ Other endpoints are not currently rate-limited.
 ## Plugin Risks
 
 Plugins are not sandboxed — they run as ordinary PHP code with full access to the application, the database, the file system, and any decrypted credentials. The plugin trust model and lifecycle are documented in the [Plugin system](/develop/plugins/concepts) page under the Security section.
+
+## Tool → user_id Trust Boundary
+
+Tools never receive a session-derived user id. `Orchestrator::safeExecute()` (in `app/Agents/Orchestrator.php`) reads the calling Agent's row and passes its `user_id` into `ToolInterface::execute()`. Tools therefore see **the owner of the agent that issued the call**, not "whoever is signed in" — a structural guarantee that no client code can bypass.
+
+This matters most for:
+
+- **Async contexts** — Worker mode, scheduled runs, and sub-agent hops all read the same agent row, so the trust boundary holds when no session exists.
+- **Multi-agent setups** — a sub-agent created via `create_agent` + `configure_tools` inherits its owner from `configure_tools(agent_id: N, ...)`; cross-user ids are refused.
+- **Audit trails** — tool dispatch logs (`Orchestrator`'s `DEBUG` `Tool dispatch` record) carry the resolved `user_id`, which is the only `user_id` a tool can ever see.

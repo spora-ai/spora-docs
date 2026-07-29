@@ -45,6 +45,10 @@ final class MyWebSearchTool extends AbstractTool
 
 That's it — no hand-written `getParametersSchema()`. The `ToolParameterSchemaBuilder` reads the `#[ToolOperation]` and `#[ToolParameter]` attributes via reflection and produces the JSON Schema sent to the LLM.
 
+### Where `$userId` comes from
+
+The `$userId` passed into `execute()` is **sourced by the Orchestrator from the calling Agent's row** (`Orchestrator::safeExecute()` at `app/Agents/Orchestrator.php`), not from the session. The dispatcher cannot thread a session-derived user id into a tool — the call site no longer accepts one. Tools therefore never need to trust the user_id argument as "whoever is signed in"; it's "the owner of the agent that issued this call". When the Orchestrator boots without `AgentServiceInterface` (a unit-test harness), `$userId` is `null` and the tool's own `getAgentByAgentId()` fallback applies. See [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop) for the structural guarantee.
+
 ### The auto-synthesized `action` discriminator
 
 When a tool declares **two or more** `#[ToolOperation]` attributes, the builder prepends a property to the schema (named after the first operation's `discriminatorKey`, default `'action'`) whose `enum` lists every declared operation name. **Do not also write `#[ToolParameter(name: 'action', ...)]`** — the builder owns that property.
@@ -165,23 +169,20 @@ This ensures global uniqueness — two plugins can never produce a tool name col
 
 ## Discovery from the LLM
 
-The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_tools` operation that returns a compact, versioned JSON payload describing every registered tool on the agent. The LLM can call this operation to plan which tools to use or to spawn a sub-agent with a chosen toolset via `create_agent`.
+The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_tools` operation that returns a compact, versioned JSON payload describing every registered tool on the agent. The LLM calls this operation to plan which tools to use, to identify the `tool_class` it needs for `configure_tools`, and to surface `plugin_slug` values for `required_plugins` (operator-upload path only).
 
-### Response contract (version 1)
+### Response contract (version 2)
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "count": 2,
   "tools": [
     {
       "tool_class": "Spora\\Tools\\CalculatorTool",
-      "tool_name": "calculator",
-      "call_name": "calculator",
       "display_name": "Calculator",
       "description": "Perform arithmetic calculations.",
-      "category": "productivity",
-      "source": { "kind": "core", "slug": null, "name": null },
+      "plugin_slug": null,
       "enabled": true,
       "ready_to_enable": true,
       "missing_required": [],
@@ -196,12 +197,9 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
     },
     {
       "tool_class": "Spora\\Plugins\\Tavily\\Tools\\TavilySearchTool",
-      "tool_name": "tavily_search",
-      "call_name": "tavily:tavily_search",
       "display_name": "Tavily Search",
       "description": "Search the web via Tavily.",
-      "category": "research",
-      "source": { "kind": "plugin", "slug": "tavily", "name": "Tavily" },
+      "plugin_slug": "tavily",
       "enabled": false,
       "ready_to_enable": false,
       "missing_required": ["api_key"],
@@ -220,18 +218,29 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
 
 ### Field semantics
 
-- `call_name` is the exact LLM-facing identifier (the one the LLM should use to call the tool). For core tools this equals `tool_name`; for plugin tools it is `"<pluginSlug>:<toolName>"`. Two plugins that share a plain name produce distinct `call_name`s, so the LLM never confuses them.
-- `source.kind` is `core` for built-in tools, `plugin` for plugin-owned tools, and `app` for tools registered by the operator's `app/App.php` extension. `source.slug` and `source.name` are only populated for `kind: "plugin"`.
+- `tool_class` is the FQCN the LLM passes verbatim into `configure_tools.tools[].tool_class`. Don't invent FQCNs — only registered classes can be enabled.
+- `plugin_slug` is `null` for core tools, the plugin slug (e.g. `"tavily"`) for plugin-owned tools, and the plugin slug for tools registered by the operator's `app/App.php` extension. Use it for `required_plugins[]` on the operator-upload path; never substitute the FQCN.
+- `display_name` and `description` are kept on `get_available_tools` for operator-facing browsing, but **dropped** from the slim per-tool manifest returned by `read_agent` / `configure_tools` / `update_agent` (the LLM already has `tool_class` — carrying descriptive metadata bloats every LLM turn). The slim shape is `{ tool_class, icon, enabled, operations[] }`.
 - `enabled` mirrors the current `agent_tools` row presence.
 - `ready_to_enable` is `true` when no required settings are missing. A tool with `enabled: false, ready_to_enable: false` needs configuration before the operator can enable it; the agent cannot enable it on its own.
 - `missing_required` lists only the required setting **keys**; no effective values are exposed to avoid leaking credentials.
 - `operations[]` carries per-operation `enabled` / `requires_approval` state, resolved against the effective override (or the operation's `enabledByDefault` / `requiresApprovalByDefault` when no override exists).
 
+### Slim two-phase agent creation
+
+The LLM-facing agent creation flow is **two-phase** — `create_agent` does NOT accept a `tools[]` block. The flow is:
+
+1. **`create_agent`** — slim skeletal record (`name`, `description`, `system_prompt`, `max_steps`, `allow_followup`, `retry_after_minutes`, `max_retries`). Capture the returned `agent_id`.
+2. **`configure_tools(agent_id: <id>, tools: [...])`** — apply the toolset. Each entry is `{ tool_class, enabled, operations: [{name, enabled?, auto_approve?}] }`.
+3. **`read_agent(agent_id: <id>)`** — verify the toolset is exactly what was wanted.
+
+The full agent-template shape (`id` / `version` / nested `agent{}` / `tools[]` / `required_plugins[]`) is reserved for the operator-upload endpoint at `POST /api/v1/agent-templates/import` (see [Agent template schema](/reference/agent-template-schema)). `create_agent` rejects the nested-object shape with a literal "send X instead" example; see `skills/agent-creation/SKILL.md` for the full protocol.
+
 ### Tool activation is operator-only
 
 The agent-facing `get_available_tools` does **not** expose enable/disable operations. There is no `enable_tool` or `disable_tool` the LLM can call. To activate a tool:
 
-- For sub-agents, call `create_agent` with a payload whose `tools[]` entries reference the desired `tool_name`s (see [Agent Template schema](/reference/agent-template-schema)).
+- For sub-agents, call `create_agent` (slim) and then `configure_tools(agent_id: <id>, tools: [...])` — see [Slim two-phase agent creation](#slim-two-phase-agent-creation).
 - For the calling agent itself, the operator must enable the tool through the agent settings UI or the `POST /api/v1/agents/{id}/tools/{toolId}/enable` endpoint. The `{toolId}` path segment is the tool's `#[Tool(name:)]` value (e.g. `tavily_search` or `calculator`) — see [Route definitions](/reference/api#tool-routes) for the canonical mapping.
 
 This split keeps tool activation on the calling agent under explicit operator control while still letting the agent self-compose a sub-agent when it needs capabilities beyond its current set.

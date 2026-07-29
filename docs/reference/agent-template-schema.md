@@ -7,6 +7,8 @@ description: Full reference for the Spora Agent Template JSON Schema (draft 2020
 
 The Agent Template schema is published at [`https://spora.dev/agent-template.schema.json`](https://spora.dev/agent-template.schema.json) (mirrored in `spora-core/agent-template.schema.json`). It uses JSON Schema draft 2020-12 with `additionalProperties: false` at every level.
 
+> **Operator-upload only.** This schema describes the payload accepted by the operator-upload endpoint `POST /api/v1/agent-templates/import`. The LLM-facing `create_agent` tool uses a **slim** subset (top-level `name` / `description` / `system_prompt` / `max_steps` / `allow_followup` / `retry_after_minutes` / `max_retries`) — see [Concepts → Tool system → Slim two-phase agent creation](/reference/concepts/tools#slim-two-phase-agent-creation). The two surfaces are explicit by design: the slim payload removes the N-nested-keys decision the LLM had to make in one call.
+>
 > **Settings are never included.** ToolSettings (passwords, API keys, secrets) are not representable in this schema. Recipients configure those in **Settings → Tools** after import.
 
 ## Top-level shape
@@ -19,7 +21,7 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 | `description`      | string | no       | Up to 1000 chars.                                                                                                                                                                                                                       |
 | `version`          | string | **yes**  | Semver `^[0-9]+\.[0-9]+\.[0-9]+([+-].+)?$`.                                                                                                                                                                                             |
 | `agent`            | object | **yes**  | Agent identity block.                                                                                                                                                                                                                   |
-| `tools`            | array  | **yes**  | Tool activations. May be empty.                                                                                                                                                                                                         |
+| `tools`            | array  | no       | Tool activations. May be omitted (e.g. operator-uploaded skeleton that only configures `agent{}`) or empty. When present, applied atomically on import — disabled/missing tools are silently skipped.                                   |
 | `required_plugins` | array  | no       | Plugin slugs. Pattern: `^[a-z0-9][a-z0-9_-]*$`.                                                                                                                                                                                         |
 | `metadata`         | object | no       | Display metadata.                                                                                                                                                                                                                       |
 

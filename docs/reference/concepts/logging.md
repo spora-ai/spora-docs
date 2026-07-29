@@ -103,7 +103,9 @@ final class MyTool extends AbstractTool
 }
 ```
 
-The Orchestrator's `safeExecute()` will also log the `ToolResult(false, ...)` at `ERROR` level, so you get two complementary log entries: one with the tool's internal context (from the tool itself) and one with the orchestration context (`tool`, `agent_id`, `task_id`).
+`$userId` is sourced by the Orchestrator from the calling Agent's row, so it's the agent's owner — not "whoever is signed in". It is also the only `user_id` the tool will ever see (Worker mode, scheduled runs, and sub-agent hops inherit the same trust boundary). See [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop).
+
+The Orchestrator's `safeExecute()` will also log the `ToolResult(false, ...)` at `ERROR` level, so you get two complementary log entries: one with the tool's internal context (from the tool itself) and one with the orchestration context (`tool`, `agent_id`, `task_id`, `user_id`).
 
 **Never log `$arguments` at `WARNING` or above.** If you need argument context for debugging, log at `DEBUG`:
 

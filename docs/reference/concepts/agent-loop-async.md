@@ -43,6 +43,8 @@ In both modes, multi-step tasks (multiple LLM turns before reaching a terminal s
 - If tool calls: `appendHistory`, execute tools, then either call `tick()` again or pause for approval (`PENDING_APPROVAL`)
 - If text response: `appendHistory`, set `COMPLETED`
 
+`safeExecute()` reads the calling agent's `user_id` from the row inside the Orchestrator and threads that into `execute()` — tools never see a session-derived user id, so async contexts (Worker mode, scheduled runs, sub-agent hops) inherit the same trust boundary as Sync mode. See [Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop) for the invariant.
+
 `resume()` and `reject()` each use a short `lockForUpdate()` transaction to flip `tasks.status` from `PENDING_APPROVAL` back to `RUNNING` (Sync) or `QUEUED` (Worker) and clear `pending_state`. In Sync mode the same call chain then invokes `tick()` after the transaction commits, so the LLM round-trip never holds the row lock. In Worker mode the task simply returns to the queue and the daemon picks it up.
 
 ## Task Status Lifecycle

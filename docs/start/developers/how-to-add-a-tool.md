@@ -57,7 +57,7 @@ What this class does:
 
 - `#[Tool(name, description)]` — declares the tool's identity to the LLM. The `name` is what the LLM uses to call the tool (must match `/^[a-z][a-z0-9_]*$/`).
 - `#[ToolParameter(...)]` — declares a single parameter. The LLM sees this as a property of the tool's JSON schema.
-- `execute(...)` — the actual work. Returns a `ToolResult::ok(...)` on success or `ToolResult::fail(...)` on a graceful failure. **Never throws** — a single API failure cannot kill the agent loop.
+- `execute(...)` — the actual work. Returns a `ToolResult::ok(...)` on success or `ToolResult::fail(...)` on a graceful failure. **Never throws** — a single API failure cannot kill the agent loop. The `$userId` argument is sourced by the Orchestrator from the calling Agent's row — it's the agent's owner, not "whoever is signed in" — so the tool can trust it as the per-task user context without checking the session (see [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop)).
 - `describeAction(...)` — the human-readable summary shown in the approval UI when the agent calls this tool.
 
 For the full attribute surface (`#[ToolSetting]`, `#[ToolOperation]`, `InputToolInterface` vs `OutputToolInterface`, etc.), see [Concepts → Tool system](/reference/concepts/tools).

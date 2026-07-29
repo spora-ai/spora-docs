@@ -164,7 +164,7 @@ For example, the `spora-plugin-email` plugin might ship an "Email Assistant" rec
 
 Whether a tool call requires human approval is **per-operation and per-agent**, not a single global default. The tool author sets the operation's default via the `#[ToolOperation(requiresApprovalByDefault:)]` attribute; the operator can override that per-agent via the `agent_tool_operation_overrides.default_requires_approval` column (a nullable three-state — `1` = always require, `0` = never require, `null` = use the operation's class default). Read-only / generative operations typically default to `false` (no approval); side-effecting operations (send email, write file, call external API) typically default to `true` (require approval).
 
-When approval IS required, the agent's response pauses with an **Approve / Reject** button for each tool call. The chat shows the tool call with the proposed arguments, **Approve**, **Reject**, and a comment field. Clicking Approve resumes the task; Reject halts it.
+When approval is required, the task pauses and the chat shows each pending tool call with its proposed arguments. Review or edit each card, click **Approve** on every card, then click **Submit Decisions** after all cards are decided; card approvals remain local until submission. To cancel the entire pending batch instead, click **Reject All**, optionally enter a reason, and confirm. There is no per-card reject action.
 
 You can change an operation's default in **Settings → Tools → [tool] → Require approval by default**, and the per-agent override in the agent's edit form under **Tools → [operation] → Approval**.
 

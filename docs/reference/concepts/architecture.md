@@ -23,7 +23,11 @@ Approval resolution for an operation:
 1. `agent_tool_operation_overrides.default_requires_approval` per-agent, per-operation override (0/1/null)
 2. Fall back to the operation's `#[ToolOperation(requiresApprovalByDefault:)]` class default
 
-If approval required → serialize `AgentState` to DB as `PENDING_APPROVAL`, PHP process exits. On human approval → status set to `RUNNING` (Sync) or `QUEUED` (Worker). `tick()` is invoked again only in sync mode; in worker mode the daemon picks up the task on its next drain cycle (see `Orchestrator::resume()` at `app/Agents/Orchestrator.php:585-589`).
+If approval required → serialize `AgentState` to DB as `PENDING_APPROVAL`, PHP process exits. On full human approval → status set to `RUNNING` (Sync) or `QUEUED` (Worker). `tick()` is invoked again only in sync mode; in worker mode the daemon picks up the task on its next drain cycle (see `Orchestrator::resume()` at `app/Agents/Orchestrator.php:220-223`).
+
+On **partial** approval — the operator approves some but not all of the parallel tool calls — `resume()` keeps the task in `PENDING_APPROVAL`, rewrites `pending_state` with only the un-approved calls, and returns. The un-approved `tool_calls` rows stay `status='PENDING_APPROVAL'`. The operator can keep deciding on later rounds until the batch is empty.
+
+On full approval in **Worker** mode, `resume()` returns immediately: each approved tool row is persisted as `status='APPROVED'` + `executed_at=NULL` (the worker-pickup sentinel), the task moves to `QUEUED`, and the daemon's `task:run` worker picks it up. `TickPhaseRunner::executeApprovedPendingToolsForTask()` consumes those sentinel rows at the top of `runTick()` — before the LLM round-trip — so the next assistant message sees the tool results on the same round-trip. The HTTP approval endpoint therefore returns within ~100 ms regardless of how long the approved tool takes.
 
 ### `$userId` is sourced from the calling agent's row
 

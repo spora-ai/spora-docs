@@ -47,6 +47,10 @@ In both modes, multi-step tasks (multiple LLM turns before reaching a terminal s
 
 `resume()` and `reject()` each use a short `lockForUpdate()` transaction to flip `tasks.status` from `PENDING_APPROVAL` back to `RUNNING` (Sync) or `QUEUED` (Worker) and clear `pending_state`. In Sync mode the same call chain then invokes `tick()` after the transaction commits, so the LLM round-trip never holds the row lock. In Worker mode the task simply returns to the queue and the daemon picks it up.
 
+**Partial approval.** When the LLM produced parallel tool calls and the operator approves only some of them, `resume()` does not transition the task out of `PENDING_APPROVAL` — it rewrites `pending_state` with the un-approved tool calls and returns, so the operator can keep deciding on later rounds. Un-approved `tool_calls` rows stay at `status='PENDING_APPROVAL'`; they are never silently executed with the LLM's original arguments, and never auto-rejected.
+
+**Worker-mode tool pickup.** In Worker mode, `resume()` persists each approved tool as `status='APPROVED'` with `executed_at=NULL` (the worker-pickup sentinel) and returns without running the tool. When the daemon's `task:run` worker claims the resulting `QUEUED` task and runs `tick()`, `TickPhaseRunner::runTick()` calls `executeApprovedPendingToolsForTask()` first — it picks up those `APPROVED` + `executed_at IS NULL` rows, validates, executes, and appends the tool result to history — _before_ the LLM round-trip. The next assistant message therefore sees the tool results on the same round-trip. The HTTP `POST /api/v1/tasks/{id}/approve` response returns within ~100 ms regardless of how long the approved tool takes.
+
 ## Task Status Lifecycle
 
 ```mermaid
@@ -61,6 +65,7 @@ stateDiagram-v2
     RUNNING --> PENDING_APPROVAL : Tool calls need approval
 
     PENDING_APPROVAL --> RUNNING : resume() / reject()
+    PENDING_APPROVAL --> PENDING_APPROVAL : resume() (partial approval — pending_state rewritten)
 
     RUNNING --> FAILED : max_steps or exception
 ```

@@ -25,6 +25,10 @@ Approval resolution for an operation:
 
 If approval required → serialize `AgentState` to DB as `PENDING_APPROVAL`, PHP process exits. On human approval → status set to `RUNNING` (Sync) or `QUEUED` (Worker). `tick()` is invoked again only in sync mode; in worker mode the daemon picks up the task on its next drain cycle (see `Orchestrator::resume()` at `app/Agents/Orchestrator.php:585-589`).
 
+### `$userId` is sourced from the calling agent's row
+
+`Orchestrator::safeExecute()` no longer accepts a session-derived `$userId`. When the Orchestrator dispatches a tool, it reads the calling Agent's row (`agentService->getAgentByAgentId($agentId)->user_id`) and passes that value into the tool's `execute(array $arguments, int $agentId, ?int $userId)`. Tools therefore see **the owner of the agent that issued the call**, never "whoever is signed in" — a structural guarantee that no client code can bypass. Async contexts (Worker mode, scheduled tasks, sub-agent hops) inherit the same invariant because the lookup uses the agent row, not a session.
+
 ## Orchestrator Loop
 
 Stateless and short-lived. Each `tick()` is one full LLM turn (Think → Act). Structured in three phases to avoid holding a DB connection during network I/O:

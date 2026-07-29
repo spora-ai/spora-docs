@@ -24,7 +24,7 @@ Since spora-core#165, `required` accepts `bool|list<string>` — list form is pe
 
 Unified tool interface — replaces the previous `InputToolInterface` / `OutputToolInterface` split. Per-operation enabled/approval state is read from `#[ToolOperation]`. Tools without `#[ToolOperation]` declarations are treated as single-operation tools with class-level defaults.
 
-- `execute(array $arguments, int $agentId, ?int $userId = null): ToolResult` — MUST NOT throw; encode errors in `ToolResult`. `userId` is the user context from the task; user settings are merged before agent overrides.
+- `execute(array $arguments, int $agentId, ?int $userId = null): ToolResult` — MUST NOT throw; encode errors in `ToolResult`. `userId` is **sourced by the Orchestrator from the calling Agent's row** (see [Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop)); the dispatcher never threads a session user id. User settings are merged before agent overrides.
 - `describeAction(array $arguments): string` — human-readable, markdown-safe description for the approval UI.
 - `getParametersSchema(): array` — returns the JSON Schema `parameters` object (`type: "object"`, `properties`, `required`).
 

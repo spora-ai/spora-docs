@@ -70,7 +70,7 @@ Every `GET` and `PATCH` response (and each entry of `GET /api/v1/agents`) carrie
 
 #### Tool allowlist on an agent
 
-The `tools` array on an agent lists the tool activations for that agent. Each entry has `tool_class`, `tool_name`, and the per-operation `auto_approve` / `enabled` flags. Editing the allowlist is done through the agent's edit form, not via the wire.
+The `tools` array on an agent lists the tool activations for that agent. Each entry has `tool_class`, `icon`, `enabled`, and the per-operation `enabled` / `requires_approval` flags — the slim shape used by `read_agent` / `configure_tools` / `update_agent`. Editing the allowlist is done through the agent's edit form, not via the wire. The richer per-tool metadata (`display_name`, `description`, `plugin_slug`, `ready_to_enable`, `missing_required`) lives on `AgentTool.get_available_tools` (version 2), not on the agent resource.
 
 ### Tasks
 

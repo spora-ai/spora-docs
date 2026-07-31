@@ -39,11 +39,11 @@ The scanner aggregates your paths alongside the framework's `agent-templates/` d
 
 ## JSON / YAML schema
 
-The full schema lives at [`https://spora.dev/agent-template.schema.json`](https://spora.dev/agent-template.schema.json). A minimal example:
+The full schema lives at [`https://docs.spora-ai.com/schemas/agent-template.schema.json`](https://docs.spora-ai.com/schemas/agent-template.schema.json). A minimal example:
 
 ```json
 {
-  "$schema": "https://spora.dev/agent-template.schema.json",
+  "$schema": "https://docs.spora-ai.com/schemas/agent-template.schema.json",
   "id": "web-search/research-assistant",
   "name": "Research Assistant",
   "description": "Looks things up on the web and reports back.",

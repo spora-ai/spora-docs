@@ -7,7 +7,7 @@ description: plugin.json — every field, validation rule, and example for shipp
 
 Every Spora plugin ships a `plugin.json` at the root of its package. The `PluginLoader` reads it at boot and rejects invalid manifests with `PluginLoadFailedException` before the rest of the application boots.
 
-The schema is defined in [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) (JSON Schema draft-07) in the framework repo. This page is the human-readable reference.
+The schema is defined in [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) (JSON Schema draft-07) in the framework repo and published at [`https://docs.spora-ai.com/schemas/plugin.schema.json`](https://docs.spora-ai.com/schemas/plugin.schema.json) for editor tooling. This page is the human-readable reference.
 
 For the **how to author a plugin** walkthrough, see [Develop → Plugins → Author guide](/develop/plugins/author-guide). For the **operator install flow**, see [Install API](/develop/plugins/install-api).
 

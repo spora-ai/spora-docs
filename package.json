@@ -15,8 +15,10 @@
     "format:check": "prettier --check \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",
     "gen:api": "node scripts/gen-api.mjs",
     "gen:api:check": "node scripts/gen-api.mjs --check",
-    "predev": "npm run gen:api",
-    "prebuild": "npm run gen:api"
+    "sync:schemas": "node scripts/sync-schemas.mjs",
+    "sync:schemas:check": "node scripts/sync-schemas.mjs --check",
+    "predev": "npm run gen:api && npm run sync:schemas",
+    "prebuild": "npm run gen:api && npm run sync:schemas"
   },
   "dependencies": {
     "@vuepress/bundler-vite": "2.0.0-rc.30",

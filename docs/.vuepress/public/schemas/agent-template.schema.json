@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.spora-ai.com/schemas/agent-template.schema.json",
+  "title": "Spora Agent Template",
+  "description": "A reusable agent definition: name, system prompt, tool activations, per-operation auto-approve defaults, and optional per-agent non-secret tool settings.",
+  "type": "object",
+  "required": ["id", "name", "version", "agent"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema $id reference. Always 'https://docs.spora-ai.com/schemas/agent-template.schema.json'."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^([a-z0-9][a-z0-9_-]{0,63}/)?[a-z0-9][a-z0-9_-]{0,63}$",
+      "minLength": 1,
+      "maxLength": 130,
+      "description": "Namespaced template id. Format `<source>/<slug>`: built-in templates use `core/<name>`, plugin templates use `<plugin-slug>/<name>`. The namespace prefix is enforced by the scanner against the file's source directory, so two plugins can never accidentally use the same id. A bare slug is accepted for user-exported templates."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Human-readable template name."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([+-].+)?$",
+      "description": "Semver version. Bumped on template revisions."
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "System prompt. Recipients see a SYSTEM_PROMPT_MISSING warning if empty."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 200000,
+          "description": "Operator-facing markdown notes attached to the agent. Readable via the dashboard and via AgentTool.read_notes / write_notes."
+        },
+        "max_steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10
+        },
+        "allow_followup": {
+          "type": "boolean",
+          "default": true
+        },
+        "retry_after_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "description": "Tools the agent should have activated. Tools whose tool_class is not currently registered are skipped at import time with a TOOL_PLUGIN_MISSING warning.",
+      "items": {
+        "type": "object",
+        "required": ["tool_class", "enabled", "operations"],
+        "additionalProperties": false,
+        "properties": {
+          "tool_class": {
+            "type": "string",
+            "description": "Fully-qualified PHP class name of a registered ToolInterface implementation."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this tool should be enabled for the agent."
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Optional agent-specific tool overrides included only on opt-in export. Password-typed keys and inherited global/user values are excluded; imported values round-trip through the normal agent override settings path."
+          },
+          "operations": {
+            "type": "array",
+            "description": "Per-operation overrides. An operation whose name is not declared by the tool is skipped at import time with an OPERATION_UNKNOWN warning.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Operation method name (e.g. 'now', 'calculate', 'save')."
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Whether this operation is enabled. Omit to inherit the tool default."
+                },
+                "auto_approve": {
+                  "type": "boolean",
+                  "description": "If true, this operation is pre-approved and does not require user confirmation before execution."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required_plugins": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?\\/[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$"
+      },
+      "description": "Composer package names (vendor/name, e.g. 'spora-ai/spora-plugin-minimax') of plugins the template assumes are installed. The importer resolves each entry to the on-disk plugin slug via the package name; missing plugins produce a non-fatal PLUGIN_MISSING warning. Plugins are NEVER auto-installed."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["general", "productivity", "research", "communication", "media", "data", "automation"]
+        },
+        "icon": {
+          "type": "string",
+          "description": "Bundled icon name from the Spora palette. Defaults to 'puzzle'."
+        },
+        "archetype": {
+          "type": "string",
+          "enum": ["assistant", "researcher", "analyst", "writer", "coder", "explorer", "advisor", "creative"],
+          "description": "Profile-picture archetype. Imported into the new agent's agent_pictures row."
+        },
+        "variant_key": {
+          "type": "string",
+          "enum": ["v0", "v1", "v2"],
+          "description": "Variant index within the chosen archetype. Omit to auto-derive from fnv1a(agent_id) % 3."
+        },
+        "palette_key": {
+          "type": "string",
+          "enum": ["slate", "red", "orange", "amber", "green", "teal", "blue", "indigo", "violet", "pink"],
+          "description": "Predefined FG+BG color pair for the profile picture tile."
+        }
+      }
+    }
+  }
+}

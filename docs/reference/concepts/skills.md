@@ -51,7 +51,7 @@ your-plugin/
         └── references/       # optional
 ```
 
-`SKILL.md` carries YAML frontmatter + a Markdown body. Optional sidecar files (e.g. `examples.md`, `references/REFERENCE.md`) are listed by the Skill tool's `files` operation and read on demand by `read`. The full schema is at [`skill.schema.json`](https://spora.dev/skill.schema.json) (mirrored in `spora-core/skill.schema.json`).
+`SKILL.md` carries YAML frontmatter + a Markdown body. Optional sidecar files (e.g. `examples.md`, `references/REFERENCE.md`) are listed by the Skill tool's `files` operation and read on demand by `read`. The frontmatter field table above is the canonical reference for the on-disk format (Spora follows the open [agentskills.io](https://agentskills.io/specification) spec).
 
 ### Frontmatter
 

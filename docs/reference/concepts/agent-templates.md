@@ -71,6 +71,6 @@ Plugins are **never** auto-installed. A slug in `required_plugins` that is not l
 
 The full JSON Schema is published at:
 
-- [`https://spora.dev/agent-template.schema.json`](https://spora.dev/agent-template.schema.json) (mirrored in `spora-core/agent-template.schema.json`)
+- [`https://docs.spora-ai.com/schemas/agent-template.schema.json`](https://docs.spora-ai.com/schemas/agent-template.schema.json) (served from `docs/.vuepress/public/schemas/`; mirrored at build time from `spora-core/agent-template.schema.json`)
 
 See [Agent template schema reference](/reference/agent-template-schema) for the field table and examples.

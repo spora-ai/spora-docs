@@ -29,9 +29,14 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const PUBLIC_DIR = resolve(ROOT, "docs/.vuepress/public/schemas");
-const CORE_DIR = resolve(
-  process.env.SPORA_CORE_PATH ?? resolve(ROOT, "..", "spora-core"),
-);
+// Search paths, in priority order:
+//   1. SPORA_CORE_PATH env var (explicit override).
+//   2. ./spora-core inside this checkout — CI layout (see ci-docs.yml +
+//      deploy-docs.yml `Checkout spora-core` steps, both with `path: spora-core`).
+//   3. ../spora-core — sibling-checkout layout used by local dev.
+const CANDIDATE_CORE_DIRS = process.env.SPORA_CORE_PATH
+  ? [resolve(process.env.SPORA_CORE_PATH)]
+  : [resolve(ROOT, "spora-core"), resolve(ROOT, "..", "spora-core")];
 
 const checkOnly = process.argv.includes("--check");
 
@@ -40,8 +45,8 @@ const SCHEMAS = [
   { source: "plugin.schema.json", dest: "plugin.schema.json" },
 ];
 
-function copySchema({ source, dest }) {
-  const src = resolve(CORE_DIR, source);
+function copySchema({ source, dest }, coreDir) {
+  const src = resolve(coreDir, source);
   const dst = resolve(PUBLIC_DIR, dest);
 
   if (!existsSync(src)) {
@@ -64,23 +69,38 @@ function copySchema({ source, dest }) {
   return { source, dest, status: "wrote" };
 }
 
+function resolveCoreDir() {
+  for (const dir of CANDIDATE_CORE_DIRS) {
+    if (existsSync(dir)) return dir;
+  }
+  return null;
+}
+
 function main() {
-  if (!existsSync(CORE_DIR)) {
+  const coreDir = resolveCoreDir();
+  if (coreDir === null) {
     if (checkOnly) {
       // In --check mode we want a hard fail if spora-core is missing, so CI
       // catches accidental env-config regressions. In default mode we silently
       // skip — devs without a sibling checkout still get a working site.
-      console.error(`spora-core checkout not found at ${CORE_DIR}.`);
+      console.error(
+        `spora-core checkout not found. Searched:\n` +
+          CANDIDATE_CORE_DIRS.map((d) => `  - ${d}`).join("\n"),
+      );
       console.error(
         `Set SPORA_CORE_PATH to the spora-core checkout, or run from a directory containing ./spora-core.`,
       );
       process.exit(1);
     }
-    console.log(`spora-core checkout not found at ${CORE_DIR}; skipping schema sync.`);
+    console.log(
+      `spora-core checkout not found; searched:\n` +
+        CANDIDATE_CORE_DIRS.map((d) => `  - ${d}`).join("\n") +
+        `\nSkipping schema sync.`,
+    );
     return;
   }
 
-  const results = SCHEMAS.map(copySchema);
+  const results = SCHEMAS.map((schema) => copySchema(schema, coreDir));
 
   if (checkOnly) {
     const drift = results.filter((r) => r.status !== "ok");
@@ -100,7 +120,7 @@ function main() {
 
   for (const r of results) {
     if (r.status === "missing-source") {
-      console.warn(`Skipped ${r.source}: not found in ${CORE_DIR}.`);
+      console.warn(`Skipped ${r.source}: not found in ${coreDir}.`);
     } else if (r.status === "wrote") {
       console.log(`Wrote docs/.vuepress/public/schemas/${r.dest}.`);
     }

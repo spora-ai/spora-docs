@@ -5,7 +5,7 @@ description: Full reference for the Spora Agent Template JSON Schema (draft 2020
 
 # Agent template schema
 
-The Agent Template schema is published at [`https://spora.dev/agent-template.schema.json`](https://spora.dev/agent-template.schema.json) (mirrored in `spora-core/agent-template.schema.json`). It uses JSON Schema draft 2020-12 with `additionalProperties: false` at every level.
+The Agent Template schema is published at [`https://docs.spora-ai.com/schemas/agent-template.schema.json`](https://docs.spora-ai.com/schemas/agent-template.schema.json) (served from `docs/.vuepress/public/schemas/`; the source-of-truth lives in `spora-core/agent-template.schema.json` and is mirrored at build time by `scripts/sync-schemas.mjs`). It uses JSON Schema draft 2020-12 with `additionalProperties: false` at every level.
 
 > **Operator-upload only.** This schema describes the payload accepted by the operator-upload endpoint `POST /api/v1/agent-templates/import`. The LLM-facing `create_agent` tool uses a **slim** subset (top-level `name` / `description` / `system_prompt` / `max_steps` / `allow_followup` / `retry_after_minutes` / `max_retries`) — see [Concepts → Tool system → Slim two-phase agent creation](/reference/concepts/tools#slim-two-phase-agent-creation). The two surfaces are explicit by design: the slim payload removes the N-nested-keys decision the LLM had to make in one call.
 >
@@ -15,7 +15,7 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 
 | Field              | Type   | Required | Notes                                                                                                                                                                                                                                   |
 | ------------------ | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `$schema`          | string | no       | Always `"https://spora.dev/agent-template.schema.json"`.                                                                                                                                                                                |
+| `$schema`          | string | no       | Always `"https://docs.spora-ai.com/schemas/agent-template.schema.json"`.                                                                                                                                                                |
 | `id`               | string | **yes**  | Namespaced slug. Pattern: `^([a-z0-9][a-z0-9_-]{0,63}/)?[a-z0-9][a-z0-9_-]{0,63}$`. Length 1-130. Format: `<source>/<slug>` — `core/<name>` for built-ins, `<plugin-slug>/<name>` for plugin templates, bare `<slug>` for user exports. |
 | `name`             | string | **yes**  | Human-readable name. Length 1-200.                                                                                                                                                                                                      |
 | `description`      | string | no       | Up to 1000 chars.                                                                                                                                                                                                                       |

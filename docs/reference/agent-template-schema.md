@@ -47,11 +47,11 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 }
 ```
 
-| Field        | Type    | Required | Notes                                                                                                                                                                                                                                                                                          |
-| ------------ | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tool_class` | string  | **yes**  | FQCN of a registered `ToolInterface` implementation.                                                                                                                                                                                                                                           |
-| `enabled`    | boolean | **yes**  | Whether to enable the tool. Disabled tools get no row inserted on import.                                                                                                                                                                                                                    |
-| `operations` | array   | **yes**  | Per-operation overrides.                                                                                                                                                                                                                                                                       |
+| Field        | Type    | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------ | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tool_class` | string  | **yes**  | FQCN of a registered `ToolInterface` implementation.                                                                                                                                                                                                                                                                                                                                                |
+| `enabled`    | boolean | **yes**  | Whether to enable the tool. Disabled tools get no row inserted on import.                                                                                                                                                                                                                                                                                                                           |
+| `operations` | array   | **yes**  | Per-operation overrides.                                                                                                                                                                                                                                                                                                                                                                            |
 | `settings`   | object  | no       | Optional agent-specific, non-secret tool overrides (e.g. the active skill allowlist). Only present when the template was produced by `GET /agents/{id}/export?include_settings=1`. Each key must match an `#[ToolSetting]` attribute on the registered tool class; password-typed keys are rejected at validation. The importer applies surviving keys via `ToolConfigService::putAgentOverride()`. |
 
 > **LLM authoring note:** the `AgentTool.get_available_tools` operation returns
@@ -80,38 +80,38 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 
 The scanner and validator surface these codes; none abort the import.
 
-| Code                                                       | Severity | Meaning                                                                               |
-| ---------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------- |
-| `PARSE_ERROR`                                              | error    | File failed to parse as JSON or YAML. Surfaces in scanner output.                     |
-| `EMPTY_PAYLOAD`                                            | error    | Decoded payload is empty / not an object.                                             |
-| `ID_REQUIRED` / `ID_INVALID` / `ID_PATTERN`                | error    | `id` is missing, empty, or fails the slug regex.                                      |
-| `NAME_REQUIRED` / `NAME_INVALID`                           | error    | `name` is missing or empty.                                                           |
-| `VERSION_REQUIRED` / `VERSION_INVALID` / `VERSION_PATTERN` | error    | `version` is missing or not semver.                                                   |
-| `AGENT_REQUIRED`                                           | error    | `agent` block missing or not an object.                                               |
-| `MAX_STEPS_RANGE`                                          | error    | `agent.max_steps` is out of `[1, 100]`.                                               |
-| `TOOLS_NOT_LIST`                                           | error    | `tools` is not a list.                                                                |
-| `TOOL_CLASS_REQUIRED`                                      | error    | A tool entry is missing `tool_class`.                                                 |
-| `TOOL_CLASS_DUPLICATE`                                     | error    | Same `tool_class` appears more than once.                                             |
-| `TOOL_ENABLED_REQUIRED`                                    | error    | A tool entry is missing boolean `enabled`.                                            |
-| `OPERATIONS_NOT_LIST`                                      | error    | A tool's `operations` is not a list.                                                  |
-| `OPERATION_NOT_OBJECT`                                     | error    | An operation entry is not an object.                                                  |
-| `OPERATION_NAME_REQUIRED`                                  | error    | An operation entry is missing `name`.                                                 |
-| `AUTO_APPROVE_TYPE`                                        | error    | `auto_approve` is not boolean.                                                        |
-| `OPERATION_ENABLED_TYPE`                                   | error    | `enabled` is not boolean.                                                             |
-| `SETTINGS_UNKNOWN_KEY`                                     | error    | `tools[].settings.<key>` is not declared by the tool's `#[ToolSetting]` attributes.    |
+| Code                                                       | Severity | Meaning                                                                                                     |
+| ---------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| `PARSE_ERROR`                                              | error    | File failed to parse as JSON or YAML. Surfaces in scanner output.                                           |
+| `EMPTY_PAYLOAD`                                            | error    | Decoded payload is empty / not an object.                                                                   |
+| `ID_REQUIRED` / `ID_INVALID` / `ID_PATTERN`                | error    | `id` is missing, empty, or fails the slug regex.                                                            |
+| `NAME_REQUIRED` / `NAME_INVALID`                           | error    | `name` is missing or empty.                                                                                 |
+| `VERSION_REQUIRED` / `VERSION_INVALID` / `VERSION_PATTERN` | error    | `version` is missing or not semver.                                                                         |
+| `AGENT_REQUIRED`                                           | error    | `agent` block missing or not an object.                                                                     |
+| `MAX_STEPS_RANGE`                                          | error    | `agent.max_steps` is out of `[1, 100]`.                                                                     |
+| `TOOLS_NOT_LIST`                                           | error    | `tools` is not a list.                                                                                      |
+| `TOOL_CLASS_REQUIRED`                                      | error    | A tool entry is missing `tool_class`.                                                                       |
+| `TOOL_CLASS_DUPLICATE`                                     | error    | Same `tool_class` appears more than once.                                                                   |
+| `TOOL_ENABLED_REQUIRED`                                    | error    | A tool entry is missing boolean `enabled`.                                                                  |
+| `OPERATIONS_NOT_LIST`                                      | error    | A tool's `operations` is not a list.                                                                        |
+| `OPERATION_NOT_OBJECT`                                     | error    | An operation entry is not an object.                                                                        |
+| `OPERATION_NAME_REQUIRED`                                  | error    | An operation entry is missing `name`.                                                                       |
+| `AUTO_APPROVE_TYPE`                                        | error    | `auto_approve` is not boolean.                                                                              |
+| `OPERATION_ENABLED_TYPE`                                   | error    | `enabled` is not boolean.                                                                                   |
+| `SETTINGS_UNKNOWN_KEY`                                     | error    | `tools[].settings.<key>` is not declared by the tool's `#[ToolSetting]` attributes.                         |
 | `SETTINGS_PASSWORD_KEY_FORBIDDEN`                          | error    | `tools[].settings.<key>` names a password-typed setting. Defence-in-depth — the exporter never emits these. |
-| `SETTINGS_INVALID_VALUE_TYPE`                              | error    | A `tools[].settings` value fails the type check (e.g. scalar for `multi-select`, non-bool for `toggle`). |
-| `REQUIRED_PLUGINS_NOT_LIST` / `REQUIRED_PLUGINS_INVALID`   | error    | `required_plugins` is malformed.                                                      |
-| `METADATA_NOT_OBJECT`                                      | error    | `metadata` is not an object.                                                          |
-| `METADATA_ICON_TYPE`                                       | error    | `metadata.icon` is not a string.                                                      |
-| `UNKNOWN_TOP_LEVEL_KEY`                                    | error    | Top-level field is not in the allowed list.                                           |
-| `UNKNOWN_AGENT_KEY`                                        | error    | `agent.*` field is not in the allowed list.                                           |
-| `UNKNOWN_METADATA_KEY`                                     | error    | `metadata.*` field is not in the allowed list.                                        |
-| `SYSTEM_PROMPT_MISSING`                                    | warning  | `agent.system_prompt` is empty.                                                       |
-| `OPERATION_UNKNOWN`                                        | warning  | An operation name is not declared by the tool.                                        |
-| `SKILL_MISSING`                                            | warning  | A `multi-select` skill slug in `tools[].settings` is not available locally and was dropped on import. |
-| `METADATA_CATEGORY_UNKNOWN`                                | warning  | `metadata.category` is not in the known enum.                                         |
-| `NAMESPACE_MISMATCH`                                       | warning  | Built-in / plugin file id doesn't start with the source directory's namespace prefix. |
-| `PLUGIN_MISSING`                                           | warning  | A `required_plugins` slug is not loaded. (Importer)                                   |
-| `TOOL_PLUGIN_MISSING`                                      | warning  | A `tool_class` is not currently registered. (Importer)                                |
-| `TOOL_NEEDS_CONFIGURATION`                                 | warning  | Tool will be enabled but missing required settings. (Importer)                        |
+| `SETTINGS_INVALID_VALUE_TYPE`                              | error    | A `tools[].settings` value fails the type check (e.g. scalar for `multi-select`, non-bool for `toggle`).    |
+| `REQUIRED_PLUGINS_NOT_LIST` / `REQUIRED_PLUGINS_INVALID`   | error    | `required_plugins` is malformed.                                                                            |
+| `METADATA_NOT_OBJECT`                                      | error    | `metadata` is not an object.                                                                                |
+| `METADATA_ICON_TYPE`                                       | error    | `metadata.icon` is not a string.                                                                            |
+| `UNKNOWN_TOP_LEVEL_KEY`                                    | error    | Top-level field is not in the allowed list.                                                                 |
+| `UNKNOWN_AGENT_KEY`                                        | error    | `agent.*` field is not in the allowed list.                                                                 |
+| `UNKNOWN_METADATA_KEY`                                     | error    | `metadata.*` field is not in the allowed list.                                                              |
+| `SYSTEM_PROMPT_MISSING`                                    | warning  | `agent.system_prompt` is empty.                                                                             |
+| `OPERATION_UNKNOWN`                                        | warning  | An operation name is not declared by the tool.                                                              |
+| `SKILL_MISSING`                                            | warning  | A `multi-select` skill slug in `tools[].settings` is not available locally and was dropped on import.       |
+| `METADATA_CATEGORY_UNKNOWN`                                | warning  | `metadata.category` is not in the known enum.                                                               |
+| `NAMESPACE_MISMATCH`                                       | warning  | Built-in / plugin file id doesn't start with the source directory's namespace prefix.                       |
+| `PLUGIN_MISSING`                                           | warning  | A `required_plugins` slug is not loaded. (Importer)                                                         |
+| `TOOL_PLUGIN_MISSING`                                      | warning  | A `tool_class` is not currently registered. (Importer)                                                      |
+| `TOOL_NEEDS_CONFIGURATION`                                 | warning  | Tool will be enabled but missing required settings. (Importer)                                              |

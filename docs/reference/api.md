@@ -119,7 +119,7 @@ See [Concepts → Architecture](/reference/concepts/architecture) for the full H
 | `POST` | `/api/v1/agent-templates/import`   | session + CSRF | Create an agent from a payload             |
 | `GET`  | `/api/v1/agents/{id}/export`       | session        | Export an agent as a template JSON         |
 
-> **Settings are not exported.** Exporting an agent produces a JSON template that includes tool activations and per-operation auto-approve defaults only. Passwords, API keys, and other secrets must be reconfigured in **Settings → Tools** after import. The `inline_warning` field in the export response reminds the caller to communicate this.
+> **Settings are not exported by default.** Exporting an agent produces a JSON template that includes tool activations and per-operation auto-approve defaults. Pass `?include_settings=1` to also embed per-tool non-secret settings (anything declared with `#[ToolSetting]` except `type: 'password'`); the importer applies them on import. Passwords, API keys, and other secrets must always be reconfigured in **Settings → Tools** after import. The `inline_info` / `inline_warning` fields in the export response remind the caller to communicate which mode was used.
 
 ### Skills
 
@@ -181,7 +181,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 27 routes
+- [Agents](/reference/api/agents) — 29 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Tasks](/reference/api/tasks) — 9 routes
 - [Users](/reference/api/users) — 9 routes
@@ -226,6 +226,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                         | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                        | Agents           |
 | `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate            | Agents           |
+| `POST`   | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | UploadImage AgentPicture             | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | DeleteImage AgentPicture             | Agents           |
 | `GET`    | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth`               | Index ScheduledRun                   | Agents           |
 | `POST`   | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth` + `csrfToken` | Store ScheduledRun                   | Agents           |
 | `GET`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth`               | Show ScheduledRun                    | Agents           |

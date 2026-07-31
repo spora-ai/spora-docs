@@ -12,8 +12,7 @@ An **Agent template** is a JSON or YAML file that bundles an Agent's identity, s
 - Agent identity: name, description, system prompt, max steps, allow followup, retry config.
 - Tool activations: per-tool `enabled` flag.
 - Per-operation `auto_approve` flag (mapped from the agent's `agent_tool_operation_overrides` row).
-
-**What does NOT travel:** ToolSettings — including passwords, API keys, and other secrets. The export endpoint never reads `tool_configurations` or `agent_tool_overrides`; recipients must configure those in **Settings → Tools** after import.
+- Agent-specific, non-secret tool settings (e.g. the active skill allowlist) — **only when** the operator opts in via `?include_settings=1` on the export request. Secrets and inherited global/user values are never included.
 
 ## Discovery
 
@@ -44,7 +43,7 @@ The scanner walks each directory depth-0, parses `.json` / `.yaml` / `.yml` file
 | `POST` | `/api/v1/agent-templates/import`   | Create an Agent from a payload             |
 | `GET`  | `/api/v1/agents/{id}/export`       | Export an Agent as a template JSON         |
 
-The export endpoint always returns an `inline_warning` field reminding the caller that passwords and API keys are not included.
+The export endpoint returns `inline_warning` on the default (no-settings) path and `inline_info` on the opt-in path. The opt-in path's `inline_info` banner lists which tools contributed settings and reminds the operator that passwords and inherited global/user values are still NOT included.
 
 ## Importer semantics
 

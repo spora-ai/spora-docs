@@ -7,7 +7,7 @@ description: Ship agent templates with your plugin. Documents the agentTemplateP
 
 Agent templates are reusable agent definitions that bundle name, system prompt, max steps, tool activations, and per-operation auto-approve defaults. They live as `.json` / `.yaml` / `.yml` files alongside your plugin's source and are surfaced to operators as a gallery in the admin UI.
 
-**What travels in a template:** activation (`enabled`) and per-operation `auto_approve`. **What does NOT travel:** tool settings, including passwords and API keys. Recipients must configure those in **Settings → Tools** after importing — the template UI surfaces this prominently before download.
+**What travels in a template:** activation (`enabled`), per-operation `auto_approve`, and — when the operator ticks "Include settings (no secrets)" at export time — per-tool non-secret settings. **What does NOT travel:** secret settings (anything declared with `#[ToolSetting(type: 'password')]`). Recipients must configure secrets in **Settings → Tools** after importing — the template UI surfaces this prominently before download.
 
 > **Operator-upload shape.** This page documents the operator-upload shape consumed by `POST /api/v1/agent-templates/import` and the bundled templates. The LLM-facing `create_agent` tool uses a **slim** subset (top-level `name` / `description` / `system_prompt` / `max_steps` / `allow_followup` / `retry_after_minutes` / `max_retries`) — see [Concepts → Tool system → Slim two-phase agent creation](/reference/concepts/tools#slim-two-phase-agent-creation). `tools[]` is optional on both surfaces; on the operator-upload path an empty / missing `tools[]` produces an agent with no tool activations, and the operator adds them through the agent edit form.
 

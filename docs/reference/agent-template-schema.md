@@ -9,7 +9,7 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 
 > **Operator-upload only.** This schema describes the payload accepted by the operator-upload endpoint `POST /api/v1/agent-templates/import`. The LLM-facing `create_agent` tool uses a **slim** subset (top-level `name` / `description` / `system_prompt` / `max_steps` / `allow_followup` / `retry_after_minutes` / `max_retries`) — see [Concepts → Tool system → Slim two-phase agent creation](/reference/concepts/tools#slim-two-phase-agent-creation). The two surfaces are explicit by design: the slim payload removes the N-nested-keys decision the LLM had to make in one call.
 >
-> **Settings are never included.** ToolSettings (passwords, API keys, secrets) are not representable in this schema. Recipients configure those in **Settings → Tools** after import.
+> **Settings are opt-in.** The new `tools[].settings` block is present only when the template was produced by `GET /agents/{id}/export?include_settings=1`. Password-typed keys (`#[ToolSetting(type: 'password')]`) and inherited global/user cascade values are NEVER included, regardless of how the template was produced. Recipients configure remaining secrets in **Settings → Tools** after import.
 
 ## Top-level shape
 
@@ -42,15 +42,17 @@ The Agent Template schema is published at [`https://spora.dev/agent-template.sch
 {
   "tool_class": "Spora\\Tools\\CalculatorTool",
   "enabled": true,
-  "operations": [{ "name": "calculate", "enabled": true, "auto_approve": true }]
+  "operations": [{ "name": "calculate", "enabled": true, "auto_approve": true }],
+  "settings": { "allowed_skills": ["weather", "calculator"] }
 }
 ```
 
-| Field        | Type    | Required | Notes                                                                     |
-| ------------ | ------- | -------- | ------------------------------------------------------------------------- |
-| `tool_class` | string  | **yes**  | FQCN of a registered `ToolInterface` implementation.                      |
-| `enabled`    | boolean | **yes**  | Whether to enable the tool. Disabled tools get no row inserted on import. |
-| `operations` | array   | **yes**  | Per-operation overrides.                                                  |
+| Field        | Type    | Required | Notes                                                                                                                                                                                                                                                                                          |
+| ------------ | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tool_class` | string  | **yes**  | FQCN of a registered `ToolInterface` implementation.                                                                                                                                                                                                                                           |
+| `enabled`    | boolean | **yes**  | Whether to enable the tool. Disabled tools get no row inserted on import.                                                                                                                                                                                                                    |
+| `operations` | array   | **yes**  | Per-operation overrides.                                                                                                                                                                                                                                                                       |
+| `settings`   | object  | no       | Optional agent-specific, non-secret tool overrides (e.g. the active skill allowlist). Only present when the template was produced by `GET /agents/{id}/export?include_settings=1`. Each key must match an `#[ToolSetting]` attribute on the registered tool class; password-typed keys are rejected at validation. The importer applies surviving keys via `ToolConfigService::putAgentOverride()`. |
 
 > **LLM authoring note:** the `AgentTool.get_available_tools` operation returns
 > `tool_class` for every registered tool. An agent that wants to spawn a
@@ -96,6 +98,9 @@ The scanner and validator surface these codes; none abort the import.
 | `OPERATION_NAME_REQUIRED`                                  | error    | An operation entry is missing `name`.                                                 |
 | `AUTO_APPROVE_TYPE`                                        | error    | `auto_approve` is not boolean.                                                        |
 | `OPERATION_ENABLED_TYPE`                                   | error    | `enabled` is not boolean.                                                             |
+| `SETTINGS_UNKNOWN_KEY`                                     | error    | `tools[].settings.<key>` is not declared by the tool's `#[ToolSetting]` attributes.    |
+| `SETTINGS_PASSWORD_KEY_FORBIDDEN`                          | error    | `tools[].settings.<key>` names a password-typed setting. Defence-in-depth — the exporter never emits these. |
+| `SETTINGS_INVALID_VALUE_TYPE`                              | error    | A `tools[].settings` value fails the type check (e.g. scalar for `multi-select`, non-bool for `toggle`). |
 | `REQUIRED_PLUGINS_NOT_LIST` / `REQUIRED_PLUGINS_INVALID`   | error    | `required_plugins` is malformed.                                                      |
 | `METADATA_NOT_OBJECT`                                      | error    | `metadata` is not an object.                                                          |
 | `METADATA_ICON_TYPE`                                       | error    | `metadata.icon` is not a string.                                                      |
@@ -104,6 +109,7 @@ The scanner and validator surface these codes; none abort the import.
 | `UNKNOWN_METADATA_KEY`                                     | error    | `metadata.*` field is not in the allowed list.                                        |
 | `SYSTEM_PROMPT_MISSING`                                    | warning  | `agent.system_prompt` is empty.                                                       |
 | `OPERATION_UNKNOWN`                                        | warning  | An operation name is not declared by the tool.                                        |
+| `SKILL_MISSING`                                            | warning  | A `multi-select` skill slug in `tools[].settings` is not available locally and was dropped on import. |
 | `METADATA_CATEGORY_UNKNOWN`                                | warning  | `metadata.category` is not in the known enum.                                         |
 | `NAMESPACE_MISMATCH`                                       | warning  | Built-in / plugin file id doesn't start with the source directory's namespace prefix. |
 | `PLUGIN_MISSING`                                           | warning  | A `required_plugins` slug is not loaded. (Importer)                                   |

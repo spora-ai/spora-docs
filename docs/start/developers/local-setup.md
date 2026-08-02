@@ -32,7 +32,7 @@ php bin/spora spora:install    # creates schema (idempotent)
 php bin/spora db:seed         # creates a sample admin user
 ```
 
-`spora:install` is idempotent — re-run it after any new migration ships. `db:seed` is one-shot — it skips itself if users/agents already exist.
+`spora:install` is idempotent — re-run it after any new migration ships. `db:seed` is **insert-only** — it never patches an existing admin row, so it cannot resurrect a deleted admin or overwrite an operator-rename/demote. If you need to promote an existing admin row (e.g. it's stuck at `verified=0` after an upgrade), use `php bin/spora db:repair-admin` instead.
 
 To generate a secret key:
 

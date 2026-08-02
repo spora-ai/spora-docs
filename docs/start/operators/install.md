@@ -15,18 +15,6 @@ The Standard install is the canonical "if you have SSH and Composer, do this" re
 
 The admin UI is **prebuilt** — no Node toolchain is required on the operator's host.
 
-### Repairing a stuck bootstrap admin
-
-If the seeded `admin@spora.local` was persisted with `verified=0` (e.g. after an upgrade from a pre-`db:repair-admin` spora-core release), promote it without dropping the database:
-
-```bash
-php bin/spora db:repair-admin
-# or for a non-default admin email:
-php bin/spora db:repair-admin [email protected]
-```
-
-The command is idempotent and preserves any role bits you have already set. It refuses to create a missing row — it is a repair tool, not a backdoor.
-
 ## Standard install (Packagist)
 
 ```bash

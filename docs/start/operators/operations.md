@@ -81,16 +81,6 @@ php bin/spora spora:install
 php bin/spora db:seed
 ```
 
-## Repairing the bootstrap admin
-
-If the seeded admin ends up in a broken state (e.g. `verified=0` after an upgrade from an older spora-core release), run `db:repair-admin` instead of `db:reset` — it promotes the existing row in place without losing agents, plugins, or task history.
-
-```bash
-php bin/spora db:repair-admin
-```
-
-`db:seed` is **insert-only** — it will **not** patch an existing admin row, so it is the wrong tool for repairing a stuck admin. Use `db:repair-admin` for that.
-
 ## File permissions
 
 ```bash

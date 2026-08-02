@@ -17,25 +17,24 @@ php bin/spora list
 
 The most-used commands:
 
-| Command                                   | Purpose                                                                                                                                                  |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `spora:install`                           | Initial setup (idempotent migrations). Re-run after any new migration ships.                                                                             |
-| `spora:setup`                             | Run migrations and seed a fresh database. Existing installs are skipped — use `db:seed` or `db:repair-admin` for repairs. Used by the Docker entrypoint. |
-| `db:reset`                                | Wipe the database (SQLite file or MySQL DROP+CREATE) and clear the schema stamp. Prompts unless `--force`.                                               |
-| `db:seed`                                 | Run the bootstrap seeder on an existing install (insert-only).                                                                                           |
-| `db:repair-admin [email]`                 | Promote an existing admin to `verified=1` + `Role::ADMIN` + `status=1`. Idempotent, refuses to create a missing row.                                     |
-| `plugin:install <package>`                | Install a plugin from Packagist. Accepts `--path` for sibling-clone dev workflows.                                                                       |
-| `plugin:uninstall <package>`              | Remove a plugin.                                                                                                                                         |
-| `plugin:update [<package>]`               | Update one plugin, or all when no argument is given.                                                                                                     |
-| `plugin:list`                             | List installed plugins with version and path.                                                                                                            |
-| `worker:run`                              | Run async worker. Default = daemon; `--once` for cron; `--once --include-queue` for full cron.                                                           |
-| `worker:run --scheduled`                  | Run only scheduled tasks.                                                                                                                                |
-| `worker:run --reap-only`                  | Reap orphaned `RUNNING` tasks (no queue work).                                                                                                           |
-| `task:run`                                | Run a single task synchronously (debugging).                                                                                                             |
-| `media:archive:list` / `media:archive:gc` | List / garbage-collect archived media.                                                                                                                   |
-| `assets:gc`                               | Garbage-collect unreferenced assets.                                                                                                                     |
-| `tool:settings:migrate`                   | One-shot tool settings migration (if you upgrade across a settings-schema change).                                                                       |
-| `spora:openapi [--output] [--check]`      | Generate / drift-check the OpenAPI 3.0 spec from `RouteDefinitions`. Dev-only — gated on `zircote/swagger-php`.                                          |
+| Command                                   | Purpose                                                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `spora:install`                           | Initial setup (idempotent migrations). Re-run after any new migration ships.                                    |
+| `spora:setup`                             | Run migrations and seed a fresh database (or skip seeding on existing installs). Used by the Docker entrypoint. |
+| `db:reset`                                | Wipe the database (SQLite file or MySQL DROP+CREATE) and clear the schema stamp. Prompts unless `--force`.      |
+| `db:seed`                                 | Seed database with sample data (idempotent — skips if users/agents exist).                                      |
+| `plugin:install <package>`                | Install a plugin from Packagist. Accepts `--path` for sibling-clone dev workflows.                              |
+| `plugin:uninstall <package>`              | Remove a plugin.                                                                                                |
+| `plugin:update [<package>]`               | Update one plugin, or all when no argument is given.                                                            |
+| `plugin:list`                             | List installed plugins with version and path.                                                                   |
+| `worker:run`                              | Run async worker. Default = daemon; `--once` for cron; `--once --include-queue` for full cron.                  |
+| `worker:run --scheduled`                  | Run only scheduled tasks.                                                                                       |
+| `worker:run --reap-only`                  | Reap orphaned `RUNNING` tasks (no queue work).                                                                  |
+| `task:run`                                | Run a single task synchronously (debugging).                                                                    |
+| `media:archive:list` / `media:archive:gc` | List / garbage-collect archived media.                                                                          |
+| `assets:gc`                               | Garbage-collect unreferenced assets.                                                                            |
+| `tool:settings:migrate`                   | One-shot tool settings migration (if you upgrade across a settings-schema change).                              |
+| `spora:openapi [--output] [--check]`      | Generate / drift-check the OpenAPI 3.0 spec from `RouteDefinitions`. Dev-only — gated on `zircote/swagger-php`. |
 
 The `spora:` prefix on the install/setup/openapi commands is convention — the plugin namespace is unprefixed (`plugin:install` not `spora:plugin:install`). Older docs sometimes use the prefixed form; both work in current versions.
 

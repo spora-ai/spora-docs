@@ -91,6 +91,8 @@ Note: `storage/php.log` is **not** produced by Spora's logger. In local dev it i
 
 Mail transport itself is configured through the `SPORA_MAIL_*` env vars (read by `app/Services/SystemMailer.php:183-190` and `app/Http/MailConfigController.php:22-29`). These are **not** in the default `.env.example`; they are only in `docker/.env.local.example`. The full set is `SPORA_MAIL_DRIVER` / `SPORA_MAIL_HOST` / `SPORA_MAIL_PORT` / `SPORA_MAIL_USERNAME` / `SPORA_MAIL_PASSWORD` / `SPORA_MAIL_ENCRYPTION` / `SPORA_MAIL_FROM` / `SPORA_MAIL_FROM_NAME`.
 
+For SMTP, use a bare hostname in `SPORA_MAIL_HOST`. Pair port `587` with `SPORA_MAIL_ENCRYPTION=tls` for STARTTLS, or port `465` with `SPORA_MAIL_ENCRYPTION=ssl` for implicit TLS/SMTPS. Using `ssl` on port `587` causes OpenSSL `wrong version number` errors because that port expects an SMTP greeting before the TLS upgrade.
+
 ## Plugins
 
 | Variable                       | Default    | Config key               | Description                                                                                                                                                                                                   |

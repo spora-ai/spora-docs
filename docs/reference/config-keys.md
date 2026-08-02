@@ -24,20 +24,20 @@ If `SPORA_DB_HOST` is set in `.env`, it wins. If `config.php` has `'db_host' => 
 
 Set `SPORA_MAIL_DRIVER=smtp` to send Spora's system messages through an SMTP submission server. Keep `SPORA_MAIL_HOST` as a hostname only; do not include `smtp://` or `ssl://`.
 
-| Variable | Description |
-| --- | --- |
-| `SPORA_MAIL_HOST` | SMTP server hostname |
-| `SPORA_MAIL_PORT` | SMTP port; normally `587` for STARTTLS or `465` for implicit TLS |
-| `SPORA_MAIL_USERNAME` | SMTP username |
-| `SPORA_MAIL_PASSWORD` | SMTP password or provider app password |
-| `SPORA_MAIL_ENCRYPTION` | `tls` for STARTTLS, or `ssl` for implicit TLS |
-| `SPORA_MAIL_FROM` | Sender address |
-| `SPORA_MAIL_FROM_NAME` | Sender display name |
+| Variable                | Description                                                      |
+| ----------------------- | ---------------------------------------------------------------- |
+| `SPORA_MAIL_HOST`       | SMTP server hostname                                             |
+| `SPORA_MAIL_PORT`       | SMTP port; normally `587` for STARTTLS or `465` for implicit TLS |
+| `SPORA_MAIL_USERNAME`   | SMTP username                                                    |
+| `SPORA_MAIL_PASSWORD`   | SMTP password or provider app password                           |
+| `SPORA_MAIL_ENCRYPTION` | `tls` for STARTTLS, or `ssl` for implicit TLS                    |
+| `SPORA_MAIL_FROM`       | Sender address                                                   |
+| `SPORA_MAIL_FROM_NAME`  | Sender display name                                              |
 
-| SMTP port | Encryption | Connection mode |
-| --- | --- | --- |
-| `587` | `tls` | SMTP greeting, then STARTTLS upgrade |
-| `465` | `ssl` | TLS established immediately (SMTPS) |
+| SMTP port | Encryption | Connection mode                      |
+| --------- | ---------- | ------------------------------------ |
+| `587`     | `tls`      | SMTP greeting, then STARTTLS upgrade |
+| `465`     | `ssl`      | TLS established immediately (SMTPS)  |
 
 Do not use `ssl` on port `587`: the server expects an SMTP greeting before STARTTLS, so an immediate TLS handshake fails with OpenSSL's `wrong version number`.
 
@@ -66,7 +66,6 @@ SPORA_MAIL_ENCRYPTION=ssl
 SPORA_MAIL_FROM=user@example.com
 SPORA_MAIL_FROM_NAME=Spora
 ```
-
 
 | Key                           | Env var                             | Default                               | Purpose                                                                                                                      |
 | ----------------------------- | ----------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |

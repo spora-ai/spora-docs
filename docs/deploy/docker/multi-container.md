@@ -36,13 +36,13 @@ SPORA_LOG_PATH=stdout
 
 The `SPORA_DB_*` values are read by both `spora` (via `env_file: .env.local`) and `mariadb` (via its own `env_file` + `environment` block that defaults to placeholder passwords if not set).
 
-For production TLS, set `SERVER_NAME` to your public domain so FrankenPHP / Caddy auto-issues a Let's Encrypt certificate on the first boot:
+For production TLS, set `SERVER_NAME` to your public domain so Caddy auto-issues Let's Encrypt on the first boot:
 
 ```bash
 SERVER_NAME=spora.example.com
 ```
 
-The container publishes ports `80`, `443` and `443/udp` (HTTP/3). Confirm your firewall allows all three. Caddy stores the issued certificate in the `caddy_data` named volume; back that up if you rebuild the image.
+Confirm your firewall allows TCP `80`/`443` (and UDP `443` for HTTP/3). Caddy stores the issued certificate in the `caddy_data` named volume; back that up.
 
 ## 2. Run
 
@@ -140,9 +140,9 @@ The container starts two processes via supervisord (`docker/supervisord.conf`):
 
 The web server's Caddy config (`docker/frankenphp.conf`):
 
-- Listens on port 80 (the `EXPOSE` line in the Dockerfile), 443 (TLS) and 443/udp (HTTP/3). When `SERVER_NAME` is a public domain, Caddy auto-issues a Let's Encrypt certificate on first boot.
+- Listens on port 80 (the `EXPOSE` line in the Dockerfile), 443 (TLS) and 443/udp (HTTP/3). Caddy auto-issues Let's Encrypt on first boot when `SERVER_NAME` is a public domain.
 - Security headers (HSTS, X-Content-Type-Options, X-Frame-Options DENY, X-XSS-Protection, Referrer-Policy) on every response
-- Mercure hub at `/.well-known/mercure`, signed with `SPORA_MERCURE_JWT_KEY`. The frontend authenticates subscriber SSE connections with a `__Secure-mercure_access_token` HttpOnly cookie minted by `GET /api/v1/sse/authorize`; the hub is **not** `anonymous`, so private updates only reach subscribers whose JWT scopes match the publish topic.
+- Mercure hub at `/.well-known/mercure`, signed with `SPORA_MERCURE_JWT_KEY`. Subscribers authenticate with a `__Secure-mercure_access_token` HttpOnly cookie minted by `GET /api/v1/sse/authorize`; the hub is **not** `anonymous`, so private updates only reach subscribers whose JWT scopes match the publish topic.
 - Static assets served from `/app/public/dist`
 - SPA fallback — non-API routes return `index.html`
 - Everything else routed to PHP

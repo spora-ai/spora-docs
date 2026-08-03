@@ -126,7 +126,7 @@ networks:
     driver: bridge
 ```
 
-Run with `docker compose -f docker-compose.yml up -d`. With `SERVER_NAME=spora.example.com` (set in `.env`) Caddy auto-issues a Let's Encrypt certificate on first boot and the site serves at `https://spora.example.com`. For local-only paths, set `SERVER_NAME=localhost:80` and bind `- '8080:80'` instead.
+Run with `docker compose -f docker-compose.yml up -d`. With `SERVER_NAME=spora.example.com` (set in `.env`) Caddy auto-issues Let's Encrypt on first boot and the site serves at `https://spora.example.com`. For local-only paths, set `SERVER_NAME=localhost:80` and bind `- '8080:80'` instead.
 
 ## What's NOT in the image
 

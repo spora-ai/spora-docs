@@ -129,13 +129,26 @@ When the env vars are not set, `MercurePublisher::publish()` early-returns `fals
 **Env vars (FrankenPHP native Mercure — no separate service needed):**
 
 ```text
-SPORA_MERCURE_URL=http://localhost/.well-known/mercure
+SPORA_MERCURE_URL=https://spora.example.com/.well-known/mercure
 SPORA_MERCURE_JWT_KEY=your-shared-secret
 ```
+
+> **Don't use `http://localhost/...` in Docker when `SERVER_NAME` is a public domain.** Caddy's auto-HTTPS layer intercepts every plain-HTTP request — including the in-cluster POST the Orchestrator makes to publish updates — and redirects it to `https://...`. The publisher then fails with `tlsv1 alert internal error` because nothing inside the container can reach the public HTTPS port. In Docker either set `SPORA_MERCURE_PUBLISH_URL=http://spora:80/.well-known/mercure` (the Docker service name) or omit `SPORA_MERCURE_URL` entirely and let the framework default to an in-cluster URL.
 
 A separate `SPORA_MERCURE_PUBLISH_URL` may be set if the publisher posts to a different endpoint than the public hub URL the browser subscribes to (e.g. internal Docker hostname vs. externally-reachable URL).
 
 FrankenPHP bundles a Mercure hub natively — no separate service needed in that configuration.
+
+### Subscribing from the browser — the `__Secure-mercure_access_token` flow
+
+The Mercure hub is **not** anonymous — every update carries a user-scoped topic (`user/{userId}/tasks` or `user/{userId}/notifications`) and Mercure rejects subscribers whose JWT does not scope to that topic. The browser obtains its JWT through a short exchange with the app rather than embedding a long-lived secret in JS:
+
+1. The Vue app calls `GET /api/v1/sse/authorize` (session-cookie authenticated, no CSRF — it is a `GET`).
+2. The endpoint returns a short-lived (5-minute) subscriber JWT scoped to the calling user's topics, and the framework sets it as a `__Secure-mercure_access_token` HttpOnly cookie on the response.
+3. The frontend opens an `EventSource` against `SPORA_MERCURE_URL` with `credentials: 'include'`. The browser automatically attaches the cookie to the hub handshake and Mercure accepts the subscription.
+4. While the subscription is open, the browser periodically re-runs step 1 to refresh the cookie before it expires; the `EventSource` reconnect path picks up the new value transparently.
+
+Because the cookie name is `__Secure-`, browsers only send it over HTTPS — `SPORA_APP_URL` and `SPORA_MERCURE_URL` must use `https://` in production, otherwise the cookie is silently dropped and every `EventSource` reconnect 401s against the hub.
 
 ## Environment Variables
 

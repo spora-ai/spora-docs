@@ -130,7 +130,7 @@ Visit `https://yourdomain.com`. With `SPORA_ALLOW_REGISTRATION=true`, you'll see
 ### 8. Verify
 
 ```bash
-curl -I https://yourdomain.com/health
+curl -I https://yourdomain.com/api/health
 # → 200 OK
 
 curl https://yourdomain.com/api/v1/auth/me

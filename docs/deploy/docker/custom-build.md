@@ -56,6 +56,7 @@ SPORA_DB_PASSWORD=<strong-password>
 SPORA_DB_ROOT_PASSWORD=<strong-password>
 SPORA_APP_ENV=production
 SPORA_ALLOW_REGISTRATION=false
+SPORA_LOG_PATH=stdout
 ```
 
 The example compose below references this `.env` via `env_file: - .env` (Compose resolves the path relative to the compose file).
@@ -75,14 +76,24 @@ services:
     container_name: spora-app
     restart: always
     ports:
-      - '8081:80'
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost/api/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - spora_storage:/app/storage
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - spora
 
@@ -115,7 +126,7 @@ networks:
     driver: bridge
 ```
 
-Run with `docker compose -f docker-compose.yml up -d`. The site is at `http://localhost:8081`.
+Run with `docker compose -f docker-compose.yml up -d`. With `SERVER_NAME=spora.example.com` (set in `.env`) Caddy auto-issues a Let's Encrypt certificate on first boot and the site serves at `https://spora.example.com`. For local-only paths, set `SERVER_NAME=localhost:80` and bind `- '8080:80'` instead.
 
 ## What's NOT in the image
 

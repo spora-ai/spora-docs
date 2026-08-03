@@ -41,13 +41,15 @@ A final, stateless utility class in `app/Tools/MediaEmbed.php`. Five static help
 
 ## 2. Configuration
 
-| Env var                                  | Default             | Effect                                                                                    |
-| ---------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------- |
-| `SPORA_ASSET_STORE_MODE`                 | `auto`              | `auto` / `data_url` / `local`. Invalid values throw at boot.                              |
-| `SPORA_ASSET_STORE_AUTO_THRESHOLD_BYTES` | `1048576` (1 MiB)   | In `auto` mode, payloads ≤ this many bytes use `data_url`; larger payloads use `local`.   |
-| `SPORA_ASSET_STORE_MAX_BYTES`            | `52428800` (50 MiB) | Hard ceiling per asset. `AssetStore::store()` throws `AssetTooLargeException` above this. |
+| Env var                                  | Default             | Effect                                                                                                                                                                                                         |
+| ---------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_ASSET_STORE_MODE`                 | `auto`              | `auto` / `data_url` / `local`. Invalid values throw at boot.                                                                                                                                                   |
+| `SPORA_ASSET_STORE_AUTO_THRESHOLD_BYTES` | `1048576` (1 MiB)   | In `auto` mode, payloads ≤ this many bytes use `data_url`; larger payloads use `local`.                                                                                                                        |
+| `SPORA_ASSET_STORE_MAX_BYTES`            | `16777216` (16 MiB) | Per-asset ceiling. Matches the MEDIUMBLOB ceiling of `media_assets.payload` (migration 0064 + `MediaArchiveService::DATA_URL_MAX_BYTES`); the `DatabaseAssetStore` factory throws if this is set above 16 MiB. |
 
 Settings are merged from defaults → `config.php` → env vars, same as every other `SPORA_*` setting. See `ContainerDefinitions::configDefinition()` for the merge order.
+
+> The 16 MiB default applies to **every** mode — `data_url` because the `payload` BLOB column is MEDIUMBLOB (16 MiB on MySQL/MariaDB; SQLite has no intrinsic cap), and `local` because the same `AssetStore` interface enforces the same ceiling. Operators on `local` mode who need larger individual assets raise this via `SPORA_ASSET_STORE_MAX_BYTES`; the factory will fail fast on boot if the value exceeds the column ceiling for the active mode.
 
 ## 3. Pattern A — you have a URL
 

@@ -13,8 +13,8 @@ This is the **canonical reference** for every `SPORA_*` environment variable Spo
 
 ## SERVER_NAME
 
-| Variable      | Default | Config key | Description                                                                                                                                                                                                                                     |
-| ------------- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variable      | Default | Config key | Description                                                                                                                                                                                                                      |
+| ------------- | ------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SERVER_NAME` | —       | —          | Read by FrankenPHP / Caddy. Not a `SPORA_*` env var — set it directly in `.env` / Compose. In development set `localhost:80`; in production set the public domain so Caddy auto-issues Let's Encrypt and redirects HTTP → HTTPS. |
 
 ## Application
@@ -71,19 +71,19 @@ See [Worker deployment](/reference/concepts/worker-deployment) for deployment pa
 
 ## Mercure (SSE)
 
-| Variable                    | Default                           | Config key            | Description                                                                                                                                                                                                                                                                                                   |
-| --------------------------- | --------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SPORA_MERCURE_URL`         | —                                 | `mercure_url`         | Public Mercure hub URL the browser subscribes to. Omit to disable SSE.                                                                                                                                                                                                                                        |
+| Variable                    | Default                           | Config key            | Description                                                                                                                                                                                                                               |
+| --------------------------- | --------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_MERCURE_URL`         | —                                 | `mercure_url`         | Public Mercure hub URL the browser subscribes to. Omit to disable SSE.                                                                                                                                                                    |
 | `SPORA_MERCURE_PUBLISH_URL` | falls back to `SPORA_MERCURE_URL` | `mercure_publish_url` | Publisher endpoint. In Docker, `http://localhost/...` here triggers Caddy's auto-HTTPS redirect when `SERVER_NAME` is a public domain and breaks the in-cluster POST — use the service name (`http://spora:80/...`) or omit the variable. |
-| `SPORA_MERCURE_JWT_KEY`     | —                                 | `mercure_jwt_key`     | HS256 shared secret for Mercure publisher and subscriber tokens.                                                                                                                                                                                                                                              |
+| `SPORA_MERCURE_JWT_KEY`     | —                                 | `mercure_jwt_key`     | HS256 shared secret for Mercure publisher and subscriber tokens.                                                                                                                                                                          |
 
 When all three are unset, `MercurePublisher::publish()` early-returns and the frontend falls back to polling. See [Agent loop and async mode](/reference/concepts/agent-loop-async) for the SSE topic model.
 
 ## Logging
 
-| Variable          | Default             | Config key  | Description                                                                                                                                                                  |
-| ----------------- | ------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SPORA_LOG_LEVEL` | `warning`           | `log_level` | `debug` \| `info` \| `warning` \| `error`. Tool arguments (potentially PII) are logged at `DEBUG` — use `info` or higher in production.                                      |
+| Variable          | Default             | Config key  | Description                                                                                                                                                          |
+| ----------------- | ------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_LOG_LEVEL` | `warning`           | `log_level` | `debug` \| `info` \| `warning` \| `error`. Tool arguments (potentially PII) are logged at `DEBUG` — use `info` or higher in production.                              |
 | `SPORA_LOG_PATH`  | `storage/spora.log` | `log_path`  | Docker deployments should set `stdout` so records stream to the container's log driver. The framework default `storage/spora.log` is the env-less LAMP/FTP fallback. |
 
 Note: `storage/php.log` is **not** produced by Spora's logger. In local dev it is the redirected stdout/stderr of the PHP built-in server started by `bin/dev`. In production Spora does not configure the PHP `error_log` directive; set it via `php.ini` / supervisord / your container entrypoint if needed. See [Logging](/reference/concepts/logging).

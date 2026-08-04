@@ -143,7 +143,7 @@ FrankenPHP bundles a Mercure hub natively — no separate service needed in that
 
 The Mercure hub is **not** anonymous — every update carries a user-scoped topic (`user/{userId}/tasks` or `user/{userId}/notifications`) and Mercure rejects subscribers whose JWT does not scope to that topic. The browser obtains its JWT through a short exchange with the app rather than embedding a long-lived secret in JS:
 
-1. The Vue app calls `GET /api/v1/sse/authorize` (session-cookie authenticated, no CSRF — it is a `GET`).
+1. The Vue app calls `GET /api/v1/sse/authorize` (session-cookie authenticated).
 2. The endpoint returns a short-lived subscriber JWT scoped to the calling user's topics, and the framework sets it as a `__Secure-mercure_access_token` HttpOnly cookie.
 3. The frontend opens an `EventSource` against `SPORA_MERCURE_URL` with `credentials: 'include'`. The browser attaches the cookie to the hub handshake and Mercure accepts the subscription.
 4. The frontend re-runs step 1 periodically to refresh the cookie before expiry; the `EventSource` reconnect path picks up the new value transparently.

@@ -143,6 +143,9 @@ The web server's Caddy config (`docker/frankenphp.conf`):
 - Listens on port 80 (the `EXPOSE` line in the Dockerfile), 443 (TLS) and 443/udp (HTTP/3). Caddy auto-issues Let's Encrypt on first boot when `SERVER_NAME` is a public domain.
 - Security headers (HSTS, X-Content-Type-Options, X-Frame-Options DENY, X-XSS-Protection, Referrer-Policy) on every response
 - Mercure hub at `/.well-known/mercure`, signed with `SPORA_MERCURE_JWT_KEY`. Subscribers authenticate with a `__Secure-mercure_access_token` HttpOnly cookie minted by `GET /api/v1/sse/authorize`; the hub is **not** `anonymous`, so private updates only reach subscribers whose JWT scopes match the publish topic.
+
+> **Requires `spora-ai/spora-core` v0.15 or newer.** Earlier versions of the framework do not register the `/api/v1/sse/authorize` endpoint that mints the `__Secure-mercure_access_token` cookie, so the UI silently falls back to polling.
+
 - Static assets served from `/app/public/dist`
 - SPA fallback — non-API routes return `index.html`
 - Everything else routed to PHP

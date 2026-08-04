@@ -35,6 +35,8 @@ Additional auth endpoints (registration, password change, email verification, et
 
 **CSRF-exempt endpoints** — the following pre-session auth endpoints are exempt from the CSRF check, because the session is not yet established when they run: `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verification/resend`, `/auth/verify/{selector}`. `/api/health` and `/api/v1/config` are also unauthenticated.
 
+`/auth/verify/{selector}` is also state-agnostic: the endpoint authorizes via selector+token and works whether or not the caller is logged in. The bundled admin UI calls it for both initial signup verification (`kind: signup`) and email-change confirmation (`kind: change`); see [API reference → Verify endpoint response](/reference/api#verify-endpoint-response-apiv1authverifyselector).
+
 ## Rate Limiting
 
 Spora's rate limiter is a simple in-memory IP-based sliding window (`Spora\Services\RateLimiter`, `app/Services/RateLimiter.php`). The limit is applied on **all** auth-related endpoints, not only login:

@@ -60,8 +60,9 @@ Spora does **not** read `X-Forwarded-Host`, `X-Forwarded-Proto`, or `X-Forwarded
 Detection chain, first wins (`app/Core/RequestOrigin.php`):
 
 1. `SPORA_APP_URL` env var
-2. Web-server `HTTP_HOST` + `REQUEST_SCHEME` (or `HTTPS`) + `SERVER_PORT`
-3. `http://localhost` (CLI / worker / console / tests)
+2. Web-server `HTTP_HOST` (request-supplied, may include `:port`)
+3. Web-server `SERVER_NAME` (Apache `ServerName` directive — set at server bootstrap, trusted because the operator controls it)
+4. `http://localhost` (CLI / worker / console / tests)
 
 Do not run Spora behind a reverse proxy that does **not** rewrite `Host` to the public origin — without that rewrite, `HTTP_HOST` carries the internal hostname and verification links will not work.
 

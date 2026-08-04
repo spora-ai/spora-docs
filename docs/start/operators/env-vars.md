@@ -71,11 +71,11 @@ See [Worker deployment](/reference/concepts/worker-deployment) for deployment pa
 
 ## Mercure (SSE)
 
-| Variable                    | Default                           | Config key            | Description                                                                                                                                                                                                                               |
-| --------------------------- | --------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SPORA_MERCURE_URL`         | —                                 | `mercure_url`         | Public Mercure hub URL the browser subscribes to. Omit to disable SSE.                                                                                                                                                                    |
-| `SPORA_MERCURE_PUBLISH_URL` | falls back to `SPORA_MERCURE_URL` | `mercure_publish_url` | Publisher endpoint. In Docker, `http://localhost/...` here triggers Caddy's auto-HTTPS redirect when `SERVER_NAME` is a public domain and breaks the in-cluster POST — use the service name (`http://spora:80/...`) or omit the variable. |
-| `SPORA_MERCURE_JWT_KEY`     | —                                 | `mercure_jwt_key`     | HS256 shared secret for Mercure publisher and subscriber tokens.                                                                                                                                                                          |
+| Variable                    | Default                           | Config key            | Description                                                                                                                                                                         |
+| --------------------------- | --------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_MERCURE_URL`         | —                                 | `mercure_url`         | Public Mercure hub URL the browser subscribes to. Omit to disable SSE.                                                                                                              |
+| `SPORA_MERCURE_PUBLISH_URL` | falls back to `SPORA_MERCURE_URL` | `mercure_publish_url` | Publisher endpoint. In Docker with a public `SERVER_NAME`, `http://localhost/...` here triggers Caddy's auto-HTTPS redirect — use the service name (`http://spora:80/...`) or omit. |
+| `SPORA_MERCURE_JWT_KEY`     | —                                 | `mercure_jwt_key`     | HS256 shared secret for Mercure publisher and subscriber tokens.                                                                                                                    |
 
 When all three are unset, `MercurePublisher::publish()` early-returns and the frontend falls back to polling. See [Agent loop and async mode](/reference/concepts/agent-loop-async) for the SSE topic model.
 

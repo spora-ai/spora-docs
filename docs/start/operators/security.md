@@ -51,6 +51,20 @@ Other endpoints are not currently rate-limited.
 
 Plugins are not sandboxed — they run as ordinary PHP code with full access to the application, the database, the file system, and any decrypted credentials. The plugin trust model and lifecycle are documented in the [Plugin system](/develop/plugins/concepts) page under the Security section.
 
+## Trusted Proxies & `X-Forwarded-*` Headers
+
+Spora does **not** read `X-Forwarded-Host`, `X-Forwarded-Proto`, or `X-Forwarded-Port` when resolving the public base URL used in transactional email links (verification, password reset). Those headers are spoofable by any direct client, and Spora has no trusted-proxy allowlist at the application layer — trusting them would let a remote attacker poison verification-link hostnames.
+
+**Operators behind a reverse proxy that rewrites `Host` MUST set `SPORA_APP_URL` in `.env`** to the public origin (e.g. `https://spora.example.com`). Operators mounting Spora under a path prefix (e.g. `https://example.com/spora`) MUST also set `SPORA_APP_PREFIX=/spora`. See [Environment variables](/start/operators/env-vars#application) for the full reference.
+
+Detection chain, first wins (`app/Core/RequestOrigin.php`):
+
+1. `SPORA_APP_URL` env var
+2. Web-server `HTTP_HOST` + `REQUEST_SCHEME` (or `HTTPS`) + `SERVER_PORT`
+3. `http://localhost` (CLI / worker / console / tests)
+
+Do not run Spora behind a reverse proxy that does **not** rewrite `Host` to the public origin — without that rewrite, `HTTP_HOST` carries the internal hostname and verification links will not work.
+
 ## Tool → user_id Trust Boundary
 
 Tools never receive a session-derived user id. `Orchestrator::safeExecute()` (in `app/Agents/Orchestrator.php`) reads the calling Agent's row and passes its `user_id` into `ToolInterface::execute()`. Tools therefore see **the owner of the agent that issued the call**, not "whoever is signed in" — a structural guarantee that no client code can bypass.

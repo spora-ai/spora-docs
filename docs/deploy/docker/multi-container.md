@@ -29,9 +29,20 @@ SPORA_SECRET_KEY=<your-base64-key>
 # App
 SPORA_APP_ENV=production
 SPORA_ALLOW_REGISTRATION=false         # set true for the first admin signup, then false
+
+# Logging — keep stdout so `docker compose logs -f spora` shows every line.
+SPORA_LOG_PATH=stdout
 ```
 
 The `SPORA_DB_*` values are read by both `spora` (via `env_file: .env.local`) and `mariadb` (via its own `env_file` + `environment` block that defaults to placeholder passwords if not set).
+
+For production TLS, set `SERVER_NAME` to your public domain so Caddy auto-issues Let's Encrypt on the first boot:
+
+```bash
+SERVER_NAME=spora.example.com
+```
+
+Confirm your firewall allows TCP `80`/`443` (and UDP `443` for HTTP/3). Caddy stores the issued certificate in the `caddy_data` named volume; back that up.
 
 ## 2. Run
 
@@ -42,13 +53,13 @@ docker compose -f docker/docker-compose.yml logs -f
 
 That starts three services:
 
-| Service      | Port (host:container) | Image                          | Purpose                              |
-| ------------ | --------------------- | ------------------------------ | ------------------------------------ |
-| `spora`      | `8081:80`             | Built from `docker/Dockerfile` | Spora app + FrankenPHP + supervisord |
-| `mariadb`    | (internal)            | `mariadb:11`                   | MySQL-compatible database            |
-| `phpmyadmin` | `8082:80`             | `phpmyadmin:latest`            | Web UI for inspecting/editing the DB |
+| Service      | Port (host:container)             | Image                          | Purpose                              |
+| ------------ | --------------------------------- | ------------------------------ | ------------------------------------ |
+| `spora`      | `80:80`, `443:443`, `443:443/udp` | Built from `docker/Dockerfile` | Spora app + FrankenPHP + supervisord |
+| `mariadb`    | (internal)                        | `mariadb:11`                   | MySQL-compatible database            |
+| `phpmyadmin` | `8082:80`                         | `phpmyadmin:latest`            | Web UI for inspecting/editing the DB |
 
-The site is at `http://localhost:8081`. phpMyAdmin is at `http://localhost:8082`.
+The site is at `https://<SERVER_NAME>` (or `http://localhost:8081` for the local-only port mapping documented in `docker/.env.local.example`). phpMyAdmin is at `http://localhost:8082`.
 
 ## What the compose file does
 
@@ -61,21 +72,23 @@ services:
     container_name: spora-app
     restart: always
     ports:
-      - '8081:80'
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
     env_file:
       - .env.local
     depends_on:
       mariadb:
         condition: service_healthy # waits for MariaDB to be ready
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost/health || exit 1']
+      test: ['CMD-SHELL', 'curl -f http://localhost/api/health || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
     volumes:
-      - spora_storage:/app/storage # secret key + logs (SQLite not used in this mode)
-      - caddy_data:/data
+      - spora_storage:/app/storage # secret key only — app logs flow to stdout
+      - caddy_data:/data # TLS cert + Mercure BoltDB (auto-created on first boot)
       - caddy_config:/config
     networks:
       - spora
@@ -116,7 +129,7 @@ services:
       - spora
 ```
 
-The `mariadb` service has a `healthcheck` (the standard `healthcheck.sh` from the official image). The `spora` service uses `depends_on: condition: service_healthy` — it won't start until MariaDB is accepting connections. The `spora` service has its own `healthcheck` that hits `/health` on the app, which the FrankenPHP routing returns 200 for.
+The `mariadb` service has a `healthcheck` (the standard `healthcheck.sh` from the official image). The `spora` service uses `depends_on: condition: service_healthy` — it won't start until MariaDB is accepting connections. The `spora` service has its own `healthcheck` that hits `/api/health` on the app, which returns `200` with `{"status":"ok","database":"connected"}` when the framework is up.
 
 ## What runs inside `spora`
 
@@ -127,9 +140,12 @@ The container starts two processes via supervisord (`docker/supervisord.conf`):
 
 The web server's Caddy config (`docker/frankenphp.conf`):
 
-- Listens on port 80 (the `EXPOSE` line in the Dockerfile) and 443/udp
+- Listens on port 80 (the `EXPOSE` line in the Dockerfile), 443 (TLS) and 443/udp (HTTP/3). Caddy auto-issues Let's Encrypt on first boot when `SERVER_NAME` is a public domain.
 - Security headers (HSTS, X-Content-Type-Options, X-Frame-Options DENY, X-XSS-Protection, Referrer-Policy) on every response
-- Mercure hub at `/.well-known/mercure`, signed with `SPORA_MERCURE_JWT_KEY`
+- Mercure hub at `/.well-known/mercure`, signed with `SPORA_MERCURE_JWT_KEY`. Subscribers authenticate with a `__Secure-mercure_access_token` HttpOnly cookie minted by `GET /api/v1/sse/authorize`; the hub is **not** `anonymous`, so private updates only reach subscribers whose JWT scopes match the publish topic.
+
+> **Requires `spora-ai/spora-core` v0.15 or newer.** Earlier versions of the framework do not register the `/api/v1/sse/authorize` endpoint that mints the `__Secure-mercure_access_token` cookie, so the UI silently falls back to polling.
+
 - Static assets served from `/app/public/dist`
 - SPA fallback — non-API routes return `index.html`
 - Everything else routed to PHP
@@ -138,12 +154,12 @@ The worker drains the queued tasks when `SPORA_SYNC_MODE=false` (the value shipp
 
 ## Volumes
 
-| Volume          | Container path   | Purpose                                                                                  |
-| --------------- | ---------------- | ---------------------------------------------------------------------------------------- |
-| `spora_storage` | `/app/storage`   | `secret.key` (encryption key for tool settings) + logs. SQLite is not used in this mode. |
-| `mysql_data`    | `/var/lib/mysql` | MariaDB data files                                                                       |
-| `caddy_data`    | `/data`          | FrankenPHP's cert storage (TLS via ACME, if you enable it)                               |
-| `caddy_config`  | `/config`        | FrankenPHP's runtime config                                                              |
+| Volume          | Container path   | Purpose                                                                                                                                                        |
+| --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spora_storage` | `/app/storage`   | `secret.key` (encryption key for tool settings). App logs flow to stdout via `SPORA_LOG_PATH=stdout`. SQLite is not used in this mode.                         |
+| `mysql_data`    | `/var/lib/mysql` | MariaDB data files                                                                                                                                             |
+| `caddy_data`    | `/data`          | FrankenPHP's TLS cert + Mercure BoltDB. Re-applies www-data ownership on each entrypoint restart so a fresh volume doesn't trap the runtime in an EACCES loop. |
+| `caddy_config`  | `/config`        | FrankenPHP's runtime config                                                                                                                                    |
 
 For a fresh start: `docker compose down -v` (deletes all 4 named volumes). For backups: stop the containers, then `tar` the volumes.
 
@@ -160,6 +176,9 @@ The MariaDB schema is migrated on first container start by the image's entrypoin
 ## Security notes
 
 - **`SPORA_SECRET_KEY`** is the master encryption key. Losing it means losing access to all encrypted tool settings. Back it up separately from the volumes.
+- **`SPORA_APP_ENV=production`** silences PHP deprecation warnings and removes the `debug` envelope from `/api/*` JSON error responses. Production deployments **must** set it.
+- **`SPORA_MERCURE_JWT_KEY`** signs both publisher and subscriber tokens. Use a random 32-byte hex value (`php -r "echo bin2hex(random_bytes(32));"`). The `__Secure-mercure_access_token` cookie carries the subscriber JWT scoped to `user/{userId}/tasks` and `user/{userId}/notifications`; never set `anonymous` on the hub unless you intend to leak private updates.
+- **`SPORA_MERCURE_PUBLISH_URL`** is the URL the in-container publisher POSTs to. When set to `http://localhost/...` and `SERVER_NAME` is a public domain, Caddy's auto-HTTPS redirects the publisher to HTTPS on a port it cannot reach, producing the `tlsv1 alert internal error` in the logs. Use the Docker service name (`http://spora:80/...`) when the publisher and hub are co-located.
 - **Change the default MariaDB passwords** (currently `sporapassword` / `rootpassword`). Use strong random values.
 - **`SPORA_ALLOW_REGISTRATION`** should be `true` only for the initial admin signup, then `false`.
 - The `phpmyadmin` port (`8082`) is **not authenticated by default** beyond the MariaDB credentials. Put it behind a reverse proxy with basic auth, or remove the service for production.

@@ -27,6 +27,7 @@ services:
       SPORA_APP_ENV: production
       SPORA_DB_DRIVER: sqlite
       SPORA_SECRET_KEY: ${SPORA_SECRET_KEY:?Set SPORA_SECRET_KEY in .env}
+      SPORA_LOG_PATH: stdout # stream app logs to docker compose logs
     volumes:
       - spora_storage:/app/storage
 
@@ -84,8 +85,10 @@ The `spora_storage` volume survives container restarts. To wipe state (full rese
 ## Security notes
 
 - **`SPORA_SECRET_KEY`** must be set in `.env` (or via your secret manager). The container won't start without it (the `?:` syntax in the compose above forces the explicit error).
+- **`SPORA_APP_ENV=production`** silences PHP deprecation warnings and removes the `debug` envelope from `/api/*` JSON error responses. Production deployments **must** set it.
+- **`SPORA_LOG_PATH=stdout`** sends Monolog records to the Docker log driver; otherwise logs land in `/app/storage/spora.log` inside the container.
 - The image runs as `www-data` (non-root). The base image's `setcap cap_net_bind_service=+ep` lets FrankenPHP bind 80/443 without root.
-- For HTTPS in production, put a reverse proxy (Caddy, nginx, Traefik) in front, or use a managed load balancer. Don't expose port 80 directly to the internet.
+- For HTTPS in production, set `SERVER_NAME=your.domain.tld` in `.env` and publish `443:443` so Caddy auto-issues a Let's Encrypt cert on first boot. Otherwise, put a reverse proxy in front. Don't expose port 80 directly to the internet.
 
 ## Next steps
 

@@ -5,7 +5,7 @@ description: Spora's HTTP API — endpoint catalog, request/response envelope, a
 
 # REST API reference
 
-Spora exposes a JSON REST API at `/api/v1/`. Most routes require a session cookie (`PHPSESSID`) and a `X-CSRF-Token` header (the value of `data.csrf_token` returned by `GET /api/v1/auth/me`). The unauthenticated exceptions are the pre-auth flows (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verify/{selector}`, `/auth/verification/resend`) and `GET /health`. The plugin install endpoints additionally require admin (`currentUser.isAdmin = true`).
+Spora exposes a JSON REST API at `/api/v1/`. Most routes require a session cookie (`PHPSESSID`) and a `X-CSRF-Token` header (the value of `data.csrf_token` returned by `GET /api/v1/auth/me`). The unauthenticated exceptions are the pre-auth flows (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verify/{selector}`, `/auth/verification/resend`) and `GET /api/health`. The plugin install endpoints additionally require admin (`currentUser.isAdmin = true`).
 
 For the canonical, comprehensive reference, see [Concepts → Error handling](/reference/concepts/error-handling) (envelope shape, error code registry, severity mapping) and the per-endpoint docs in [Operations → Day-2 ops](/start/operators/operations) (plugin install API in detail).
 
@@ -161,7 +161,7 @@ The public plugin install endpoints follow this same stack: `[AuthMiddleware, Cs
 
 ## Health endpoint
 
-`GET /health` is the unauthenticated health check used by Docker's `healthcheck` directive and load balancers. Returns `200 OK` if the app is up, regardless of DB state. Returns `503 NOT_CONFIGURED` if the Mercure subsystem is configured but unreachable.
+`GET /api/health` is the unauthenticated health check used by Docker's `healthcheck` directive and load balancers. Returns `200 OK` with `{"status":"ok","database":"connected"}` if the app is up. Returns `503 NOT_CONFIGURED` if the Mercure subsystem is configured but unreachable.
 
 ## Versioning
 
@@ -194,8 +194,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
+- [Sse](/reference/api/sse) — 3 routes
 - [Skills](/reference/api/skills) — 2 routes
-- [Sse](/reference/api/sse) — 2 routes
 - [User-preferences](/reference/api/user-preferences) — 2 routes
 - [Apps](/reference/api/apps) — 1 route
 - [Assets](/reference/api/assets) — 1 route
@@ -308,6 +308,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                          | Skills           |
 | `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                           | Skills           |
 | `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                             | Sse              |
+| `GET`    | `/api/v1/sse/authorize`                                     | `cookieAuth`               | Authorize Sse                        | Sse              |
 | `GET`    | `/api/v1/sse/status`                                        | `cookieAuth`               | Status Sse                           | Sse              |
 | `GET`    | `/api/v1/tasks`                                             | `cookieAuth`               | Index Task                           | Tasks            |
 | `POST`   | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Store Task                           | Tasks            |

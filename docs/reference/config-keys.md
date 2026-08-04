@@ -133,6 +133,16 @@ return [
 
 Anything not set falls back to the built-in default from `app/Core/ContainerDefinitions.php`. Anything set via `SPORA_*` env vars wins over the file.
 
+## Docker-only variables
+
+The following have no `config.php` mapping — FrankenPHP / Caddy reads them directly (not the `SPORA_*` resolver) and only applies them in container deployments.
+
+| Env var       | Default | Purpose                                                                                                                                                       |
+| ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SERVER_NAME` | —       | Caddy listens on this address and auto-issues Let's Encrypt when it's a public domain. Set `localhost:80` for development, your public domain for production. |
+
+See [Environment variables → SERVER_NAME](/start/operators/env-vars#server_name) and the [Docker deploy guides](/deploy/docker/multi-container) for context.
+
 ## Editing `config.php` after install
 
 `config.php` is read on every request via the `config()` helper. Changes take effect immediately — no `php bin/spora` command needed. For long-running worker daemons, the running process keeps the old config in memory; restart the worker (`supervisorctl restart spora-worker`) to pick up changes.

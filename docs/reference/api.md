@@ -194,8 +194,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
+- [Sse](/reference/api/sse) — 3 routes
 - [Skills](/reference/api/skills) — 2 routes
-- [Sse](/reference/api/sse) — 2 routes
 - [User-preferences](/reference/api/user-preferences) — 2 routes
 - [Apps](/reference/api/apps) — 1 route
 - [Assets](/reference/api/assets) — 1 route
@@ -308,6 +308,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                          | Skills           |
 | `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                           | Skills           |
 | `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                             | Sse              |
+| `GET`    | `/api/v1/sse/authorize`                                     | `cookieAuth`               | Authorize Sse                        | Sse              |
 | `GET`    | `/api/v1/sse/status`                                        | `cookieAuth`               | Status Sse                           | Sse              |
 | `GET`    | `/api/v1/tasks`                                             | `cookieAuth`               | Index Task                           | Tasks            |
 | `POST`   | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Store Task                           | Tasks            |

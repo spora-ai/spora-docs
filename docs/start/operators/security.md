@@ -55,14 +55,15 @@ Plugins are not sandboxed — they run as ordinary PHP code with full access to 
 
 Spora does **not** read `X-Forwarded-Host`, `X-Forwarded-Proto`, or `X-Forwarded-Port` when resolving the public base URL used in transactional email links (verification, password reset). Those headers are spoofable by any direct client, and Spora has no trusted-proxy allowlist at the application layer — trusting them would let a remote attacker poison verification-link hostnames.
 
-**Operators behind a reverse proxy that rewrites `Host` MUST set `SPORA_APP_URL` in `.env`** to the public origin (e.g. `https://spora.example.com`). The default `SPORA_APP_PREFIX` is `/spora` (matches the packaged admin UI and plugin URLs). Operators mounting Spora at the host root — e.g. when developing their own frontend — MUST set `SPORA_APP_PREFIX=""` to opt out. See [Environment variables](/start/operators/env-vars#application) for the full reference.
+**Operators behind a reverse proxy that rewrites `Host` MUST set `SPORA_APP_URL` in `.env`** to the public origin (e.g. `https://spora.example.com`) — or, for shared hosting, set `'app_url' => 'https://spora.example.com'` in `config.php`. The default `SPORA_APP_PREFIX` is `/spora` (matches the packaged admin UI and plugin URLs). Operators mounting Spora at the host root — e.g. when developing their own frontend — MUST set `SPORA_APP_PREFIX=""` to opt out. See [Environment variables](/start/operators/env-vars#application) for the full reference.
 
-Detection chain, first wins (`app/Core/RequestOrigin.php`):
+Detection chain, first wins (`app/Core/RequestOrigin.php`, called with the merged `config` array):
 
-1. `SPORA_APP_URL` env var
-2. Web-server `HTTP_HOST` (request-supplied, may include `:port`)
-3. Web-server `SERVER_NAME` (Apache `ServerName` directive — set at server bootstrap, trusted because the operator controls it)
-4. `http://localhost` (CLI / worker / console / tests)
+1. `config.php` `app_url` (operator-pinned, shared-host friendly)
+2. `SPORA_APP_URL` env var
+3. Web-server `HTTP_HOST` (request-supplied, may include `:port`)
+4. Web-server `SERVER_NAME` (Apache `ServerName` directive — set at server bootstrap, trusted because the operator controls it)
+5. `http://localhost` (CLI / worker / console / tests)
 
 Path-prefix default: `/spora` (the packaged admin UI lives at `public/spora/`; plugins live at `public/plugins/<name>/`). Set `SPORA_APP_PREFIX=""` to mount Spora at the host root.
 

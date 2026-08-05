@@ -40,9 +40,20 @@ php bin/spora-build help <cmd> # Help for a specific build-time command
 | `media:archive:gc`           | Garbage-collect archived media past retention.                                                                                                                                                 | `app/Console/Commands/MediaArchiveGcCommand.php`        |
 | `assets:gc`                  | Garbage-collect unreferenced assets.                                                                                                                                                           | `app/Console/Commands/AssetGcCommand.php`               |
 | `tool:settings:migrate`      | One-shot tool settings migration (used when the settings schema changes).                                                                                                                      | `app/Console/Commands/ToolSettingsMigrationCommand.php` |
+| `mail:templates:sync`        | Reconcile stored mail templates with YAML defaults. Use `--check` for a read-only drift check or `--force` to overwrite without prompting.                                                     | `app/Console/Commands/MailTemplatesSyncCommand.php`     |
 | `spora:openapi`              | Generate the OpenAPI 3.0 spec from `RouteDefinitions`. With `--check`, exits non-zero if the reference spec on disk is stale. Dev-only — gated on the `zircote/swagger-php` dep.               | `app/Console/Commands/OpenApiGenerateCommand.php`       |
 
 The `spora:` prefix is convention for the framework-level commands (`spora:install`, `spora:setup`, `spora:openapi`). Plugin commands are unprefixed (`plugin:install`, `plugin:list`). Older docs sometimes use the prefixed form for plugin commands; both work in current versions.
+
+### Mail-template reconciliation
+
+Run the drift check after applying framework migrations, then reconcile any differences:
+
+```bash
+php bin/spora mail:templates:sync --check  # dry run; exits 1 on drift
+php bin/spora mail:templates:sync          # prompt before overwriting each drifted row
+php bin/spora mail:templates:sync --force  # overwrite without prompting
+```
 
 ## Build-time CLI: `bin/spora-build`
 

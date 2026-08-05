@@ -35,6 +35,12 @@ description: Database tables, column types, versioning model, migration conventi
 | `mail_templates`                                                                                                            | `Spora\Models\MailTemplate`               | Editable email templates. Rendered with `{{var}}` placeholders.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `memories`                                                                                                                  | `Spora\Models\Memory`                     | Per-agent (or global) persistent memory entries. `content` is LONGTEXT.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
+### Mail templates
+
+Migration `0065_rename_body_text_to_body_in_mail_templates.php` renames the stored `body_text` column to `body` without changing its SQL type or contents. `body` now contains CommonMark Markdown rather than a pre-rendered plain-text alternative. `body_html` is an optional trusted HTML shell and may contain the `{markdown_html}` injection token.
+
+There is no stored `body_text` field after migration 0065. Plain text is derived from the rendered Markdown at send or preview time.
+
 ## Key Decisions
 
 **Nullable TINYINT columns must NOT use Eloquent boolean cast** — `(bool) null === false` collapses "use class default" into "OFF", breaking three-state semantics. `agent_tool_operation_overrides.enabled` and `default_requires_approval` both rely on this.

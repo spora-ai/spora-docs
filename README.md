@@ -20,6 +20,34 @@ npm run lint:md    # markdown lint
 npm run format     # prettier
 ```
 
+## Customising mail templates
+
+System-email defaults are YAML files under `email-templates/`. A project-local file with the same template `name` takes precedence over the default bundled with `spora-core`.
+
+```yaml
+name: welcome
+subject: 'Welcome to {{site_name}}'
+body: |
+  Hi {{user_name}},
+
+  Your account is ready.
+body_html: '<main>{markdown_html}</main>'
+```
+
+- `body` is CommonMark Markdown and is rendered to HTML and plain text.
+- `body_html` is an optional trusted HTML shell. Include `{markdown_html}` where the rendered Markdown should be injected.
+- `{{variable}}` placeholders are substituted at send time; unknown placeholders remain unchanged.
+
+After changing YAML defaults, reconcile them with the database:
+
+```bash
+php bin/spora mail:templates:sync --check  # dry run; exits 1 on drift
+php bin/spora mail:templates:sync          # prompt before overwriting each drifted row
+php bin/spora mail:templates:sync --force  # overwrite without prompting
+```
+
+Existing installations must run `php bin/spora spora:install` first so the `body_text` column is renamed to `body`. Do not run `db:seed` solely to update mail templates.
+
 ## Project layout
 
 ```text

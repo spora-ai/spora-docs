@@ -35,8 +35,11 @@ Plugins land in `plugins/<name>/` (routed by `spora-ai/installer`). Each plugin 
 
 ```bash
 composer update spora-ai/spora-core
-php bin/spora spora:install   # apply any new migrations
+php bin/spora spora:install                # apply any new migrations
+php bin/spora mail:templates:sync --check  # report mail-template drift without changing data
 ```
+
+`mail:templates:sync --check` is read-only and exits non-zero when stored templates differ from their YAML defaults. Reconcile drift with `php bin/spora mail:templates:sync` to confirm each overwrite interactively, or use `--force` to overwrite without prompting.
 
 Test the upgrade on a staging copy first.
 

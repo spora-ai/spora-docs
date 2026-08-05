@@ -30,16 +30,16 @@ Settings → Tools → MiniMax. All five tools share the same `MINIMAX_API_KEY` 
 
 The default `base_url` is the **Global** endpoint (`https://api.minimax.io`). Operators in China should override `base_url` to `https://api.minimaxi.com` for the China-region endpoint.
 
-| Setting                 | Required | Default                           |
-| ----------------------- | -------- | --------------------------------- |
-| `api_key`               | yes      | —                                 |
-| `base_url`              | no       | `https://api.minimax.io` (Global) |
-| `model`                 | no       | per provider (see below)          |
-| `voice_id`              | no       | `English_PassionateWarrior`       |
-| `poll_interval_seconds` | no       | `10` (video tools)                |
-| `poll_timeout_seconds`  | no       | `900` (video tools)               |
-| `submit_timeout_seconds`| no       | `120` (video tools)               |
-| `retrieve_timeout_seconds` | no    | `30` (video_v1 only)              |
+| Setting                    | Required | Default                           |
+| -------------------------- | -------- | --------------------------------- |
+| `api_key`                  | yes      | —                                 |
+| `base_url`                 | no       | `https://api.minimax.io` (Global) |
+| `model`                    | no       | per provider (see below)          |
+| `voice_id`                 | no       | `English_PassionateWarrior`       |
+| `poll_interval_seconds`    | no       | `10` (video tools)                |
+| `poll_timeout_seconds`     | no       | `900` (video tools)               |
+| `submit_timeout_seconds`   | no       | `120` (video tools)               |
+| `retrieve_timeout_seconds` | no       | `30` (video_v1 only)              |
 
 `api_key` fields are encrypted at rest by Spora's `ToolConfigService`, masked in the UI, and never logged.
 
@@ -47,13 +47,13 @@ The default `base_url` is the **Global** endpoint (`https://api.minimax.io`). Op
 
 Each tool accepts a `prompt` and returns `ToolResult::ok` (with the upstream CDN URL, valid 24h) or `ToolResult::fail`. Never throws — a single API failure cannot kill the agent loop.
 
-| Tool                 | Default model        | Notes                                                                                                                                                             |
-| -------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `minimax:image`      | `image-01`           | `aspect_ratio` ∈ 1:1, 16:9, 4:3, 3:2, 2:3, 3:4, 9:16, 21:9                                                                                                        |
-| `minimax:speech`     | `speech-2.8-hd`      | TTS; `voice_id`, `speed` (0.5-2.0)                                                                                                                                |
-| `minimax:music`      | `music-3.0`          | Operations: `compose` (instrumental or with `lyrics`, 1-3500 chars), `write_lyrics` (full song from a topic), `edit_lyrics` (rewrite existing lyrics). `music-2.6` and `music-cover` are also accepted by the upstream endpoint. |
-| `minimax:video`      | `MiniMax-H3`         | Async; multimodal. Operations: `generate`, `resume`, `enhance_prompt`, `regenerate` (2K upscale). See [H3 video tool](#h3-video-tool) below.                       |
-| `minimax:video_v1`   | `MiniMax-Hailuo-2.3` | Fall-back for plans that don't include H3. Legacy v1 API. See [Video v1 (legacy)](#video-v1-legacy) below.                                                         |
+| Tool               | Default model        | Notes                                                                                                                                                                                                                            |
+| ------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minimax:image`    | `image-01`           | `aspect_ratio` ∈ 1:1, 16:9, 4:3, 3:2, 2:3, 3:4, 9:16, 21:9                                                                                                                                                                       |
+| `minimax:speech`   | `speech-2.8-hd`      | TTS; `voice_id`, `speed` (0.5-2.0)                                                                                                                                                                                               |
+| `minimax:music`    | `music-3.0`          | Operations: `compose` (instrumental or with `lyrics`, 1-3500 chars), `write_lyrics` (full song from a topic), `edit_lyrics` (rewrite existing lyrics). `music-2.6` and `music-cover` are also accepted by the upstream endpoint. |
+| `minimax:video`    | `MiniMax-H3`         | Async; multimodal. Operations: `generate`, `resume`, `enhance_prompt`, `regenerate` (2K upscale). See [H3 video tool](#h3-video-tool) below.                                                                                     |
+| `minimax:video_v1` | `MiniMax-Hailuo-2.3` | Fall-back for plans that don't include H3. Legacy v1 API. See [Video v1 (legacy)](#video-v1-legacy) below.                                                                                                                       |
 
 The `minimax:music` tool's `action` discriminator selects the operation. `compose` uses `/v1/music_generation` and accepts an optional `lyrics` parameter. The `write_lyrics` and `edit_lyrics` operations use `/v1/lyrics_generation`. All three operations share the same `api_key`, `base_url`, and (compose-only) `model` settings.
 
@@ -63,7 +63,7 @@ Debug logging: every tool emits `debug` / `info` / `warning` PSR-3 entries to th
 
 `MiniMaxHttpClient` surfaces the upstream `error.message` on every 4xx/5xx response. For example, the v2 H3 endpoint returns:
 
-```
+```text
 MiniMax API returned HTTP 400: [2013] TokenPlan or Credit does not currently support MiniMax-H3 series models
 ```
 
@@ -75,12 +75,12 @@ MiniMax API returned HTTP 400: [2013] TokenPlan or Credit does not currently sup
 
 ### Operations
 
-| Operation | Description |
-| --- | --- |
-| `generate` (default) | Submit a new H3 task with text + optional image/video/audio references. Polls until `succeeded`, archives the MP4 to the Media Archive. |
-| `resume` | Continue polling a previously submitted task by `task_id`. Use when a previous `generate` returned `data.timed_out: true`. |
-| `enhance_prompt` | Send the same multimodal inputs to H3-Context-IR and return an enriched, structured prompt (no video is produced). Use the returned prompt in a follow-up `generate` call for best results. |
-| `regenerate` | Upsample a finished 768P H3 video to 2K. Re-submits the original `content[]` with the previous 768P output as `base_video`. Requires a `task_id` from the original `generate`. |
+| Operation            | Description                                                                                                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generate` (default) | Submit a new H3 task with text + optional image/video/audio references. Polls until `succeeded`, archives the MP4 to the Media Archive.                                                     |
+| `resume`             | Continue polling a previously submitted task by `task_id`. Use when a previous `generate` returned `data.timed_out: true`.                                                                  |
+| `enhance_prompt`     | Send the same multimodal inputs to H3-Context-IR and return an enriched, structured prompt (no video is produced). Use the returned prompt in a follow-up `generate` call for best results. |
+| `regenerate`         | Upsample a finished 768P H3 video to 2K. Re-submits the original `content[]` with the previous 768P output as `base_video`. Requires a `task_id` from the original `generate`.              |
 
 ### Generation modes (auto-detected)
 
@@ -92,18 +92,18 @@ i2v and r2v are mutually exclusive — passing both `first_frame_image` and `ref
 
 ### Input limits
 
-| Limit | Value |
-| --- | --- |
-| `prompt` length | ≤ 7000 chars |
-| `duration_seconds` | integer 4–15 (default 6) |
-| `resolution` | `768P` (default) or `2K` |
-| `aspect_ratio` | `adaptive`, `21:9`, `16:9`, `4:3`, `1:1`, `3:4`, `9:16` |
-| Reference images | ≤ 9 |
-| Reference videos | ≤ 3 |
-| Reference audio | ≤ 3 |
-| Frame images | ≤ 2 (first + last) |
-| Frame image size | ≤ 30 MB, [256, 5760] px, aspect [0.4, 2.5] |
-| Frame image format | JPG / JPEG / PNG / WEBP / HEIC / HEIF |
+| Limit              | Value                                                   |
+| ------------------ | ------------------------------------------------------- |
+| `prompt` length    | ≤ 7000 chars                                            |
+| `duration_seconds` | integer 4–15 (default 6)                                |
+| `resolution`       | `768P` (default) or `2K`                                |
+| `aspect_ratio`     | `adaptive`, `21:9`, `16:9`, `4:3`, `1:1`, `3:4`, `9:16` |
+| Reference images   | ≤ 9                                                     |
+| Reference videos   | ≤ 3                                                     |
+| Reference audio    | ≤ 3                                                     |
+| Frame images       | ≤ 2 (first + last)                                      |
+| Frame image size   | ≤ 30 MB, [256, 5760] px, aspect [0.4, 2.5]              |
+| Frame image format | JPG / JPEG / PNG / WEBP / HEIC / HEIF                   |
 
 ### URL hygiene
 
@@ -115,10 +115,10 @@ i2v and r2v are mutually exclusive — passing both `first_frame_image` and `ref
 
 ### Operations
 
-| Operation | Description |
-| --- | --- |
-| `generate` (default) | Submit a v1 task (text prompt). Polls until `Success` or timeout, then retrieves the download URL via `/v1/files/retrieve`. |
-| `resume` | Continue polling a previously submitted v1 task by `task_id`. Use when a previous `generate` returned `data.timed_out: true`. |
+| Operation            | Description                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `generate` (default) | Submit a v1 task (text prompt). Polls until `Success` or timeout, then retrieves the download URL via `/v1/files/retrieve`.   |
+| `resume`             | Continue polling a previously submitted v1 task by `task_id`. Use when a previous `generate` returned `data.timed_out: true`. |
 
 ### Models
 
@@ -126,26 +126,26 @@ i2v and r2v are mutually exclusive — passing both `first_frame_image` and `ref
 
 ### Resolution × duration matrix
 
-| Model | 512P | 720P | 768P | 1080P |
-| --- | --- | --- | --- | --- |
-| `MiniMax-Hailuo-2.3` | — | 6s | 6s or 10s | 6s |
-| `MiniMax-Hailuo-02` | — | 6s | 6s or 10s | 6s |
-| `T2V-01-Director` | — | 6s | — | 6s |
-| `T2V-01` | — | 6s | — | 6s |
+| Model                | 512P | 720P | 768P      | 1080P |
+| -------------------- | ---- | ---- | --------- | ----- |
+| `MiniMax-Hailuo-2.3` | —    | 6s   | 6s or 10s | 6s    |
+| `MiniMax-Hailuo-02`  | —    | 6s   | 6s or 10s | 6s    |
+| `T2V-01-Director`    | —    | 6s   | —         | 6s    |
+| `T2V-01`             | —    | 6s   | —         | 6s    |
 
 The Hailuo family is the only one that supports 10s (and only at 768P). The T2V-01 family has no 768P at all.
 
 ### Settings
 
-| Setting | Default | Notes |
-| --- | --- | --- |
-| `api_key` | — (required) | Shared with the v2 video tool. |
-| `base_url` | `https://api.minimax.io` | Override for China-region or private gateway. |
-| `model` | `MiniMax-Hailuo-2.3` | One of the four models above. |
-| `poll_interval_seconds` | `10` | Seconds between status polls. |
-| `poll_timeout_seconds` | `900` | Total wait window. |
-| `submit_timeout_seconds` | `120` | Per-request timeout for the submit call. |
-| `retrieve_timeout_seconds` | `30` | Per-request timeout for `/v1/files/retrieve`. |
+| Setting                    | Default                  | Notes                                         |
+| -------------------------- | ------------------------ | --------------------------------------------- |
+| `api_key`                  | — (required)             | Shared with the v2 video tool.                |
+| `base_url`                 | `https://api.minimax.io` | Override for China-region or private gateway. |
+| `model`                    | `MiniMax-Hailuo-2.3`     | One of the four models above.                 |
+| `poll_interval_seconds`    | `10`                     | Seconds between status polls.                 |
+| `poll_timeout_seconds`     | `900`                    | Total wait window.                            |
+| `submit_timeout_seconds`   | `120`                    | Per-request timeout for the submit call.      |
+| `retrieve_timeout_seconds` | `30`                     | Per-request timeout for `/v1/files/retrieve`. |
 
 ### When to use v1 vs H3
 

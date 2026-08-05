@@ -15,20 +15,51 @@ The API surface splits into three areas: auth, agents, and tools/plugins. Auth a
 
 ### Auth
 
-| Method  | Path                                | Auth   | Purpose                                              |
-| ------- | ----------------------------------- | ------ | ---------------------------------------------------- |
-| `POST`  | `/api/v1/auth/login`                | —      | Authenticate (issues `data.csrf_token`)              |
-| `POST`  | `/api/v1/auth/logout`               | + CSRF | End session                                          |
-| `GET`   | `/api/v1/auth/me`                   | + CSRF | Current user (returns `data.csrf_token`)             |
-| `POST`  | `/api/v1/auth/register`             | —      | Create account (gated by `SPORA_ALLOW_REGISTRATION`) |
-| `POST`  | `/api/v1/auth/forgot-password`      | —      | Start password reset flow                            |
-| `POST`  | `/api/v1/auth/reset-password`       | —      | Complete password reset                              |
-| `PATCH` | `/api/v1/auth/password`             | + CSRF | Change current user's password                       |
-| `PATCH` | `/api/v1/auth/account`              | + CSRF | Change current user's account name / email           |
-| `POST`  | `/api/v1/auth/email/change-request` | + CSRF | Request an email change (triggers confirmation)      |
-| `POST`  | `/api/v1/auth/email/confirm`        | —      | Confirm an email change (verifies the new address)   |
-| `GET`   | `/api/v1/auth/verify/{selector}`    | —      | Verify initial signup email (link in the welcome)    |
-| `POST`  | `/api/v1/auth/verification/resend`  | —      | Resend the initial signup verification email         |
+| Method  | Path                                | Auth   | Purpose                                                                   |
+| ------- | ----------------------------------- | ------ | ------------------------------------------------------------------------- |
+| `POST`  | `/api/v1/auth/login`                | —      | Authenticate (issues `data.csrf_token`)                                   |
+| `POST`  | `/api/v1/auth/logout`               | + CSRF | End session                                                               |
+| `GET`   | `/api/v1/auth/me`                   | + CSRF | Current user (returns `data.csrf_token`)                                  |
+| `POST`  | `/api/v1/auth/register`             | —      | Create account (gated by `SPORA_ALLOW_REGISTRATION`)                      |
+| `POST`  | `/api/v1/auth/forgot-password`      | —      | Start password reset flow                                                 |
+| `POST`  | `/api/v1/auth/reset-password`       | —      | Complete password reset                                                   |
+| `PATCH` | `/api/v1/auth/password`             | + CSRF | Change current user's password                                            |
+| `PATCH` | `/api/v1/auth/account`              | + CSRF | Change current user's account name / email                                |
+| `POST`  | `/api/v1/auth/email/change-request` | + CSRF | Request an email change (triggers confirmation)                           |
+| `POST`  | `/api/v1/auth/email/confirm`        | —      | Confirm an email change (verifies the new address)                        |
+| `GET`   | `/api/v1/auth/verify/{selector}`    | —      | Verify an email link (signup confirmation or address-change confirmation) |
+| `POST`  | `/api/v1/auth/verification/resend`  | —      | Resend the initial signup verification email                              |
+
+#### Verify endpoint response (`/api/v1/auth/verify/{selector}`)
+
+The endpoint is CSRF-exempt and works whether or not the requester is logged in. The response carries a `kind` discriminator so the SPA can branch UI without inspecting the addresses itself:
+
+**Initial signup** (`kind: "signup"`):
+
+```json
+{
+  "kind": "signup",
+  "old_email": null,
+  "new_email": "user@example.com",
+  "message": "Email verified successfully."
+}
+```
+
+**Email change** (`kind: "change"`):
+
+```json
+{
+  "kind": "change",
+  "old_email": "previous@example.com",
+  "new_email": "user@example.com",
+  "message": "Email address changed successfully."
+}
+```
+
+- `kind: "signup"` — initial account verification. The recipient clicks the link in the welcome email; `old_email` is `null` because the address itself has not changed. The user is not logged in; the SPA prompts to sign in.
+- `kind: "change"` — email-address change confirmation. The recipient clicked the link in the change-confirmation email; `old_email` holds the previous address and `new_email` the one being confirmed. The user IS logged in (the change was initiated from their account page). The SPA should re-fetch `/auth/me` so the navbar reflects the new address without a full reload.
+
+Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php`); see spora-ai/spora-core#185.
 
 ### Agents
 

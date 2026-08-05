@@ -33,7 +33,9 @@ State-changing requests (POST/PUT/PATCH/DELETE) must include a CSRF token in the
 
 Additional auth endpoints (registration, password change, email verification, etc.) are listed in the [API reference](/reference/api) and registered in `app/Core/routes.php:44-55`.
 
-**CSRF-exempt endpoints** — the following pre-session auth endpoints are exempt from the CSRF check, because the session is not yet established when they run: `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verification/resend`, `/auth/verify/{selector}`. `/api/health` and `/api/v1/config` are also unauthenticated.
+**CSRF-exempt endpoints** — the following auth endpoints are exempt from the CSRF check, because they authorize via in-URL credentials (selector/token) or run before a session is established: `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verification/resend`, `/auth/verify/{selector}`. `/api/health` and `/api/v1/config` are also unauthenticated.
+
+`/auth/verify/{selector}` is also state-agnostic: the endpoint authorizes via selector+token and works whether or not the caller is logged in. The bundled admin UI calls it for both initial signup verification (`kind: signup`) and email-change confirmation (`kind: change`); see [API reference → Verify endpoint response](/reference/api#verify-endpoint-response-api-v1-auth-verify-selector).
 
 ## Rate Limiting
 

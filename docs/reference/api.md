@@ -34,17 +34,30 @@ The API surface splits into three areas: auth, agents, and tools/plugins. Auth a
 
 The endpoint is CSRF-exempt and works whether or not the requester is logged in. The response carries a `kind` discriminator so the SPA can branch UI without inspecting the addresses itself:
 
+**Initial signup** (`kind: "signup"`):
+
 ```json
 {
-  "message":   "Email verified successfully. | Email address changed successfully.",
-  "kind":      "signup" | "change",
-  "old_email": null | "<previous@email>",
-  "new_email": "<email>"
+  "kind": "signup",
+  "old_email": null,
+  "new_email": "user@example.com",
+  "message": "Email verified successfully."
+}
+```
+
+**Email change** (`kind: "change"`):
+
+```json
+{
+  "kind": "change",
+  "old_email": "previous@example.com",
+  "new_email": "user@example.com",
+  "message": "Email address changed successfully."
 }
 ```
 
 - `kind: "signup"` — initial account verification. The recipient clicks the link in the welcome email; `old_email` is `null` because the address itself has not changed. The user is not logged in; the SPA prompts to sign in.
-- `kind: "change"` — email-address change confirmation. The recipient clicked the link in the change-confirmation email; `old_email` holds the previous address and `new_email` the one being confirmed. The user IS logged in (the change was initiated from their account page). The SPA should `auth.refresh()` so the navbar reflects the new address without a full reload.
+- `kind: "change"` — email-address change confirmation. The recipient clicked the link in the change-confirmation email; `old_email` holds the previous address and `new_email` the one being confirmed. The user IS logged in (the change was initiated from their account page). The SPA should re-fetch `/auth/me` so the navbar reflects the new address without a full reload.
 
 Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php`); see spora-ai/spora-core#185.
 
@@ -199,7 +212,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 29 routes
+- [Agents](/reference/api/agents) — 27 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Tasks](/reference/api/tasks) — 9 routes
 - [Users](/reference/api/users) — 9 routes
@@ -212,8 +225,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
-- [Sse](/reference/api/sse) — 3 routes
 - [Skills](/reference/api/skills) — 2 routes
+- [Sse](/reference/api/sse) — 2 routes
 - [User-preferences](/reference/api/user-preferences) — 2 routes
 - [Apps](/reference/api/apps) — 1 route
 - [Assets](/reference/api/assets) — 1 route
@@ -244,8 +257,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                         | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                        | Agents           |
 | `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate            | Agents           |
-| `POST`   | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | UploadImage AgentPicture             | Agents           |
-| `DELETE` | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | DeleteImage AgentPicture             | Agents           |
 | `GET`    | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth`               | Index ScheduledRun                   | Agents           |
 | `POST`   | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth` + `csrfToken` | Store ScheduledRun                   | Agents           |
 | `GET`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth`               | Show ScheduledRun                    | Agents           |
@@ -326,7 +337,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                          | Skills           |
 | `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                           | Skills           |
 | `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                             | Sse              |
-| `GET`    | `/api/v1/sse/authorize`                                     | `cookieAuth`               | Authorize Sse                        | Sse              |
 | `GET`    | `/api/v1/sse/status`                                        | `cookieAuth`               | Status Sse                           | Sse              |
 | `GET`    | `/api/v1/tasks`                                             | `cookieAuth`               | Index Task                           | Tasks            |
 | `POST`   | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Store Task                           | Tasks            |

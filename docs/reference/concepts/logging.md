@@ -42,7 +42,9 @@ Every HTTP request to an LLM provider (`AnthropicCompatibleDriver`, `OpenAICompa
 
 ### Email — Log Transport
 
-When `SPORA_MAIL_DRIVER=log`, emails are logged (not sent) via `LogTransport`. Each logged entry includes `to`, `from`, and `subject` at `info` level.
+When `SPORA_MAIL_DRIVER=log`, emails are logged (not sent) via `LogTransport`. Each logged entry includes `to`, `from`, `subject`, and the rendered message body (`text` and/or `html`, depending on which the outgoing email carried — keys are omitted when the body is missing or empty) at `info` level. The body is logged verbatim so operators can verify the message that _would_ have been sent without a real SMTP server.
+
+> **Do not enable `SPORA_MAIL_DRIVER=log` on a deployment where log files are retained long-term or shipped off-host** — the body may contain PII (password-reset links, verification tokens, etc.). Use `smtp` (or another delivery transport) for any environment with non-dev log retention.
 
 ## PII Policy
 

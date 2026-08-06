@@ -32,7 +32,9 @@ php bin/spora spora:install    # creates schema (idempotent)
 php bin/spora db:seed         # creates a sample admin user
 ```
 
-`spora:install` is idempotent — re-run it after any new migration ships. `db:seed` is **insert-only** — it never patches an existing admin row, so it cannot resurrect a deleted admin or overwrite an operator-rename/demote. If you need to promote an existing admin row (e.g. it's stuck at `verified=0` after an upgrade), use `php bin/spora db:repair-admin` instead.
+`spora:install` is idempotent — re-run it after any new migration ships. `db:seed` is **insert-only for admin and agent rows** — it never patches an existing admin row, so it cannot resurrect a deleted admin or overwrite an operator-rename/demote. If you need to promote an existing admin row (e.g. it's stuck at `verified=0` after an upgrade), use `php bin/spora db:repair-admin` instead.
+
+In addition, `db:seed` reconciles mail templates against `email-templates/`: any YAML that is missing from the DB is inserted, and operator-customised templates are preserved (no `force`). Run `php bin/spora mail:templates:sync` interactively (or `php bin/spora mail:templates:sync --force`) if you want to overwrite drifted rows.
 
 To generate a secret key:
 
@@ -79,7 +81,7 @@ The `composer frontend:test` script lives in `spora-core` (the framework), not t
 
 - **SQLite** at `storage/database.sqlite` (the default, zero-config)
 - **Migrations** — `php bin/spora spora:install` (idempotent; safe to re-run)
-- **Seed** — `php bin/spora db:seed` (one-shot; skips if data exists)
+- **Seed** — `php bin/spora db:seed` (inserts missing admin + sample agent; also reconciles mail templates against `email-templates/`, preserving operator-customised rows)
 - **Reset** — `php bin/spora db:reset --force` (wipes the SQLite file or drops + recreates the MySQL DB)
 
 To use MySQL instead, edit `.env`:

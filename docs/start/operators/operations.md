@@ -36,10 +36,11 @@ Plugins land in `plugins/<name>/` (routed by `spora-ai/installer`). Each plugin 
 ```bash
 composer update spora-ai/spora-core
 php bin/spora spora:install                # apply any new migrations
-php bin/spora mail:templates:sync --check  # report mail-template drift without changing data
+php bin/spora db:seed                      # also picks up any new mail-template YAMLs shipped in this release
+php bin/spora mail:templates:sync --check  # (optional) report mail-template drift without changing data — `db:seed` is silent on drifted rows
 ```
 
-`mail:templates:sync --check` is read-only and exits non-zero when stored templates differ from their YAML defaults. Reconcile drift with `php bin/spora mail:templates:sync` to confirm each overwrite interactively, or use `--force` to overwrite without prompting.
+`db:seed` inserts any new mail-template YAMLs from `email-templates/` but does NOT report existing rows that drifted from their defaults — `mail:templates:sync --check` is still the right tool for drift detection. Reconcile drift with `php bin/spora mail:templates:sync` to confirm each overwrite interactively, or use `--force` to overwrite without prompting.
 
 Test the upgrade on a staging copy first.
 
@@ -92,7 +93,7 @@ If the seeded admin ends up in a broken state (e.g. `verified=0` after an upgrad
 php bin/spora db:repair-admin
 ```
 
-`db:seed` is **insert-only** — it will **not** patch an existing admin row, so it is the wrong tool for repairing a stuck admin. Use `db:repair-admin` for that.
+`db:seed` is **insert-only for admin and agent rows** — it will **not** patch an existing admin row, so it is the wrong tool for repairing a stuck admin. Use `db:repair-admin` for that. (`db:seed` does, however, reconcile mail templates against `email-templates/` — inserting missing YAMLs and preserving operator-customised rows.)
 
 ## File permissions
 

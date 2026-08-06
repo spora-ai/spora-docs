@@ -99,7 +99,7 @@ php bin/spora mail:templates:sync          # prompt before overwriting each drif
 php bin/spora mail:templates:sync --force  # overwrite without prompting
 ```
 
-Existing installations must run `php bin/spora spora:install` first so the `body_text` column is renamed to `body`. Do not run `db:seed` solely to update mail templates.
+Existing installations must run `php bin/spora spora:install` first so the `body_text` column is renamed to `body`. After that, running `php bin/spora db:seed` will pick up any new mail-template YAMLs (it does not overwrite operator-customised rows). To overwrite drifted rows, run `php bin/spora mail:templates:sync --force`.
 
 ## Theming the admin UI
 

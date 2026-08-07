@@ -87,6 +87,22 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 - **Tool calls** — the LLM's `tool_use` block, shown with the tool name, arguments, and the result
 - **The final reply** (left-aligned, the agent's actual response)
 
+### Sub-agents and handovers
+
+When the agent delegates work to a sub-agent (the `handover` tool with `op: 'sub_agent'`), the chat inserts a **sub-agent row widget** under the assistant turn. It lists every spawned child task with its live status:
+
+- **Running** (blue, pulsing dot) — the child task is still being executed.
+- **Awaiting approval** (amber row + ⚠ icon) — the child task is waiting on a tool-call decision. Click **Review approvals →** on the row to jump straight to the child chat's approvals section (`#approvals`).
+- **Queued / Done / Failed / Cancelled** — terminal-style indicators, no pulse.
+
+A summary line appears above the row list when at least one child needs approval: `Sub-agents (N): X needs approval · Y running · Z done` — click the line to jump to the first awaiting child.
+
+The parent chat header shows a violet sub-agent count badge (`3 sub-agents · 1 needs approval · 1 running · 1 completed`) when the parent has spawned sub-agents; clicking it smooth-scrolls to the first awaiting child. The badge hides once every spawned child reaches a terminal state. While the parent is waiting, its status pill turns violet (`AWAITING_SUB_AGENTS`) on the dashboard.
+
+When an agent **hands off** a task to another agent (the legacy `handover` op, `op: 'handover'`), the closed source chat shows a green final-response pill followed by an **Open &lt;Agent&gt; →** link under the reply, deep-linking to the target agent's page. If you open a child chat directly (for example from a sub-agent row), the child chat's header shows a small **Source task #N** breadcrumb linking back to the parent chat.
+
+For the underlying lifecycle (`AWAITING_SUB_AGENTS` → resume gates, worker-mode pickup, `data.spawned_sub_task_ids` and `data.sub_agent_expected_count` accounting), see [Concepts → Agent loop and async mode](/reference/concepts/agent-loop-async).
+
 ## When something goes wrong
 
 If the agent doesn't reply:

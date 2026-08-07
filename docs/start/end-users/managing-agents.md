@@ -172,6 +172,15 @@ The submitted payload `{decisions: [{provider_call_id, decision: 'approve'|'reje
 
 You can change an operation's default in **Settings → Tools → [tool] → Require approval by default**, and the per-agent override in the agent's edit form under **Tools → [operation] → Approval**.
 
+## Chat operations: handover and sub-agents
+
+The `handover` tool ships two operations — `handover` (transfer + close source task) and `sub_agent` (spawn child + wait for result). Both surface in the parent chat as a row in the timeline:
+
+- **`handover`** — the source task closes with a green "Handed off to &lt;Agent&gt;" pill and an **Open &lt;Agent&gt; →** link under the reply. The target agent's task starts as a new, unrelated task.
+- **`sub_agent`** — the source task stays open but flips to the violet `AWAITING_SUB_AGENTS` status pill until every spawned child terminates. A per-row widget lists each child with its live status (Running, Awaiting approval, Queued, Done, Failed, Cancelled); awaiting-approval rows are amber and expose a **Review approvals →** shortcut.
+
+Both ops share the same `allowed_target_agents` allowlist under **Tools → Handover** in agent settings — operators see one picker that gates both operations. For the per-row layout and status indicators, see [First conversation → Sub-agents and handovers](/start/end-users/first-conversation#sub-agents-and-handovers). Operators reviewing an `AWAITING_SUB_AGENTS` task (violet pill) can drill into any child row to unblock a `PENDING_APPROVAL` decision without waiting for the parent to time out.
+
 ## What's next
 
 - [First conversation](/start/end-users/first-conversation) — sign in and chat

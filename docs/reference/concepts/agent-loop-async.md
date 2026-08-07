@@ -68,9 +68,15 @@ stateDiagram-v2
     PENDING_APPROVAL --> PENDING_APPROVAL : resume() (partial approval — pending_state rewritten)
 
     RUNNING --> FAILED : max_steps or exception
+
+    RUNNING --> AWAITING_SUB_AGENTS : sub_agent tool (HandoverTool) spawns child
+    AWAITING_SUB_AGENTS --> RUNNING : every child TERMINAL (sync — inline tick)
+    AWAITING_SUB_AGENTS --> QUEUED : every child TERMINAL (worker — next task:run)
 ```
 
 _(Sync mode starts directly at `RUNNING`; cron/worker modes use `QUEUED` as the entry point.)_
+
+`AWAITING_SUB_AGENTS` is the suspended-while-sub-agent-children-run state set by the `HandoverTool` `sub_agent` op. Each spawn creates a regular `Task` with `parent_task_id` and bumps `data.sub_agent_expected_count` after the child tick; the resume gate compares the live child count from `data.spawned_sub_task_ids` against `sub_agent_expected_count` and only re-enters the loop when every sibling has reached a terminal state. Sync mode resumes inline via `ApprovedBatchExecutor::triggerBatchBoundaryResume`; worker mode resumes on the next `task:run` drain via `TickPhaseRunner::maybeResumeParentFromBatchBoundary`. See [Tool system → Handover](/reference/concepts/tools#handover-tool) for the LLM-facing contract.
 
 ## Worker CLI
 

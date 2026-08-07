@@ -388,4 +388,17 @@ Unconfigured settings are shown as `(not configured)` so the LLM knows a capabil
 
 "LLM Exposed ✓" means `exposeToLlm: true` — the setting's effective value is included in the tool definition sent to the LLM.
 
-The remaining tools (`Calculator`, `CurrentTime`, `AgentMemory`, `GlobalMemory`, `Handover`, `ReadUrl`, `UserInfo`) declare no `#[ToolSetting]` attributes — they take their inputs entirely from the LLM's arguments and have no infrastructure configuration to expose.
+The remaining tools (`Calculator`, `CurrentTime`, `AgentMemory`, `GlobalMemory`, `ReadUrl`, `UserInfo`) declare no `#[ToolSetting]` attributes — they take their inputs entirely from the LLM's arguments and have no infrastructure configuration to expose.
+
+### Handover tool
+
+The `Handover` tool (`app/Tools/HandoverTool.php`) is a single tool that declares two `#[ToolOperation]` entries on the `op` discriminator — `handover` (transfer + close) and `sub_agent` (spawn child + wait). Both ops share the `allowed_target_agents` multi-select under **Tools → Handover** settings.
+
+| Operation   | Required params (per-op)                 | Requires approval | Side-effect on source task                                                                                                                                                                                                                                                                                                                                                              |
+| ----------- | ---------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handover`  | `target_agent_id: int`, `prompt: string` | yes               | Source task closes; a new task starts on the target agent. The closed source `final_response` becomes "Handed off to …" and `data.handover.{target_task_id, target_agent_id, target_agent_name}` records the lineage breadcrumb.                                                                                                                                                        |
+| `sub_agent` | `agent_id: int`, `prompt: string`        | yes               | Source task flips to `AWAITING_SUB_AGENTS`; a child `Task` with `parent_task_id` is created on the target agent. After every spawned child reaches a terminal state the parent's next tick resumes with each child's output appended as a `role:'tool'` history row. The parent's `result_data.spawned_sub_task_ids: list<int>` is always plural — same shape for one or many children. |
+
+The LLM-facing schema declares `op` as the discriminator (enum: `handover | sub_agent`); single-op agents may omit `op` — `OperationSchemaFilter` strips the discriminator from `required[]` when only one op is allowed (back-compat path for agents created before the second op shipped).
+
+The `target_agent_id` (handover) and `agent_id` (sub_agent) names are deliberately distinct — they identify the same target agent in each op, but the per-op rename keeps the LLM-facing schema self-documenting and avoids hidden field-aliasing surprises.

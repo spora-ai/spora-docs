@@ -118,6 +118,14 @@ One store per resource, defined in `src/stores/`. Convention:
 
 Stores expose a `load()` action that pages call from `onMounted` and from refresh buttons. App-scoped stores (e.g. the plugin inventory at `src/apps/plugins/stores/plugins.ts`) live under their app folder, not in the global `stores/`.
 
+### Sub-task cache (`sub_agent` op)
+
+The `useTaskStore` exposes a reactive sub-task cache for the `HandoverTool` `sub_agent` op (`src/stores/tasks.ts`). `subTaskCache: Map<number, TaskDetail>` is keyed by child task id; `fetchSubTaskDetail(id)` populates it via `GET /api/v1/tasks/{id}` and SSE updates for non-active task ids patch the cached entry in place via `applyTaskUpdate` so per-row status badges flip live without a re-fetch. `clearSubTaskCache()` empties the map on `TaskChatPage` unmount so child rows do not leak across parent visits.
+
+### `TaskDetail.data`
+
+The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to deep-link the "Handed off to …" final-response pill to the target agent via `data.handover.{target_task_id, target_agent_id, target_agent_name}`, and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
+
 ## The `apps/` directory — extending the frontend
 
 Each "app" is a self-contained bundle of pages, components, types, stores, and an API client. The pattern keeps feature work isolated — adding a new top-level page (e.g. **Plugins**) does **not** touch the rest of the app.
@@ -179,5 +187,6 @@ The global guard reads `meta.requiresAdmin` / `meta.requiresAuth` and short-circ
 - **`src/api/client.ts`** — every HTTP call in the app routes through this module.
 - **`src/composables/useAdminAuth.ts`** — the canonical admin-gate pattern.
 - **`src/composables/useFeatureEnabled.ts`** — runtime feature flags from `/api/v1/config`.
+- **`src/components/agent/TaskChat/SubAgentToolCall.vue`** — the row widget rendered when the Orchestrator records a `sub_agent` op (one row per spawned child, live status from `subTaskCache`).
 - **`src/apps/plugins/`** — the template for adding a new top-level app.
 - **`src/stores/auth.ts`** — session, login, CSRF token.

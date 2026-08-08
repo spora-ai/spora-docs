@@ -124,7 +124,7 @@ The `useTaskStore` exposes a reactive sub-task cache for the `HandoverTool` `sub
 
 ### `TaskDetail.data`
 
-The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to deep-link the "Handed off to …" final-response pill to the target agent via `data.handover.{target_task_id, target_agent_id, target_agent_name}`, and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
+The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to deep-link the "Handed off to …" final-response pill to the target agent via `data.handover.{target_agent_id, target_agent_name}` (the backend also writes `target_task_id` for lineage, but the chat UI no longer consumes it), and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
 
 ## The `apps/` directory — extending the frontend
 

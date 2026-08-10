@@ -142,9 +142,7 @@ The web server's Caddy config (`docker/frankenphp.conf`):
 
 - Listens on port 80 (the `EXPOSE` line in the Dockerfile), 443 (TLS) and 443/udp (HTTP/3). Caddy auto-issues Let's Encrypt on first boot when `SERVER_NAME` is a public domain.
 - Security headers (HSTS, X-Content-Type-Options, X-Frame-Options DENY, X-XSS-Protection, Referrer-Policy) on every response
-- Mercure hub at `/.well-known/mercure`, signed with `SPORA_MERCURE_JWT_KEY`. Subscribers authenticate with a `__Secure-mercure_access_token` HttpOnly cookie minted by `GET /api/v1/sse/authorize`; the hub is **not** `anonymous`, so private updates only reach subscribers whose JWT scopes match the publish topic.
-
-> **Requires `spora-ai/spora-core` v0.15 or newer.** Earlier versions of the framework do not register the `/api/v1/sse/authorize` endpoint that mints the `__Secure-mercure_access_token` cookie, so the UI silently falls back to polling.
+- Mercure hub at `/.well-known/mercure`, signed with `SPORA_MERCURE_JWT_KEY`. Subscribers authenticate with a `__Secure-mercure_access_token` HttpOnly cookie minted by `GET /api/v1/sse/authorize`; the hub is **not** `anonymous`, so private updates only reach subscribers whose JWT scopes match the publish topic. The bundled hub defaults to reading `mercureAuthorization` (legacy); the shipped `docker/frankenphp.conf` pins `cookie_name __Secure-mercure_access_token` so the hub finds what `SseController` sets.
 
 - Static assets served from `/app/public/dist`
 - SPA fallback — non-API routes return `index.html`
@@ -178,7 +176,7 @@ The MariaDB schema is migrated on first container start by the image's entrypoin
 - **`SPORA_SECRET_KEY`** is the master encryption key. Losing it means losing access to all encrypted tool settings. Back it up separately from the volumes.
 - **`SPORA_APP_ENV=production`** silences PHP deprecation warnings and removes the `debug` envelope from `/api/*` JSON error responses. Production deployments **must** set it.
 - **`SPORA_MERCURE_JWT_KEY`** signs both publisher and subscriber tokens. Use a random 32-byte hex value (`php -r "echo bin2hex(random_bytes(32));"`). The `__Secure-mercure_access_token` cookie carries the subscriber JWT scoped to `user/{userId}/tasks` and `user/{userId}/notifications`; never set `anonymous` on the hub unless you intend to leak private updates.
-- **`SPORA_MERCURE_PUBLISH_URL`** is the URL the in-container publisher POSTs to. When set to `http://localhost/...` and `SERVER_NAME` is a public domain, Caddy's auto-HTTPS redirects the publisher to HTTPS on a port it cannot reach, producing the `tlsv1 alert internal error` in the logs. Use the Docker service name (`http://spora:80/...`) when the publisher and hub are co-located.
+- **`SPORA_MERCURE_PUBLISH_URL`** is the URL the in-container publisher POSTs to. Use `http://localhost:80/.well-known/mercure` (loopback) when the publisher and hub are co-located — the bundled Caddy config adds `http://localhost:80` as a second site address so the publisher's host matches. Avoid `http://spora:80/...` (bakes the docker-compose service name into the image) and `http://localhost/...`/`https://localhost/...` (no port → Caddy auto-HTTPS redirects to a port the in-container client can't reach).
 - **Change the default MariaDB passwords** (currently `sporapassword` / `rootpassword`). Use strong random values.
 - **`SPORA_ALLOW_REGISTRATION`** should be `true` only for the initial admin signup, then `false`.
 - The `phpmyadmin` port (`8082`) is **not authenticated by default** beyond the MariaDB credentials. Put it behind a reverse proxy with basic auth, or remove the service for production.

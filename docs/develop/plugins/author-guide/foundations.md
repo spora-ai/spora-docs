@@ -91,7 +91,7 @@ The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/s
 
 The previous schema (`<= v0.5.x`) accepted `version`, `dependencies`, `autoload`, and `file` overrides. Those were dropped when `PluginLoader` switched to PSR-4-only entry-point resolution:
 
-- **Version** is taken from `composer.json`. No `version` field.
+- **Version** is taken from the git tag Composer recorded at install time (`Composer\InstalledVersions::getPrettyVersion()`). The runtime never reads `composer.json#version` — both the manifest contract and the runtime resolution are tag-driven, so a hand-edited bump can't drift from the release that operators actually see.
 - **Inter-plugin dependencies** are declared in `composer.json` (`"require"`), not the manifest.
 - **Autoload PSR-4 mappings** are declared exclusively in `composer.json`. The manifest no longer accepts an `autoload` block.
 - **`file` override** is gone — the loader instantiates `class` via PSR-4 and throws on failure.

@@ -46,9 +46,10 @@ composer install
 
 ## Publishing
 
-1. Bump `version` in `composer.json`.
-2. Tag the release: `git tag v0.1.0 && git push --tags`.
-3. (Optional) Configure Packagist to auto-pull from the GitHub repo.
+1. Tag the release: `git tag v0.1.0 && git push --tags`.
+2. (Optional) Configure Packagist to auto-pull from the GitHub repo.
+
+There's nothing to bump in `plugin.json` or `composer.json` — the runtime reads the version from the git tag via `Composer\InstalledVersions::getPrettyVersion()`, so the tag is the single source of truth.
 
 ## CI
 

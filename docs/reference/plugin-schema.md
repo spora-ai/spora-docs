@@ -106,7 +106,7 @@ If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set bu
 
 The previous schema (≤ v0.5.x) accepted `version`, `dependencies`, and `file` overrides. Those were dropped when `PluginLoader` switched to PSR-4-only entry-point resolution (commit ref: `fix/plugin-loader-psr4-entry-point`):
 
-- **Version** is taken from `composer.json` (no `version` field in the manifest).
+- **Version** is taken from the git tag Composer recorded at install time (`Composer\InstalledVersions::getPrettyVersion()`). The runtime never reads `composer.json#version` — both the manifest contract and the runtime resolution are tag-driven, so a hand-edited bump can't drift from the release operators actually see.
 - **Inter-plugin dependencies** are declared in `composer.json` (`"require"`), not the manifest.
 - **PSR-4 mappings** belong in `composer.json`. The manifest's `autoload.psr-4` is a backstop, not a replacement.
 - **`file` override** is gone — the loader instantiates `class` via PSR-4 and throws on failure.

@@ -35,3 +35,5 @@ docs/.vuepress/openapi.json
 # so the pages always exist locally and in CI.
 docs/reference/api/
 .worktrees/
+
+/tmp/

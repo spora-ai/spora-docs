@@ -205,5 +205,6 @@ The chat header, dashboard list, and approval bar all share the same status-pill
 ## What's next
 
 - [First conversation](/start/end-users/first-conversation) — sign in and chat
+- [Scheduling agents](/start/end-users/scheduling-agents) — one-shot and recurring triggers, timezone, manual fire
 - [Troubleshooting](/start/end-users/troubleshooting) — when an agent gets stuck
 - [Operators → Operations](/start/operators/operations) — plugin management, the operator side

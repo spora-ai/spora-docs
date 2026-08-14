@@ -119,26 +119,31 @@ For the underlying lifecycle (`AWAITING_SUB_AGENTS` → resume gates, worker-mod
 
 ### Stop waiting for sub-agents
 
-When the parent is stuck in `AWAITING_SUB_AGENTS` (because one or more sub-agent children are still running) and you don't want to wait any longer, a **Stop waiting** button appears on the right edge of the sub-agent tool-call widget header. Clicking it aborts the first child — that single child moves to `ABORTED` and the parent task remains in `AWAITING_SUB_AGENTS`. The widget re-renders on the next SSE event, and you can click **Stop waiting** again for any other child still running.
+When the parent is stuck in `AWAITING_SUB_AGENTS` (because one or more sub-agent children are still running) and you don't want to wait any longer, a **Stop waiting** button appears on the right edge of the sub-agent tool-call widget header. Clicking it aborts the first child and cascades the abort up through every `AWAITING_SUB_AGENTS` ancestor — typically the chat you are looking at.
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant P as Parent chat (AWAITING_SUB_AGENTS)
-    participant API as POST /tasks/{id}/abort
+    participant API as POST /tasks/{id}/abort-sub-agent
     participant C1 as Child 1 (RUNNING)
     participant MERC as Mercure SSE
 
-    U->>P: Click "Stop waiting"
-    P->>API: abortTask(firstChildId)
-    API->>C1: status := ABORTED, data.aborted_at = now
-    API-->>P: 200 { task: Child1_ABORTED }
-    API->>MERC: publish(child1 topic, ABORTED)
-    MERC-->>P: SSE event (child1 ABORTED)
-    Note over P: Parent still AWAITING_SUB_AGENTS<br/>until every sibling terminates
+    U->>P: click Stop waiting
+    P->>API: abortSubAgent(child1.id)
+    API->>C1: Orchestrator::abort -> ABORTED
+    API->>P: cascadeAbortToAncestors()
+    P-->>P: status -> ABORTED
+    API-->>P: 200 {task: child1 ABORTED}
+    P->>MERC: publish ABORTED for each ancestor
+    MERC-->>U: chat flips to ABORTED banner
 ```
 
-> **Release note:** the Stop waiting affordance currently aborts **only the first child**. The parent task stays in `AWAITING_SUB_AGENTS` and you can click Stop waiting on each remaining child independently. **Cascade-up — aborting the parent alongside the child — is planned for a future release** but is not wired in this version (no `POST /tasks/{id}/abort-sub-agent` endpoint is exposed yet; `TaskService::abortSubAgentAndCascade` exists in the service layer but is not reachable from the chat). To halt the parent itself, open the parent chat and click the **Abort** button described above.
+Notes on the cascade:
+
+- **What gets aborted** — the child you clicked Stop on, plus every ancestor still in `AWAITING_SUB_AGENTS`. Ancestors that already settled (`COMPLETED`/`FAILED`) are left alone. The cascade is idempotent.
+- **What does NOT get aborted** — sibling sub-agents not on the chosen child's parent chain. If Child 1 and Child 2 share the same parent and you click Stop on Child 1's row, Child 2 keeps running. Stop each child independently if you want all of them to stop.
+- **Ownership** — the cascade uses your session cookie; you only need to own the **child** you click Stop on. Ancestors are system-aborted.
 
 ## When something goes wrong
 

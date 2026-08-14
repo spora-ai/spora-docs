@@ -73,7 +73,7 @@ stateDiagram-v2
     AWAITING_SUB_AGENTS --> RUNNING : every child TERMINAL (sync — inline tick)
     AWAITING_SUB_AGENTS --> QUEUED : every child TERMINAL (worker — next task:run)
     RUNNING --> ABORTED : POST /tasks/{id}/abort (quiescent — resumable)
-    AWAITING_SUB_AGENTS --> ABORTED : POST /tasks/{id}/abort on parent + cascade
+    AWAITING_SUB_AGENTS --> ABORTED : POST /tasks/{id}/abort-sub-agent (child abort cascades to ancestors)
     ABORTED --> RUNNING : POST /tasks/{id}/continue (clear aborted_at, re-prompt)
     ABORTED --> QUEUED : POST /tasks/{id}/continue (worker mode)
     RUNNING --> ABORTED : POST /tasks/{id}/continue (auto-abort + marker row)

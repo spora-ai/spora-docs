@@ -31,10 +31,12 @@ Beneath the KPI strip, a row of filter chips narrows what you see:
 
 - **All** — default; shows every section.
 - **Pinned** — shows only the Pinned section.
+- **Favorites** — shows only agents you starred as favourites.
 - **Archived** — shows only the Archived section.
-- **Aborted** — shows only agents that have at least one task in `ABORTED` status. Use this when you want to triage the held conversations on your dashboard — click the chip, then click into any agent whose card shows an **Aborted** state pill to resume the task with a follow-up prompt.
 
-The **Pinned**, **Archived**, and **Aborted** chips also only appear once at least one loaded agent carries the flag.
+To triage held conversations from the dashboard, **click the Aborted KPI tile** in the strip — that filters the agent list down to every agent with at least one task in `ABORTED` status. The tile is the wired shortcut; the filter chips are a narrower scope (status-independent).
+
+The **Pinned**, **Favorites**, and **Archived** chips only appear once at least one loaded agent carries the flag.
 
 Use the sort dropdown (top right) to order the visible agents:
 

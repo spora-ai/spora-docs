@@ -13,7 +13,7 @@ If the chat shows the bouncing typing indicator for longer than you expected —
 
 If the agent is stuck because it spawned sub-agents that are themselves running long, the sub-agent tool-call widget in the parent chat shows a **Stop waiting** button. Click it to abort the first child and cascade the abort up through every `AWAITING_SUB_AGENTS` ancestor — the chat you're looking at flips to the ABORTED banner. To stop the remaining siblings without halting the parent, click **Stop waiting** on each child's row independently. See [First conversation → Stop waiting for sub-agents](/start/end-users/first-conversation#stop-waiting-for-sub-agents) for the full cascade semantics.
 
-If neither affordance unblocks the task, the operator can requeue it — see [Operators → Day-2 ops](/start/operators/operations) for the `--reap-only` workflow.
+If neither affordance unblocks the task, the operator can requeue it — run `php bin/spora worker:run --reap-only` (see [Concepts → Worker deployment → Stale Task Reaping](/reference/concepts/worker-deployment#stale-task-reaping) for the full option table).
 
 ## Agent doesn't reply
 

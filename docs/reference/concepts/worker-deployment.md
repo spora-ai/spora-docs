@@ -119,7 +119,9 @@ stdout_logfile=/var/log/spora-worker.log
 
 `autorestart=true` handles both crashes and unexpected exits. Set `numprocs` > 1 only if your database supports concurrent write transactions safely (PostgreSQL; **not** SQLite).
 
-## Stale Task Reaping
+## Stale Task Reaping {#stale-task-reaping}
+
+{#reap-only}
 
 Tasks can be orphaned in `RUNNING` when a worker process is killed ungracefully (OOM, `SIGKILL`, server crash) between claiming a task and completing it.
 

@@ -39,11 +39,11 @@ If you switch the dropdown after creating a schedule, existing fires already on 
 
 ## One-shot vs recurring — when to use which
 
-| Use one-shot when...                                                                       | Use recurring when...                                                       |
-| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| The trigger is a specific calendar moment ("remind me at 14:30 on Friday")                 | The trigger is a rhythm ("every weekday at 08:00")                          |
-| You want the schedule to retire itself after firing                                        | You want the schedule to keep firing until you pause or delete it           |
-| You're chaining off a one-time event (a release, a deadline, a webhook-driven follow-up)   | You're driving a daily/weekly/monthly report or a routine check             |
+| Use one-shot when...                                                                     | Use recurring when...                                             |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| The trigger is a specific calendar moment ("remind me at 14:30 on Friday")               | The trigger is a rhythm ("every weekday at 08:00")                |
+| You want the schedule to retire itself after firing                                      | You want the schedule to keep firing until you pause or delete it |
+| You're chaining off a one-time event (a release, a deadline, a webhook-driven follow-up) | You're driving a daily/weekly/monthly report or a routine check   |
 
 ## What happens on failure
 

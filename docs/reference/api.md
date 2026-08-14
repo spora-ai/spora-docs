@@ -79,15 +79,15 @@ Schedules live under the owning agent. The full route set is listed in the auto-
 
 `POST /api/v1/agents/{id}/scheduled-runs` accepts a one-shot or recurring trigger:
 
-| Field             | Type                | Required for... | Notes                                                                                                                                                                                                                                                                                            |
-| ----------------- | ------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cron_expression` | string              | recurring       | Standard 5-field cron (`* * * * *`). Evaluated against the schedule's `timezone`, not UTC.                                                                                                                                                                                                       |
-| `run_at`          | string              | one-shot        | ISO 8601 timestamp. May be offset-less (`2026-04-20T10:00:00`) or offset-bearing (`2026-04-20T10:00:00+02:00`). If offset-less, the backend anchors the literal wall-clock value to `timezone`; if offset-bearing, the absolute instant is used.                                              |
-| `timezone`        | string (IANA, ≤ 50) | optional        | Defaults to `UTC`. Validated against the IANA tz database; an invalid id returns `422 VALIDATION_ERROR`. The frontend defaults to the browser's IANA zone via `Intl.DateTimeFormat().resolvedOptions().timeZone`.                                                                              |
-| `template_id`     | integer \| null     | optional        | FK to `agent_prompt_templates.id`. When set, `prompt_template` + its `variables` drive the prompt at fire time (template variables can be referenced via `{{var}}`).                                                                                                                              |
-| `raw_prompt`      | string              | optional        | Free-form prompt used when no template is attached. Same `{{var}}` substitution applies.                                                                                                                                                                                                         |
-| `max_steps_override` | integer \| null  | optional        | Override the agent's `max_steps` for this schedule only. Falls back to the template, then the agent.                                                                                                                                                                                              |
-| `is_active`       | boolean             | optional        | Default `true`. Set `false` to pause without deleting.                                                                                                                                                                                                                                            |
+| Field                | Type                | Required for... | Notes                                                                                                                                                                                                                                            |
+| -------------------- | ------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cron_expression`    | string              | recurring       | Standard 5-field cron (`* * * * *`). Evaluated against the schedule's `timezone`, not UTC.                                                                                                                                                       |
+| `run_at`             | string              | one-shot        | ISO 8601 timestamp. May be offset-less (`2026-04-20T10:00:00`) or offset-bearing (`2026-04-20T10:00:00+02:00`). If offset-less, the backend anchors the literal wall-clock value to `timezone`; if offset-bearing, the absolute instant is used. |
+| `timezone`           | string (IANA, ≤ 50) | optional        | Defaults to `UTC`. Validated against the IANA tz database; an invalid id returns `422 VALIDATION_ERROR`. The frontend defaults to the browser's IANA zone via `Intl.DateTimeFormat().resolvedOptions().timeZone`.                                |
+| `template_id`        | integer \| null     | optional        | FK to `agent_prompt_templates.id`. When set, `prompt_template` + its `variables` drive the prompt at fire time (template variables can be referenced via `{{var}}`).                                                                             |
+| `raw_prompt`         | string              | optional        | Free-form prompt used when no template is attached. Same `{{var}}` substitution applies.                                                                                                                                                         |
+| `max_steps_override` | integer \| null     | optional        | Override the agent's `max_steps` for this schedule only. Falls back to the template, then the agent.                                                                                                                                             |
+| `is_active`          | boolean             | optional        | Default `true`. Set `false` to pause without deleting.                                                                                                                                                                                           |
 
 Error contract:
 
@@ -242,7 +242,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 29 routes
+- [Agents](/reference/api/agents) — 27 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Tasks](/reference/api/tasks) — 9 routes
 - [Users](/reference/api/users) — 9 routes
@@ -255,8 +255,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
-- [Sse](/reference/api/sse) — 3 routes
 - [Skills](/reference/api/skills) — 2 routes
+- [Sse](/reference/api/sse) — 2 routes
 - [User-preferences](/reference/api/user-preferences) — 2 routes
 - [Apps](/reference/api/apps) — 1 route
 - [Assets](/reference/api/assets) — 1 route
@@ -287,8 +287,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                         | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                        | Agents           |
 | `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate            | Agents           |
-| `POST`   | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | UploadImage AgentPicture             | Agents           |
-| `DELETE` | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | DeleteImage AgentPicture             | Agents           |
 | `GET`    | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth`               | Index ScheduledRun                   | Agents           |
 | `POST`   | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth` + `csrfToken` | Store ScheduledRun                   | Agents           |
 | `GET`    | `/api/v1/agents/{id}/scheduled-runs/{runId}`                | `cookieAuth`               | Show ScheduledRun                    | Agents           |
@@ -369,7 +367,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                          | Skills           |
 | `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                           | Skills           |
 | `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                             | Sse              |
-| `GET`    | `/api/v1/sse/authorize`                                     | `cookieAuth`               | Authorize Sse                        | Sse              |
 | `GET`    | `/api/v1/sse/status`                                        | `cookieAuth`               | Status Sse                           | Sse              |
 | `GET`    | `/api/v1/tasks`                                             | `cookieAuth`               | Index Task                           | Tasks            |
 | `POST`   | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Store Task                           | Tasks            |

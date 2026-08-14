@@ -90,7 +90,7 @@ flowchart LR
     class completed,failed,pending,cancel,resume,reject terminal
 ```
 
-Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVAL ⇄ RUNNING → CANCELLED` and `RUNNING → AWAITING_SUB_AGENTS → RUNNING (sync) | QUEUED (worker)` (added in spora-core PR #196 — `AWAITING_SUB_AGENTS` is set by the `HandoverTool` `sub_agent` op while the parent task waits for every spawned child to reach a terminal state). PENDING is the initial value written by the migration; in practice the worker transitions QUEUED→RUNNING before the first tick. The `CANCELLED` terminal status is set by `TaskService::cancelRetryChain` — `REJECTED` is the analogous status for `tool_calls` rows, not `tasks`.
+Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVAL ⇄ RUNNING → CANCELLED` and `RUNNING → AWAITING_SUB_AGENTS → RUNNING (sync) | QUEUED (worker)` (added in spora-core PR #196 — `AWAITING_SUB_AGENTS` is set by the `HandoverTool` `sub_agent` op while the parent task waits for every spawned child to reach a terminal state) plus `RUNNING → ABORTED` and `AWAITING_SUB_AGENTS → ABORTED` (quiescent, added in spora-core PR #207 via `POST /api/v1/tasks/{id}/abort`). `ABORTED` is resumable via `POST /api/v1/tasks/{id}/continue` and `data.aborted_at` is wiped on resume. PENDING is the initial value written by the migration; in practice the worker transitions QUEUED→RUNNING before the first tick. The `CANCELLED` terminal status is set by `TaskService::cancelRetryChain`; the `ABORTED` quiescent status is set by `Orchestrator::abort` (`app/Agents/Orchestrator.php`) — `REJECTED` is the analogous status for `tool_calls` rows, not `tasks`.
 
 ### Worker Modes (`SPORA_SYNC_MODE`)
 

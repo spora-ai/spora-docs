@@ -72,7 +72,16 @@ stateDiagram-v2
     RUNNING --> AWAITING_SUB_AGENTS : sub_agent tool (HandoverTool) spawns child
     AWAITING_SUB_AGENTS --> RUNNING : every child TERMINAL (sync — inline tick)
     AWAITING_SUB_AGENTS --> QUEUED : every child TERMINAL (worker — next task:run)
+    RUNNING --> ABORTED : POST /tasks/{id}/abort (quiescent — resumable)
+    AWAITING_SUB_AGENTS --> ABORTED : POST /tasks/{id}/abort-sub-agent (child abort cascades to ancestors)
+    ABORTED --> RUNNING : POST /tasks/{id}/continue (clear aborted_at, re-prompt)
+    ABORTED --> QUEUED : POST /tasks/{id}/continue (worker mode)
+    RUNNING --> ABORTED : POST /tasks/{id}/continue (auto-abort + marker row)
 ```
+
+### Quiescent task states
+
+`ABORTED`, `PENDING_APPROVAL`, and `AWAITING_SUB_AGENTS` together form the **quiescent** set: in every case the worker is not driving the task — the conversation is waiting on the operator (`PENDING_APPROVAL` tool call), on sub-agent children (`AWAITING_SUB_AGENTS`), or on the operator's next instruction after an explicit halt (`ABORTED`). The chat detail poller skips the entire set so the browser does not waste cycles fetching a task that is not making progress on its own. The poller re-arms the moment an action moves the task out — approve/reject from the approval bar, sub-agent child reaching a terminal state, or `POST /api/v1/tasks/{taskId}/continue` resuming an ABORTED task.
 
 _(Sync mode starts directly at `RUNNING`; cron/worker modes use `QUEUED` as the entry point.)_
 

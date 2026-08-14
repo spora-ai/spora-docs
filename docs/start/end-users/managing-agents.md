@@ -31,9 +31,12 @@ Beneath the KPI strip, a row of filter chips narrows what you see:
 
 - **All** — default; shows every section.
 - **Pinned** — shows only the Pinned section.
+- **Favorites** — shows only agents you starred as favourites.
 - **Archived** — shows only the Archived section.
 
-The **Pinned** and **Archived** chips also only appear once at least one loaded agent carries the flag.
+To triage held conversations from the dashboard, **click the Aborted KPI tile** in the strip — that filters the agent list down to every agent with at least one task in `ABORTED` status. The tile is the wired shortcut; the filter chips are a narrower scope (status-independent).
+
+The **Pinned**, **Favorites**, and **Archived** chips only appear once at least one loaded agent carries the flag.
 
 Use the sort dropdown (top right) to order the visible agents:
 
@@ -51,9 +54,10 @@ A row of cards above the list summarises fleet activity:
 - **Agents** — total agent count.
 - **Running** — tasks in flight. Shows a pulse indicator when count > 0.
 - **Awaiting input** — tasks waiting for your approval. Shows a pulse indicator when count > 0.
+- **Aborted** — tasks halted mid-loop that need a follow-up prompt to resume. Uses a static (non-pulsing) stone indicator so the dashboard does not falsely imply worker activity — the agent loop is paused waiting for you.
 - **Scheduled today** — agents scheduled to fire today. Shows a pulse indicator when count > 0.
 
-Pulse indicators only appear when the count is non-zero — a card with no activity of that type shows just the number, with no badge.
+Pulse indicators only appear when the count is non-zero — a card with no activity of that type shows just the number, with no badge. The Aborted tile never pulses (no worker is driving those tasks) — the static stone chip is intentional, so a glance at the strip tells you what needs your attention vs. what's churning on its own.
 
 ### Layout
 
@@ -177,9 +181,26 @@ You can change an operation's default in **Settings → Tools → [tool] → Req
 The `handover` tool ships two operations — `handover` (transfer + close source task) and `sub_agent` (spawn child + wait for result). Both surface in the parent chat as a row in the timeline:
 
 - **`handover`** — the source task closes with a green "Handed off to &lt;Agent&gt;" pill and an **Open &lt;Agent&gt; →** link under the reply. The target agent's task starts as a new, unrelated task.
-- **`sub_agent`** — the source task stays open but flips to the violet `AWAITING_SUB_AGENTS` status pill until every spawned child terminates. A per-row widget lists each child with its live status (Running, Awaiting approval, Queued, Done, Failed, Cancelled); awaiting-approval rows are amber and expose a **Review approvals →** shortcut.
+- **`sub_agent`** — the source task stays open but flips to the violet `AWAITING_SUB_AGENTS` status pill until every spawned child terminates. A per-row widget lists each child with its live status (Running, Awaiting approval, Queued, Done, Failed, Cancelled); awaiting-approval rows are amber and expose a **Review approvals →** shortcut. If you no longer want to wait, the **Stop waiting** button on the widget header aborts the first child and cascades the abort up through every `AWAITING_SUB_AGENTS` ancestor — see [First conversation → Stop waiting for sub-agents](/start/end-users/first-conversation#stop-waiting-for-sub-agents) for the cascade semantics.
 
 Both ops share the same `allowed_target_agents` allowlist under **Tools → Handover** in agent settings — operators see one picker that gates both operations. For the per-row layout and status indicators, see [First conversation → Sub-agents and handovers](/start/end-users/first-conversation#sub-agents-and-handovers). Operators reviewing an `AWAITING_SUB_AGENTS` task (violet pill) can drill into any child row to unblock a `PENDING_APPROVAL` decision without waiting for the parent to time out.
+
+## Task status pills
+
+The chat header, dashboard list, and approval bar all share the same status-pill palette (`StatusBadge.vue`). The colour coding is the single source of truth — operators reading the dashboard and users reading the chat should never see a colour mismatch for the same underlying state:
+
+| Status                | Palette | Icon           | Where it surfaces                                                                               |
+| --------------------- | ------- | -------------- | ----------------------------------------------------------------------------------------------- |
+| `RUNNING`             | blue    | `loader-2`     | Chat typing-dots area, dashboard card, sub-agent row                                            |
+| `PENDING_APPROVAL`    | amber   | `warning`      | Sticky approval bar, dashboard card, sub-agent row (`Review approvals →` shortcut on amber row) |
+| `AWAITING_SUB_AGENTS` | violet  | `users`        | Dashboard card, sub-agent widget header (Stop waiting button visible while violet)              |
+| `ABORTED`             | stone   | `x-circle`     | Chat ABORTED banner, dashboard card, sub-agent row after a Stop waiting click                   |
+| `COMPLETED`           | green   | `check`        | Dashboard card, sub-agent row                                                                   |
+| `FAILED`              | red     | `error-circle` | Dashboard card, sub-agent row, 500-class error toasts                                           |
+| `CANCELLED`           | zinc    | `x`            | Dashboard card, sub-agent row                                                                   |
+| `QUEUED`              | zinc    | `clock`        | Dashboard card, sub-agent row                                                                   |
+
+`ABORTED` is intentionally stone (not red) so it does not read as an error — the agent did not crash; you asked it to stop, and it stopped cleanly. Click into an ABORTED card from the dashboard to resume with a follow-up prompt.
 
 ## What's next
 

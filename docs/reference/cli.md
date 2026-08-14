@@ -82,13 +82,13 @@ The build-time entry points **do not require a configured app**: no `storage/sec
 
 ## Exit codes
 
-| Code             | Meaning                                                                                  |
-| ---------------- | ---------------------------------------------------------------------------------------- |
-| `0`              | Success                                                                                  |
-| `1`              | Generic failure (catch-all)                                                              |
-| `2`              | Input validation failure (e.g. `db:reset` without `--force` and the prompt was rejected) |
-| `64` (EX_USAGE)  | Reserved for command-line syntax errors                                                  |
-| `78` (EX_CONFIG) | Reserved for config / env errors                                                         |
+| Code             | Meaning                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`              | Success                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `1`              | Generic failure (catch-all)                                                                                                                                                                                                                                                                                                                                                                                |
+| `2`              | `Command::INVALID` — input validation failure (e.g. `db:reset` without `--force` and the prompt was rejected). **Exception:** `php bin/spora task:run {taskId}` returns `2` (`TaskRunCommand::TASK_RUN_COMMAND_ABORTED_EXIT`) when the task ended in the `ABORTED` state — a quiescent outcome the user triggered, not a worker error. Differentiate by command name before scripting supervisor restarts. |
+| `64` (EX_USAGE)  | Reserved for command-line syntax errors                                                                                                                                                                                                                                                                                                                                                                    |
+| `78` (EX_CONFIG) | Reserved for config / env errors                                                                                                                                                                                                                                                                                                                                                                           |
 
 The CLI uses Symfony Console's standard exit codes. Tools that fail return `1` and print a stack trace at verbosity `-vv`.
 

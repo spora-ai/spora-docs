@@ -105,17 +105,18 @@ The `tools` array on an agent lists the tool activations for that agent. Each en
 
 ### Tasks
 
-| Method   | Path                                 | Auth    | Purpose                                                |
-| -------- | ------------------------------------ | ------- | ------------------------------------------------------ |
-| `GET`    | `/api/v1/tasks`                      | session | List tasks                                             |
-| `POST`   | `/api/v1/tasks`                      | + CSRF  | Create a task (use this to send a message to an agent) |
-| `GET`    | `/api/v1/tasks/{taskId}`             | session | Get one task (includes history)                        |
-| `POST`   | `/api/v1/tasks/{taskId}/approve`     | + CSRF  | Approve a pending tool call                            |
-| `POST`   | `/api/v1/tasks/{taskId}/reject`      | + CSRF  | Reject a pending tool call                             |
-| `POST`   | `/api/v1/tasks/{taskId}/retry`       | + CSRF  | Retry a failed task                                    |
-| `POST`   | `/api/v1/tasks/{taskId}/continue`    | + CSRF  | Continue a completed/failed task                       |
-| `DELETE` | `/api/v1/tasks/{taskId}/retry-chain` | + CSRF  | Cancel a scheduled retry chain                         |
-| `DELETE` | `/api/v1/tasks/{taskId}`             | + CSRF  | Delete a task (and cancel if in flight)                |
+| Method   | Path                                 | Auth    | Purpose                                                                                                                                                              |
+| -------- | ------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/tasks`                      | session | List tasks                                                                                                                                                           |
+| `POST`   | `/api/v1/tasks`                      | + CSRF  | Create a task (use this to send a message to an agent)                                                                                                               |
+| `GET`    | `/api/v1/tasks/{taskId}`             | session | Get one task (includes history)                                                                                                                                      |
+| `POST`   | `/api/v1/tasks/{taskId}/approve`     | + CSRF  | Approve a pending tool call                                                                                                                                          |
+| `POST`   | `/api/v1/tasks/{taskId}/reject`      | + CSRF  | Reject a pending tool call                                                                                                                                           |
+| `POST`   | `/api/v1/tasks/{taskId}/retry`       | + CSRF  | Retry a failed task                                                                                                                                                  |
+| `POST`   | `/api/v1/tasks/{taskId}/continue`    | + CSRF  | Continue a `COMPLETED` / `FAILED` / `ABORTED` / `RUNNING` task. `RUNNING` sources auto-abort first.                                                                  |
+| `POST`   | `/api/v1/tasks/{taskId}/abort`       | + CSRF  | Abort a `RUNNING` or `AWAITING_SUB_AGENTS` task (sets status to `ABORTED`, stamps `data.aborted_at`); idempotent on already-`ABORTED`, 400 for non-abortable states. |
+| `DELETE` | `/api/v1/tasks/{taskId}/retry-chain` | + CSRF  | Cancel a scheduled retry chain                                                                                                                                       |
+| `DELETE` | `/api/v1/tasks/{taskId}`             | + CSRF  | Delete a task (and cancel if in flight)                                                                                                                              |
 
 The `tool_calls[]` array on every task response is the canonical
 `ToolCallSerializer::toArray()` shape — `operation`, `operation_description`,

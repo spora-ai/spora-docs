@@ -86,6 +86,20 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 - **The agent's "thinking"** — appears when the assistant message contains `content_blocks` entries of type `thinking` (Anthropic with thinking enabled) or `redacted_thinking`. Token counts are surfaced separately in the `usage` panel (`input_tokens`, `output_tokens`, `cache_creation_tokens`, `cache_read_tokens`, …).
 - **Tool calls** — the LLM's `tool_use` block, shown with the tool name, arguments, and the result
 - **The final reply** (left-aligned, the agent's actual response)
+- **Aborted at HH:MM** — a faint horizontal divider the chat inserts after the last assistant turn when the agent loop was halted. Renders only when the task carries a `system` history row with `kind: abort_marker`. The timestamp matches the wall-clock stamp the ABORTED banner displays.
+- **The follow-up input** — when the task is in a quiescent state (COMPLETED, FAILED, ABORTED, PENDING_APPROVAL, AWAITING_SUB_AGENTS) and the agent allows followup, the chat shows a single-line composer at the bottom; press Enter to send a new instruction.
+
+## Aborting a running agent
+
+While the agent is in `RUNNING` (the typing dots are bouncing), a small **Abort** button appears below the dots in the chat. Click it to halt the loop at the next natural break point (after the in-flight tool call returns, or between LLM turns). What happens after:
+
+1. The label flips to **Aborting…** with a spinner so you know the click registered — the dots disappear, the spinner is your acknowledgement.
+2. The server flips the task status to `ABORTED`, stamps `data.aborted_at`, and publishes the change to Mercure. The chat renders the **Aborted — send a new instruction to continue.** banner and inserts the **Aborted at HH:MM** divider above the banner.
+3. The composer at the bottom of the chat focuses automatically. Type your next instruction and press Enter; the chat sends it as a follow-up, the orchestrator clears `data.aborted_at`, and the task resumes.
+
+> **Auto-abort on `continue`.** You don't need to click Abort before sending a follow-up to a running task — the chat also sends the follow-up directly. `POST /api/v1/tasks/{taskId}/continue` accepts `RUNNING` as a source, auto-aborts first (writing an `abort_marker` history row inside the same transaction), then re-prompts with your message. The visible difference: clicking Abort lands you in the ABORTED banner state with an empty composer; sending a follow-up skips the ABORTED banner and goes straight into the next tick.
+
+The ABORTED banner stays visible until the orchestrator receives your next instruction. After the follow-up is sent, the banner disappears, the typing dots return, and the chat resumes as normal. If the agent was halted mid-tool-call, the chat shows an `abort_marker` system row in the history so you can see exactly where the loop was interrupted.
 
 ### Sub-agents and handovers
 
@@ -102,6 +116,29 @@ The parent chat header shows a violet sub-agent count badge (`3 sub-agents · 1 
 When an agent **hands off** a task to another agent (the legacy `handover` op, `op: 'handover'`), the closed source chat shows a green final-response pill followed by an **Open &lt;Agent&gt; →** link under the reply, deep-linking to the target agent's page. If you open a child chat directly (for example from a sub-agent row), the child chat's header shows a small **Source task #N** breadcrumb linking back to the parent chat.
 
 For the underlying lifecycle (`AWAITING_SUB_AGENTS` → resume gates, worker-mode pickup, `data.spawned_sub_task_ids` and `data.sub_agent_expected_count` accounting), see [Concepts → Agent loop and async mode](/reference/concepts/agent-loop-async).
+
+### Stop waiting for sub-agents
+
+When the parent is stuck in `AWAITING_SUB_AGENTS` (because one or more sub-agent children are still running) and you don't want to wait any longer, a **Stop waiting** button appears on the right edge of the sub-agent tool-call widget header. Clicking it aborts the first child — that single child moves to `ABORTED` and the parent task remains in `AWAITING_SUB_AGENTS`. The widget re-renders on the next SSE event, and you can click **Stop waiting** again for any other child still running.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as Parent chat (AWAITING_SUB_AGENTS)
+    participant API as POST /tasks/{id}/abort
+    participant C1 as Child 1 (RUNNING)
+    participant MERC as Mercure SSE
+
+    U->>P: Click "Stop waiting"
+    P->>API: abortTask(firstChildId)
+    API->>C1: status := ABORTED, data.aborted_at = now
+    API-->>P: 200 { task: Child1_ABORTED }
+    API->>MERC: publish(child1 topic, ABORTED)
+    MERC-->>P: SSE event (child1 ABORTED)
+    Note over P: Parent still AWAITING_SUB_AGENTS<br/>until every sibling terminates
+```
+
+> **Release note:** the Stop waiting affordance currently aborts **only the first child**. The parent task stays in `AWAITING_SUB_AGENTS` and you can click Stop waiting on each remaining child independently. **Cascade-up — aborting the parent alongside the child — is planned for a future release** but is not wired in this version (no `POST /tasks/{id}/abort-sub-agent` endpoint is exposed yet; `TaskService::abortSubAgentAndCascade` exists in the service layer but is not reachable from the chat). To halt the parent itself, open the parent chat and click the **Abort** button described above.
 
 ## When something goes wrong
 

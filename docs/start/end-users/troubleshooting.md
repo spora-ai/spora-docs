@@ -7,6 +7,14 @@ description: Common issues, what to do when an agent gets stuck, where to find l
 
 Common issues end users hit when chatting with Spora agents. The operator (who runs the install) handles most of the infrastructure, but these are the things you can check from the admin UI.
 
+## Agent is taking too long (or stuck in a loop)
+
+If the chat shows the bouncing typing indicator for longer than you expected — or the agent keeps calling the same tool without converging — the first thing to try is the **Abort** button under the typing dots. The loop halts at the next natural break point (after the in-flight tool returns, between LLM turns) and the chat flips to an **Aborted — send a new instruction to continue.** banner. Type a redirect (e.g. "stop iterating, just give me the summary") in the composer and press Enter — the task resumes with the new prompt.
+
+If the agent is stuck because it spawned sub-agents that are themselves running long, the sub-agent tool-call widget in the parent chat shows a **Stop waiting** button. Click it to abort the first child — the parent stays in `AWAITING_SUB_AGENTS`, and you can click Stop waiting again on the next child, or open the parent chat and click **Abort** to halt the parent itself. See [First conversation → Stop waiting for sub-agents](/start/end-users/first-conversation#stop-waiting-for-sub-agents) for the cascade semantics.
+
+If neither affordance unblocks the task, the operator can requeue it — see [Operators → Day-2 ops](/start/operators/operations) for the `--reap-only` workflow.
+
 ## Agent doesn't reply
 
 The most common cause: **the LLM config is wrong** (missing API key, wrong model, wrong base URL). Check:

@@ -80,3 +80,15 @@ This matters most for:
 - **Async contexts** — Worker mode, scheduled runs, and sub-agent hops all read the same agent row, so the trust boundary holds when no session exists.
 - **Multi-agent setups** — a sub-agent created via `create_agent` + `configure_tools` inherits its owner from `configure_tools(agent_id: N, ...)`; cross-user ids are refused.
 - **Audit trails** — tool dispatch logs (`Orchestrator`'s `DEBUG` `Tool dispatch` record) carry the resolved `user_id`, which is the only `user_id` a tool can ever see.
+
+## Mercure `data` Projection Allowlist
+
+`SubAgentService::publishParentState()` (`app/Services/SubAgentService.php`) projects a parent task's `data` JSON column into the Mercure live-stream payload. To keep the SSE topic a non-leaky surface, only three keys are forwarded; everything else in `data` is dropped:
+
+| Key                        | Purpose                                                                 |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `spawned_sub_task_ids`     | Live ids of sub-agent children; the dashboard needs to render progress. |
+| `sub_agent_expected_count` | Expected sibling count for the multi-child resume gate.                 |
+| `run_id`                   | Correlation id for the sub-agent hop.                                   |
+
+The allowlist is intentionally narrow because the parent task's `data` column is a free-form JSON blob that may contain secrets the agent appended (api keys, intermediate reasoning, custom payloads). Operators auditing the SSE payload for PII/secrets need to know which keys are intentionally projected and why the projection is narrow — anything not on the allowlist is dropped, even if it would be useful to the SPA. If a future UI surface needs an additional `data` key, extend `SubAgentService::PARENT_STATE_DATA_ALLOWLIST` and audit the key for sensitive contents first.

@@ -126,6 +126,7 @@ export default defineUserConfig({
             { text: 'Overview', link: '/start/end-users/' },
             { text: 'First conversation', link: '/start/end-users/first-conversation' },
             { text: 'Managing agents', link: '/start/end-users/managing-agents' },
+            { text: 'Scheduling agents', link: '/start/end-users/scheduling-agents' },
             { text: 'Troubleshooting', link: '/start/end-users/troubleshooting' },
           ],
         },

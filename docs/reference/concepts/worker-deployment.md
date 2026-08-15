@@ -26,7 +26,7 @@ Controls how new tasks are created by `Orchestrator::start()`:
 
 When `false`, the worker (daemon or cron) is responsible for calling `tick()` via the QUEUED queue drain. The daemon always processes both QUEUED tasks and due `scheduled_runs_next` entries. The cron mode processes one or both depending on flags.
 
-## Cron Mode (Shared Hosting with `SPORA_SYNC_MODE=false`)
+## Cron Mode (Shared Hosting with `SPORA_SYNC_MODE=false`) {#cron-mode}
 
 ```cron
 * * * * * /usr/bin/php /path/to/spora/bin/spora worker:run --once --include-queue >> /path/to/spora/storage/worker.log 2>&1
@@ -41,6 +41,8 @@ Each invocation:
 5. Exits
 
 Backlog (further due scheduled runs and queued tasks) is picked up by the next cron fire, one entry per minute.
+
+**Timezone:** The worker pins `UTC` internally before polling, so the host's `TZ` environment variable or `date.timezone` PHP ini setting has no effect on schedule timing. Deployers on shared hosting do not need to configure their system clock — every `due_at <= $now` comparison happens against UTC. All timestamp columns on `scheduled_runs` and `scheduled_runs_next` are stored in UTC.
 
 **Limitation:** If a task takes longer than one minute, the next cron fire will start a second worker while the first is still running. Both run concurrently — `lockForUpdate` prevents double-claiming the same task, so no data corruption occurs. However, both processes consume memory and CPU, and the LLM provider receives parallel requests. For tasks that regularly exceed 1 minute, use **daemon mode** instead.
 

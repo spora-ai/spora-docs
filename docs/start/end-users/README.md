@@ -13,6 +13,7 @@ The admin UI is a single-page Vue 3 application. Once you log in, everything hap
 
 - **[First conversation](/start/end-users/first-conversation)** — sign in, send your first message, what the agent's reply tells you
 - **[Managing agents](/start/end-users/managing-agents)** — create, edit, configure agents; the system prompt; tool allowlist
+- **[Scheduling agents](/start/end-users/scheduling-agents)** — one-shot and recurring schedules, timezone selection, manual trigger, failure recovery
 - **[Troubleshooting](/start/end-users/troubleshooting)** — common issues, what to do when an agent gets stuck, where to find logs
 
 ## What you can do in the admin UI
@@ -42,4 +43,5 @@ For the full CLI reference, see [Operators → Operations](/start/operators/oper
 
 - **[First conversation](/start/end-users/first-conversation)** — sign in and chat
 - **[Managing agents](/start/end-users/managing-agents)** — create the agent that fits your use case
+- **[Scheduling agents](/start/end-users/scheduling-agents)** — fire an agent on a cron or at a specific moment
 - **[Troubleshooting](/start/end-users/troubleshooting)** — what to do when things go wrong

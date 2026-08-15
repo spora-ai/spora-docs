@@ -73,6 +73,34 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
+#### Scheduled runs
+
+Schedules live under the owning agent. The full route set is listed in the auto-generated table below; this subsection documents the wire contract that is **not** obvious from the OpenAPI spec.
+
+`POST /api/v1/agents/{id}/scheduled-runs` accepts a one-shot or recurring trigger:
+
+| Field                | Type                | Required for... | Notes                                                                                                                                                                                                                                            |
+| -------------------- | ------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cron_expression`    | string              | recurring       | Standard 5-field cron (`* * * * *`). Evaluated against the schedule's `timezone`, not UTC.                                                                                                                                                       |
+| `run_at`             | string              | one-shot        | ISO 8601 timestamp. May be offset-less (`2026-04-20T10:00:00`) or offset-bearing (`2026-04-20T10:00:00+02:00`). If offset-less, the backend anchors the literal wall-clock value to `timezone`; if offset-bearing, the absolute instant is used. |
+| `timezone`           | string (IANA, ≤ 50) | optional        | Defaults to `UTC`. Validated against the IANA tz database; an invalid id returns `422 VALIDATION_ERROR`. The frontend defaults to the browser's IANA zone via `Intl.DateTimeFormat().resolvedOptions().timeZone`.                                |
+| `template_id`        | integer \| null     | optional        | FK to `agent_prompt_templates.id`. When set, `prompt_template` + its `variables` drive the prompt at fire time (template variables can be referenced via `{{var}}`).                                                                             |
+| `raw_prompt`         | string              | optional        | Free-form prompt used when no template is attached. Same `{{var}}` substitution applies.                                                                                                                                                         |
+| `max_steps_override` | integer \| null     | optional        | Override the agent's `max_steps` for this schedule only. Falls back to the template, then the agent.                                                                                                                                             |
+| `is_active`          | boolean             | optional        | Default `true`. Set `false` to pause without deleting.                                                                                                                                                                                           |
+
+Error contract:
+
+- **`422 VALIDATION_ERROR`** — invalid `timezone` (e.g. `'Not/A_Zone'` or a string longer than 50 characters), or a `run_at` that fails PHP's date parser.
+- **`404 NOT_FOUND`** — agent id does not exist or is not owned by the caller. Both cases return 404 so a non-owner cannot probe agent existence.
+
+Recurring semantics:
+
+- `next_run_at` is recomputed after each successful fire using wall-clock `now` in the schedule's `timezone` as the cron reference (so arbitrarily-delayed invocations do not drift).
+- A transient orchestrator failure no longer kills a recurring schedule — the next `PENDING` entry stays queued and the next cron fire retries. A one-shot that fails on dispatch deactivates the run (`is_active = false`); re-enable by `PUT`-ing with `is_active = true` or by triggering manually.
+
+Manual trigger: `POST /api/v1/agents/{id}/scheduled-runs/{runId}/trigger` enqueues an immediate execution regardless of `next_run_at`. The schedule stays active.
+
 #### Agent resource
 
 Every `GET` and `PATCH` response (and each entry of `GET /api/v1/agents`) carries an `agent` object with the following wire-format fields. Fields introduced in this release are marked **(new)**.
@@ -215,7 +243,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 - [Agents](/reference/api/agents) — 29 routes
 - [Auth](/reference/api/auth) — 12 routes
-- [Tasks](/reference/api/tasks) — 9 routes
+- [Tasks](/reference/api/tasks) — 11 routes
 - [Users](/reference/api/users) — 9 routes
 - [Llm-configs](/reference/api/llm-configs) — 7 routes
 - [Media](/reference/api/media) — 7 routes
@@ -346,6 +374,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/tasks`                                             | `cookieAuth` + `csrfToken` | Store Task                           | Tasks            |
 | `GET`    | `/api/v1/tasks/{taskId}`                                    | `cookieAuth`               | Show Task                            | Tasks            |
 | `DELETE` | `/api/v1/tasks/{taskId}`                                    | `cookieAuth` + `csrfToken` | Destroy Task                         | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/abort`                              | `cookieAuth` + `csrfToken` | Abort Task                           | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/abort-sub-agent`                    | `cookieAuth` + `csrfToken` | AbortSubAgent Task                   | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/approve`                            | `cookieAuth` + `csrfToken` | Approve Task                         | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/continue`                           | `cookieAuth` + `csrfToken` | Continue Task                        | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/reject`                             | `cookieAuth` + `csrfToken` | Reject Task                          | Tasks            |

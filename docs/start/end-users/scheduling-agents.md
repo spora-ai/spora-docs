@@ -27,7 +27,7 @@ Example: a daily summary at 07:00 in the user's local time. Cron expression `0 7
 
 ### Prompt source
 
-Both modes accept either a **template** (from the agent's **Templates** tab) or a free-form **raw prompt**. A template supports `{{variable}}` placeholders that are substituted at fire time using the template's declared variables plus a few built-ins (`{{date}}`, `{{time}}`, `{{day_of_week}}`, `{{month}}`, `{{year}}`, `{{agent_name}}`, `{{user_name}}`).
+Both modes accept either a **template** (from the agent's **Templates** tab) or a free-form **raw prompt**. A template supports `{{variable}}` placeholders that are substituted at fire time using the template's declared variables plus a few built-ins — for example, `{{date}}`, `{{time}}`, `{{day_of_week}}`, `{{month}}`, `{{year}}`, `{{agent_name}}`, `{{user_name}}`. See the agent's template editor for the full list of available built-ins on your version.
 
 ## Timezone selection
 

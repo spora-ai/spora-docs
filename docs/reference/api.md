@@ -92,8 +92,7 @@ Schedules live under the owning agent. The full route set is listed in the auto-
 Error contract:
 
 - **`422 VALIDATION_ERROR`** — invalid `timezone` (e.g. `'Not/A_Zone'` or a string longer than 50 characters), or a `run_at` that fails PHP's date parser.
-- **`404 NOT_FOUND`** — agent id does not exist or is not owned by the caller.
-- **`403 FORBIDDEN`** — caller is not the agent's owner.
+- **`404 NOT_FOUND`** — agent id does not exist or is not owned by the caller. Both cases return 404 so a non-owner cannot probe agent existence.
 
 Recurring semantics:
 

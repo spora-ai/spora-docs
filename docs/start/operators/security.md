@@ -92,3 +92,19 @@ This matters most for:
 | `run_id`                   | Correlation id for the sub-agent hop.                                   |
 
 The allowlist is intentionally narrow because the parent task's `data` column is a free-form JSON blob that may contain secrets the agent appended (api keys, intermediate reasoning, custom payloads). Operators auditing the SSE payload for PII/secrets need to know which keys are intentionally projected and why the projection is narrow — anything not on the allowlist is dropped, even if it would be useful to the SPA. If a future UI surface needs an additional `data` key, extend `SubAgentService::PARENT_STATE_DATA_ALLOWLIST` and audit the key for sensitive contents first.
+
+## Principal-scoped authorisation
+
+Spora-core PR #209 re-keyed ownership from `user_id` to `principal_id` (see [Concepts → Architecture → Principal ownership model](/reference/concepts/architecture#principal-ownership-model)). The principal is the auth axis for every ownership-touching endpoint. The contracts that operators auditing the API need to know:
+
+- **`PrincipalResolver::visiblePrincipalIds($userId)`** is the single source of truth for "who can this caller act as?". Every endpoint that accepts a `principal_id` argument intersects it with this set.
+
+- **`POST /api/v1/agents` — `principal_id` body field.** Authorisation is gated by `AgentPrincipalService::callerControlsPrincipal($userId, $principalId)`. The caller must be a global admin OR control the target principal (owner / admin of the group for a group-principal; trivially true for the caller's own user-principal). When the caller doesn't control the value, the controller falls back to the caller's own user-principal — the requested `principal_id` is never silently honoured, and no error is raised. This means an attacker who guesses a principal id sees no different response than they would have seen without supplying the field.
+
+- **`GET /api/v1/agents?principal_id=`** — repeatable filter. Out-of-scope principal ids are silently dropped (existence-hiding). An empty filter returns every visible agent; a fully out-of-scope filter returns an empty list.
+
+- **`POST /api/v1/agents/{id}/transfer`** — re-keys `agents.principal_id`. Caller must control BOTH source and target (admin/owner of source AND admin/owner of target, OR owner of target when the target is the caller's own user-principal). Admins skip the source-side gate. `403 FORBIDDEN` on `UnauthorizedTransferException`. `404 NOT_FOUND` if either side is missing.
+
+- **`DELETE /api/v1/groups/{id}`** — refuses with `409 GROUP_HAS_AGENTS` (carrying `agent_ids` and `reassign_endpoint`) if any agent still references the group's principal. The operator must transfer or delete the dependents first. The `agents.principal_id` FK uses `ON DELETE RESTRICT` — there is no cascade-delete from principal to agent.
+
+- **Tool execution is principal-scoped, not user-scoped.** `Orchestrator::safeExecute()` now resolves a `PrincipalContext` from the calling agent's row and passes it to every tool. The `$userId` parameter plugins see is `PrincipalResolver::ownerUserId($principalId)` — the user that originally created the principal. A tool enabled on an agent owned by a group principal will see the group's creator as its `$userId`, NOT a random group member.

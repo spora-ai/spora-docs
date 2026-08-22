@@ -40,6 +40,21 @@ composer dev
 
 `composer dev` starts the PHP server on `http://localhost:${PHP_PORT:-8080}`.
 
+## Upgrading — migration 0067 (`introduce_principals_and_groups`)
+
+Spora-core PR #209 ships migration `0067_introduce_principals_and_groups`. The migration **is forward-only** — `down()` is a no-op. It:
+
+- Creates three new tables (`groups`, `group_memberships`, `principals`).
+- Bulk-inserts one user-principal per existing user.
+- Renames `user_preferences` → `principal_preferences`.
+- Re-keys ownership on `agents`, `llm_driver_configurations`, `tool_user_settings`, and `principal_preferences` from `user_id` → `principal_id` (FK to `principals.id`; RESTRICT on delete for `agents.principal_id`).
+
+**Take a full database backup before running the upgrade.** If the migration fails mid-way, restore from backup — there is no automatic rollback path. SQLite: copy `storage/database.sqlite`. MySQL/MariaDB: `mysqldump` (or your managed snapshot).
+
+The migration runs the column swap **outside any transaction** so SQLite's `PRAGMA foreign_keys = OFF` actually takes effect (the pragma is a no-op inside a transaction; without it, the table rebuild would cascade-delete every dependent row). The pragma state is read back after each `OFF` / `ON` and the migration throws if it was silently ignored.
+
+Migrations 0068 (`create_group_pictures_table`) and 0069 (`backfill_default_group_pictures`) are also forward-only.
+
 ## Troubleshooting
 
 ### `public/dist/index.html is missing` after `php bin/spora spora:install`

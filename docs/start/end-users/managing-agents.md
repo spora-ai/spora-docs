@@ -67,6 +67,19 @@ The dashboard's content sits in a centered, max-width container so the agent car
 
 **Agents → New** opens a form with four tabs:
 
+### Step 0 — Owner
+
+(Shown only when the caller controls at least one group principal in addition to their own user-principal.) Pick **which principal owns the new agent**:
+
+- **You** — the agent is owned by your user-principal (the default). Use this for personal agents.
+- **\<Group name\>** — the agent is owned by the chosen group's group-principal. Use this for shared agents that everyone in the group should see.
+
+The picker is the first step of the flow, not a tab — pick the owner, then the Identity / System prompt / LLM config / Tools tabs fill in below. The owner is the auth boundary: the agent inherits the chosen principal's tool settings, LLM configs, and membership visibility. An agent you own via a group is visible to every member of that group; an agent you own via your user-principal is visible only to you (and any admin).
+
+The selected owner is also exposed as the **Owner badge** on the agent card: a small chip showing either your username or the group name, so you can tell which principal owns an agent at a glance.
+
+Authorisation for cross-principal agent creation is enforced server-side via `AgentPrincipalService::callerControlsPrincipal()`. If you send `principal_id: <group>` but you don't control that group, the controller falls back to your own user-principal — no error is raised.
+
 ### Tab 1 — Identity
 
 - **Name** — display name (e.g. "Research Assistant")
@@ -208,3 +221,9 @@ The chat header, dashboard list, and approval bar all share the same status-pill
 - [Scheduling agents](/start/end-users/scheduling-agents) — one-shot and recurring triggers, timezone, manual fire
 - [Troubleshooting](/start/end-users/troubleshooting) — when an agent gets stuck
 - [Operators → Operations](/start/operators/operations) — plugin management, the operator side
+
+## Groups
+
+The user dropdown in the navbar exposes a **My Groups →** link (icon: `groups`). It opens the Groups landing page where you can see every group you belong to, switch into a group to manage its members / agents / tools / LLM drivers / preferences, or create a new group if you're an admin. Groups are the principal axis that lets multiple users share an agent, its tool settings, and its LLM configs — see [Concepts → Architecture → Principal ownership model](/reference/concepts/architecture#principal-ownership-model) for the underlying model.
+
+Inside a group page, the **Transfer** action on each agent row lets you re-key the agent's `principal_id` from the current group to a different principal you control (typically your user-principal — the "remove from group" flow). The confirmation dialog shows the new owner label and the list of tool settings / LLM configs that move with the agent.

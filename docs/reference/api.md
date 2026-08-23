@@ -63,14 +63,14 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 ### Agents
 
-| Method   | Path | Auth    | Purpose                                                              |
-| -------- | ------------------------------- | ------- | -------------------------------------------------------------------- |
-| `GET`    | `/api/v1/agents`                | session | List agents (accepts `?principal_id=` repeatable filter) |
-| `POST`   | `/api/v1/agents`                | + CSRF  | Create agent (accepts optional `principal_id` body field)            |
-| `GET`    | `/api/v1/agents/{id}`           | session | Get one agent                                                        |
-| `PATCH`  | `/api/v1/agents/{id}`           | + CSRF  | Update agent                                                         |
-| `DELETE` | `/api/v1/agents/{id}`           | + CSRF  | Delete agent                                                         |
-| `POST`   | `/api/v1/agents/{id}/transfer`  | + CSRF  | Re-key agent ownership to another principal the caller controls      |
+| Method   | Path                           | Auth    | Purpose                                                         |
+| -------- | ------------------------------ | ------- | --------------------------------------------------------------- |
+| `GET`    | `/api/v1/agents`               | session | List agents (accepts `?principal_id=` repeatable filter)        |
+| `POST`   | `/api/v1/agents`               | + CSRF  | Create agent (accepts optional `principal_id` body field)       |
+| `GET`    | `/api/v1/agents/{id}`          | session | Get one agent                                                   |
+| `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                    |
+| `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                    |
+| `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls |
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
@@ -88,30 +88,30 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 ### Groups
 
-| Method   | Path                                                    | Auth         | Purpose                                                                  |
-| -------- | ------------------------------------------------------- | ------------ | ------------------------------------------------------------------------ |
-| `GET`    | `/api/v1/groups`                                        | session      | List groups (members see their own; admins see every group)             |
-| `POST`   | `/api/v1/groups`                                        | admin + CSRF | Create a group (creator becomes `role: owner`; group-principal materialises) |
-| `GET`    | `/api/v1/groups/{id}`                                   | session      | Get one group (members only; 404 hides existence) |
-| `PATCH`  | `/api/v1/groups/{id}`                                   | admin + CSRF | Update name / description / `profile_picture`                            |
-| `DELETE` | `/api/v1/groups/{id}`                                   | admin + CSRF | Delete a group (409 if agents still reference its principal)             |
-| `GET`    | `/api/v1/groups/{id}/members`                           | session      | List members                                                              |
-| `POST`   | `/api/v1/groups/{id}/members`                           | + CSRF       | Add a member (accepts `user_id` OR `email`; admin/owner only)             |
-| `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                     | + CSRF       | Change a member's role |
-| `DELETE` | `/api/v1/groups/{id}/members/{uid}`                     | + CSRF       | Remove a member                                                          |
-| `GET`    | `/api/v1/groups/{id}/agents`                            | session      | List agents owned by the group's principal |
-| `GET`    | `/api/v1/groups/{id}/preferences`                       | session      | Get the group's principal preference                                      |
-| `PUT`    | `/api/v1/groups/{id}/preferences`                       | + CSRF       | Upsert the group's principal preference                                  |
-| `GET`    | `/api/v1/groups/{id}/tools`                             | session      | List tool settings scoped to the group principal                         |
-| `POST`   | `/api/v1/groups/{id}/tools/{toolClass}`                 | + CSRF       | Upsert tool settings for the group principal                             |
-| `DELETE` | `/api/v1/groups/{id}/tools/{toolClass}`                 | + CSRF       | Delete tool settings for the group principal                             |
-| `GET`    | `/api/v1/groups/{id}/llm-configs`                       | session      | List LLM configs scoped to the group principal                           |
-| `POST`   | `/api/v1/groups/{id}/llm-configs`                       | + CSRF       | Create an LLM config under the group principal                           |
-| `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`                 | + CSRF       | Update an LLM config under the group principal                           |
-| `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`                 | + CSRF       | Delete an LLM config under the group principal                           |
-| `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default`     | + CSRF       | Promote an LLM config to default for the group                           |
-| `POST`   | `/api/v1/groups/{id}/picture/image`                     | + CSRF       | Multipart avatar upload for the group                                    |
-| `DELETE` | `/api/v1/groups/{id}/picture/image`                     | + CSRF       | Clear the group's avatar and reset to default archetype                 |
+| Method   | Path                                                | Auth         | Purpose                                                                      |
+| -------- | --------------------------------------------------- | ------------ | ---------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/groups`                                    | session      | List groups (members see their own; admins see every group)                  |
+| `POST`   | `/api/v1/groups`                                    | admin + CSRF | Create a group (creator becomes `role: owner`; group-principal materialises) |
+| `GET`    | `/api/v1/groups/{id}`                               | session      | Get one group (members only; 404 hides existence)                            |
+| `PATCH`  | `/api/v1/groups/{id}`                               | admin + CSRF | Update name / description / `profile_picture`                                |
+| `DELETE` | `/api/v1/groups/{id}`                               | admin + CSRF | Delete a group (409 if agents still reference its principal)                 |
+| `GET`    | `/api/v1/groups/{id}/members`                       | session      | List members                                                                 |
+| `POST`   | `/api/v1/groups/{id}/members`                       | + CSRF       | Add a member (accepts `user_id` OR `email`; admin/owner only)                |
+| `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                 | + CSRF       | Change a member's role                                                       |
+| `DELETE` | `/api/v1/groups/{id}/members/{uid}`                 | + CSRF       | Remove a member                                                              |
+| `GET`    | `/api/v1/groups/{id}/agents`                        | session      | List agents owned by the group's principal                                   |
+| `GET`    | `/api/v1/groups/{id}/preferences`                   | session      | Get the group's principal preference                                         |
+| `PUT`    | `/api/v1/groups/{id}/preferences`                   | + CSRF       | Upsert the group's principal preference                                      |
+| `GET`    | `/api/v1/groups/{id}/tools`                         | session      | List tool settings scoped to the group principal                             |
+| `POST`   | `/api/v1/groups/{id}/tools/{toolClass}`             | + CSRF       | Upsert tool settings for the group principal                                 |
+| `DELETE` | `/api/v1/groups/{id}/tools/{toolClass}`             | + CSRF       | Delete tool settings for the group principal                                 |
+| `GET`    | `/api/v1/groups/{id}/llm-configs`                   | session      | List LLM configs scoped to the group principal                               |
+| `POST`   | `/api/v1/groups/{id}/llm-configs`                   | + CSRF       | Create an LLM config under the group principal                               |
+| `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`             | + CSRF       | Update an LLM config under the group principal                               |
+| `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`             | + CSRF       | Delete an LLM config under the group principal                               |
+| `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default` | + CSRF       | Promote an LLM config to default for the group                               |
+| `POST`   | `/api/v1/groups/{id}/picture/image`                 | + CSRF       | Multipart avatar upload for the group                                        |
+| `DELETE` | `/api/v1/groups/{id}/picture/image`                 | + CSRF       | Clear the group's avatar and reset to default archetype                      |
 
 ### Principals
 

@@ -19,7 +19,7 @@ The Web UI for plugin management exposes three HTTP endpoints on top of the exis
 
 The existing read-only `GET /api/v1/plugins` is unchanged.
 
-All three endpoints require the **admin** middleware stack: `[AuthMiddleware, CsrfMiddleware, AdminMiddleware]`. This matches the stack used by `/api/v1/users`, `/api/v1/llm-configs/global`, and `/api/v1/mail/config`.
+All three endpoints require the **admin** middleware stack: `[AuthMiddleware, CsrfMiddleware, AdminMiddleware]`. This matches the stack used by `/api/v1/users` and `/api/v1/mail/config`.
 
 ## Feature flag
 

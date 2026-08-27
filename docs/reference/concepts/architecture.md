@@ -35,9 +35,25 @@ On **partial** approval — the operator approves some but not all of the parall
 
 On full approval in **Worker** mode, `resume()` returns immediately: each approved tool row is persisted as `status='APPROVED'` + `executed_at=NULL` (the worker-pickup sentinel), the task moves to `QUEUED`, and the daemon's `task:run` worker picks it up. `TickPhaseRunner::executeApprovedPendingToolsForTask()` consumes those sentinel rows at the top of `runTick()` — before the LLM round-trip — so the next assistant message sees the tool results on the same round-trip. The HTTP approval endpoint therefore returns within ~100 ms regardless of how long the approved tool takes.
 
-### `$userId` is sourced from the calling agent's row
+### Tool ownership is principal-scoped
 
-`Orchestrator::safeExecute()` no longer accepts a session-derived `$userId`. When the Orchestrator dispatches a tool, it reads the calling Agent's row (`agentService->getAgentByAgentId($agentId)->user_id`) and passes that value into the tool's `execute(array $arguments, int $agentId, ?int $userId)`. Tools therefore see **the owner of the agent that issued the call**, never "whoever is signed in" — a structural guarantee that no client code can bypass. Async contexts (Worker mode, scheduled tasks, sub-agent hops) inherit the same invariant because the lookup uses the agent row, not a session.
+Migration 0067 (spora-core PR #209) re-keyed ownership from `agents.user_id` to `agents.principal_id`, and introduced the `PrincipalContext` value object that tools now see instead of a raw `int $userId`. `Orchestrator::safeExecute()` resolves the context once per tick via `PrincipalResolver::resolveForToolExecute($agentId)` and passes it to every tool that opts into the new signature:
+
+- `execute(array $arguments, int $agentId, PrincipalContext $context)` — the canonical post-PR #209 form.
+- `execute(array $arguments, int $agentId, ?int $userId)` — legacy form, still honoured for plugins that haven't migrated; `$userId` is derived as `PrincipalResolver::ownerUserId($principalId)` so the agent's effective owner is always the user that originally created the principal (a user for a user-principal, the creator for a group-principal).
+
+`PrincipalContext` carries `{principalId, principalType ('user'|'group'), ownerUserId, visiblePrincipalIds}`. `visiblePrincipalIds` is the set of principals the calling agent's owner can act as, so a tool can authorise `principal_id` requests against the caller's scope without re-querying.
+
+The structural guarantee holds unchanged: tools see the owner of the agent that issued the call, never "whoever is signed in". Async contexts (Worker mode, scheduled tasks, sub-agent hops) inherit the same invariant because the lookup walks the agent row, not a session.
+
+### Principal ownership model
+
+Every ownership column (`agents.principal_id`, `tool_user_settings.principal_id`, `principal_preferences.preferred_llm_config_id`'s enclosing principal, `llm_driver_configurations.principal_id`) points at one row of the `principals` table. The `principals` table has two flavours of rows:
+
+- **User principal** — one row per `users.id`, materialised on demand by `PrincipalService::ensureUserPrincipal($userId)`. Auto-created the first time the user creates an agent, transfers an agent, or hits `GET /api/v1/principals/me`. `type='user'`, `user_id=…`, `group_id=NULL`.
+- **Group principal** — one row per `groups.id`, materialised at group creation time by `PrincipalService::materialiseGroupPrincipal($groupId)`. `type='group'`, `user_id=NULL`, `group_id=…`.
+
+Both `agents.principal_id` and `tool_user_settings.principal_id` FK into `principals.id` with `ON DELETE RESTRICT` — deleting a principal surfaces a structured 409 (`PrincipalHasDependentsException`) listing the orphan agent ids. The 409 response includes `reassign_endpoint: /api/v1/agents/{id}/transfer` so the operator UI can drive the remediation.
 
 ## Orchestrator Loop
 

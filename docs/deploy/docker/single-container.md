@@ -68,9 +68,11 @@ The runtime starts two processes via supervisord:
 - **`spora-web`** — `frankenphp run` (the web server)
 - **`spora-worker`** — `php /app/bin/spora worker:run --daemon` (the agent worker)
 
-With `SPORA_SYNC_MODE=false` (the value shipped in `spora/.env.example`, per [env-vars §Worker / Sync Mode](/start/operators/env-vars#worker--sync-mode)), the worker drains the task queue asynchronously and the HTTP request returns immediately after enqueuing.
+With `SPORA_WORKER_RUNTIME_MODE=server` (the default for `spora-ai/spora`, per [env-vars §Worker runtime mode](/start/operators/env-vars#worker-runtime-mode)), the worker drains the task queue asynchronously and the HTTP request returns immediately after enqueuing.
 
-If you flip `SPORA_SYNC_MODE=true` (inline / dev mode), the Orchestrator executes the entire agent loop inside the HTTP request, and the worker is no longer needed. The worker process still runs in the container (it is started by supervisord regardless) but drains no tasks. To save ~30 MB of RAM, remove the `[program:spora-worker]` section from `docker/supervisord.conf` when running in sync mode.
+> **Single-container is the "Classical Server" runtime configuration.** The shipped `spora-web` is FrankenPHP without a configured Mercure hub — there's no Mercure companion process, so the frontend falls back to HTTP polling. That's the [Classical Server](/reference/concepts/deployment-modes#classical-server--spora-ai-spora--polling) mode (server + polling). For the **Full Deployment** configuration (server + Mercure SSE), use [Multi-container](/deploy/docker/multi-container) which spins up the Mercure hub alongside the app.
+
+If you switch to `SPORA_WORKER_RUNTIME_MODE=client` (the wrong choice for a containerised deploy — see [Deployment modes → Decision matrix](/reference/concepts/deployment-modes#decision-matrix)), the worker process still runs in the container (supervisord starts it regardless) but drains no tasks. To save ~30 MB of RAM, remove the `[program:spora-worker]` section from `docker/supervisord.conf`.
 
 ## Updating
 

@@ -1,32 +1,15 @@
 ---
 title: Worker deployment
-description: Deployment guide for cron and daemon modes, environment variables, reaping, single-instance lock.
+description: Server-mode cron and daemon patterns — environment variables, reaping, single-instance lock. For client mode, see /deploy/shared-host/client-worker-mode.
 ---
 
 # Worker Deployment Guide
 
-This guide covers deployment and operations for the Spora agent worker in `cron` and `worker` modes. For architecture details, see [Agent loop and async mode](/reference/concepts/agent-loop-async).
+This page covers `worker_runtime_mode: server` — the daemon and cron patterns. Spora has two runtime modes; the full three-configuration overview is in [Deployment modes](/reference/concepts/deployment-modes). For the zero-config browser-driven mode (`worker_runtime_mode: client`), see [Client-worker mode](/deploy/shared-host/client-worker-mode).
 
-## Modes at a Glance
+In server mode, the agent worker is either a long-lived daemon (`php bin/spora worker:run --daemon`, supervised by Docker / systemd / supervisord) or a once-per-minute cron entry (`php bin/spora worker:run --once --include-queue`). The daemon is the canonical pick for VPS / Docker / classical-server operators; the cron variant is the fallback for shared hosts where you can't keep a PHP process alive.
 
-| Mode                             | Startup                                                        | Scheduled runs   | When to use                                                |
-| -------------------------------- | -------------------------------------------------------------- | ---------------- | ---------------------------------------------------------- |
-| `SPORA_SYNC_MODE=true`           | N/A                                                            | —                | Local dev only. HTTP request blocks until agent completes. |
-| `SPORA_SYNC_MODE=false` + cron   | `php bin/spora worker:run --once --include-queue` every minute | Via `--once`     | Shared hosting, low-traffic                                |
-| `SPORA_SYNC_MODE=false` + daemon | `php bin/spora worker:run --daemon` as background process      | Every poll cycle | VPS/Docker, persistent, always-on                          |
-
-## `SPORA_SYNC_MODE` Environment Variable
-
-Controls how new tasks are created by `Orchestrator::start()`:
-
-| Value            | `tasks.status` on start | Who calls `tick()`                       |
-| ---------------- | ----------------------- | ---------------------------------------- |
-| `true` (default) | `RUNNING`               | Called inline in `start()` — HTTP blocks |
-| `false`          | `QUEUED`                | Worker daemon or cron                    |
-
-When `false`, the worker (daemon or cron) is responsible for calling `tick()` via the QUEUED queue drain. The daemon always processes both QUEUED tasks and due `scheduled_runs_next` entries. The cron mode processes one or both depending on flags.
-
-## Cron Mode (Shared Hosting with `SPORA_SYNC_MODE=false`) {#cron-mode}
+## Cron Mode (Shared Hosting, `worker_runtime_mode: server`) {#cron-mode}
 
 ```cron
 * * * * * /usr/bin/php /path/to/spora/bin/spora worker:run --once --include-queue >> /path/to/spora/storage/worker.log 2>&1
@@ -44,7 +27,7 @@ Backlog (further due scheduled runs and queued tasks) is picked up by the next c
 
 **Timezone:** The worker pins `UTC` internally before polling, so the host's `TZ` environment variable or `date.timezone` PHP ini setting has no effect on schedule timing. Deployers on shared hosting do not need to configure their system clock — every `due_at <= $now` comparison happens against UTC. All timestamp columns on `scheduled_runs` and `scheduled_runs_next` are stored in UTC.
 
-**Limitation:** If a task takes longer than one minute, the next cron fire will start a second worker while the first is still running. Both run concurrently — `lockForUpdate` prevents double-claiming the same task, so no data corruption occurs. However, both processes consume memory and CPU, and the LLM provider receives parallel requests. For tasks that regularly exceed 1 minute, use **daemon mode** instead.
+**Limitation:** If a task takes longer than one minute, the next cron fire will start a second worker while the first is still running. Both run concurrently — `lockForUpdate` prevents double-claiming the same task, so no data corruption occurs. However, both processes consume memory and CPU, and the LLM provider receives parallel requests. For tasks that regularly exceed 1 minute, use **daemon mode** instead, or switch to [client-worker mode](/deploy/shared-host/client-worker-mode) (`spora-ai/spora-shared`) and let the browser drive the tasks.
 
 ## Daemon Mode (VPS / Docker)
 
@@ -77,7 +60,7 @@ worker:
   command: php bin/spora worker:run --daemon
   restart: unless-stopped
   environment:
-    SPORA_SYNC_MODE: 'false'
+    SPORA_WORKER_RUNTIME_MODE: 'server'
     SPORA_SECRET_KEY: ${SPORA_SECRET_KEY}
     SPORA_DB_HOST: ${SPORA_DB_HOST}
     SPORA_DB_NAME: ${SPORA_DB_NAME}
@@ -151,6 +134,8 @@ For multiple workers on the same machine:
 A `flock()` lock file at `storage/spora-worker.lock` prevents two worker processes (daemon or `--once`) from running against the same database at the same time (`app/Console/Commands/WorkerRunCommand.php:113-117, 429-445`). If a second worker starts, it exits immediately with an error rather than competing for tasks. `--reap-only` skips the lock so multiple reapers can co-exist.
 
 The lock is automatically released if the process crashes (the OS closes the file descriptor).
+
+> **Client mode skips this section.** When `worker_runtime_mode: client`, `bin/spora worker:run` exits with a docs-link error; the per-host `flock` is not used. See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the browser-driven equivalent.
 
 ## PENDING_APPROVAL Tasks
 

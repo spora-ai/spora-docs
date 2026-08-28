@@ -7,6 +7,8 @@ description: Pick the right scenario — Docker, shared host, classical server, 
 
 Spora runs anywhere PHP 8.4+ runs. These are the **host-side setups** (Docker, Apache, shared host, local). For what to do after Spora is running (env-vars, security, day-2 ops, backups), see [Operators](/start/operators/).
 
+For the runtime-mode decision (server daemon vs browser worker, with or without Mercure) — independent of which host you pick — see [Deployment modes](/reference/concepts/deployment-modes). The full decision is the cross-product of host + runtime mode; the [Installation modes](/start/operators/installation-modes) page is the one-screen picker.
+
 ## Decision matrix
 
 | Scenario                                                         | When                                                                                                                       | Effort  | Best for                                                 |

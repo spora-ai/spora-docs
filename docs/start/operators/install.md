@@ -15,6 +15,8 @@ The Standard install is the canonical "if you have SSH and Composer, do this" re
 
 The admin UI is **prebuilt** — no Node toolchain is required on the operator's host.
 
+> **Which package should I `composer create-project`?** Two operator-facing skeletons exist, each with a `worker_runtime_mode` default that matches its target host. See [Installation modes](/start/operators/installation-modes) for the one-screen picker. For Docker / VPS / classical server / local dev, use `spora-ai/spora` (server default — daemon or cron). For cPanel / FTP-only shared hosts, use `spora-ai/spora-shared` (client default — browser-driven worker, no daemon).
+
 ### Repairing a stuck bootstrap admin
 
 If the seeded `admin@spora.local` was persisted with `verified=0` (e.g. after an upgrade from a pre-`db:repair-admin` spora-core release), promote it without dropping the database:

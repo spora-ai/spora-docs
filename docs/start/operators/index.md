@@ -10,11 +10,13 @@ This track is for **running a Spora instance after install** — configuring it 
 ## What you'll do here
 
 1. **[Install](/start/operators/install)** — standard install (Packagist) + troubleshooting. For Docker, Classical, or Shared host, see the [Deployment guide](/deploy/).
-2. **[Configure](/start/operators/customization)** — env vars, customization strategies, theming
-3. **[Environment variables](/start/operators/env-vars)** — full `.env` reference
-4. **[Security](/start/operators/security)** — credential encryption, auth, rate limiting, plugin risks
-5. **[Day-2 operations](/start/operators/operations)** — backups, plugin management, updates, logs, workers, reset
-6. **[Backups](/start/operators/backups)** — detailed backup strategy
+2. **[Installation modes](/start/operators/installation-modes)** — pick the right package and runtime mode for your host
+3. **[Configure](/start/operators/customization)** — env vars, customization strategies, theming
+4. **[Environment variables](/start/operators/env-vars)** — full `.env` reference
+5. **[Security](/start/operators/security)** — credential encryption, auth, rate limiting, plugin risks
+6. **[Day-2 operations](/start/operators/operations)** — backups, plugin management, updates, logs, workers, reset
+7. **[Backups](/start/operators/backups)** — detailed backup strategy
+8. **[Upgrade to client-worker mode](/start/operators/upgrade-to-client-worker)** — migrating from `SPORA_SYNC_MODE` (pre-0.19 installs only)
 
 ## A note on shared hosting
 

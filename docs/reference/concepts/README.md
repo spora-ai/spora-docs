@@ -24,8 +24,10 @@ The deep-dive reference for Spora's internals. These pages were migrated from th
 
 ### Operations
 
+- **[Deployment modes](/reference/concepts/deployment-modes)** — server + Mercure, server + polling, client + polling (the three configurations)
 - **[Agent loop and async mode](/reference/concepts/agent-loop-async)** — `tick()` phases, task lifecycle, Mercure SSE
-- **[Worker deployment](/reference/concepts/worker-deployment)** — cron and daemon modes, reaping, single-instance lock
+- **[Worker deployment](/reference/concepts/worker-deployment)** — server-mode cron and daemon patterns, reaping, single-instance lock
+- **[Client-worker mode](/deploy/shared-host/client-worker-mode)** — shared-host browser-driven worker (lives under Deploy; cross-linked here)
 - **[Logging](/reference/concepts/logging)** — PSR-3, PII policy, what gets logged at which level
 - **[Error handling](/reference/concepts/error-handling)** — error envelope, code registry, toast mapping
 

@@ -72,7 +72,7 @@ You'll see the tool call in the chat timeline — the agent's "thinking", the to
 
 Every chat message is a **task** in the Orchestrator. The lifecycle:
 
-1. **Claim** — your message creates a `Task` record in `RUNNING` state (sync mode) or `QUEUED` state (worker mode)
+1. **Claim** — your message creates a `Task` record in `QUEUED` state. A worker (server daemon or browser `SharedWorker`) drives it.
 2. **LLM call** — Orchestrator calls the LLM with the system prompt + your message + tool definitions
 3. **Branch** — if the LLM returns text, the task is `COMPLETED`; if it returns a tool call, the Orchestrator executes the tool and calls the LLM again with the result
 4. **Loop** — repeat step 3 until the LLM returns text or `max_steps` is reached

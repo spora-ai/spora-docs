@@ -143,27 +143,34 @@ curl https://yourdomain.com/api/v1/auth/me
 - **Backups:** see [Backups](/start/operators/backups). SQLite is one file; `.env` and `storage/secret.key` are the other essentials.
 - **Logs:** `tail -f storage/spora.log` (Monolog). Most cPanels also expose this via the control panel.
 
-## Cron workers
+## Browser-driven worker (recommended)
 
-If you set `SPORA_SYNC_MODE=false` to use the async worker:
+Most shared-host operators do not need a cron-based worker. `spora-ai/spora-shared` (the shared-host package) ships with `worker_runtime_mode: client` as the default — the browser drives the agent loop via a `SharedWorker`, no daemon required. Install via `composer create-project spora-ai/spora-shared my-spora`, open the URL, log in, click a chat. That's it.
+
+See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the full guide: browser support, lease semantics, per-runner scoping, scheduled runs, and the 7 manual test scenarios. The short version: every logged-in browser ticks the tasks its user ran, plus reaps orphans + dispatches scheduled runs via `/api/v1/worker/housekeeping`. The trade-off — scheduled runs only dispatch while a browser is open — is documented up front and is acceptable for the target audience (testing, single-operator setups).
+
+## Cron worker (legacy / fallback)
+
+If you installed `spora-ai/spora` on a shared host (server-default package) and cannot move to `spora-shared`, run `php bin/spora worker:run --once --include-queue` via cron every minute:
 
 ```cron
 * * * * * cd /home/user/my-spora && /usr/bin/php bin/spora worker:run --once --include-queue >> storage/spora.log 2>&1
 ```
 
-Run this every minute. For tasks that exceed 60 s, consider upgrading to [Classical server](/deploy/classical-server) and running the daemon instead.
+For tasks that exceed 60 s, consider upgrading to [Classical server](/deploy/classical-server) and running the daemon instead. Or move to [spora-shared](/deploy/shared-host/client-worker-mode) and let the browser drive the tasks — no cron needed.
 
 ## Important constraints
 
 See the [Limitations](/deploy/shared-host/limitations) page. In short:
 
 - The **Mercure SSE hub** requires a long-lived PHP process; on most shared hosts, it falls back to polling.
-- **Worker daemon** mode is unreliable on most shared hosts (no `nohup`, no systemd).
+- **Worker daemon** mode is unreliable on most shared hosts (no `nohup`, no systemd). Use the browser-driven [client-worker mode](/deploy/shared-host/client-worker-mode) instead, or fall back to cron.
 - **HTTPS termination** is the host's responsibility (cPanel's AutoSSL or your DNS provider).
 - **Custom Docker images** are not deployable.
 
 ## Next steps
 
+- [Client-worker mode](/deploy/shared-host/client-worker-mode) — the recommended browser-driven setup
 - [Limitations](/deploy/shared-host/limitations) — what doesn't work on shared hosts
 - [Backups](/start/operators/backups) — the operator's backup strategy
 - [Day-2 ops](/start/operators/operations) — plugin management, updates, logs, reset

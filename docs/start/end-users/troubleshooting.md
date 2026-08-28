@@ -30,7 +30,7 @@ Test the LLM config directly — most providers have a "test" button in the edit
 
 If the LLM is fine but the agent still doesn't reply:
 
-- **Worker mode + worker not running** — if `SPORA_SYNC_MODE=false` and no worker is running, the message queues forever. Ask the operator to start the worker.
+- **Worker mode + worker not running** (server mode) — if `SPORA_WORKER_RUNTIME_MODE=server` and no worker is running, the message queues forever. Ask the operator to start `php bin/spora worker:run --daemon`. In client mode the browser drives the task — check that the worker badge in the chat header shows **"Worker online"**.
 - **Database locked** — SQLite under contention. Restart the worker / PHP-FPM to drop any orphaned locks.
 - **Mercure not running** — the chat falls back to polling. Messages still get through, but with delay (5-15 s).
 

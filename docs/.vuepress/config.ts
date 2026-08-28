@@ -102,11 +102,16 @@ export default defineUserConfig({
           items: [
             { text: 'Overview', link: '/start/operators/' },
             { text: 'Installation', link: '/start/operators/install' },
+            { text: 'Installation modes', link: '/start/operators/installation-modes' },
             { text: 'Environment variables', link: '/start/operators/env-vars' },
             { text: 'Customization', link: '/start/operators/customization' },
             { text: 'Security', link: '/start/operators/security' },
             { text: 'Day-2 operations', link: '/start/operators/operations' },
             { text: 'Backups', link: '/start/operators/backups' },
+            {
+              text: 'Upgrade to client-worker mode',
+              link: '/start/operators/upgrade-to-client-worker',
+            },
           ],
         },
         {
@@ -201,6 +206,10 @@ export default defineUserConfig({
           text: 'Shared host',
           items: [
             { text: 'Overview', link: '/deploy/shared-host/' },
+            {
+              text: 'Client-worker mode (zero-config)',
+              link: '/deploy/shared-host/client-worker-mode',
+            },
             { text: 'Limitations', link: '/deploy/shared-host/limitations' },
           ],
         },
@@ -223,6 +232,7 @@ export default defineUserConfig({
             { text: 'Agent loop & async', link: '/reference/concepts/agent-loop-async' },
             { text: 'App extensions', link: '/reference/concepts/app-extension' },
             { text: 'Code documentation', link: '/reference/concepts/code-documentation' },
+            { text: 'Deployment modes', link: '/reference/concepts/deployment-modes' },
             { text: 'Drivers', link: '/reference/concepts/drivers' },
             { text: 'Error handling', link: '/reference/concepts/error-handling' },
             { text: 'Frontend architecture', link: '/reference/concepts/frontend-architecture' },

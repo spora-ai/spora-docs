@@ -1,6 +1,6 @@
 ---
 title: Upgrade to client-worker mode
-description: Migration guide for operators on spora-core ≤ 0.18.x — replacing Spora_SYNC_MODE with the new WorkerRuntimeMode enum.
+description: Migration guide for operators on spora-core ≤ 0.18.x — replacing SPORA_SYNC_MODE with the new WorkerRuntimeMode enum.
 ---
 
 # Upgrade to client-worker mode
@@ -21,7 +21,7 @@ The migration is **forward-only** — the `0070_add_lease_columns_to_tasks` migr
 
 ## Before you flip from `server` to `client`
 
-If you have an existing install on `spora-ai/spora` (server-default) and want to migrate to `spora-ai/spora-shared` (client-default), the order matters:
+If you have an existing install on `spora-ai/spora` (server-default) and want to flip to client-worker mode, the order matters — and you don't need to change packages. The same `spora` install handles both modes via `.env`:
 
 1. **Finish or fail any `RUNNING` tasks.** The `WORKER_DISCONNECTED` reaper sweeps them 60 minutes after the lease expires; new tasks you create after the flip will be client-driven. Run `SELECT COUNT(*) FROM tasks WHERE status = 'RUNNING';` and either let them finish or set them to `FAILED` by hand.
 2. **Open the UI once after the upgrade** so the reaper can sweep stale tasks. In server mode the daemon drives this every 5 minutes; client mode relies on the first `/housekeeping` call from any browser.
@@ -30,16 +30,9 @@ If you have an existing install on `spora-ai/spora` (server-default) and want to
 
 ## Why two packages now
 
-The two Composer packages target different host shapes:
+There's only one public Composer package: `spora-ai/spora`. The runtime mode (`server` vs `client`) is a per-install `.env` setting on the same package. A curated `spora-ai/spora-shared` skeleton (same code, shared-host-specific scaffolding baked in, client-default) is on the roadmap but not yet published — for now, install `spora-ai/spora` and flip the env var to land in the same place.
 
-| Package                       | Default `worker_runtime_mode` | Who it's for                                                    |
-| ----------------------------- | ----------------------------- | --------------------------------------------------------------- |
-| `spora-ai/spora`              | `server`                      | Docker, VPS, dedicated server, classical server, local dev.     |
-| `spora-ai/spora-shared` (NEW) | `client`                      | cPanel, FTP-only shared host, anywhere you cannot run a daemon. |
-
-The packages share `spora-core` + `spora-frontend`. `spora-shared` simply omits `docker/`, `supervisord.conf`, and Mercure, and bakes `worker_runtime_mode: client` into its `config.php` default. A fresh install picks the package that matches the host — there's no need to flip the env var on a green-field deploy.
-
-For existing installs, the simplest path is to **stay on the package you have** and toggle `SPORA_WORKER_RUNTIME_MODE` if needed. Don't switch packages mid-flight — the lockfiles, `.env.example` defaults, and `config.php` defaults differ.
+For existing installs, the simplest path is to toggle `SPORA_WORKER_RUNTIME_MODE` in `.env`. No package change, no lockfile change, no migration. The lockfiles and `.env.example` defaults are stable across both modes.
 
 ## What changed for plugin authors
 
@@ -63,17 +56,16 @@ Nothing to do. The 0.19.0 upgrade is transparent: `SPORA_SYNC_MODE` is replaced 
 
 If you want the new reaper to be lease-aware (recommended), upgrade and let the daemon run its first sweep. Pre-0.19 orphans will be reaped under the new rules (lease TTL + `SPORA_WORKER_STALE_MINUTES` grace + retry-chain exclusion).
 
-## Shared-host operators moving to `spora-ai/spora-shared`
+## Shared-host operators moving to client mode
 
-The recommended migration path:
+To switch an existing `spora` install from server mode to client mode:
 
 1. **Back up the database and `.env`** — `storage/database.sqlite` (or a `mysqldump` for MySQL/MariaDB), `storage/secret.key`, `.env`. See [Backups](/start/operators/backups).
-2. **Switch to the `spora-shared` package** — `composer create-project spora-ai/spora-shared my-spora-shared` in a fresh directory, then point the document root at the new `public/`. Copy the SQLite file / migrate the MySQL DB into the new install.
-3. **Set `SPORA_WORKER_RUNTIME_MODE=client`** in `.env` (the default for `spora-shared`, but explicit is safer during a migration).
-4. **Open the UI, log in**, click into a chat. The browser's `SharedWorker` starts ticking.
-5. **Remove any cron entries** invoking `worker:run` or `task:run` — they exit with a docs link now.
+2. **Set `SPORA_WORKER_RUNTIME_MODE=client`** in `.env`. No file changes, no rebuild, no composer update — the same code paths serve both modes.
+3. **Open the UI, log in**, click into a chat. The browser's `SharedWorker` starts ticking.
+4. **Remove any cron entries** invoking `worker:run` or `task:run` — they exit with a docs link now.
 
-The data model is unchanged (`tasks`, `agents`, `principals`, etc. all migrate as-is). The new `lease_owner` / `lease_expires_at` columns on `tasks` are populated by the first `/tick` call.
+The data model is unchanged (`tasks`, `agents`, `principals`, etc. all stay where they are). The new `lease_owner` / `lease_expires_at` columns on `tasks` are populated by the first `/tick` call.
 
 ## Verify the upgrade
 

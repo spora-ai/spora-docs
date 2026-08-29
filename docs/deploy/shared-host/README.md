@@ -145,19 +145,19 @@ curl https://yourdomain.com/api/v1/auth/me
 
 ## Browser-driven worker (recommended)
 
-Most shared-host operators do not need a cron-based worker. `spora-ai/spora-shared` (the shared-host package) ships with `worker_runtime_mode: client` as the default — the browser drives the agent loop via a `SharedWorker`, no daemon required. Install via `composer create-project spora-ai/spora-shared my-spora`, open the URL, log in, click a chat. That's it.
+Most shared-host operators do not need a cron-based worker. With `SPORA_WORKER_RUNTIME_MODE=client` set in `.env`, the browser drives the agent loop via a `SharedWorker`, no daemon required. Install `composer create-project spora-ai/spora my-spora`, point the document root at `public/`, set the env var, open the URL, log in, click a chat. That's it.
 
 See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the full guide: browser support, lease semantics, per-runner scoping, scheduled runs, and the 7 manual test scenarios. The short version: every logged-in browser ticks the tasks its user ran, plus reaps orphans + dispatches scheduled runs via `/api/v1/worker/housekeeping`. The trade-off — scheduled runs only dispatch while a browser is open — is documented up front and is acceptable for the target audience (testing, single-operator setups).
 
 ## Cron worker (legacy / fallback)
 
-If you installed `spora-ai/spora` on a shared host (server-default package) and cannot move to `spora-shared`, run `php bin/spora worker:run --once --include-queue` via cron every minute:
+If you installed `spora-ai/spora` on a shared host with the default `server` mode and cannot run a long-lived PHP process, run `php bin/spora worker:run --once --include-queue` via cron every minute:
 
 ```cron
 * * * * * cd /home/user/my-spora && /usr/bin/php bin/spora worker:run --once --include-queue >> storage/spora.log 2>&1
 ```
 
-For tasks that exceed 60 s, consider upgrading to [Classical server](/deploy/classical-server) and running the daemon instead. Or move to [spora-shared](/deploy/shared-host/client-worker-mode) and let the browser drive the tasks — no cron needed.
+For tasks that exceed 60 s, consider upgrading to [Classical server](/deploy/classical-server) and running the daemon instead. Or flip to client-worker mode via [client-worker mode](/deploy/shared-host/client-worker-mode) and let the browser drive the tasks — no cron needed.
 
 ## Important constraints
 

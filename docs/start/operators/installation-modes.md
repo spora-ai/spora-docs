@@ -9,14 +9,14 @@ A short reference table for picking a Composer package and runtime mode. For the
 
 ## Pick your package
 
-| Situation                                                       | Recommended package           | Default mode       |
-| --------------------------------------------------------------- | ----------------------------- | ------------------ |
-| Docker / VPS / dedicated server / multi-user                    | `spora-ai/spora`              | `server` + Mercure |
-| Classical LAMP / shared host with shell access / PHP-FPM + cron | `spora-ai/spora`              | `server` + polling |
-| Local dev (PHP built-in server, Ollama / LM Studio)             | `spora-ai/spora`              | `server` + polling |
-| cPanel / FTP-only shared host / no daemon / no root             | `spora-ai/spora-shared` (NEW) | `client` + polling |
+| Situation                                                       | Recommended package                                                | Default mode       |
+| --------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------ |
+| Docker / VPS / dedicated server / multi-user                    | `spora-ai/spora`                                                   | `server` + Mercure |
+| Classical LAMP / shared host with shell access / PHP-FPM + cron | `spora-ai/spora`                                                   | `server` + polling |
+| Local dev (PHP built-in server, Ollama / LM Studio)             | `spora-ai/spora`                                                   | `server` + polling |
+| cPanel / FTP-only shared host / no daemon / no root             | `spora-ai/spora` with `SPORA_WORKER_RUNTIME_MODE=client` in `.env` | `client` + polling |
 
-The package's `config.php` ships the right default — you do not need to flip the env var on a fresh install. Existing installs stay on the package they have; toggle `SPORA_WORKER_RUNTIME_MODE` only if the default doesn't fit your host.
+Same package across all rows — only the `.env` setting changes. A curated `spora-shared` skeleton is on the roadmap (client-default out of the box, no `docker/`/`supervisord.conf`/Mercure) but is not yet published. Until it ships, install `spora-ai/spora` and flip the env var.
 
 ## Mode quick-reference
 

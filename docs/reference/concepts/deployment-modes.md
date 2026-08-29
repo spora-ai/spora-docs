@@ -17,13 +17,13 @@ The three configurations cover distinct, disjoint points on those axes. There is
 
 ## Overview table
 
-| Configuration               | Worker               | UI push      | Package                 | Best for                                                                                          |
-| --------------------------- | -------------------- | ------------ | ----------------------- | ------------------------------------------------------------------------------------------------- |
-| **Full Deployment**         | server daemon        | Mercure SSE  | `spora-ai/spora`        | Docker, VPS, dedicated server, multi-user scale. Typically without the UI Plugin install.         |
-| **Classical Server**        | server daemon        | HTTP polling | `spora-ai/spora`        | Classical LAMP / shared host with shell access, local dev. With or without the UI Plugin install. |
-| **Zero-Config Shared Host** | browser SharedWorker | HTTP polling | `spora-ai/spora-shared` | cPanel, FTP-only, no root, no daemon. Typically with the UI Plugin install.                       |
+| Configuration               | Worker               | UI push      | Package                                               | Best for                                                                                          |
+| --------------------------- | -------------------- | ------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Full Deployment**         | server daemon        | Mercure SSE  | `spora-ai/spora`                                      | Docker, VPS, dedicated server, multi-user scale. Typically without the UI Plugin install.         |
+| **Classical Server**        | server daemon        | HTTP polling | `spora-ai/spora`                                      | Classical LAMP / shared host with shell access, local dev. With or without the UI Plugin install. |
+| **Zero-Config Shared Host** | browser SharedWorker | HTTP polling | `spora-ai/spora` + `SPORA_WORKER_RUNTIME_MODE=client` | cPanel, FTP-only, no root, no daemon. Typically with the UI Plugin install.                       |
 
-The choice of **package** matches the choice of **runtime mode**: `spora-ai/spora` ships with `worker_runtime_mode: server` (its `config.php` default), `spora-ai/spora-shared` ships with `worker_runtime_mode: client`. A fresh install picks the package whose default fits the host. Existing installs stay on the package they have and toggle the env var if they need to.
+The choice of **configuration** matches the runtime mode via one line in `.env`. On a fresh install of `spora-ai/spora` the default is `worker_runtime_mode: server`; setting `SPORA_WORKER_RUNTIME_MODE=client` flips the install to browser-driven without changing packages. Existing installs stay on the package they have and toggle the env var to switch mode. A future curated `spora-ai/spora-shared` package (no Docker, no Mercure, client-default) is the same idea with the shared-host-specific scaffolding baked into the skeleton.
 
 ## Who does what in each configuration
 
@@ -39,9 +39,14 @@ Same skeleton, same daemon, but **no Mercure**. Either the operator chose not to
 
 This is the right pick when you have a server but want to keep the deployment minimal — Apache + PHP-FPM + supervisord + a daemon. Many small VPS installs fall here. The polling fallback is invisible for a single user; for heavy concurrent use the Mercure path feels snappier.
 
-### Zero-Config Shared Host — `spora-ai/spora-shared` + polling
+### Zero-Config Shared Host — `spora-ai/spora` + `SPORA_WORKER_RUNTIME_MODE=client` + polling
 
-The `spora-shared` package is the same skeleton minus `docker/`, `supervisord.conf`, and Mercure — it ships `worker_runtime_mode: client` as the `config.php` default. There is **no server-side worker daemon**. Instead, every logged-in browser opens a `SharedWorker` that polls `GET /api/v1/tasks?status=QUEUED` every 5 seconds (filtered to `tasks.user_id = currentUser`) and calls `POST /api/v1/tasks/{id}/tick` for each match. The browser's tab drives the tasks the user ran. Housekeeping (orphan reaping + scheduled-run dispatch) is driven by `POST /api/v1/worker/housekeeping`, called by any authed browser every 5 minutes.
+There is **no server-side worker daemon**. Instead, every logged-in browser spins up a `SharedWorker` that drives its user's own tasks. The flow has two interlocking intervals:
+
+- **SPA discovery poll (every 5 s):** `GET /api/v1/tasks?status=QUEUED&since=<lastSeenAt>` filtered to `tasks.user_id = currentUser`. The SPA forwards any new matches to the `SharedWorker` over its message channel via `consider-task` messages.
+- **SharedWorker tick loop (every 2 s):** iterates the `drivenTasks` map and calls `POST /api/v1/tasks/{id}/tick` for each. With `singleStep: true` (the client-worker default), one tick = one LLM turn, so a multi-tool chat takes N ticks.
+
+Housekeeping (orphan reaping + scheduled-run dispatch) is driven by `POST /api/v1/worker/housekeeping`, called by any authed browser every 5 minutes.
 
 This is the right pick when the operator has nothing but FTP access to a PHP 8.4 host. No `nohup`, no systemd, no shell. Upload, point the document root at `public/`, open the URL.
 
@@ -57,13 +62,13 @@ This is the right pick when the operator has nothing but FTP access to a PHP 8.4
 
 Match the user's situation to the right configuration:
 
-| Your situation                                                             | Configuration                                                  |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Docker / VPS / dedicated server / "I want real-time UI" / multi-user scale | **Full Deployment** (`spora-ai/spora`, Mercure)                |
-| Classical LAMP / PHP-FPM / "no Mercure needed" / local dev                 | **Classical Server** (`spora-ai/spora`, polling)               |
-| cPanel / FTP-only / "no daemon" / small operators / testing                | **Zero-Config Shared Host** (`spora-ai/spora-shared`, polling) |
+| Your situation                                                             | Configuration                                                                                   |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Docker / VPS / dedicated server / "I want real-time UI" / multi-user scale | **Full Deployment** (`spora-ai/spora`, Mercure)                                                 |
+| Classical LAMP / PHP-FPM / "no Mercure needed" / local dev                 | **Classical Server** (`spora-ai/spora`, polling)                                                |
+| cPanel / FTP-only / "no daemon" / small operators / testing                | **Zero-Config Shared Host** (`spora-ai/spora` with `SPORA_WORKER_RUNTIME_MODE=client`, polling) |
 
-If you have shell access, prefer the `spora` package. Even on a single-user VPS, having the daemon lets scheduled runs dispatch unattended. Reach for `spora-shared` only when you genuinely cannot run a long-lived PHP process.
+If you have shell access, keep the daemon on (server mode). Even on a single-user VPS, having the daemon lets scheduled runs dispatch unattended. Client mode is the right fit only when you genuinely cannot run a long-lived PHP process — typically cPanel / FTP-only shared hosts where you upload files and point a document root.
 
 ## What about plugins?
 

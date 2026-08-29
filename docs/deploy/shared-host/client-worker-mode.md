@@ -11,15 +11,15 @@ For the full deployment-mode overview (server + Mercure, server + polling, clien
 
 ## What this is
 
-The `spora-ai/spora-shared` package ships `worker_runtime_mode: client` as its `config.php` default. That single setting routes `/api/v1/tasks/{id}/tick` and `/api/v1/worker/housekeeping` to the active handlers, and instructs the server-side CLI commands (`worker:run`, `task:run`) to exit with an error pointing at this page if anyone tries to invoke them.
+Client-worker mode is enabled with one line in `.env` — `SPORA_WORKER_RUNTIME_MODE=client`. That setting routes `/api/v1/tasks/{id}/tick` and `/api/v1/worker/housekeeping` to the active handlers, and instructs the server-side CLI commands (`worker:run`, `task:run`) to exit with an error pointing at this page if anyone tries to invoke them. The default is `server`; flip the env var to opt into client mode on any `spora` install.
 
 The flow, end to end:
 
 1. The user clicks a chat. The server creates a `Task` with `status: QUEUED` and `user_id = currentUser` (the runner — see [Per-runner scoping](#per-runner-scoping)).
-2. The user's browser `SharedWorker` polls `GET /api/v1/tasks?status=QUEUED&since=<lastSeenAt>` every 5 seconds.
-3. For each match, the SharedWorker calls `POST /api/v1/tasks/{id}/tick`. The server's `TaskController::tick` claims the task under a per-user lease (`lease_owner='user:{id}'`, `lease_expires_at = now + Spora_TICK_LEASE_SECONDS`), publishes the `QUEUED → RUNNING` transition to Mercure (or skips it if Mercure is unconfigured), and runs `Orchestrator::tick()` inline.
-4. The tick completes synchronously inside the HTTP request. The response is `{task: <fresh row>}`; the SharedWorker renders the new state.
-5. Every 5 minutes, the same `SharedWorker` calls `POST /api/v1/worker/housekeeping` — it reaps orphaned tasks and synchronously dispatches any due scheduled runs (see [Scheduled runs](#scheduled-runs)).
+2. The SPA's **discovery poll** runs every **5 seconds**: `GET /api/v1/tasks?status=QUEUED&since=<lastSeenAt>` filtered to `tasks.user_id = currentUser`. New matches are forwarded to the `SharedWorker` over its message channel via `consider-task` messages.
+3. The `SharedWorker` has its own **tick loop** running every **2 seconds**: it iterates over the `drivenTasks` map (the tasks SPA told it to consider) and calls `POST /api/v1/tasks/{id}/tick` for each. The server's `TaskController::tick` claims the task under a per-user lease (`lease_owner='user:{id}'`, `lease_expires_at = now + SPORA_TICK_LEASE_SECONDS`), publishes the `QUEUED → RUNNING` transition to Mercure (or skips it if Mercure is unconfigured), and runs `Orchestrator::tick()` inline. Both intervals are tuneable via `tick_interval_ms` and the discovery-poll interval in `useClientWorker.ts` if you need tighter / looser latency.
+4. The tick completes synchronously inside the HTTP request. The response is `{task: <fresh row>}`; the SharedWorker renders the new state. With `singleStep: true` (the client-worker default), one tick = one LLM turn, so a multi-tool chat takes N ticks.
+5. Every **5 minutes**, the same `SharedWorker` calls `POST /api/v1/worker/housekeeping` — it reaps orphaned tasks and synchronously dispatches any due scheduled runs (see [Scheduled runs](#scheduled-runs)).
 
 If the browser tab closes mid-tick, the lease TTL on the row expires (default 600 s, extended on every step boundary) and the next housekeeping sweep flips the task to `FAILED` with `error_code: WORKER_DISCONNECTED`. Click **Retry** on the chat to start a fresh attempt.
 
@@ -47,7 +47,7 @@ When a browser claims a task via `/tick`, the server writes:
 ```text
 status: QUEUED → RUNNING
 lease_owner: 'user:{id}'            # e.g. 'user:42'
-lease_expires_at: now + Spora_TICK_LEASE_SECONDS  # default 600 s
+lease_expires_at: now + SPORA_TICK_LEASE_SECONDS  # default 600 s
 ```
 
 The lease TTL is extended on every step boundary inside `Orchestrator::tick()` — after a tool batch write, after an LLM response, before a recursive tick. An in-flight tick never trips the reaper.
@@ -55,7 +55,7 @@ The lease TTL is extended on every step boundary inside `Orchestrator::tick()` �
 The reaper (`WorkerReaper::reapStaleTasks()`) flips `RUNNING` rows to `FAILED` when **all** of the following hold:
 
 - `lease_expires_at IS NULL` **or** `lease_expires_at <= now()` (the lease expired)
-- `updated_at <= now() - Spora_WORKER_STALE_MINUTES` (no progress for an hour, by default)
+- `updated_at <= now() - SPORA_WORKER_STALE_MINUTES` (no progress for an hour, by default)
 - `retry_of_task_id IS NULL` (not a retry — retries are left alone so the retry chain can do its work)
 
 On reap, the task's `error_code` is `WORKER_DISCONNECTED` (new in this release) — distinct from the legacy `ORPHANED`, which kept its meaning of "server-side daemon died". The operator UI surfaces `WORKER_DISCONNECTED` as **"The browser driving this task disconnected. Click Retry to start a fresh attempt."**
@@ -70,11 +70,10 @@ The `/tick` filter is:
 $task = Task::where('id', $taskId)->where('user_id', $userId)->first();
 ```
 
-That `user_id` is the **runner** — the user who clicked the chat — not the principal / owner of the agent. Three implications:
+That `user_id` is the **runner** — the user who clicked the chat — not the principal / owner of the agent. Two architectural consequences:
 
-1. **One worker per chat.** Even on a group-owned agent, only the clicker's browser drives the task. Group members see the chat and the Mercure-published state, but their browsers do not poll for the task. This is the structural guarantee that two browsers don't race to tick the same task.
-2. **Ownership transfer = chat transfer.** A user who clicks **Transfer** on a chat they did not start still drives that chat from their browser, because the click sets `tasks.user_id = currentUser`. The previous runner's browser stops ticking it on the next polling cycle.
-3. **Retry = self-driven.** Clicking **Retry** on a failed chat creates a new task with `user_id = currentUser`. The retry is then driven by the same browser.
+1. **One worker per chat.** Even on a group-owned agent, only the clicker's browser drives the task. Group members see the chat and the Mercure-published state, but their browsers do not poll for the task (the runner filter rejects them). This is the structural guarantee that two browsers don't race to tick the same task — the CAS-claim in `TaskTickController` is a second line of defence if the runner filter ever drifts.
+2. **The runner never changes mid-task.** Once a task is `QUEUED`, its `user_id` is pinned for the lifetime of that task. There is no UI to "transfer a chat" to another runner; a chat stuck on a disconnected browser can be **continued** or **retried** by the original runner (who sees the `WORKER_DISCONNECTED` banner and clicks Retry), or by an admin who has access to that row. The `Transfer` button in the admin UI transfers an **agent** between principals — it does not reassign a task's runner.
 
 ## Per-principal scoping for schedules
 
@@ -117,11 +116,13 @@ The housekeeping handler uses a DB-backed shared lock (`worker_housekeeping_lock
 
 ## Operator setup
 
-There is essentially nothing to configure — `spora-shared` ships `worker_runtime_mode: client` as the `config.php` default, so a fresh install is already in client mode. If you are migrating from `spora` (server-default) and want to flip, set in `.env`:
+There is essentially nothing to configure — set the runtime mode in `.env`:
 
 ```text
 SPORA_WORKER_RUNTIME_MODE=client
 ```
+
+A fresh `spora` install defaults to `server`; flipping the env var to `client` is the entire migration. The data model, migrations, REST API, and frontend SPA are identical across both modes — only the worker runtime differs.
 
 If you ever invoke `php bin/spora worker:run` on a client-mode install, the command exits with:
 
@@ -175,7 +176,7 @@ These seven scenarios prove the runtime end-to-end. Run them in order — each o
 
 5. **Scheduled run while a browser is open** — create a schedule on an agent the test user owns, set `due_at` to `now + 1 min`. Wait. The schedule should DISPATCH and COMPLETE inside `/housekeeping`. Confirm via phpMyAdmin that `tasks.lease_owner = 'server:housekeeping'` for the resulting task.
 
-6. **Browser crash mid-tick** — start a long-running task (one that loops for several ticks), close the browser tab mid-tick. Wait `SPORA_TICK_LEASE_SECONDS + Spora_WORKER_STALE_MINUTES` (default 600 s + 60 min — shorter for tests via `Spora_WORKER_STALE_MINUTES=1`). Verify the row flips to `FAILED` with `error_code: WORKER_DISCONNECTED`.
+6. **Browser crash mid-tick** — start a long-running task (one that loops for several ticks), close the browser tab mid-tick. Wait `SPORA_TICK_LEASE_SECONDS + SPORA_WORKER_STALE_MINUTES` (default 600 s + 60 min — shorter for tests via `SPORA_WORKER_STALE_MINUTES=1`). Verify the row flips to `FAILED` with `error_code: WORKER_DISCONNECTED`.
 
 7. **Logout / token expiry** — login, click into a chat, send a message. The chat goes `QUEUED → RUNNING` (browser-driven). Log out (clear session cookie or call `POST /api/v1/auth/logout`). The chat stays `QUEUED` after the lease expires + the reaper sweep. Re-login in a fresh tab; click **Retry**; verify the new task progresses.
 

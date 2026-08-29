@@ -19,7 +19,7 @@ SQLite by default (no setup). For MySQL/MariaDB, set `SPORA_DB_*` env vars befor
 
 **Q: Can I run Spora on a shared host without root?**
 
-Yes — that's the original target. cPanel/Plesk/FTP-only hosts with PHP 8.4+ work. Use `spora-ai/spora-shared` (the client-default package) and the browser drives the worker via a `SharedWorker`; no daemon, no cron. See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the step-by-step and the [Shared host](/deploy/shared-host) page for the cPanel install walkthrough. If you have shell access and want to keep using the server-default package, see [Classical server](/deploy/classical-server).
+Yes — that's the original target. cPanel/Plesk/FTP-only hosts with PHP 8.4+ work. Set `SPORA_WORKER_RUNTIME_MODE=client` in `.env` and the browser drives the worker via a `SharedWorker`; no daemon, no cron. See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the step-by-step and the [Shared host](/deploy/shared-host) page for the cPanel install walkthrough. If you have shell access and want to keep the server-default package, see [Classical server](/deploy/classical-server).
 
 **Q: Can I run Spora without Docker?**
 

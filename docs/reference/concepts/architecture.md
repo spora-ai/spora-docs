@@ -110,7 +110,7 @@ Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVA
 
 ### Worker runtime modes (`SPORA_WORKER_RUNTIME_MODE`)
 
-Spora has two runtime modes — `server` (a supervised daemon drains the queue) and `client` (the browser's `SharedWorker` drives tasks for the user who ran them). The active mode is set via `SPORA_WORKER_RUNTIME_MODE` (env) or `worker_runtime_mode` (config key). Each operator-facing package ships a default that matches its target host: `spora-ai/spora` defaults to `server`, `spora-ai/spora-shared` defaults to `client`. The HTTP request always returns once the task is `QUEUED`; the worker (daemon or browser) drives the result.
+Spora has two runtime modes — `server` (a supervised daemon drains the queue) and `client` (the browser's `SharedWorker` drives tasks for the user who ran them). The active mode is set via `SPORA_WORKER_RUNTIME_MODE` (env) or `worker_runtime_mode` (config key); `spora-ai/spora` defaults to `server`, and flipping the env var to `client` lands in the same place without changing packages. The HTTP request always returns once the task is `QUEUED`; the worker (daemon or browser) drives the result.
 
 In both modes, multi-step tasks (multiple LLM turns before reaching a terminal state) run synchronously within a single `tick()` chain — the loop calls itself recursively until `COMPLETED`, `FAILED`, or `PENDING_APPROVAL`. The legacy `SPORA_SYNC_MODE` boolean and the `WorkerMode::Sync` enum case were removed in spora-core 0.19.0.
 

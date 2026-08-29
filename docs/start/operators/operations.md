@@ -65,7 +65,7 @@ For the full env-var controls on logging (`SPORA_LOG_LEVEL`, `SPORA_LOG_PATH`), 
 Spora has two runtime modes — see [Deployment modes](/reference/concepts/deployment-modes) for the full picture. Which command to run depends on the mode:
 
 - **`worker_runtime_mode: server`** (`spora-ai/spora` default): run `php bin/spora worker:run --daemon` under supervisord / systemd / Docker, or `php bin/spora worker:run --once --include-queue` via cron every minute. Scheduled runs dispatch unattended.
-- **`worker_runtime_mode: client`** (`spora-ai/spora-shared` default): no daemon, no cron. Scheduled runs dispatch from `/api/v1/worker/housekeeping`, driven by any authed browser. The browser must be open for a schedule to fire; see [Client-worker mode](/deploy/shared-host/client-worker-mode#scheduled-runs).
+- **`worker_runtime_mode: client`** (set via `SPORA_WORKER_RUNTIME_MODE=client` in `.env`): no daemon, no cron. Scheduled runs dispatch from `/api/v1/worker/housekeeping`, driven by any authed browser. The browser must be open for a schedule to fire; see [Client-worker mode](/deploy/shared-host/client-worker-mode#scheduled-runs).
 
 For server-mode cron mode (the fallback when you cannot run a daemon), run `php bin/spora worker:run --once --include-queue` every minute:
 

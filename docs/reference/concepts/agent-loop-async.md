@@ -1,24 +1,15 @@
 ---
 title: Agent loop and async mode
-description: Worker modes (sync/worker), tick structure, Mercure SSE, task lifecycle.
+description: Tick structure, task lifecycle, Mercure SSE. Worker deployment choices live in Deployment modes.
 ---
 
 # Agent Loop: Async Architecture
 
 ## Overview
 
-The Orchestrator loop is synchronous by design — no external queue daemon is required. `SPORA_SYNC_MODE` controls whether the HTTP request blocks until the agent finishes (`Sync`) or returns immediately with the task queued (`Worker`). `bin/spora worker:run` is the single drain mechanism: it defaults to a persistent daemon, and the `--once` / `--include-queue` / `--reap-only` flags switch it into one-shot cron or maintenance mode.
+The Orchestrator loop is synchronous by design — no external queue daemon is required. Each `Orchestrator::start()` returns once the task is `QUEUED` (or, in legacy dev mode, `RUNNING`); a worker (server daemon or browser `SharedWorker`) calls `tick()` to drive the task to a terminal state. The deployment choice — server daemon, browser worker, with or without Mercure — lives in [Deployment modes](/reference/concepts/deployment-modes). The mechanics below (tick phases, task lifecycle, Mercure publishing) are identical across all three configurations.
 
-## Worker Modes
-
-Set via env var `SPORA_SYNC_MODE` (default: `true`). Corresponds to the `WorkerMode` enum at `app/Agents/ValueObjects/WorkerMode.php`.
-
-| Mode                    | `tasks.status` on `start()` | Who calls `tick()`                                                                 |
-| ----------------------- | --------------------------- | ---------------------------------------------------------------------------------- |
-| `SPORA_SYNC_MODE=true`  | `RUNNING`                   | `start()` calls `tick()` inline. HTTP response blocks until agent completes.       |
-| `SPORA_SYNC_MODE=false` | `QUEUED`                    | Default daemon (`worker:run`) or cron (`--once --include-queue`) drains the queue. |
-
-In both modes, multi-step tasks (multiple LLM turns before reaching a terminal state) run synchronously within a single `tick()` chain — the loop calls itself recursively until `COMPLETED`, `FAILED`, or `PENDING_APPROVAL`.
+The `WorkerMode` enum at `app/Agents/ValueObjects/WorkerMode.php` is single-case (`Worker`) — the legacy `WorkerMode::Sync` was removed when `SPORA_SYNC_MODE` was replaced. The new `WorkerRuntimeMode` enum (`server` / `client`) gates which CLI commands and HTTP routes are active; see [Environment variables → Worker runtime mode](/start/operators/env-vars#worker-runtime-mode) and [Client-worker mode](/deploy/shared-host/client-worker-mode).
 
 ## Tick Structure
 
@@ -43,9 +34,9 @@ In both modes, multi-step tasks (multiple LLM turns before reaching a terminal s
 - If tool calls: `appendHistory`, execute tools, then either call `tick()` again or pause for approval (`PENDING_APPROVAL`)
 - If text response: `appendHistory`, set `COMPLETED`
 
-`safeExecute()` reads the calling agent's `user_id` from the row inside the Orchestrator and threads that into `execute()` — tools never see a session-derived user id, so async contexts (Worker mode, scheduled runs, sub-agent hops) inherit the same trust boundary as Sync mode. See [Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop) for the invariant.
+`safeExecute()` reads the calling agent's `user_id` from the row inside the Orchestrator and threads that into `execute()` — tools never see a session-derived user id, so async contexts (server-mode daemon, browser-driven `SharedWorker`, scheduled runs, sub-agent hops) all inherit the same trust boundary. See [Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop) for the invariant.
 
-`resume()` (PR #173) takes a per-call `decisions` list and splits it via `AgentDecisionProcessor::splitDecisions()` into approved and rejected subsets inside a single `lockForUpdate()` transaction. Approved rows are handed to `ApprovedBatchExecutor` (PR #171 path — partial-approval semantics preserved: undecided rows stay `PENDING_APPROVAL`). Rejected rows are stamped `REJECTED` with `rejected_at` / `rejected_by` / `reject_reason` and a `role:'tool'` history row is appended carrying `toolCallId` + `toolName` so the LLM sees the rejection in its next round-trip. The task transitions back to `RUNNING` (Sync) or `QUEUED` (Worker) only when the batch leaves no `PENDING_APPROVAL` rows; partial-approval batches keep the task paused. `reject()` (task-level bulk) is unchanged in shape but does not write the per-call rejection columns. In Sync mode the same call chain invokes `tick()` after the transaction commits, so the LLM round-trip never holds the row lock. In Worker mode `ApprovedBatchExecutor` records worker-mode approvals with `executed_at IS NULL` as the "approved, awaiting execution" sentinel for the daemon's next `task:run` drain.
+`resume()` (PR #173) takes a per-call `decisions` list and splits it via `AgentDecisionProcessor::splitDecisions()` into approved and rejected subsets inside a single `lockForUpdate()` transaction. Approved rows are handed to `ApprovedBatchExecutor` (PR #171 path — partial-approval semantics preserved: undecided rows stay `PENDING_APPROVAL`). Rejected rows are stamped `REJECTED` with `rejected_at` / `rejected_by` / `reject_reason` and a `role:'tool'` history row is appended carrying `toolCallId` + `toolName` so the LLM sees the rejection in its next round-trip. The task transitions back to `QUEUED` only when the batch leaves no `PENDING_APPROVAL` rows; partial-approval batches keep the task paused. `reject()` (task-level bulk) is unchanged in shape but does not write the per-call rejection columns. `ApprovedBatchExecutor` records worker-mode approvals with `executed_at IS NULL` as the "approved, awaiting execution" sentinel for the daemon's next drain (server mode) or the browser's next `/tick` (client mode).
 
 **Partial approval.** When the LLM produced parallel tool calls and the operator approves only some of them, `resume()` does not transition the task out of `PENDING_APPROVAL` — it rewrites `pending_state` with the un-approved tool calls and returns, so the operator can keep deciding on later rounds. Un-approved `tool_calls` rows stay at `status='PENDING_APPROVAL'`; they are never silently executed with the LLM's original arguments, and never auto-rejected.
 
@@ -55,27 +46,24 @@ In both modes, multi-step tasks (multiple LLM turns before reaching a terminal s
 
 ```mermaid
 stateDiagram-v2
-    [*] --> QUEUED : Async: start()/continue()
-    [*] --> RUNNING : Sync: start()/continue()
+    [*] --> QUEUED : start() / continue()
 
-    QUEUED --> RUNNING : Worker claims task
+    QUEUED --> RUNNING : Worker claims task (server daemon or browser)
 
     RUNNING --> COMPLETED : LLM returns text (no tools)
 
     RUNNING --> PENDING_APPROVAL : Tool calls need approval
 
-    PENDING_APPROVAL --> RUNNING : resume() / reject()
+    PENDING_APPROVAL --> RUNNING : resume() / reject() picks up on next tick
     PENDING_APPROVAL --> PENDING_APPROVAL : resume() (partial approval — pending_state rewritten)
 
     RUNNING --> FAILED : max_steps or exception
 
     RUNNING --> AWAITING_SUB_AGENTS : sub_agent tool (HandoverTool) spawns child
-    AWAITING_SUB_AGENTS --> RUNNING : every child TERMINAL (sync — inline tick)
-    AWAITING_SUB_AGENTS --> QUEUED : every child TERMINAL (worker — next task:run)
+    AWAITING_SUB_AGENTS --> RUNNING : every child TERMINAL (resume on next tick)
     RUNNING --> ABORTED : POST /tasks/{id}/abort (quiescent — resumable)
     AWAITING_SUB_AGENTS --> ABORTED : POST /tasks/{id}/abort-sub-agent (child abort cascades to ancestors)
-    ABORTED --> RUNNING : POST /tasks/{id}/continue (clear aborted_at, re-prompt)
-    ABORTED --> QUEUED : POST /tasks/{id}/continue (worker mode)
+    ABORTED --> QUEUED : POST /tasks/{id}/continue (clear aborted_at, re-prompt)
     RUNNING --> ABORTED : POST /tasks/{id}/continue (auto-abort + marker row)
 ```
 
@@ -83,11 +71,11 @@ stateDiagram-v2
 
 `ABORTED`, `PENDING_APPROVAL`, and `AWAITING_SUB_AGENTS` together form the **quiescent** set: in every case the worker is not driving the task — the conversation is waiting on the operator (`PENDING_APPROVAL` tool call), on sub-agent children (`AWAITING_SUB_AGENTS`), or on the operator's next instruction after an explicit halt (`ABORTED`). The chat detail poller skips the entire set so the browser does not waste cycles fetching a task that is not making progress on its own. The poller re-arms the moment an action moves the task out — approve/reject from the approval bar, sub-agent child reaching a terminal state, or `POST /api/v1/tasks/{taskId}/continue` resuming an ABORTED task.
 
-_(Sync mode starts directly at `RUNNING`; cron/worker modes use `QUEUED` as the entry point.)_
-
-`AWAITING_SUB_AGENTS` is the suspended-while-sub-agent-children-run state set by the `HandoverTool` `sub_agent` op. Each spawn creates a regular `Task` with `parent_task_id` and bumps `data.sub_agent_expected_count` after the child tick; the resume gate compares the live child count from `data.spawned_sub_task_ids` against `sub_agent_expected_count` and only re-enters the loop when every sibling has reached a terminal state. Sync mode resumes inline via `ApprovedBatchExecutor::triggerBatchBoundaryResume`; worker mode resumes on the next `task:run` drain via `TickPhaseRunner::maybeResumeParentFromBatchBoundary`. See [Tool system → Handover](/reference/concepts/tools#handover-tool) for the LLM-facing contract.
+`AWAITING_SUB_AGENTS` is the suspended-while-sub-agent-children-run state set by the `HandoverTool` `sub_agent` op. Each spawn creates a regular `Task` with `parent_task_id` and bumps `data.sub_agent_expected_count` after the child tick; the resume gate compares the live child count from `data.spawned_sub_task_ids` against `sub_agent_expected_count` and only re-enters the loop when every sibling has reached a terminal state. The next worker pickup (server daemon's `task:run` or browser's `/tick`) drains it via `TickPhaseRunner::maybeResumeParentFromBatchBoundary`. See [Tool system → Handover](/reference/concepts/tools#handover-tool) for the LLM-facing contract.
 
 ## Worker CLI
+
+Server mode only. The CLI commands below are the operator's tools for `worker_runtime_mode: server`. In `client` mode the same commands exit with a docs-link error — see [Client-worker mode](/deploy/shared-host/client-worker-mode) for the browser-driven equivalent.
 
 **Entry point:** `bin/spora` (via `WorkerRunCommand`)
 
@@ -123,6 +111,8 @@ php bin/spora worker:run --reap-only
 | `worker:run --reap-only`            | —              | —            | After one iteration   | Maintenance: orphan reaping only      |
 | `worker:run --once`                 | ✓              | —            | After processing      | Cron for scheduled runs               |
 | `worker:run --once --include-queue` | ✓              | ✓            | After processing      | Full cron replacement                 |
+
+For the **client-mode** equivalent (browser-driven, no daemon), see [Client-worker mode](/deploy/shared-host/client-worker-mode) and the [Deployment modes](/reference/concepts/deployment-modes) overview.
 
 **Cron setup:**
 

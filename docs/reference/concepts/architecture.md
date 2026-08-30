@@ -26,14 +26,14 @@ Approval resolution for an operation:
 If approval required → serialize `AgentState` to DB as `PENDING_APPROVAL`, PHP process exits. The operator submits per-call decisions in a single batch via `POST /tasks/{id}/approve`: `{decisions: [{provider_call_id, decision: 'approve'|'reject', arguments?, reason?}]}`. `Orchestrator::resume()` (via `AgentDecisionProcessor`) splits the batch:
 
 - **All approved, no leftovers** → `ApprovedBatchExecutor` runs the tools, status → `RUNNING` (Sync) / `QUEUED` (Worker).
-- **All rejected, no leftovers** → status → `RUNNING` (Sync) / `QUEUED` (Worker); `tick()` is invoked again only in sync mode so the LLM round-trip doesn't hold the lock.
+- **All rejected, no leftovers** → status → `QUEUED`; the next worker pickup (server daemon or browser `/tick`) drives the next `tick()` so the LLM round-trip doesn't hold the lock.
 - **Mixed (some approved + some rejected + leftovers)** → `ApprovedBatchExecutor` runs the approved calls; rejected rows are stamped `REJECTED` with `rejected_at` / `rejected_by` / `reject_reason`; the task stays `PENDING_APPROVAL` until the remaining undecided calls are also decided.
 
-In worker mode, `ApprovedBatchExecutor` records approvals with `executed_at IS NULL` as the "approved, awaiting execution" sentinel; the daemon's next `task:run` drain picks them up (see `Orchestrator::resume()` at `app/Agents/Orchestrator.php:221`).
+In server mode, `ApprovedBatchExecutor` records approvals with `executed_at IS NULL` as the "approved, awaiting execution" sentinel; the daemon's next `task:run` drain picks them up (see `Orchestrator::resume()` at `app/Agents/Orchestrator.php:221`). In client mode the browser's next `/tick` picks them up via the same sentinel.
 
 On **partial** approval — the operator approves some but not all of the parallel tool calls — `resume()` keeps the task in `PENDING_APPROVAL`, rewrites `pending_state` with only the un-approved calls, and returns. The un-approved `tool_calls` rows stay `status='PENDING_APPROVAL'`. The operator can keep deciding on later rounds until the batch is empty.
 
-On full approval in **Worker** mode, `resume()` returns immediately: each approved tool row is persisted as `status='APPROVED'` + `executed_at=NULL` (the worker-pickup sentinel), the task moves to `QUEUED`, and the daemon's `task:run` worker picks it up. `TickPhaseRunner::executeApprovedPendingToolsForTask()` consumes those sentinel rows at the top of `runTick()` — before the LLM round-trip — so the next assistant message sees the tool results on the same round-trip. The HTTP approval endpoint therefore returns within ~100 ms regardless of how long the approved tool takes.
+On full approval, `resume()` returns immediately: each approved tool row is persisted as `status='APPROVED'` + `executed_at=NULL` (the worker-pickup sentinel), the task moves to `QUEUED`, and the appropriate worker picks it up — the daemon's `task:run` drain in server mode, or the browser's `/tick` in client mode. `TickPhaseRunner::executeApprovedPendingToolsForTask()` consumes those sentinel rows at the top of `runTick()` — before the LLM round-trip — so the next assistant message sees the tool results on the same round-trip. The HTTP approval endpoint therefore returns within ~100 ms regardless of how long the approved tool takes.
 
 ### Tool ownership is principal-scoped
 
@@ -44,7 +44,7 @@ Migration 0067 (spora-core PR #209) re-keyed ownership from `agents.user_id` to 
 
 `PrincipalContext` carries `{principalId, principalType ('user'|'group'), ownerUserId, visiblePrincipalIds}`. `visiblePrincipalIds` is the set of principals the calling agent's owner can act as, so a tool can authorise `principal_id` requests against the caller's scope without re-querying.
 
-The structural guarantee holds unchanged: tools see the owner of the agent that issued the call, never "whoever is signed in". Async contexts (Worker mode, scheduled tasks, sub-agent hops) inherit the same invariant because the lookup walks the agent row, not a session.
+The structural guarantee holds unchanged: tools see the owner of the agent that issued the call, never "whoever is signed in". Async contexts (server-mode daemon, browser-driven `SharedWorker`, scheduled tasks, sub-agent hops) inherit the same invariant because the lookup walks the agent row, not a session.
 
 ### Principal ownership model
 
@@ -108,18 +108,13 @@ flowchart LR
 
 Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVAL ⇄ RUNNING → CANCELLED` and `RUNNING → AWAITING_SUB_AGENTS → RUNNING (sync) | QUEUED (worker)` (added in spora-core PR #196 — `AWAITING_SUB_AGENTS` is set by the `HandoverTool` `sub_agent` op while the parent task waits for every spawned child to reach a terminal state) plus `RUNNING → ABORTED` and `AWAITING_SUB_AGENTS → ABORTED` (quiescent, added in spora-core PR #207 via `POST /api/v1/tasks/{id}/abort`). `ABORTED` is resumable via `POST /api/v1/tasks/{id}/continue` and `data.aborted_at` is wiped on resume. PENDING is the initial value written by the migration; in practice the worker transitions QUEUED→RUNNING before the first tick. The `CANCELLED` terminal status is set by `TaskService::cancelRetryChain`; the `ABORTED` quiescent status is set by `Orchestrator::abort` (`app/Agents/Orchestrator.php`) — `REJECTED` is the analogous status for `tool_calls` rows, not `tasks`.
 
-### Worker Modes (`SPORA_SYNC_MODE`)
+### Worker runtime modes (`SPORA_WORKER_RUNTIME_MODE`)
 
-`SPORA_SYNC_MODE` is a boolean that flips a single `worker_mode` config flag (`true` → Sync, `false` → Worker). Only two worker modes exist: Sync and Worker.
+Spora has two runtime modes — `server` (a supervised daemon drains the queue) and `client` (the browser's `SharedWorker` drives tasks for the user who ran them). The active mode is set via `SPORA_WORKER_RUNTIME_MODE` (env) or `worker_runtime_mode` (config key); `spora-ai/spora` defaults to `server`, and flipping the env var to `client` lands in the same place without changing packages. The HTTP request always returns once the task is `QUEUED`; the worker (daemon or browser) drives the result.
 
-| Mode                               | Default | Behaviour                                                                                                                                                                                |
-| ---------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sync` (`SPORA_SYNC_MODE=true`)    | ✓       | `start()` creates task as `RUNNING` and calls `tick()` inline. HTTP response blocked until agent completes. Suitable for dev and lightweight deployments.                                |
-| `worker` (`SPORA_SYNC_MODE=false`) |         | `start()` creates task as `QUEUED` and returns immediately. Run `php bin/spora worker:run` (default = daemon, `--once` for cron, `--once --include-queue` for cron-with-queue) to drain. |
+In both modes, multi-step tasks (multiple LLM turns before reaching a terminal state) run synchronously within a single `tick()` chain — the loop calls itself recursively until `COMPLETED`, `FAILED`, or `PENDING_APPROVAL`. The legacy `SPORA_SYNC_MODE` boolean and the `WorkerMode::Sync` enum case were removed in spora-core 0.19.0.
 
-In Worker mode, multi-step tasks (multiple LLM turns) still run synchronously within a single worker invocation — the loop continues until `COMPLETED`, `FAILED`, or `PENDING_APPROVAL`.
-
-For the full details on tick phases, task lifecycle, and Mercure publishing, see [Agent loop and async mode](/reference/concepts/agent-loop-async).
+For the full three-configuration overview (server + Mercure, server + polling, client + polling), see [Deployment modes](/reference/concepts/deployment-modes). For tick phases, task lifecycle, and Mercure publishing, see [Agent loop and async mode](/reference/concepts/agent-loop-async). For the shared-host browser-driven path, see [Client-worker mode](/deploy/shared-host/client-worker-mode).
 
 ## Plugin System
 

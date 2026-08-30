@@ -5,11 +5,11 @@ description: Full reference for every SPORA_* environment variable Spora reads a
 
 ## Spora Environment Variables
 
-This is the **canonical reference** for every `SPORA_*` environment variable Spora reads at boot. Both the [Agent loop and async mode](/reference/concepts/agent-loop-async) and [Worker deployment](/reference/concepts/worker-deployment) pages cross-link to this doc for env-var details.
+This is the **canonical reference** for every `SPORA_*` environment variable Spora reads at boot. Both the [Deployment modes](/reference/concepts/deployment-modes) and [Worker deployment](/reference/concepts/worker-deployment) pages cross-link to this doc for env-var details.
 
 **Resolution priority:** OS env → `.env` → `config.php` (gitignored) → built-in defaults. `SPORA_*` env vars always take highest priority. See the [Architecture overview](/reference/concepts/architecture) for the full config-priority chain.
 
-**Quick links:** [SERVER_NAME](#server_name) · [Application](#application) · [Encryption](#encryption) · [Database](#database) · [Worker / Sync Mode](#worker--sync-mode) · [Timeouts](#timeouts) · [Mercure (SSE)](#mercure-sse) · [Logging](#logging) · [Notifications / Mail](#notifications--mail) · [Plugins](#plugins) · [Config path](#config-path)
+**Quick links:** [SERVER_NAME](#server_name) · [Application](#application) · [Encryption](#encryption) · [Database](#database) · [Worker runtime mode](#worker-runtime-mode) · [Timeouts](#timeouts) · [Mercure (SSE)](#mercure-sse) · [Logging](#logging) · [Notifications / Mail](#notifications--mail) · [Plugins](#plugins) · [Config path](#config-path)
 
 ## SERVER_NAME
 
@@ -51,17 +51,22 @@ SQLite path is set in `config.php` (defaults to `storage/database.sqlite`).
 
 The DB driver is selected by `SPORA_DB_DRIVER` (`sqlite` or `mysql`) and is also what `php bin/spora db:reset` reads to decide whether to wipe the local SQLite file or run `DROP DATABASE` + `CREATE DATABASE` on the configured MySQL server. See [Install](/start/operators/install#troubleshooting) for the destructive `db:reset` flow.
 
-## Worker / Sync Mode
+## Worker runtime mode
 
-| Variable                     | Default | Config key             | Description                                                                                                                                                                                                                                |
-| ---------------------------- | ------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `SPORA_SYNC_MODE`            | `true`  | `worker_mode`          | Boolean. `true` = Sync (HTTP request blocks until agent completes — dev). `false` = Worker (task is queued, drained by `bin/spora worker:run`). Only two worker modes exist; the legacy tri-valued `SPORA_WORKER_MODE` is not implemented. |
-| `SPORA_WORKER_STALE_MINUTES` | `60`    | `worker_stale_minutes` | Minutes before a `RUNNING` task is treated as orphaned (0 = disabled). Should exceed worst-case LLM round-trip time.                                                                                                                       |
-| `SPORA_MAX_WORKERS`          | `0`     | `max_workers`          | Max concurrent child processes in daemon mode (0 = unlimited).                                                                                                                                                                             |
+Spora has two runtime modes — `server` (a daemon drains the queue) and `client` (the browser's `SharedWorker` drives the user's own tasks). For the full three-configuration overview (server + Mercure, server + polling, client + polling), see [Deployment modes](/reference/concepts/deployment-modes).
 
-> **Why the default differs from the code fallback.** The `spora-core` code default (in `app/Core/ContainerDefinitions.php`) is `true` (sync mode) — the safe choice for env-less LAMP/FTP deploys that don't run a worker. The `spora/.env.example` ships `false` (queue mode) — the right choice for operators who copy `.env` and run the worker (Docker supervisord, classical-server supervisord, shared-host cron, `composer dev`). **The two defaults are intentional and must not be aligned** — the shipped `.env` wins whenever it's present (every supported deploy path); the code fallback only matters in env-less test/CI contexts.
+| Variable                     | Default  | Config key             | Description                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------- | -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_WORKER_RUNTIME_MODE`  | `server` | `worker_runtime_mode`  | `server` = `bin/spora worker:run` drains the queue (daemon or cron). `client` = the browser's `SharedWorker` calls `/api/v1/tasks/{id}/tick` for tasks the user ran. Default is `server`; set to `client` for shared hosts without a daemon. A future curated `spora-shared` skeleton will ship with `client` as its baked-in default. |
+| `SPORA_TICK_LEASE_SECONDS`   | `600`    | `tick_lease_seconds`   | Lease TTL (seconds) for in-flight ticks. Set on the claim transaction, extended on every step boundary inside `Orchestrator::tick()`. The reaper flips a row to `FAILED` with `error_code: WORKER_DISCONNECTED` once the lease expires + `SPORA_WORKER_STALE_MINUTES` elapses with no progress.                                        |
+| `SPORA_WORKER_STALE_MINUTES` | `60`     | `worker_stale_minutes` | Grace period (minutes) before an expired-lease `RUNNING` task is reaped. Should exceed worst-case LLM round-trip time. Set to `0` to disable the reaper.                                                                                                                                                                               |
+| `SPORA_MAX_WORKERS`          | `0`      | `max_workers`          | Max concurrent child processes in daemon mode (0 = unlimited). No effect in `client` mode — the browser handles concurrency per tab.                                                                                                                                                                                                   |
 
-See [Worker deployment](/reference/concepts/worker-deployment) for deployment patterns (cron vs daemon vs supervisord) and the `--stale-minutes` / `--workers` CLI flag overrides.
+> **Default mode.** `spora-ai/spora` ships `worker_runtime_mode: server` as the safe default for Docker/VPS/classical-server operators who run the daemon. For shared-host operators without shell access to run a long-lived PHP process, set `SPORA_WORKER_RUNTIME_MODE=client` in `.env`. There is one Composer package today; a curated `spora-shared` skeleton (client-default out of the box, no `docker/`/`supervisord.conf`/Mercure) is on the roadmap. See [Installation modes](/start/operators/installation-modes) for the one-screen picker.
+>
+> **Removed in 0.19.0: `SPORA_SYNC_MODE`.** Pre-0.19 used a boolean `SPORA_SYNC_MODE` (`true` = inline / dev, `false` = queued / worker). The boolean is gone. To get the inline-tick behaviour pre-0.19 operators got from `SPORA_SYNC_MODE=true`, run with `SPORA_WORKER_RUNTIME_MODE=server` and either invoke `php bin/spora worker:run --daemon` (a request's task is picked up on the next polling cycle) or use the dev-mode `bin/spora` CLI's direct task runner. The HTTP request always returns once the task is `QUEUED`; the worker drives the result. For shared hosts, set `SPORA_WORKER_RUNTIME_MODE=client` in `.env` instead.
+
+See [Worker deployment](/reference/concepts/worker-deployment) for server-mode cron / daemon / supervisord / systemd patterns and the `--stale-minutes` / `--workers` CLI flag overrides. See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the client-mode shared-host guide, lease semantics, and browser support.
 
 ## Timeouts
 

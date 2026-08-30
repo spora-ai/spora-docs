@@ -111,7 +111,7 @@ Then re-run `php bin/spora spora:install` to apply the migrations to the new DB.
 
 Two are operationally important in dev:
 
-- **`SPORA_SYNC_MODE`** — `true` (default) = agent runs inline in the HTTP request; `false` = agent queued, drained by `bin/spora worker:run --daemon`.
+- **`SPORA_WORKER_RUNTIME_MODE`** — defaults to `server` (in `spora-ai/spora`). The local-dev path runs `composer dev`, which is the PHP built-in server — pair it with `php bin/spora worker:run --daemon` in a second terminal to drain the queue, or set `mode=client` if you only want browser-driven ticks (see [Deployment modes](/reference/concepts/deployment-modes)).
 - **`APP_ENV`** — `dev` (default) or `prod`. Affects error reporting and cache behavior.
 
 For the full env-var reference, see [Environment variables](/start/operators/env-vars).

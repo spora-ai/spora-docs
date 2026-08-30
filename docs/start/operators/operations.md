@@ -62,16 +62,18 @@ For the full env-var controls on logging (`SPORA_LOG_LEVEL`, `SPORA_LOG_PATH`), 
 
 ## Cron workers (scheduled tasks)
 
-Spora has two worker modes:
+Spora has two runtime modes — see [Deployment modes](/reference/concepts/deployment-modes) for the full picture. Which command to run depends on the mode:
 
-- **Sync** (`SPORA_SYNC_MODE=true`): inline — agent runs in the same request as the user. Default for dev.
-- **Async** (`SPORA_SYNC_MODE=false`): queued — requires `php bin/spora worker:run` to drain the queue.
+- **`worker_runtime_mode: server`** (`spora-ai/spora` default): run `php bin/spora worker:run --daemon` under supervisord / systemd / Docker, or `php bin/spora worker:run --once --include-queue` via cron every minute. Scheduled runs dispatch unattended.
+- **`worker_runtime_mode: client`** (set via `SPORA_WORKER_RUNTIME_MODE=client` in `.env`): no daemon, no cron. Scheduled runs dispatch from `/api/v1/worker/housekeeping`, driven by any authed browser. The browser must be open for a schedule to fire; see [Client-worker mode](/deploy/shared-host/client-worker-mode#scheduled-runs).
 
-For scheduled tasks, run `php bin/spora worker:run --scheduled` via cron every minute:
+For server-mode cron mode (the fallback when you cannot run a daemon), run `php bin/spora worker:run --once --include-queue` every minute:
 
 ```cron
-* * * * * cd /path/to/app && php bin/spora worker:run --scheduled >> storage/spora.log 2>&1
+* * * * * cd /path/to/app && php bin/spora worker:run --once --include-queue >> storage/spora.log 2>&1
 ```
+
+In client mode the same command exits with a docs-link error — remove it from cron.
 
 ## Reset
 

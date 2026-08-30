@@ -19,7 +19,7 @@ SQLite by default (no setup). For MySQL/MariaDB, set `SPORA_DB_*` env vars befor
 
 **Q: Can I run Spora on a shared host without root?**
 
-Yes — that's the original target. cPanel/Plesk/FTP-only hosts with PHP 8.4+ work. See [Shared host](/deploy/shared-host) for the step-by-step.
+Yes — that's the original target. cPanel/Plesk/FTP-only hosts with PHP 8.4+ work. Set `SPORA_WORKER_RUNTIME_MODE=client` in `.env` and the browser drives the worker via a `SharedWorker`; no daemon, no cron. See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the step-by-step and the [Shared host](/deploy/shared-host) page for the cPanel install walkthrough. If you have shell access and want to keep the server-default package, see [Classical server](/deploy/classical-server).
 
 **Q: Can I run Spora without Docker?**
 
@@ -61,7 +61,7 @@ Yes. Every tool call is recorded in `tool_calls` (input, output, approval, times
 
 **Q: How fast is Spora?**
 
-For single-instance deployments, the bottleneck is the LLM API call (200-2000 ms typical), not the framework. Spora's per-turn overhead is ~10-50 ms (DB write, history append, tool dispatch). The async worker mode (`SPORA_SYNC_MODE=false`) lets multiple tasks run concurrently on a single host.
+For single-instance deployments, the bottleneck is the LLM API call (200-2000 ms typical), not the framework. Spora's per-turn overhead is ~10-50 ms (DB write, history append, tool dispatch). In server mode (`SPORA_WORKER_RUNTIME_MODE=server`), the daemon drains the queue and lets multiple tasks run concurrently. In client mode (`SPORA_WORKER_RUNTIME_MODE=client`), the browser drives tasks for the user who ran them — see [Deployment modes](/reference/concepts/deployment-modes).
 
 **Q: Can Spora run on a Raspberry Pi?**
 
@@ -69,13 +69,13 @@ Yes for SQLite + small local models. No for hosted Claude/GPT-4 at production sc
 
 **Q: How many concurrent agents can run?**
 
-Bounded by `SPORA_MAX_WORKERS` (default 0 = unlimited) and your database's connection pool. SQLite handles single-writer; MySQL handles many concurrent writers. The single-instance `flock` lock at `storage/spora-worker.lock` ensures only one worker process per host.
+In server mode, bounded by `SPORA_MAX_WORKERS` (default 0 = unlimited) and your database's connection pool. SQLite handles single-writer; MySQL handles many concurrent writers. The single-instance `flock` lock at `storage/spora-worker.lock` ensures only one worker process per host. In client mode, concurrency is bounded by the number of open tabs — each browser drives its own user's tasks. See [Deployment modes](/reference/concepts/deployment-modes) for the full picture.
 
 ## Operations
 
 **Q: How do I update Spora?**
 
-`composer update spora-ai/spora-core` (and `spora-frontend` if you have it as a path repo), then `php bin/spora spora:install` to apply any new migrations. No downtime if you use worker mode; brief downtime for sync mode.
+`composer update spora-ai/spora-core` (and `spora-frontend` if you have it as a path repo), then `php bin/spora spora:install` to apply any new migrations. No downtime — the migration runs while the worker keeps draining the queue.
 
 **Q: How do I back up Spora?**
 

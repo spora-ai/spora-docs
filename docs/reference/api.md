@@ -285,9 +285,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 29 routes
+- [Agents](/reference/api/agents) — 30 routes
+- [Groups](/reference/api/groups) — 22 routes
 - [Auth](/reference/api/auth) — 12 routes
-- [Tasks](/reference/api/tasks) — 11 routes
+- [Tasks](/reference/api/tasks) — 12 routes
 - [Users](/reference/api/users) — 9 routes
 - [Llm-configs](/reference/api/llm-configs) — 7 routes
 - [Media](/reference/api/media) — 7 routes
@@ -306,7 +307,9 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Config](/reference/api/config) — 1 route
 - [Health](/reference/api/health) — 1 route
 - [Llm-drivers](/reference/api/llm-drivers) — 1 route
+- [Principals](/reference/api/principals) — 1 route
 - [Public](/reference/api/public) — 1 route
+- [Worker](/reference/api/worker) — 1 route
 
 ### Security schemes
 
@@ -353,6 +356,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PUT`    | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | PutOverride AgentOverride            | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | DeleteOverride AgentOverride         | Agents           |
 | `GET`    | `/api/v1/agents/{id}/tools/{toolId}/status`                 | `cookieAuth`               | GetToolStatus AgentTool              | Agents           |
+| `POST`   | `/api/v1/agents/{id}/transfer`                              | `cookieAuth` + `csrfToken` | TransferPrincipal AgentTransfer      | Agents           |
 | `GET`    | `/api/v1/apps`                                              | `cookieAuth`               | Index Apps                           | Apps             |
 | `GET`    | `/api/v1/assets/{filename}`                                 | `cookieAuth`               | Show Asset                           | Assets           |
 | `PATCH`  | `/api/v1/auth/account`                                      | `cookieAuth` + `csrfToken` | Account Auth                         | Auth             |
@@ -368,6 +372,28 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/auth/verification/resend`                          | —                          | ResendVerification Auth              | Auth             |
 | `GET`    | `/api/v1/auth/verify/{selector}`                            | —                          | Verify Auth                          | Auth             |
 | `GET`    | `/api/v1/config`                                            | —                          | Index Config                         | Config           |
+| `GET`    | `/api/v1/groups`                                            | `cookieAuth`               | Index Group                          | Groups           |
+| `POST`   | `/api/v1/groups`                                            | `cookieAuth` + `csrfToken` | Store Group                          | Groups           |
+| `GET`    | `/api/v1/groups/{id}`                                       | `cookieAuth`               | Show Group                           | Groups           |
+| `PATCH`  | `/api/v1/groups/{id}`                                       | `cookieAuth` + `csrfToken` | Update Group                         | Groups           |
+| `DELETE` | `/api/v1/groups/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Group                        | Groups           |
+| `GET`    | `/api/v1/groups/{id}/agents`                                | `cookieAuth`               | Agents Group                         | Groups           |
+| `GET`    | `/api/v1/groups/{id}/llm-configs`                           | `cookieAuth`               | Index GroupLlmConfigs                | Groups           |
+| `POST`   | `/api/v1/groups/{id}/llm-configs`                           | `cookieAuth` + `csrfToken` | Store GroupLlmConfigs                | Groups           |
+| `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Update GroupLlmConfigs               | Groups           |
+| `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Destroy GroupLlmConfigs              | Groups           |
+| `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default`         | `cookieAuth` + `csrfToken` | SetDefault GroupLlmConfigs           | Groups           |
+| `GET`    | `/api/v1/groups/{id}/members`                               | `cookieAuth`               | Index GroupMember                    | Groups           |
+| `POST`   | `/api/v1/groups/{id}/members`                               | `cookieAuth` + `csrfToken` | Store GroupMember                    | Groups           |
+| `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                         | `cookieAuth` + `csrfToken` | Update GroupMember                   | Groups           |
+| `DELETE` | `/api/v1/groups/{id}/members/{uid}`                         | `cookieAuth` + `csrfToken` | Destroy GroupMember                  | Groups           |
+| `POST`   | `/api/v1/groups/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | UploadImage GroupPicture             | Groups           |
+| `DELETE` | `/api/v1/groups/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | DeleteImage GroupPicture             | Groups           |
+| `GET`    | `/api/v1/groups/{id}/preferences`                           | `cookieAuth`               | Show GroupPreferences                | Groups           |
+| `PUT`    | `/api/v1/groups/{id}/preferences`                           | `cookieAuth` + `csrfToken` | Update GroupPreferences              | Groups           |
+| `GET`    | `/api/v1/groups/{id}/tools`                                 | `cookieAuth`               | Index GroupTools                     | Groups           |
+| `POST`   | `/api/v1/groups/{id}/tools/{toolClass}`                     | `cookieAuth` + `csrfToken` | Upsert GroupTools                    | Groups           |
+| `DELETE` | `/api/v1/groups/{id}/tools/{toolClass}`                     | `cookieAuth` + `csrfToken` | Destroy GroupTools                   | Groups           |
 | `GET`    | `/api/v1/llm-configs`                                       | `cookieAuth`               | Index LLMConfig                      | Llm-configs      |
 | `POST`   | `/api/v1/llm-configs`                                       | `cookieAuth` + `csrfToken` | Store LLMConfig                      | Llm-configs      |
 | `GET`    | `/api/v1/llm-configs/global`                                | `cookieAuth`               | GlobalConfigs LLMConfig              | Llm-configs      |
@@ -408,6 +434,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/plugins/catalog`                                   | `cookieAuth`               | Catalog Plugins                      | Plugins          |
 | `PATCH`  | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Update Plugins                       | Plugins          |
 | `DELETE` | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Destroy Plugins                      | Plugins          |
+| `GET`    | `/api/v1/principals/me`                                     | `cookieAuth`               | CurrentForUser Principal             | Principals       |
 | `GET`    | `/api/v1/public/media/{id}`                                 | —                          | Show PublicMedia                     | Public           |
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                          | Skills           |
 | `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                           | Skills           |
@@ -424,7 +451,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/tasks/{taskId}/continue`                           | `cookieAuth` + `csrfToken` | Continue Task                        | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/reject`                             | `cookieAuth` + `csrfToken` | Reject Task                          | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/retry`                              | `cookieAuth` + `csrfToken` | Retry Task                           | Tasks            |
-| `DELETE` | `/api/v1/tasks/{taskId}/retry-chain`                        | `cookieAuth` + `csrfToken` | CancelRetryChain Task                | Tasks            |
+| `DELETE` | `/api/v1/tasks/{taskId}/retry-chain`                        | `cookieAuth` + `csrfToken` | CancelRetryChain RetryChain          | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/tick`                               | `cookieAuth` + `csrfToken` | Tick TaskTick                        | Tasks            |
 | `GET`    | `/api/v1/tools`                                             | `cookieAuth`               | Index Tool                           | Tools            |
 | `GET`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth`               | GetSettings Tool                     | Tools            |
 | `PUT`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth` + `csrfToken` | PutSettings Tool                     | Tools            |
@@ -443,5 +471,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/users/{id}/roles`                                  | `cookieAuth`               | ListRoles User                       | Users            |
 | `POST`   | `/api/v1/users/{id}/roles`                                  | `cookieAuth` + `csrfToken` | GrantRole User                       | Users            |
 | `DELETE` | `/api/v1/users/{id}/roles/{role}`                           | `cookieAuth` + `csrfToken` | RevokeRole User                      | Users            |
+| `POST`   | `/api/v1/worker/housekeeping`                               | `cookieAuth` + `csrfToken` | Housekeeping Worker                  | Worker           |
 
 <!-- API:GENERATED:END -->

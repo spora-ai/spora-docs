@@ -9,6 +9,10 @@
       "link": "/reference/api/agents"
     },
     {
+      "text": "Groups",
+      "link": "/reference/api/groups"
+    },
+    {
       "text": "Auth",
       "link": "/reference/api/auth"
     },
@@ -89,8 +93,16 @@
       "link": "/reference/api/llm-drivers"
     },
     {
+      "text": "Principals",
+      "link": "/reference/api/principals"
+    },
+    {
       "text": "Public",
       "link": "/reference/api/public"
+    },
+    {
+      "text": "Worker",
+      "link": "/reference/api/worker"
     }
   ]
 }

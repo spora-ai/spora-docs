@@ -7,9 +7,11 @@ description: Server-mode cron and daemon patterns — environment variables, rea
 
 This page covers `worker_runtime_mode: server` — the daemon and cron patterns. Spora has two runtime modes; the full three-configuration overview is in [Deployment modes](/reference/concepts/deployment-modes). For the zero-config browser-driven mode (`worker_runtime_mode: client`), see [Client-worker mode](/deploy/shared-host/client-worker-mode).
 
-In server mode, the agent worker is either a long-lived daemon (`php bin/spora worker:run --daemon`, supervised by Docker / systemd / supervisord) or a once-per-minute cron entry (`php bin/spora worker:run --once --include-queue`). The daemon is the canonical pick for VPS / Docker / classical-server operators; the cron variant is the fallback for shared hosts where you can't keep a PHP process alive.
+In server mode, the agent worker is either a long-lived daemon (`php bin/spora worker:run --daemon`, supervised by Docker / systemd / supervisord) or a once-per-minute cron entry (`php bin/spora worker:run --once --include-queue`). The daemon is the canonical pick for VPS / Docker / classical-server operators; the cron variant fits VPS / CI / batch environments where a long-lived process is impractical.
 
-## Cron Mode (Shared Hosting, `worker_runtime_mode: server`) {#cron-mode}
+> **Shared-host operators: cron isn't really viable here.** Most cPanels cap cron execution at 30–60 seconds. A long LLM response loop gets SIGKILLed mid-step and the row is left in a half-finished orchestrator state that the reaper then flags as orphaned. For shared hosts, [client-worker mode](/deploy/shared-host/client-worker-mode) (`SPORA_WORKER_RUNTIME_MODE=client` in `.env`) is the intended path — the browser drives tasks, no daemon required.
+
+## Cron Mode (VPS / CI / Batch, `worker_runtime_mode: server`) {#cron-mode}
 
 ```cron
 * * * * * /usr/bin/php /path/to/spora/bin/spora worker:run --once --include-queue >> /path/to/spora/storage/worker.log 2>&1

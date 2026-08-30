@@ -5,6 +5,8 @@ description: Browser-driven worker for shared-host operators — how the SharedW
 
 # Client-worker mode (zero-config shared host)
 
+> **Before you start:** Client-worker mode means **your browser drives the agent loop**. Keep a browser tab open while automation is meant to run. Walk away, close the laptop, or kill the tab → in-flight tasks get reaped after the lease expires and scheduled runs stop dispatching. This is a feature-fit constraint, not a bug. If you can run a server-side worker (Docker, VPS, classical server with supervisord/systemd), [use that instead](/deploy/classical-server) — it dispatches while you're offline and survives browser-side failures.
+
 Client-worker mode is the **zero-config** deployment for Spora on cPanel, Plesk, or any other FTP-only shared host where you cannot run a long-lived PHP process. The browser drives the agent loop: a `SharedWorker` polls for the user's `QUEUED` tasks and calls `POST /api/v1/tasks/{id}/tick` for each one. The server stays stateless. No daemon, no cron, no supervisord.
 
 For the full deployment-mode overview (server + Mercure, server + polling, client + polling), see [Deployment modes](/reference/concepts/deployment-modes). This page is the operator-facing guide for the client mode — what to expect, what to troubleshoot, and which manual tests prove it's working.

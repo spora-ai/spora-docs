@@ -143,28 +143,29 @@ curl https://yourdomain.com/api/v1/auth/me
 - **Backups:** see [Backups](/start/operators/backups). SQLite is one file; `.env` and `storage/secret.key` are the other essentials.
 - **Logs:** `tail -f storage/spora.log` (Monolog). Most cPanels also expose this via the control panel.
 
-## Browser-driven worker (recommended)
+## Choose how tasks run
 
-Most shared-host operators do not need a cron-based worker. With `SPORA_WORKER_RUNTIME_MODE=client` set in `.env`, the browser drives the agent loop via a `SharedWorker`, no daemon required. Install `composer create-project spora-ai/spora my-spora`, point the document root at `public/`, set the env var, open the URL, log in, click a chat. That's it.
+You have two real paths on a shared host:
 
-See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the full guide: browser support, lease semantics, per-runner scoping, scheduled runs, and the 7 manual test scenarios. The short version: every logged-in browser ticks the tasks its user ran, plus reaps orphans + dispatches scheduled runs via `/api/v1/worker/housekeeping`. The trade-off — scheduled runs only dispatch while a browser is open — is documented up front and is acceptable for the target audience (testing, single-operator setups).
+- **Server-side worker** — a long-lived PHP process drains the queue (Docker, VPS, classical server with supervisord/systemd). Scheduled runs dispatch on time. Automation runs while you're offline. See [Classical server](/deploy/classical-server).
+- **Browser-driven worker (client-worker mode)** — your browser ticks the tasks. Set `SPORA_WORKER_RUNTIME_MODE=client` in `.env` and leave a browser tab open. Tasks dispatch while you're logged in. See [Client-worker mode](/deploy/shared-host/client-worker-mode).
 
-## Cron worker (legacy / fallback)
+If you have shell access to run a daemon, take that path — it's the better default. Client-worker mode is the workaround for hosts that genuinely cannot run a long-lived PHP process.
 
-If you installed `spora-ai/spora` on a shared host with the default `server` mode and cannot run a long-lived PHP process, run `php bin/spora worker:run --once --include-queue` via cron every minute:
+**Why not cron?** Most shared-host cron systems cap the execution duration (typically 30–60 seconds) and the number of entries. A long LLM response loop will be killed mid-step, leaving a half-finished orchestrator state that the reaper then flags as orphaned. If your host's cron allows long-running scripts (rare on shared hosting), `php bin/spora worker:run --once --include-queue` is technically available — but for any realistic LLM workload, pick one of the two paths above.
 
-```cron
-* * * * * cd /home/user/my-spora && /usr/bin/php bin/spora worker:run --once --include-queue >> storage/spora.log 2>&1
-```
+## Browser-driven worker (recommended for shared hosts)
 
-For tasks that exceed 60 s, consider upgrading to [Classical server](/deploy/classical-server) and running the daemon instead. Or flip to client-worker mode via [client-worker mode](/deploy/shared-host/client-worker-mode) and let the browser drive the tasks — no cron needed.
+With `SPORA_WORKER_RUNTIME_MODE=client` set in `.env`, the browser drives the agent loop via a `SharedWorker` — no daemon required. Install `composer create-project spora-ai/spora my-spora`, point the document root at `public/`, set the env var, open the URL, log in, click a chat. That's it.
+
+See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the full guide: browser support, lease semantics, per-runner scoping, scheduled runs, and the manual test scenarios. The trade-off: scheduled runs only dispatch while a browser is open with a logged-in session.
 
 ## Important constraints
 
 See the [Limitations](/deploy/shared-host/limitations) page. In short:
 
 - The **Mercure SSE hub** requires a long-lived PHP process; on most shared hosts, it falls back to polling.
-- **Worker daemon** mode is unreliable on most shared hosts (no `nohup`, no systemd). Use the browser-driven [client-worker mode](/deploy/shared-host/client-worker-mode) instead, or fall back to cron.
+- **Worker daemon** mode is unreliable on most shared hosts (no `nohup`, no systemd). Use the browser-driven [client-worker mode](/deploy/shared-host/client-worker-mode) instead.
 - **HTTPS termination** is the host's responsibility (cPanel's AutoSSL or your DNS provider).
 - **Custom Docker images** are not deployable.
 

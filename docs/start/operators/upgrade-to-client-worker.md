@@ -23,7 +23,7 @@ The migration is **forward-only** — the `0070_add_lease_columns_to_tasks` migr
 
 If you have an existing install on `spora-ai/spora` (server-default) and want to flip to client-worker mode, the order matters — and you don't need to change packages. The same `spora` install handles both modes via `.env`:
 
-1. **Finish or fail any `RUNNING` tasks.** The `WORKER_DISCONNECTED` reaper sweeps them 60 minutes after the lease expires; new tasks you create after the flip will be client-driven. Run `SELECT COUNT(*) FROM tasks WHERE status = 'RUNNING';` and either let them finish or set them to `FAILED` by hand.
+1. **Finish or fail any `RUNNING` tasks.** The reaper sweeps them based on `updated_at` (server mode) or `lease_expires_at + updated_at` (client mode); on a fresh upgrade the existing server-mode rows have no lease, so the reaper considers them reapable `SPORA_WORKER_STALE_MINUTES` after the last write. Run `SELECT COUNT(*) FROM tasks WHERE status = 'RUNNING';` and either let them finish or set them to `FAILED` by hand.
 2. **Open the UI once after the upgrade** so the reaper can sweep stale tasks. In server mode the daemon drives this every 5 minutes; client mode relies on the first `/housekeeping` call from any browser.
 3. **Remove `bin/spora worker:run`** from supervisord / cron / systemd. The command now exits with a docs link in client mode — leaving it scheduled will produce a fresh exit log line every cron tick.
 4. **If you have unattended scheduled runs (e.g. nightly at 3 AM, no humans online), do NOT flip.** Keep server mode. Client mode only dispatches schedules while a browser is open.
@@ -36,7 +36,9 @@ For existing installs, the simplest path is to toggle `SPORA_WORKER_RUNTIME_MODE
 
 ## What changed for plugin authors
 
-Nothing. The `tool.execute()` signature is unchanged across server and client modes. The runtime mode only affects who calls `tick()` (server daemon vs browser `SharedWorker`); the orchestrator, the lease, the approval flow, and the tool interface are identical. No code changes needed in any plugin.
+Nothing for the tool interface. The `tool.execute()` signature is unchanged across server and client modes.
+
+One nuance worth flagging: the orchestrator IS shared, but the **lease is not**. Server-mode daemon ticks (`WorkerQueueProcessor::processQueuedTaskSync`, `ScheduledRunProcessor::process`) skip the lease entirely — `lease_owner` stays NULL and `LeaseGuard::extend()` is a no-op. Only client-mode ticks (`TaskTickController::tick`, `ScheduledRunProcessor::dispatchAndTick`) write `lease_owner` + `lease_expires_at` and extend the lease at every step boundary. The reaper's predicate (`lease_expires_at IS NULL OR <= now()`) handles both modes, but the effective reap threshold differs: server-mode reaps purely by `updated_at` after `SPORA_WORKER_STALE_MINUTES`; client-mode reaps after the lease expires + the same silence window. Plugin authors don't need to care about this — the orchestrator interface is unchanged — but custom tools that wrote directly to `tasks.lease_owner` would need to know which mode they're running in (none currently do).
 
 ## What changed for ops
 
@@ -52,9 +54,7 @@ In `server` mode, these endpoints exist in the route table but **404**. No chang
 
 ## Server-mode operators staying on `spora-ai/spora`
 
-Nothing to do. The 0.19.0 upgrade is transparent: `SPORA_SYNC_MODE` is replaced by `SPORA_WORKER_RUNTIME_MODE=server` in `.env.example`, and the daemon picks up the new env var automatically. Existing supervisord / systemd / cron units continue to work — they call `php bin/spora worker:run --daemon` (or `--once`), the daemon polls the queue, scheduled runs dispatch, the reaper sweeps. The new `lease_owner` / `lease_expires_at` columns are populated by every tick path but are inert without a lease-aware reaper in the loop.
-
-If you want the new reaper to be lease-aware (recommended), upgrade and let the daemon run its first sweep. Pre-0.19 orphans will be reaped under the new rules (lease TTL + `SPORA_WORKER_STALE_MINUTES` grace + retry-chain exclusion).
+Nothing to do. The 0.19.0 upgrade is transparent: `SPORA_SYNC_MODE` is replaced by `SPORA_WORKER_RUNTIME_MODE=server` in `.env.example`, and the daemon picks up the new env var automatically. Existing supervisord / systemd / cron units continue to work — they call `php bin/spora worker:run --daemon` (or `--once`), the daemon polls the queue, scheduled runs dispatch, the reaper sweeps. The new `lease_owner` / `lease_expires_at` columns exist but are NOT populated by the daemon's tick path — the daemon never grants a lease and relies on `updated_at` for orphan detection. The reaper's new `lease_expires_at IS NULL OR <= now()` clause handles both cases (NULL for daemon rows, expired for browser rows).
 
 ## Shared-host operators moving to client mode
 

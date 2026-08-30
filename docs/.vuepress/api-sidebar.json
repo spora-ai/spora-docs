@@ -99,6 +99,10 @@
     {
       "text": "Public",
       "link": "/reference/api/public"
+    },
+    {
+      "text": "Worker",
+      "link": "/reference/api/worker"
     }
   ]
 }

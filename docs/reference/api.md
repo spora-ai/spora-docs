@@ -288,7 +288,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Agents](/reference/api/agents) — 30 routes
 - [Groups](/reference/api/groups) — 22 routes
 - [Auth](/reference/api/auth) — 12 routes
-- [Tasks](/reference/api/tasks) — 11 routes
+- [Tasks](/reference/api/tasks) — 12 routes
 - [Users](/reference/api/users) — 9 routes
 - [Llm-configs](/reference/api/llm-configs) — 7 routes
 - [Media](/reference/api/media) — 7 routes
@@ -309,6 +309,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Llm-drivers](/reference/api/llm-drivers) — 1 route
 - [Principals](/reference/api/principals) — 1 route
 - [Public](/reference/api/public) — 1 route
+- [Worker](/reference/api/worker) — 1 route
 
 ### Security schemes
 
@@ -450,7 +451,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/tasks/{taskId}/continue`                           | `cookieAuth` + `csrfToken` | Continue Task                        | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/reject`                             | `cookieAuth` + `csrfToken` | Reject Task                          | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/retry`                              | `cookieAuth` + `csrfToken` | Retry Task                           | Tasks            |
-| `DELETE` | `/api/v1/tasks/{taskId}/retry-chain`                        | `cookieAuth` + `csrfToken` | CancelRetryChain Task                | Tasks            |
+| `DELETE` | `/api/v1/tasks/{taskId}/retry-chain`                        | `cookieAuth` + `csrfToken` | CancelRetryChain RetryChain          | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/tick`                               | `cookieAuth` + `csrfToken` | Tick TaskTick                        | Tasks            |
 | `GET`    | `/api/v1/tools`                                             | `cookieAuth`               | Index Tool                           | Tools            |
 | `GET`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth`               | GetSettings Tool                     | Tools            |
 | `PUT`    | `/api/v1/tools/{toolId}/settings`                           | `cookieAuth` + `csrfToken` | PutSettings Tool                     | Tools            |
@@ -469,5 +471,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/users/{id}/roles`                                  | `cookieAuth`               | ListRoles User                       | Users            |
 | `POST`   | `/api/v1/users/{id}/roles`                                  | `cookieAuth` + `csrfToken` | GrantRole User                       | Users            |
 | `DELETE` | `/api/v1/users/{id}/roles/{role}`                           | `cookieAuth` + `csrfToken` | RevokeRole User                      | Users            |
+| `POST`   | `/api/v1/worker/housekeeping`                               | `cookieAuth` + `csrfToken` | Housekeeping Worker                  | Worker           |
 
 <!-- API:GENERATED:END -->

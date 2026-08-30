@@ -19,7 +19,7 @@ The flow, end to end:
 
 1. The user clicks a chat. The server creates a `Task` with `status: QUEUED` and `user_id = currentUser` (the runner — see [Per-runner scoping](#per-runner-scoping)).
 2. The SPA's **discovery poll** runs every **5 seconds**: `GET /api/v1/tasks?status=QUEUED&since=<lastSeenAt>` filtered to `tasks.user_id = currentUser`. New matches are forwarded to the `SharedWorker` over its message channel via `consider-task` messages.
-3. The `SharedWorker` has its own **tick loop** running every **2 seconds**: it iterates over the `drivenTasks` map (the tasks SPA told it to consider) and calls `POST /api/v1/tasks/{id}/tick` for each. The server's `TaskController::tick` claims the task under a per-user lease (`lease_owner='user:{id}'`, `lease_expires_at = now + SPORA_TICK_LEASE_SECONDS`), publishes the `QUEUED → RUNNING` transition to Mercure (or skips it if Mercure is unconfigured), and runs `Orchestrator::tick()` inline. Both intervals are tuneable via `tick_interval_ms` and the discovery-poll interval in `useClientWorker.ts` if you need tighter / looser latency.
+3. The `SharedWorker` has its own **tick loop** running every **2 seconds**: it iterates over the `drivenTasks` map (the tasks SPA told it to consider) and calls `POST /api/v1/tasks/{id}/tick` for each. The server's `TaskTickController::tick` claims the task under a per-user lease (`lease_owner='user:{id}'`, `lease_expires_at = now + SPORA_TICK_LEASE_SECONDS`), publishes the `QUEUED → RUNNING` transition to Mercure (or skips it if Mercure is unconfigured), and runs `Orchestrator::tick()` inline. Both intervals are tuneable via `tick_interval_ms` and the discovery-poll interval in `useClientWorker.ts` if you need tighter / looser latency.
 4. The tick completes synchronously inside the HTTP request. The response is `{task: <fresh row>}`; the SharedWorker renders the new state. With `singleStep: true` (the client-worker default), one tick = one LLM turn, so a multi-tool chat takes N ticks.
 5. Every **5 minutes**, the same `SharedWorker` calls `POST /api/v1/worker/housekeeping` — it reaps orphaned tasks and synchronously dispatches any due scheduled runs (see [Scheduled runs](#scheduled-runs)).
 
@@ -44,6 +44,8 @@ When `SharedWorker` is unavailable, the runtime spins up a dedicated `Worker` pe
 
 ## Lease semantics
 
+> **Client-mode concept.** The lease columns (`lease_owner`, `lease_expires_at`) are only written by client-mode tick paths: `TaskTickController::tick` (browser `/tick`) and `ScheduledRunProcessor::dispatchAndTick` (browser `/housekeeping` synchronous scheduled-run dispatch). Server-mode daemon paths (`WorkerQueueProcessor::processQueuedTaskSync`, `ScheduledRunProcessor::process`) skip the lease entirely — they own the task as a single PHP process and rely on `updated_at` for orphan detection. So `SPORA_TICK_LEASE_SECONDS` is effectively a client-mode-only knob; the value is still loaded by the container in server mode but never consulted.
+
 When a browser claims a task via `/tick`, the server writes:
 
 ```text
@@ -52,17 +54,26 @@ lease_owner: 'user:{id}'            # e.g. 'user:42'
 lease_expires_at: now + SPORA_TICK_LEASE_SECONDS  # default 600 s
 ```
 
-The lease TTL is extended on every step boundary inside `Orchestrator::tick()` — after a tool batch write, after an LLM response, before a recursive tick. An in-flight tick never trips the reaper.
+Inside `Orchestrator::tick()`, when called with a non-null `OrchestratorConfig::leaseOwner` (which is what client-mode paths do), `LeaseGuard::extend()` runs at every step boundary — after a tool batch write, after an LLM response, before a recursive tick — pushing `lease_expires_at` to `now() + tick_lease_seconds` again. A healthy tick never lets its lease lapse; the lease only expires when the claimer is presumed dead (browser tab closed, LLM hung past the window, network dropped).
+
+For server-mode daemon tasks the row is `status=RUNNING` with `lease_owner=NULL` and `lease_expires_at=NULL`. `LeaseGuard::extend()` is a no-op without a `lease_owner` (defensive — daemon is single-process, no distributed coordination needed). The reaper watches those rows purely by `updated_at` staleness, regardless of `SPORA_TICK_LEASE_SECONDS`.
 
 The reaper (`WorkerReaper::reapStaleTasks()`) flips `RUNNING` rows to `FAILED` when **all** of the following hold:
 
-- `lease_expires_at IS NULL` **or** `lease_expires_at <= now()` (the lease expired)
-- `updated_at <= now() - SPORA_WORKER_STALE_MINUTES` (no progress for an hour, by default)
+- `lease_expires_at IS NULL` **or** `lease_expires_at <= now()` (no live lease — either none was granted, or the granted lease has expired)
+- `updated_at <= now() - SPORA_WORKER_STALE_MINUTES` (no progress for the silence window)
 - `retry_of_task_id IS NULL` (not a retry — retries are left alone so the retry chain can do its work)
+
+The effective "silent task gets reaped" window differs by mode:
+
+| Mode     | Live lease? | Reaper watches by                 | Effective reap window                                                                   |
+| -------- | ----------- | --------------------------------- | --------------------------------------------------------------------------------------- |
+| `server` | No          | `updated_at` only                 | `SPORA_WORKER_STALE_MINUTES` (e.g. 60 min)                                              |
+| `client` | Yes         | `lease_expires_at` + `updated_at` | `SPORA_TICK_LEASE_SECONDS + SPORA_WORKER_STALE_MINUTES` (e.g. 10 min + 60 min = 70 min) |
 
 On reap, the task's `error_code` is `WORKER_DISCONNECTED` (new in this release) — distinct from the legacy `ORPHANED`, which kept its meaning of "server-side daemon died". The operator UI surfaces `WORKER_DISCONNECTED` as **"The browser driving this task disconnected. Click Retry to start a fresh attempt."**
 
-The reaper is lease-aware: it reaps rows where `lease_owner` is anything (`user:42`, `server:housekeeping`, anything). The lease TTL + the stale-minutes grace period mean a row with `lease_owner='server:housekeeping'` and an active lease is never reaped, even if the housekeeping handler blocks longer than `SPORA_WORKER_STALE_MINUTES` for a long synchronous scheduled-run tick. The shared 30-second `worker_housekeeping_locks` lock prevents overlapping housekeeping calls (so two open browsers don't both dispatch the same schedule).
+The reaper is lease-aware: for client-mode tasks it reaps rows where `lease_owner` is anything (`user:42`, `server:housekeeping`, anything). The lease TTL + the stale-minutes grace period mean a row with `lease_owner='server:housekeeping'` and an active lease is never reaped, even if the housekeeping handler blocks longer than `SPORA_WORKER_STALE_MINUTES` for a long synchronous scheduled-run tick. The shared 30-second `worker_housekeeping_locks` lock prevents overlapping housekeeping calls (so two open browsers don't both dispatch the same schedule).
 
 ## Per-runner scoping
 

@@ -411,10 +411,10 @@ The tools below ship inside `spora-core` (not as plugins). Operators can configu
 
 The `media` tool lets an agent search the media archive and mint public share URLs for individual assets. Its `scope` setting controls which `media_assets` rows the agent can see:
 
-| `scope`       | What the agent sees                                                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `agent`       | Assets where `asset.agent_id = $agentId` — only the calling agent's own media.                                                                   |
-| `principal`   | Assets owned by the calling agent's principal — direct uploads by the principal's owner user, plus media attached to any agent of the principal. Works for user-principals AND group-principals. |
+| `scope`     | What the agent sees                                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `agent`     | Assets where `asset.agent_id = $agentId` — only the calling agent's own media.                                                                                                                   |
+| `principal` | Assets owned by the calling agent's principal — direct uploads by the principal's owner user, plus media attached to any agent of the principal. Works for user-principals AND group-principals. |
 
 The deprecated `scope=user` value (pre-`#221`) is treated as a silent alias for `principal` so existing `agent_tool_settings` rows keep working without a DB migration. New operators see only `agent` and `principal` in the dropdown.
 

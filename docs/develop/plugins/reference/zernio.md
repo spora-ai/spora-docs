@@ -19,15 +19,13 @@ For local development, install from a Composer path repository — see [Local pl
 
 Each tool exposes three settings (configurable globally, per user, or per agent in the admin UI):
 
-| Setting        | Type     | Default                     | Notes                                                                        |
-| -------------- | -------- | --------------------------- | ---------------------------------------------------------------------------- |
-| `api_key`      | password | —                           | Zernio API key (`sk_…`). Encrypted at rest; never sent to the LLM or logged. |
-| `base_url`     | text     | `https://zernio.com/api/v1` | Override only if Zernio gives you a different host.                          |
-| `http_timeout` | text     | `30`                        | Per-request timeout in seconds. Falls back to `SPORA_TOOL_HTTP_TIMEOUT`.     |
+| Setting        | Required | Type     | Default                     | Notes                                                                        |
+| -------------- | -------- | -------- | --------------------------- | ---------------------------------------------------------------------------- |
+| `api_key`      | **yes**  | password | —                           | Zernio API key (`sk_…`). Encrypted at rest; never sent to the LLM or logged. |
+| `base_url`     | no       | text     | `https://zernio.com/api/v1` | Override only if Zernio gives you a different host.                          |
+| `http_timeout` | no       | text     | `30`                        | Per-request timeout in seconds. Falls back to `SPORA_TOOL_HTTP_TIMEOUT`.     |
 
-If `api_key` is left blank, the tools fall back to the **`ZERNIO_API_KEY`** environment variable — so a self-hosted operator can set one key for all seven Zernio tools instead of configuring each.
-
-Create an API key in your Zernio dashboard (`Settings → API keys`). Keys are shown only once.
+`api_key` must be set per tool (or once globally for the principal) — there is no environment-variable fallback. Create an API key in your Zernio dashboard (`Settings → API keys`). Keys are shown only once.
 
 ## Tools
 

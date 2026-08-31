@@ -226,4 +226,13 @@ The chat header, dashboard list, and approval bar all share the same status-pill
 
 The user dropdown in the navbar exposes a **My Groups →** link (icon: `groups`). It opens the Groups landing page where you can see every group you belong to, switch into a group to manage its members / agents / tools / LLM drivers / preferences, or create a new group if you're an admin. Groups are the principal axis that lets multiple users share an agent, its tool settings, and its LLM configs — see [Concepts → Architecture → Principal ownership model](/reference/concepts/architecture#principal-ownership-model) for the underlying model.
 
-Inside a group page, the **Transfer** action on each agent row lets you re-key the agent's `principal_id` from the current group to a different principal you control (typically your user-principal — the "remove from group" flow). The confirmation dialog shows the new owner label and the list of tool settings / LLM configs that move with the agent.
+Inside a group page, the **Transfer** action on each agent row lets you re-key the agent's `principal_id` from the current group to a different principal you control (typically your user-principal — the "remove from group" flow). The confirmation dialog shows the new owner label and the list of tool settings / LLM configs that move with the agent. **The transfer also updates every inherited task row**: tasks that were attributed to the old principal are now owned by the new principal, so the new owner's "My Tasks" view picks them up immediately. The historical clicker attribution (`trigger_user_id` — who originally pressed "Send" on each task) is preserved across the transfer so the chat history stays intact.
+
+### Cross-member run visibility
+
+Every group member can see and act on every other member's runs on the shared agent:
+
+- **Visibility**: the per-agent page shows every member's runs; the **My Tasks** dashboard aggregates them too. The dashboard's Running / Awaiting / Aborted chips dedupe by agent, so a shared agent with one running conversation counts as 1, not N.
+- **Per-task actions**: any group member can approve, reject, retry, continue, abort, or delete a task on the shared agent. The clicker no longer has exclusive control — the principal (the group or its owner) does.
+- **Credentials**: the task runs under the credentials of whoever clicked "Send" (`trigger_user_id`), not the group's owner. LLM drivers and tool overrides stay per-user even on a group-owned agent.
+- **Real-time**: real-time Mercure updates only reach the original clicker's browser. Other members see state changes on their next 30s dashboard refresh, not live.

@@ -233,6 +233,19 @@ Inside a group page, the **Transfer** action on each agent row lets you re-key t
 Every group member can see and act on every other member's runs on the shared agent:
 
 - **Visibility**: the per-agent page shows every member's runs; the **My Tasks** dashboard aggregates them too. The dashboard's Running / Awaiting / Aborted chips dedupe by agent, so a shared agent with one running conversation counts as 1, not N.
-- **Per-task actions**: any group member can approve, reject, retry, continue, abort, or delete a task on the shared agent. The clicker no longer has exclusive control — the principal (the group or its owner) does.
+- **Per-task actions**: any group member can approve, reject, retry, continue, abort, or delete a task on the shared agent — and any group member can also hand the chat off (`handover`) or spawn a sub-agent (`sub_agent`) from another member's run. The clicker no longer has exclusive control over the task or its chat operations; the principal (the group or its owner) does.
 - **Credentials**: the task runs under the credentials of whoever clicked "Send" (`trigger_user_id`), not the group's owner. LLM drivers and tool overrides stay per-user even on a group-owned agent.
 - **Real-time**: real-time Mercure updates only reach the original clicker's browser. Other members see state changes on their next 30s dashboard refresh, not live.
+
+### Email notifications for scheduled runs
+
+Scheduled runs (recurring cron-style triggers and one-shot future triggers) send an email when they complete. Who receives the email is governed by your **notification subscriptions** — a per-user list of targets you have opted in to.
+
+- **My Account → Email Notifications · Scheduled Runs** lists your groups and a single "My personal agents" row. Tick a row to subscribe; untick to unsubscribe.
+- **Group-level subscription** fans out to every agent the group owns (current and future). Subscribing to "Engineering" covers every agent Engineering owns, including new ones added later.
+- **"My personal agents" subscription** targets your user-principal and covers every agent you own directly. It's the only row that fires for personal (non-group) agents.
+- **Defaults**: on the first scheduled-run dispatch for an agent you can see, the system auto-subscribes the relevant principal (you for personal agents, every current group member for shared agents). You can unsubscribe right after — the email stops on the next dispatch.
+- **What gets sent**: when a scheduled run completes, the system resolves the subscriber list (per the rules above) and sends one email per recipient. The template is `scheduled_run_completed` (under **Settings → Mail templates**); the variables are `task_id`, `agent_name`, `user_prompt`, `site_name`, and `run_url`.
+- **Server kill switch**: the operator can set `SPORA_NOTIFICATIONS_EMAIL_ENABLED=false` in `.env` to disable scheduled-run dispatch globally. Defaults to `true`. When disabled, the subscription UI shows a "currently disabled on this server" banner so you know your toggles still save state but no mail will go out.
+
+Subscriptions are mutable per user — toggling a row takes effect on the next scheduled-run dispatch. `trigger_user_id` (who clicked "Send") is not consulted for routing; it's purely the audit attribution on the task row.

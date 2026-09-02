@@ -71,6 +71,8 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 | `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                    |
 | `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                    |
 | `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls |
+| `POST`   | `/api/v1/agents/{id}/favorite` | + CSRF  | Mark the agent as a favourite for the calling user (per-user, idempotent) |
+| `DELETE` | `/api/v1/agents/{id}/favorite` | + CSRF  | Drop the favourite for the calling user (no-op if no row exists) |
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
@@ -85,6 +87,10 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 #### Transfer authorisation
 
 `POST /api/v1/agents/{id}/transfer` re-keys the agent's `principal_id`. Caller must control both source and target (admin/owner of source AND admin/owner of target, OR owner of target when the target is the caller's own user-principal). Admins skip the source side of the gate. `403 FORBIDDEN` on `UnauthorizedTransferException`; `404 NOT_FOUND` when the target principal doesn't exist.
+
+#### Favourites (per-user, Plan A)
+
+`POST /api/v1/agents/{id}/favorite` and `DELETE /api/v1/agents/{id}/favorite` flip the calling user's per-user favourite flag for the agent. Favourites are stored in the `user_agent_favorites` pivot table (composite PK `user_id, agent_id`, cascade FKs on both sides) and are private to the caller — toggling a favourite in one browser does not affect group peers. Both endpoints are idempotent: POST is a no-op when the row already exists; DELETE is a no-op when no row exists. Both return `404 NOT_FOUND` when the agent is not visible to the caller (visibility = same principal axis as everywhere else in the service). The legacy shared `agents.is_favorite` column was dropped in migration 0079; PATCH no longer accepts `is_favorite` (returns 422).
 
 ### Groups
 
@@ -357,6 +363,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | DeleteOverride AgentOverride         | Agents           |
 | `GET`    | `/api/v1/agents/{id}/tools/{toolId}/status`                 | `cookieAuth`               | GetToolStatus AgentTool              | Agents           |
 | `POST`   | `/api/v1/agents/{id}/transfer`                              | `cookieAuth` + `csrfToken` | TransferPrincipal AgentTransfer      | Agents           |
+| `POST`   | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Favorite Agent AgentController        | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Unfavorite Agent AgentController      | Agents           |
 | `GET`    | `/api/v1/apps`                                              | `cookieAuth`               | Index Apps                           | Apps             |
 | `GET`    | `/api/v1/assets/{filename}`                                 | `cookieAuth`               | Show Asset                           | Assets           |
 | `PATCH`  | `/api/v1/auth/account`                                      | `cookieAuth` + `csrfToken` | Account Auth                         | Auth             |

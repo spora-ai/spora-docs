@@ -71,7 +71,7 @@ stateDiagram-v2
 
 `ABORTED`, `PENDING_APPROVAL`, and `AWAITING_SUB_AGENTS` together form the **quiescent** set: in every case the worker is not driving the task — the conversation is waiting on the operator (`PENDING_APPROVAL` tool call), on sub-agent children (`AWAITING_SUB_AGENTS`), or on the operator's next instruction after an explicit halt (`ABORTED`). The chat detail poller skips the entire set so the browser does not waste cycles fetching a task that is not making progress on its own. The poller re-arms the moment an action moves the task out — approve/reject from the approval bar, sub-agent child reaching a terminal state, or `POST /api/v1/tasks/{taskId}/continue` resuming an ABORTED task.
 
-`AWAITING_SUB_AGENTS` is the suspended-while-sub-agent-children-run state set by the `HandoverTool` `sub_agent` op. Each spawn creates a regular `Task` with `parent_task_id` and bumps `data.sub_agent_expected_count` after the child tick; the resume gate compares the live child count from `data.spawned_sub_task_ids` against `sub_agent_expected_count` and only re-enters the loop when every sibling has reached a terminal state. The next worker pickup (server daemon's `task:run` or browser's `/tick`) drains it via `TickPhaseRunner::maybeResumeParentFromBatchBoundary`. See [Tool system → Handover](/reference/concepts/tools#handover-tool) for the LLM-facing contract.
+`AWAITING_SUB_AGENTS` is the suspended-while-sub-agent-children-run state set by the `HandoverTool` `sub_agent` op. Each spawn creates a regular `Task` with `parent_task_id` and bumps `data.sub_agent_expected_count` after the child tick. The first spawn also sets `data.sub_agent_batch_open` to `true` — a per-batch cross-process lock that prevents the per-child resume hook from racing the batch-boundary hook in worker mode. The resume gate compares the live child count from `data.spawned_sub_task_ids` against `sub_agent_expected_count` and only re-enters the loop when every sibling has reached a terminal state; the boundary hook then clears `sub_agent_batch_open` along with the other batch book-keeping. The next worker pickup (server daemon's `task:run` or browser's `/tick`) drains it via `TickPhaseRunner::maybeResumeParentFromBatchBoundary`. See [Tool system → Handover](/reference/concepts/tools#handover-tool) for the LLM-facing contract.
 
 ## Worker CLI
 
@@ -95,7 +95,7 @@ php bin/spora worker:run --reap-only
 # Options
 --limit=N         Max QUEUED tasks per poll cycle (0 = unlimited, default: 0)
 --sleep=N         Microseconds to sleep when queue is empty (default: 500000)
---stale-minutes=N Minutes before a RUNNING task is considered orphaned (0 = disabled; omit to use config default of 60)
+--stale-minutes=N Minutes before a RUNNING or AWAITING_SUB_AGENTS task is considered orphaned (0 = disabled; omit to use config default of 60)
 --workers=N       Max concurrent child processes (0 = unlimited)
 --once            Process due scheduled runs then exit (one-shot)
 --include-queue   With --once: also drain the QUEUED task queue
@@ -127,7 +127,7 @@ For the full deployment reference (Docker, systemd, supervisord, reaping, single
 
 ## Mercure SSE (Optional — Docker / FrankenPHP)
 
-When `SPORA_MERCURE_URL` and `SPORA_MERCURE_JWT_KEY` are set, the `Orchestrator` publishes task state changes to a Mercure hub after each `tick()` step (intermediate tool results and `PENDING_APPROVAL` pauses) and on worker claim / scheduled run dispatch. The frontend subscribes to user-scoped topics — `user/{userId}/tasks` for task state and `user/{userId}/notifications` for user notifications — for real-time updates instead of polling.
+When `SPORA_MERCURE_URL` and `SPORA_MERCURE_JWT_KEY` are set, the `Orchestrator` publishes task state changes to a Mercure hub after each `tick()` step (intermediate tool results and `PENDING_APPROVAL` pauses) and on worker claim / scheduled run dispatch. The frontend subscribes to principal-scoped task topics — one `principal/{principalId}/tasks` topic per principal the caller can act as (their user-principal plus the group-principals of every group they belong to) — plus the user-scoped `user/{userId}/notifications` topic for user notifications, for real-time updates instead of polling. The principal-keyed task topic is what lets every group peer with read rights receive the same live task events as the trigger user; the notification topic stays user-keyed because the notifications table is per-user.
 
 When the env vars are not set, `MercurePublisher::publish()` early-returns `false` (logged at debug level) — polling remains the default for all deployments.
 
@@ -146,7 +146,7 @@ FrankenPHP bundles a Mercure hub natively — no separate service needed in that
 
 ### Subscribing from the browser — the `__Secure-mercure_access_token` flow
 
-The Mercure hub is **not** anonymous — every update carries a user-scoped topic (`user/{userId}/tasks` or `user/{userId}/notifications`) and Mercure rejects subscribers whose JWT does not scope to that topic. The browser obtains its JWT through a short exchange with the app rather than embedding a long-lived secret in JS:
+The Mercure hub is **not** anonymous — every update carries a principal-scoped task topic (`principal/{principalId}/tasks`) or a user-scoped notification topic (`user/{userId}/notifications`) and Mercure rejects subscribers whose JWT does not scope to those topics. The browser obtains its JWT through a short exchange with the app rather than embedding a long-lived secret in JS:
 
 1. The Vue app calls `GET /api/v1/sse/authorize` (session-cookie authenticated).
 2. The endpoint returns a short-lived subscriber JWT scoped to the calling user's topics, and the framework sets it as a `__Secure-mercure_access_token` HttpOnly cookie.

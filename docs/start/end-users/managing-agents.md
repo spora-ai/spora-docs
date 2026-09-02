@@ -213,7 +213,7 @@ The chat header, dashboard list, and approval bar all share the same status-pill
 | `CANCELLED`           | zinc    | `x`            | Dashboard card, sub-agent row                                                                   |
 | `QUEUED`              | zinc    | `clock`        | Dashboard card, sub-agent row                                                                   |
 
-`ABORTED` is intentionally stone (not red) so it does not read as an error — the agent did not crash; you asked it to stop, and it stopped cleanly. Click into an ABORTED card from the dashboard to resume with a follow-up prompt.
+`ABORTED` is intentionally stone (not red) so it does not read as an error — the agent did not crash; you asked it to stop, and it stopped cleanly. To resume, click the **Resume** button on the Aborted banner in the chat (it focuses the follow-up composer below), or click into an ABORTED card from the dashboard and type your next instruction.
 
 ## What's next
 

@@ -290,12 +290,12 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Auth](/reference/api/auth) — 12 routes
 - [Tasks](/reference/api/tasks) — 12 routes
 - [Users](/reference/api/users) — 9 routes
+- [Notifications](/reference/api/notifications) — 8 routes
 - [Llm-configs](/reference/api/llm-configs) — 7 routes
 - [Media](/reference/api/media) — 7 routes
 - [Tools](/reference/api/tools) — 7 routes
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
 - [Me](/reference/api/me) — 6 routes
-- [Notifications](/reference/api/notifications) — 5 routes
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
@@ -427,6 +427,9 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                   | Notifications    |
 | `DELETE` | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | DestroyAll Notification              | Notifications    |
 | `POST`   | `/api/v1/notifications/read-all`                            | `cookieAuth` + `csrfToken` | MarkAllRead Notification             | Notifications    |
+| `GET`    | `/api/v1/notifications/subscriptions`                       | `cookieAuth`               | Index NotificationSubscription       | Notifications    |
+| `POST`   | `/api/v1/notifications/subscriptions`                       | `cookieAuth` + `csrfToken` | Subscribe NotificationSubscription   | Notifications    |
+| `DELETE` | `/api/v1/notifications/subscriptions`                       | `cookieAuth` + `csrfToken` | Unsubscribe NotificationSubscription | Notifications    |
 | `DELETE` | `/api/v1/notifications/{id}`                                | `cookieAuth` + `csrfToken` | Destroy Notification                 | Notifications    |
 | `POST`   | `/api/v1/notifications/{id}/read`                           | `cookieAuth` + `csrfToken` | MarkRead Notification                | Notifications    |
 | `GET`    | `/api/v1/plugins`                                           | `cookieAuth`               | Index Plugins                        | Plugins          |

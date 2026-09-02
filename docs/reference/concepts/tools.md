@@ -402,3 +402,22 @@ The `Handover` tool (`app/Tools/HandoverTool.php`) is a single tool that declare
 The LLM-facing schema declares `op` as the discriminator (enum: `handover | sub_agent`); single-op agents may omit `op` — `OperationSchemaFilter` strips the discriminator from `required[]` when only one op is allowed (back-compat path for agents created before the second op shipped).
 
 The `target_agent_id` (handover) and `agent_id` (sub_agent) names are deliberately distinct — they identify the same target agent in each op, but the per-op rename keeps the LLM-facing schema self-documenting and avoids hidden field-aliasing surprises.
+
+## Built-in tools
+
+The tools below ship inside `spora-core` (not as plugins). Operators can configure their settings, but the implementations themselves are not pluggable — every operator gets the same behavior out of the box.
+
+### `media` — `MediaTool`
+
+The `media` tool lets an agent search the media archive and mint public share URLs for individual assets. Its `scope` setting controls which `media_assets` rows the agent can see:
+
+| `scope`     | What the agent sees                                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `agent`     | Assets where `asset.agent_id = $agentId` — only the calling agent's own media.                                                                                                                   |
+| `principal` | Assets owned by the calling agent's principal — direct uploads by the principal's owner user, plus media attached to any agent of the principal. Works for user-principals AND group-principals. |
+
+The deprecated `scope=user` value (pre-`#221`) is treated as a silent alias for `principal` so existing `agent_tool_settings` rows keep working without a DB migration. New operators see only `agent` and `principal` in the dropdown.
+
+The `get_public_url` operation is `enabledByDefault: false` and `requiresApprovalByDefault: true`. Each call mints a 256-bit unguessable token (or reuses an existing one) and writes it to `media_assets.public_access_token`; the served URL has no auth — the token is the only protection. See [`PublicMediaController`](https://github.com/spora-ai/spora-core/blob/main/app/Http/PublicMediaController.php) for the no-auth, token-gated serving endpoint.
+
+Admin users bypass `scope` and see every asset.

@@ -1,25 +1,41 @@
 ---
 title: Spora
-description: Self-hosted AI agent orchestration. Zero-config. Anywhere.
+description: Spora transforms AI into assets. Independent, portable, ownable.
 ---
 
 <div style="text-align: center; padding: 4rem 0 3rem;">
 
-## Spora
+## Spora transforms AI into assets.
 
-### Self-hosted AI agent orchestration. Zero-config. Anywhere.
+### Independent. Portable. Ownable.
 
-PHP 8.4+ on a laptop, a shared host, or a Docker container.
+Self-hosted infrastructure for the intelligence you build — agents, workflows and knowledge you can move, protect and pass on.
 
 [Get Started →](/start/) · [Concepts](/reference/concepts/) · [View on GitHub](https://github.com/spora-ai/spora)
 
 </div>
 
+> **⚠️ Spora is under active development.**
+>
+> The project has not reached **1.0** yet. APIs, configuration keys, plugin manifests and database schemas are still evolving — **breaking changes can land between releases**, and upgrade paths for existing installations may require manual steps.
+>
+> Pin your dependencies to a known-good version, read the [release notes](https://github.com/spora-ai/spora/releases) before bumping, and follow the [Day-2 operations guide](/start/operators/operations) when upgrading an existing install.
+>
+> If you hit a migration wall, open an issue — the breaking change is intentional and we'd rather know about the friction.
+
 ---
 
 ## What is Spora?
 
-Spora is a self-hosted AI agent orchestration platform. It runs anywhere PHP 8.4+ runs — a laptop, a shared cPanel/FTP host, a VPS, or a Docker container. Agents tick, call tools, and ask for human approval before touching the outside world. Plugins drop into a folder. Models are yours.
+Agents, workflows and knowledge are growing into productive assets — and capital needs ownership. **Spora** is the open-source infrastructure to make that intelligence **independent**, **portable** and **ownable**.
+
+It runs anywhere PHP 8.4+ runs — a laptop, a shared cPanel/FTP host, a VPS, or a Docker container. Agents tick, call tools, and ask for human approval before touching the outside world. Plugins drop into a folder. Models are yours.
+
+### Why ownership
+
+For centuries, value was built through things we could own: land, machines, companies, patents and intellectual property. AI is creating a new kind of productive asset — and capital needs ownership.
+
+Spora is the open infrastructure for **creating**, **operating**, **protecting** and **owning** AI assets — designed around sovereignty, portability and control. Move it. Protect it. License it. Sell it. Pass it on.
 
 ## Quick start
 

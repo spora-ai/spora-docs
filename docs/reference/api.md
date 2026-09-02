@@ -63,16 +63,16 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 ### Agents
 
-| Method   | Path                           | Auth    | Purpose                                                         |
-| -------- | ------------------------------ | ------- | --------------------------------------------------------------- |
-| `GET`    | `/api/v1/agents`               | session | List agents (accepts `?principal_id=` repeatable filter)        |
-| `POST`   | `/api/v1/agents`               | + CSRF  | Create agent (accepts optional `principal_id` body field)       |
-| `GET`    | `/api/v1/agents/{id}`          | session | Get one agent                                                   |
-| `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                    |
-| `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                    |
-| `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls |
+| Method   | Path                           | Auth    | Purpose                                                                   |
+| -------- | ------------------------------ | ------- | ------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/agents`               | session | List agents (accepts `?principal_id=` repeatable filter)                  |
+| `POST`   | `/api/v1/agents`               | + CSRF  | Create agent (accepts optional `principal_id` body field)                 |
+| `GET`    | `/api/v1/agents/{id}`          | session | Get one agent                                                             |
+| `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                              |
+| `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                              |
+| `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls           |
 | `POST`   | `/api/v1/agents/{id}/favorite` | + CSRF  | Mark the agent as a favourite for the calling user (per-user, idempotent) |
-| `DELETE` | `/api/v1/agents/{id}/favorite` | + CSRF  | Drop the favourite for the calling user (no-op if no row exists) |
+| `DELETE` | `/api/v1/agents/{id}/favorite` | + CSRF  | Drop the favourite for the calling user (no-op if no row exists)          |
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
@@ -363,8 +363,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | DeleteOverride AgentOverride         | Agents           |
 | `GET`    | `/api/v1/agents/{id}/tools/{toolId}/status`                 | `cookieAuth`               | GetToolStatus AgentTool              | Agents           |
 | `POST`   | `/api/v1/agents/{id}/transfer`                              | `cookieAuth` + `csrfToken` | TransferPrincipal AgentTransfer      | Agents           |
-| `POST`   | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Favorite Agent AgentController        | Agents           |
-| `DELETE` | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Unfavorite Agent AgentController      | Agents           |
+| `POST`   | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Favorite Agent AgentController       | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Unfavorite Agent AgentController     | Agents           |
 | `GET`    | `/api/v1/apps`                                              | `cookieAuth`               | Index Apps                           | Apps             |
 | `GET`    | `/api/v1/assets/{filename}`                                 | `cookieAuth`               | Show Asset                           | Assets           |
 | `PATCH`  | `/api/v1/auth/account`                                      | `cookieAuth` + `csrfToken` | Account Auth                         | Auth             |

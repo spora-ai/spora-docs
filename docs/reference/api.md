@@ -63,10 +63,10 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 ### Agents
 
-| Method   | Path                           | Auth    | Purpose                                                                   |
-| -------- | ------------------------------ | ------- | ------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/agents`               | session | List agents (accepts `?principal_id=` repeatable filter)                  |
-| `POST`   | `/api/v1/agents`               | + CSRF  | Create agent (accepts optional `principal_id` body field)                 |
+| Method   | Path                           | Auth    | Purpose                                                         |
+| -------- | ------------------------------ | ------- | --------------------------------------------------------------- |
+| `GET`    | `/api/v1/agents`               | session | List agents (accepts `?principal_id=` repeatable filter)        |
+| `POST`   | `/api/v1/agents`               | + CSRF  | Create agent (accepts optional `principal_id` body field)       |
 | `GET`    | `/api/v1/agents/{id}`          | session | Get one agent                                                   |
 | `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                    |
 | `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                    |

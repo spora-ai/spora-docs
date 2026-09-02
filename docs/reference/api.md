@@ -292,10 +292,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Users](/reference/api/users) — 9 routes
 - [Notifications](/reference/api/notifications) — 8 routes
 - [Llm-configs](/reference/api/llm-configs) — 7 routes
-- [Media](/reference/api/media) — 7 routes
 - [Tools](/reference/api/tools) — 7 routes
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
 - [Me](/reference/api/me) — 6 routes
+- [Media](/reference/api/media) — 5 routes
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
@@ -420,10 +420,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/media`                                             | `cookieAuth`               | Index MediaArchive                   | Media            |
 | `POST`   | `/api/v1/media`                                             | `cookieAuth` + `csrfToken` | Store MediaUpload                    | Media            |
 | `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes              | Media            |
-| `GET`    | `/api/v1/media/{id}`                                        | `cookieAuth`               | Show MediaArchive                    | Media            |
-| `PATCH`  | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Update MediaArchive                  | Media            |
-| `DELETE` | `/api/v1/media/{id}`                                        | `cookieAuth` + `csrfToken` | Destroy MediaArchive                 | Media            |
-| `POST`   | `/api/v1/media/{id}/public-token/refresh`                   | `cookieAuth` + `csrfToken` | RefreshPublicToken MediaArchive      | Media            |
+| `POST`   | `/api/v1/media/{id}/derivatives`                            | `cookieAuth` + `csrfToken` | Create MediaDerivative               | Media            |
+| `GET`    | `/api/v1/media/{id}/derivatives/options`                    | `cookieAuth`               | Index MediaDerivativeOptions         | Media            |
 | `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                   | Notifications    |
 | `DELETE` | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | DestroyAll Notification              | Notifications    |
 | `POST`   | `/api/v1/notifications/read-all`                            | `cookieAuth` + `csrfToken` | MarkAllRead Notification             | Notifications    |

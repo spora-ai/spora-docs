@@ -154,12 +154,12 @@ The worker drains the queued tasks when `SPORA_WORKER_RUNTIME_MODE=server` (the 
 
 ## Volumes
 
-| Volume          | Container path   | Purpose                                                                                                                                                        |
-| --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `spora_storage` | `/app/storage`   | `secret.key` (encryption key for tool settings). App logs flow to stdout via `SPORA_LOG_PATH=stdout`. SQLite is not used in this mode.                         |
-| `mysql_data`    | `/var/lib/mysql` | MariaDB data files                                                                                                                                             |
-| `caddy_data`    | `/data`          | FrankenPHP's TLS cert + Mercure BoltDB. Re-applies www-data ownership on each entrypoint restart so a fresh volume doesn't trap the runtime in an EACCES loop. |
-| `caddy_config`  | `/config`        | FrankenPHP's runtime config                                                                                                                                    |
+| Volume          | Container path   | Purpose                                                                                                                                                                                                                   |
+| --------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spora_storage` | `/app/storage`   | `secret.key` (encryption key for tool settings). App logs flow to stdout via `SPORA_LOG_PATH=stdout`; PHP fatals and `error_log()` calls flow via `php://stderr` from the runtime image. SQLite is not used in this mode. |
+| `mysql_data`    | `/var/lib/mysql` | MariaDB data files                                                                                                                                                                                                        |
+| `caddy_data`    | `/data`          | FrankenPHP's TLS cert + Mercure BoltDB. Re-applies www-data ownership on each entrypoint restart so a fresh volume doesn't trap the runtime in an EACCES loop.                                                            |
+| `caddy_config`  | `/config`        | FrankenPHP's runtime config                                                                                                                                                                                               |
 
 For a fresh start: `docker compose down -v` (deletes all 4 named volumes). For backups: stop the containers, then `tar` the volumes.
 

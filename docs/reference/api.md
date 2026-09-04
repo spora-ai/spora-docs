@@ -86,6 +86,10 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 `POST /api/v1/agents/{id}/transfer` re-keys the agent's `principal_id`. Caller must control both source and target (admin/owner of source AND admin/owner of target, OR owner of target when the target is the caller's own user-principal). Admins skip the source side of the gate. `403 FORBIDDEN` on `UnauthorizedTransferException`; `404 NOT_FOUND` when the target principal doesn't exist.
 
+#### Favourites (per-user, Plan A)
+
+`POST /api/v1/agents/{id}/favorite` and `DELETE /api/v1/agents/{id}/favorite` flip the calling user's per-user favourite flag for the agent. Favourites are stored in the `user_agent_favorites` pivot table (composite PK `user_id, agent_id`, cascade FKs on both sides) and are private to the caller — toggling a favourite in one browser does not affect group peers. Both endpoints are idempotent: POST is a no-op when the row already exists; DELETE is a no-op when no row exists. Both return `404 NOT_FOUND` when the agent is not visible to the caller (visibility = same principal axis as everywhere else in the service). The legacy shared `agents.is_favorite` column was dropped in migration 0079; PATCH no longer accepts `is_favorite` (returns 422).
+
 ### Groups
 
 | Method   | Path                                                | Auth         | Purpose                                                                      |
@@ -285,7 +289,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 30 routes
+- [Agents](/reference/api/agents) — 32 routes
 - [Groups](/reference/api/groups) — 22 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Tasks](/reference/api/tasks) — 12 routes
@@ -295,7 +299,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Tools](/reference/api/tools) — 7 routes
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
 - [Me](/reference/api/me) — 6 routes
-- [Media](/reference/api/media) — 5 routes
+- [Media](/reference/api/media) — 6 routes
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
@@ -333,6 +337,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                         | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                        | Agents           |
 | `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate            | Agents           |
+| `POST`   | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Favorite Agent                       | Agents           |
+| `DELETE` | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Unfavorite Agent                     | Agents           |
 | `POST`   | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | UploadImage AgentPicture             | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/picture/image`                         | `cookieAuth` + `csrfToken` | DeleteImage AgentPicture             | Agents           |
 | `GET`    | `/api/v1/agents/{id}/scheduled-runs`                        | `cookieAuth`               | Index ScheduledRun                   | Agents           |
@@ -420,6 +426,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/media`                                             | `cookieAuth`               | Index MediaArchive                   | Media            |
 | `POST`   | `/api/v1/media`                                             | `cookieAuth` + `csrfToken` | Store MediaUpload                    | Media            |
 | `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes              | Media            |
+| `POST`   | `/api/v1/media/resolve`                                     | `cookieAuth` + `csrfToken` | Resolve MediaResolve                 | Media            |
 | `POST`   | `/api/v1/media/{id}/derivatives`                            | `cookieAuth` + `csrfToken` | Create MediaDerivative               | Media            |
 | `GET`    | `/api/v1/media/{id}/derivatives/options`                    | `cookieAuth`               | Index MediaDerivativeOptions         | Media            |
 | `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                   | Notifications    |

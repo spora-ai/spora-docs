@@ -127,7 +127,7 @@ The catalog indexes tags on every push; releasing a tag without a GitHub Release
 The two canonical starting points:
 
 - **[`spora-ai/spora-plugin-skeleton`](https://github.com/spora-ai/spora-plugin-skeleton)** — minimal template, copy-and-rename. The `composer.json` is the canonical example of `type`, `keywords`, scripts, and PSR-4 mapping.
-- **[`spora-ai/spora-plugin-minimax`](https://github.com/spora-ai/spora-plugin-minimax)** — production example. Four tools (image, speech, music, video) — lyrics are operations on the music tool, not a separate tool — plus DI bindings, a migration with both `up()` and `down()`, an HTTP client wrapper, and an opt-in log writer. The closest real-world analogue to anything an author will actually need to build.
+- **[`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories)** — production example. Two tools, an admin app, two migrations with both `up()` and `down()`, custom DI bindings, 14 REST routes, and the canonical `EventSubscriberInterface` opt-in for the [lifecycle events](/reference/concepts/plugins-system#lifecycle-events). The closest real-world analogue to anything an author will actually need to build.
 
 Other public plugins (`spora-plugin-tavily`, `spora-plugin-serper`, `spora-plugin-semantic-scholar`, `spora-plugin-worldnews`, `spora-plugin-weather`, `spora-plugin-calendar`, `spora-plugin-email`) are minimal single-tool plugins — ideal for studying the **minimum viable plugin** shape before adding tooling.
 

@@ -187,7 +187,7 @@ When more than one tool is pending, a **✓ Approve all remaining** button appea
 
 The submitted payload `{decisions: [{provider_call_id, decision: 'approve'|'reject', arguments?, reason?}]}` hits `POST /api/v1/tasks/{taskId}/approve`. Approved cards execute with the confirmed arguments; rejected cards are recorded with `rejected_at` / `rejected_by` / `reject_reason` so the LLM sees the rejection in its next round-trip. Cards the operator did not decide stay `PENDING_APPROVAL` and can be decided in a future round-trip. To cancel the entire pending batch in one go (legacy task-level reject), use the **Reject All** shortcut with its single shared reason.
 
-You can change an operation's default in **Settings → Tools → [tool] → Require approval by default**, and the per-agent override in the agent's edit form under **Tools → [operation] → Approval**.
+You can change an operation's default in **Settings → Tools → [tool] → Require approval by default**, and the per-agent override on the agent's **Tools** tab (`/agents/:id/tools`) under **Tools → [operation] → Approval**. Tool configuration no longer lives inside agent Settings.
 
 ## Chat operations: handover and sub-agents
 
@@ -196,7 +196,7 @@ The `handover` tool ships two operations — `handover` (transfer + close source
 - **`handover`** — the source task closes with a green "Handed off to &lt;Agent&gt;" pill and an **Open &lt;Agent&gt; →** link under the reply. The target agent's task starts as a new, unrelated task.
 - **`sub_agent`** — the source task stays open but flips to the violet `AWAITING_SUB_AGENTS` status pill until every spawned child terminates. A per-row widget lists each child with its live status (Running, Awaiting approval, Queued, Done, Failed, Cancelled); awaiting-approval rows are amber and expose a **Review approvals →** shortcut. If you no longer want to wait, the **Stop waiting** button on the widget header aborts the first child and cascades the abort up through every `AWAITING_SUB_AGENTS` ancestor — see [First conversation → Stop waiting for sub-agents](/start/end-users/first-conversation#stop-waiting-for-sub-agents) for the cascade semantics.
 
-Both ops share the same `allowed_target_agents` allowlist under **Tools → Handover** in agent settings — operators see one picker that gates both operations. For the per-row layout and status indicators, see [First conversation → Sub-agents and handovers](/start/end-users/first-conversation#sub-agents-and-handovers). Operators reviewing an `AWAITING_SUB_AGENTS` task (violet pill) can drill into any child row to unblock a `PENDING_APPROVAL` decision without waiting for the parent to time out.
+Both ops share the same `allowed_target_agents` allowlist on the agent's **Tools** tab (`/agents/:id/tools`) under **Tools → Handover** — operators see one picker that gates both operations. For the per-row layout and status indicators, see [First conversation → Sub-agents and handovers](/start/end-users/first-conversation#sub-agents-and-handovers). Operators reviewing an `AWAITING_SUB_AGENTS` task (violet pill) can drill into any child row to unblock a `PENDING_APPROVAL` decision without waiting for the parent to time out.
 
 ## Task status pills
 

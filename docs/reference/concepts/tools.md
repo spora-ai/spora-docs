@@ -392,7 +392,7 @@ The remaining tools (`Calculator`, `CurrentTime`, `AgentMemory`, `GlobalMemory`,
 
 ### Handover tool
 
-The `Handover` tool (`app/Tools/HandoverTool.php`) is a single tool that declares two `#[ToolOperation]` entries on the `op` discriminator — `handover` (transfer + close) and `sub_agent` (spawn child + wait). Both ops share the `allowed_target_agents` multi-select under **Tools → Handover** settings.
+The `Handover` tool (`app/Tools/HandoverTool.php`) is a single tool that declares two `#[ToolOperation]` entries on the `op` discriminator — `handover` (transfer + close) and `sub_agent` (spawn child + wait). Both ops share the `allowed_target_agents` multi-select on the agent's **Tools** tab (`/agents/:id/tools`) under **Tools → Handover** — one picker gates both operations.
 
 | Operation   | Required params (per-op)                 | Requires approval | Side-effect on source task                                                                                                                                                                                                                                                                                                                                                              |
 | ----------- | ---------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

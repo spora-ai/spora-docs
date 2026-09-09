@@ -77,7 +77,7 @@ When the operator activates the Skill tool on an Agent, the Agent gets two opera
 
 ### Per-agent allowlist
 
-The Skill tool's only setting is `allowed_skills: multi-select`. Operators pick which skills are available to that Agent via the standard agent settings form. The list of skills shown in the dropdown comes from `GET /api/v1/skills` (powered by the skill scanner).
+The Skill tool's only setting is `allowed_skills: multi-select`. Operators pick which skills are available to that Agent on the agent's **Tools** tab (`/agents/:id/tools`). The list of skills shown in the dropdown comes from `GET /api/v1/skills` (powered by the skill scanner).
 
 ### LLM exposure
 

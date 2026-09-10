@@ -141,11 +141,11 @@ The data hook surface after the 1.0 cut. Every hook is optional — `AbstractPlu
 | ---------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `getName()`            | `string`                        | Human-readable name shown in the inventory UI and logs.                                                                                    |
 | `tools()`              | `class-string<ToolInterface>[]` | Tools contributed to the tool registry. Namespaced as `<plugin-slug>:<tool-name>` when sent to the LLM.                                    |
-| `apps()`               | `class-string<AppInterface>[]`  | Admin-UI side-panels contributed to the AppRegistry at container build time.                                                               |
 | `agentTemplatePaths()` | `string[]`                      | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates). |
 | `skillPaths()`         | `string[]`                      | Absolute paths to directories containing `SKILL.md` files. Each directory's immediate subdirectories are skill roots.                      |
 | `schemaVersion()`      | `int`                           | Bump every time a new migration file is added. `0` if no schema.                                                                           |
 | `migrationsPath()`     | `?string`                       | Absolute path to the plugin's migrations directory, or `null` if no schema. The `{slug}_` filename prefix is enforced.                     |
+| `apps()`               | `class-string<AppInterface>[]`  | Admin-UI side-panels contributed to the AppRegistry at container build time.                                                               |
 
 > **Moved to events in 1.0.** The hooks `register()`, `routes()`, and `boot()` no longer exist on the interface. They became PSR-14 events — see [Lifecycle Events](#lifecycle-events) below. The hooks `autoload()`, `drivers()`, and `recipePaths()` were removed entirely; their data lives in `plugin.json` (PSR-4 mappings) or has no current consumers.
 
@@ -174,6 +174,9 @@ namespace Spora\Plugins\Memories;
 
 use Spora\Events\ContainerBuildingEvent;
 use Spora\Events\RoutesRegisteringEvent;
+// Imports for the constants above:
+use Spora\Http\Middleware\AuthMiddleware;
+use Spora\Http\Middleware\CsrfMiddleware;
 use Spora\Plugins\AbstractPlugin;
 use Spora\Plugins\PluginInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -342,7 +345,7 @@ The canonical reference implementation is [`spora-ai/spora-plugin-memories`](htt
 ### Recommended — `bin/spora plugin:install`
 
 ```bash
-php bin/spora plugin:install spora-ai/spora-plugin-minimax
+php bin/spora plugin:install spora-plugin-memories
 php bin/spora spora:install   # applies the plugin's migration
 ```
 
@@ -351,7 +354,7 @@ php bin/spora spora:install   # applies the plugin's migration
 For development against a sibling git checkout, pass `--path`:
 
 ```bash
-php bin/spora plugin:install spora-ai/spora-plugin-minimax --path=/abs/path/to/checkout
+php bin/spora plugin:install spora-plugin-memories --path=/abs/path/to/checkout
 ```
 
 The remaining options are listed under [Plugin CLI commands](#plugin-cli-commands).
@@ -360,7 +363,7 @@ The remaining options are listed under [Plugin CLI commands](#plugin-cli-command
 
 ```bash
 cd /path/to/your/spora
-git clone https://github.com/spora-ai/spora-plugin-minimax.git plugins/minimax
+git clone https://github.com/spora-ai/spora-plugin-memories.git plugins/memories
 php bin/spora spora:install   # applies the plugin's migration
 ```
 

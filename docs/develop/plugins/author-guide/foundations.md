@@ -23,7 +23,7 @@ A plugin is identified by a **Composer package** with `type: "spora-plugin"`. On
 Two reference layouts:
 
 - **Skeleton template** — `spora-ai/spora-plugin-skeleton`. Copy this repo to bootstrap a new plugin.
-- **Production example** — `spora-ai/spora-plugin-minimax`. Four tools (image, speech, music, video) — lyrics are operations on the music tool, not a separate tool — plus one migration and custom DI bindings.
+- **Production example** — `spora-ai/spora-plugin-memories`. Two tools (agent-scoped memory, principal-scoped memory), an admin app, two migrations, custom DI bindings, 14 REST routes, and the `memories-assistant` agent template — the canonical subscriber for the [lifecycle events](/reference/concepts/plugins-system#lifecycle-events).
 
 ### Standard layout
 

@@ -187,11 +187,15 @@ No plugin code is involved.
 ```bash
 composer install
 composer analyse            # PHPStan
-composer test:parallel       # Pest — 189 tests, ~50 s
+composer test:parallel       # Pest — 212 tests, ~50 s
 composer lint               # PHP-CS-Fixer dry-run
 ```
 
 CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan per `phpstan.neon`, php-cs-fixer dry-run. A separate `coverage` job runs Pest with `pcov` and uploads `coverage.xml` + JUnit; the `sonar` job then uploads both to SonarCloud (project key `spora-ai_spora-plugin-minimax`), so the `new_coverage` metric is measurable per PR. Requires the `SONAR_TOKEN` secret in the repo. MIT license.
+
+## Notes
+
+MiniMax no longer ships a database migration or a `MiniMaxLogWriter`. The 0.x-era `minimax_generation_log` audit table was removed in 1.2.0 (write-only with no SELECTs) and the writer replaced with PSR-3 debug logs. The plugin's `schemaVersion()` override and the `illuminate/database` Composer require were dropped alongside it. Plugin authors using this plugin as a reference should consult [`spora-plugin-memories`](/develop/plugins/author-guide/foundations#what-a-spora-plugin-is) for the canonical schema-version + migration example, and the [lifecycle events](/reference/concepts/plugins-system#lifecycle-events) section for the current hook surface.
 
 ---
 

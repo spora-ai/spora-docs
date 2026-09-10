@@ -114,40 +114,112 @@ If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend ren
 
 ## Entry-point class
 
-The class named in `class` must implement `Spora\Plugins\PluginInterface`:
+The class named in `class` must implement `Spora\Plugins\PluginInterface`. In practice, extend `Spora\Plugins\AbstractPlugin` — the base class supplies empty defaults for every hook so you only override what you actually use:
 
 ```php
 namespace Acme\MyPlugin;
 
-use DI\ContainerBuilder;
+use Spora\Plugins\AbstractPlugin;
 use Spora\Plugins\PluginInterface;
 
-final class Plugin implements PluginInterface
+final class Plugin extends AbstractPlugin implements PluginInterface
 {
     public function getName(): string { return 'My Plugin'; }
 
-    /** @return array<string, string> */
-    public function autoload(): array  { return []; }
-
     /** @return array<class-string<\Spora\Tools\ToolInterface>> */
-    public function tools(): array     { return []; }
-
-    /** @return array<string, class-string<\Spora\Drivers\LLMDriverInterface>> */
-    public function drivers(): array   { return []; }
-
-    /** @return string[] */
-    public function recipePaths(): array { return []; }
-
-    public function schemaVersion(): int     { return 0; }
-    public function migrationsPath(): ?string { return null; }
-
-    public function register(ContainerBuilder $builder): void {}
+    public function tools(): array { return []; }
 }
 ```
 
-> **Note:** the plugin system is currently a work-in-progress. The hook methods (`tools()`, `drivers()`, `recipePaths()`, `register()`) are declared on the interface and surfaced by the manifest, but the explicit `PluginLoader → DI container` injection path is not yet fully wired up. New drivers, tools, and recipes contributed via plugins may not take effect without additional glue in `app/Plugins/PluginLoader.php` or direct registration via `config.php`. Three open PRs are landing this — the WIP note is preserved verbatim from the framework docs.
->
-> To register a new LLM driver via a plugin, return its FQCN from `PluginInterface::drivers()` — see the [LLM drivers](/reference/concepts/drivers) page for the driver contract and the `llm_driver_classes` container key that plugins are intended to extend.
+This page describes the **post-1.0 contract**. The interface was slimmed in 1.0: the data hooks `autoload()`, `drivers()`, and `recipePaths()` were removed (no in-tree plugin used them) and the three side-effect hooks `register()`, `routes()`, and `boot()` moved to PSR-14 events — see the [Lifecycle Events](#lifecycle-events) section below. The 0.x line carried a pre-1.0 deprecation window that emitted a one-line warning for every plugin still overriding the old hooks; that window closed at 1.0.
+
+## Hooks
+
+The data hook surface after the 1.0 cut. Every hook is optional — `AbstractPlugin` provides a no-op default for each, and a plugin that only needs `getName()` + `tools()` is perfectly valid.
+
+| Hook                   | Returns                         | Purpose                                                                                                                                    |
+| ---------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `getName()`            | `string`                        | Human-readable name shown in the inventory UI and logs.                                                                                    |
+| `tools()`              | `class-string<ToolInterface>[]` | Tools contributed to the tool registry. Namespaced as `<plugin-slug>:<tool-name>` when sent to the LLM.                                    |
+| `agentTemplatePaths()` | `string[]`                      | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates). |
+| `skillPaths()`         | `string[]`                      | Absolute paths to directories containing `SKILL.md` files. Each directory's immediate subdirectories are skill roots.                      |
+| `schemaVersion()`      | `int`                           | Bump every time a new migration file is added. `0` if no schema.                                                                           |
+| `migrationsPath()`     | `?string`                       | Absolute path to the plugin's migrations directory, or `null` if no schema. The `{slug}_` filename prefix is enforced.                     |
+| `apps()`               | `class-string<AppInterface>[]`  | Admin-UI side-panels contributed to the AppRegistry at container build time.                                                               |
+
+> **Moved to events in 1.0.** The hooks `register()`, `routes()`, and `boot()` no longer exist on the interface. They became PSR-14 events — see [Lifecycle Events](#lifecycle-events) below. The hooks `autoload()`, `drivers()`, and `recipePaths()` were removed entirely; their data lives in `plugin.json` (PSR-4 mappings) or has no current consumers.
+
+## Lifecycle Events
+
+> **Why PSR-14?** Symfony Bundle, Laravel ServiceProvider, Shopware Plugin, and Magento Module all converged on the same shape: a thin interface for "what does this extension contribute" plus a publish/subscribe surface for "what does this extension do on boot." Spora adopts the same division — the hook table above is the data; the events below are the behaviour.
+
+Plugins opt in to lifecycle behaviour by implementing `Symfony\Contracts\EventDispatcher\EventSubscriberInterface` and returning the event → method map from `getSubscribedEvents()`. `PluginLoader` wires every subscriber on every boot (see the [Cache-warmth wrinkle](#cache-warmth-wrinkle) below) and `Kernel` dispatches the events at the right moment.
+
+The three lifecycle events:
+
+| Event                    | Payload (`$event->…`)                           | When                                                                                                                            |
+| ------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `ContainerBuildingEvent` | `builder(): DI\ContainerBuilder`                | Once per process, after the App's autoload is registered, before the container is built. Mutate the builder to add DI bindings. |
+| `RoutesRegisteringEvent` | `routes(): MiddlewareRouteCollector`            | Per request, after core and App routes are registered, before the router is built. Add routes to the running collector.         |
+| `BootingEvent`           | `container(): Psr\Container\ContainerInterface` | Per request, after the container is built and the database has booted. Read services off the live container.                    |
+
+`PluginLoader` dispatches `ContainerBuildingEvent` from `registerPlugins(ContainerBuilder)`, `RoutesRegisteringEvent` from `registerRoutes(MiddlewareRouteCollector)`, and `BootingEvent` from `bootExtensions(ContainerInterface)` (with a single null-tolerant guard for legacy callers). The `App` follows the same pattern via `AppLoader`.
+
+### Worked example — `spora-plugin-memories`
+
+[`spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) is the canonical subscriber reference: it ships two migrations, one admin app, two LLM-callable tools, 14 REST routes, and the `memories-assistant` agent template. Its entry point subscribes to both `ContainerBuildingEvent` and `RoutesRegisteringEvent`:
+
+```php
+namespace Spora\Plugins\Memories;
+
+use Spora\Events\ContainerBuildingEvent;
+use Spora\Events\RoutesRegisteringEvent;
+// Imports for the constants above:
+use Spora\Http\Middleware\AuthMiddleware;
+use Spora\Http\Middleware\CsrfMiddleware;
+use Spora\Plugins\AbstractPlugin;
+use Spora\Plugins\PluginInterface;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
+final class MemoriesPlugin extends AbstractPlugin
+    implements PluginInterface, EventSubscriberInterface
+{
+    private const AUTH = [AuthMiddleware::class, CsrfMiddleware::class];
+
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            ContainerBuildingEvent::class => 'onContainerBuilding',
+            RoutesRegisteringEvent::class => 'onRoutesRegistering',
+        ];
+    }
+
+    public function onContainerBuilding(ContainerBuildingEvent $event): void
+    {
+        $event->builder()->addDefinitions([
+            MemoryQueryInterface::class   => \DI\autowire(MemoryQueryService::class),
+            MemoryCommandInterface::class => \DI\autowire(MemoryCommandService::class),
+            // …remaining bindings unchanged…
+        ]);
+    }
+
+    public function onRoutesRegistering(RoutesRegisteringEvent $event): void
+    {
+        // Global (principal-scoped) memories
+        $event->routes()->addRoute('GET',  '/api/v1/memories', [MemoryController::class, 'index'],   self::AUTH);
+        $event->routes()->addRoute('POST', '/api/v1/memories', [MemoryController::class, 'store'],   self::AUTH);
+        // …remaining routes unchanged…
+    }
+}
+```
+
+A plugin that only needs DI bindings (e.g. `spora-plugin-email` for `ImapClient`, `spora-plugin-openai-image` for the OpenAI client) subscribes to `ContainerBuildingEvent` alone. `BootingEvent` is rarely needed — reach for it when you must call a container service at startup (e.g. registering a cron with the scheduler).
+
+Listeners are called in the order returned by `getSubscribedEvents()`. Use the third array element (`['methodName', $priority]`) when two listeners need a deterministic order — Symfony dispatches higher priorities first.
+
+### Cache-warmth wrinkle
+
+`PluginLoader` writes a sha256 stamp to `storage/.plugins_stamp` after each successful boot. On a warm boot the loader re-instantiates plugins from a sidecar JSON and **skips re-running** the events' dispatch sites — except for `wireEventSubscribers()`, which always re-runs. The wrinkle: a plugin that subscribes to `ContainerBuildingEvent` must be wired to the dispatcher _after_ the cache check, otherwise listener wiring silently disappears on warm boots and DI bindings vanish. See the `PluginLoader::wireEventSubscribers()` docblock (`spora-core/app/Plugins/PluginLoader.php`) for the full rationale. The cost is a cheap reflection-based subscriber re-bind per plugin per request; the gain is correct DI bindings and route registration on every boot, warm or cold.
 
 ## Stability contract
 
@@ -155,7 +227,8 @@ Spora divides its PHP surface into two zones. Plugins should depend only on the 
 
 ### Plugin-stable (depend freely)
 
-- `Spora\Plugins\PluginInterface` and the seven hook methods (`getName`, `autoload`, `tools`, `drivers`, `recipePaths`, `schemaVersion`, `migrationsPath`, `register`).
+- `Spora\Plugins\PluginInterface` and the data hooks on `Spora\Extensions\SporaExtensionInterface` (`getName`, `tools`, `apps`, `skillPaths`, `agentTemplatePaths`, `schemaVersion`, `migrationsPath`).
+- `Spora\Events\*` (the three lifecycle events) and the PSR-14 `Symfony\Component\EventDispatcher\EventSubscriberInterface` opt-in pattern documented in [Lifecycle Events](#lifecycle-events).
 - The orchestrator and task services: `Spora\Agents\AgentOrchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
 - The `#[Tool]` attribute and the `ToolInterface` contract for declaring plugin-supplied tools.
 - The `plugin.json` manifest fields documented above. The `slug` field is the only one that must stay stable across releases.
@@ -267,12 +340,12 @@ The cache is invalidated automatically when any manifest's path, mtime, or conte
 
 Spora plugins are distributed as standalone PHP packages. The canonical way to install one is the `plugin:install` CLI command — it wraps `composer require` with the `spora-ai/installer` package so the plugin lands in the right place and its manifest is picked up on the next request. The `plugins/` directory is still supported as an escape hatch for plugin authors iterating on a sibling git checkout; see the options below.
 
-The canonical reference implementation is [`spora-ai/spora-plugin-minimax`](https://github.com/spora-ai/spora-plugin-minimax) — it ships five multimodal tools (image, speech, music, lyrics, video) and a migration. Use it as a starting point when authoring your own plugin.
+The canonical reference implementation is [`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) — it ships two migrations, an admin app, two LLM-callable tools, 14 REST routes, and the `memories-assistant` agent template. It is the canonical subscriber for the [lifecycle events](#lifecycle-events) above. Use it as a starting point when authoring your own plugin.
 
 ### Recommended — `bin/spora plugin:install`
 
 ```bash
-php bin/spora plugin:install spora-ai/spora-plugin-minimax
+php bin/spora plugin:install spora-plugin-memories
 php bin/spora spora:install   # applies the plugin's migration
 ```
 
@@ -281,7 +354,7 @@ php bin/spora spora:install   # applies the plugin's migration
 For development against a sibling git checkout, pass `--path`:
 
 ```bash
-php bin/spora plugin:install spora-ai/spora-plugin-minimax --path=/abs/path/to/checkout
+php bin/spora plugin:install spora-plugin-memories --path=/abs/path/to/checkout
 ```
 
 The remaining options are listed under [Plugin CLI commands](#plugin-cli-commands).
@@ -290,7 +363,7 @@ The remaining options are listed under [Plugin CLI commands](#plugin-cli-command
 
 ```bash
 cd /path/to/your/spora
-git clone https://github.com/spora-ai/spora-plugin-minimax.git plugins/minimax
+git clone https://github.com/spora-ai/spora-plugin-memories.git plugins/memories
 php bin/spora spora:install   # applies the plugin's migration
 ```
 

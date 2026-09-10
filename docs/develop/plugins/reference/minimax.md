@@ -187,7 +187,7 @@ No plugin code is involved.
 ```bash
 composer install
 composer analyse            # PHPStan
-composer test:parallel       # Pest — 189 tests, ~50 s
+composer test:parallel       # Pest — 212 tests, ~50 s
 composer lint               # PHP-CS-Fixer dry-run
 ```
 

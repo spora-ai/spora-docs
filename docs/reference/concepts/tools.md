@@ -420,4 +420,18 @@ The deprecated `scope=user` value (pre-`#221`) is treated as a silent alias for 
 
 The `get_public_url` operation is `enabledByDefault: false` and `requiresApprovalByDefault: true`. Each call mints a 256-bit unguessable token (or reuses an existing one) and writes it to `media_assets.public_access_token`; the served URL has no auth — the token is the only protection. See [`PublicMediaController`](https://github.com/spora-ai/spora-core/blob/main/app/Http/PublicMediaController.php) for the no-auth, token-gated serving endpoint.
 
+#### Operations
+
+| Operation            | Default enabled | Default approval | Purpose |
+| -------------------- | --------------- | ---------------- | ------- |
+| `search`             | yes             | auto             | Run a `media_assets` query. Filters out derivative rows so the LLM only sees originals via search. |
+| `get_media`          | yes             | auto             | Fetch one asset by id and render it. Echoes the markdown embed, the asset URL, and (for parent rows) the `derivatives[]` array; rows that are themselves a derivative also carry `parent_id` so the LLM can walk back up. |
+| `get_embed_code`     | yes             | auto             | Return just the markdown embed string for an asset (no metadata). |
+| `get_source`         | no              | required         | Read the raw bytes of an asset (with a size cap and `storage_mode` hint). Useful for re-rendering or feeding downstream tools. Approval-gated because the LLM is exfiltrating payload bytes. |
+| `list_derivatives`   | yes             | auto             | Enumerate every derivative of a parent asset in the same wire shape the operator dashboard renders on the VersionsStrip (`media_id`, `format`, `asset_url`, `label`, `producer_plugin`, `producer_operation`, `created_at`). Optional `format` argument narrows the list to one derivative kind (e.g. only PNG renders). |
+| `create_derivative`  | yes             | required         | Generate a fresh derivative of a parent asset by calling the registered `MediaDerivativeProducerInterface` that matches the parent MIME and the requested `format`. Idempotent on `(parent_id, format, producer_plugin, producer_operation)` — re-renders with the same natural key return the same derivative id. Optional `options` carries producer-specific knobs (e.g. `{"page": 0, "ppi": 144}` for typst, `{"longEdge": 1024}` for image producers). Exposed by default so agents can propose renders without an enable step; per-call approval gates the actual write. |
+| `get_public_url`     | no              | required         | Mint (or reuse) an unguessable public-access token. See [`PublicMediaController`](https://github.com/spora-ai/spora-core/blob/main/app/Http/PublicMediaController.php). |
+
+The `derivatives[]` enrichment on `get_media` and the `create_derivative` op both read through `MediaAssetSerializer::derivativeRowsFor()` so the operator dashboard and the LLM see the same row shape. See [`MediaDerivativeController`](https://github.com/spora-ai/spora-core/blob/main/app/Http/MediaDerivativeController.php) for the underlying REST surface that operators use directly.
+
 Admin users bypass `scope` and see every asset.

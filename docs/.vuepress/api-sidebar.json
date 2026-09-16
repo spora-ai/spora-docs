@@ -21,6 +21,10 @@
       "link": "/reference/api/tasks"
     },
     {
+      "text": "Speech",
+      "link": "/reference/api/speech"
+    },
+    {
       "text": "Users",
       "link": "/reference/api/users"
     },
@@ -33,6 +37,10 @@
       "link": "/reference/api/llm-configs"
     },
     {
+      "text": "Media",
+      "link": "/reference/api/media"
+    },
+    {
       "text": "Tools",
       "link": "/reference/api/tools"
     },
@@ -43,10 +51,6 @@
     {
       "text": "Me",
       "link": "/reference/api/me"
-    },
-    {
-      "text": "Media",
-      "link": "/reference/api/media"
     },
     {
       "text": "Plugins",

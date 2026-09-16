@@ -44,7 +44,7 @@ This page is the operator / agent-developer view: how the cascade works, what ea
 
 The cascade answers one question: _which provider class should this call go to?_ It runs on every capability probe and every transcribe call — both paths share the resolver so the recording button and the actual transcription can never disagree.
 
-For a per-agent request (`agent_id > 0`), the resolver tries tiers 1-2 in order against the **agent's principal** (not the caller's), then 3-5:
+For a per-agent request (`agent_id > 0`), the resolver walks 4 tiers against the **agent's principal** (not the caller's):
 
 ```text
 1. Agent override         agents.speech_driver_config_id → speech_provider_configurations.provider_class
@@ -52,20 +52,20 @@ For a per-agent request (`agent_id > 0`), the resolver tries tiers 1-2 in order 
                           (user-principal or group-principal, depending on agents.principal_id)
 3. Global default         speech_provider_configurations WHERE is_global = true AND is_default = true
                           ORDER BY updated_at DESC, id DESC
-4. (none — fall through to 5)
-5. First-registered-wins  first provider in the registry's constructor list
+4. First-registered-wins  first provider in the registry's constructor list
 ```
 
-For a caller-scoped request (the composer recording button has no agent context), the resolver tries the caller's user-principal first, then their groups in join order:
+For a caller-scoped request (the composer recording button has no agent context), the resolver walks 4 tiers against the caller:
 
 ```text
 1. User preference        principal_preferences.preferred_speech_config_id for the caller's user-principal
 2. Group preference       every group_memberships row for the caller, ordered by joined_at ASC
                           first match wins
 3. Global default         same as above
-4. (none — fall through to 5)
-5. First-registered-wins  same as above
+4. First-registered-wins  same as above
 ```
+
+The registry itself describes the cascade as "five tiers" by counting user + group preferences as separate tiers globally; each request walks 4 because the per-agent path collapses user + group preference into a single "principal preference" tier while the caller path treats them separately.
 
 Every tier validates that the resolved `provider_class` is currently registered. If the operator deletes a plugin without first clearing the FK references, the resolver treats the row as unset and falls through to the next tier — never to a class the registry doesn't have.
 
@@ -97,7 +97,7 @@ The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech
     "configured": true,
     "providers": [
       {
-        "name": "MiniMax Speech-to-Text",
+        "name": "minimax",
         "class": "Spora\\Plugins\\MiniMax\\MiniMaxTranscribeProvider",
         "display_name": "MiniMax (prod)",
         "configured": true,
@@ -111,7 +111,7 @@ The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech
 }
 ```
 
-The fields operators care about:
+`name` is the stable key the provider's `getName()` returns — MiniMax hardcodes `'minimax'`, OpenAI-compatible returns the bound label. `display_name` is what the SPA shows next to the dropdown; it's the operator's per-config `display_name` setting when bound, otherwise the class-level default. The fields operators care about:
 
 | Field                   | Meaning                                                                                                                                                                                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -127,13 +127,13 @@ The fields operators care about:
 
 The string is the tier label the cascade resolver emitted. Each maps to one row in the cascade:
 
-| Value              | Source tier                                   | Configurable by                                       |
-| ------------------ | --------------------------------------------- | ----------------------------------------------------- |
-| `agent`            | Tier 1 — agent override                       | Agent editor (per-agent `speech_driver_config_id`).   |
-| `user_preference`  | Tier 2 / caller-tier 1 — principal preference | Per-user speech preferences.                          |
-| `group_preference` | Caller-tier 2 — group preference              | Per-group speech preferences.                         |
-| `global_default`   | Tier 3 — global default                       | Admin (Settings → Speech, or `POST .../set-default`). |
-| `fallback`         | Tier 5 — first-registered-wins                | The plugin load order. Operator cannot configure.     |
+| Value              | Source tier                                                                | Configurable by                                       |
+| ------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `agent`            | Per-agent tier 1 — agent override                                          | Agent editor (per-agent `speech_driver_config_id`).   |
+| `user_preference`  | Per-agent tier 2 (agent's principal is a user-principal) or caller tier 1  | Per-user speech preferences.                          |
+| `group_preference` | Per-agent tier 2 (agent's principal is a group-principal) or caller tier 2 | Per-group speech preferences.                         |
+| `global_default`   | Tier 3 — global default                                                    | Admin (Settings → Speech, or `POST .../set-default`). |
+| `fallback`         | Tier 4 — first-registered-wins                                             | The plugin load order. Operator cannot configure.     |
 
 `null` only when **no** provider class is registered at all — the SPA treats that as "install a speech provider" rather than "configure one".
 
@@ -200,7 +200,7 @@ The expected operator flow when adding a second vendor:
 3. **Bind a preference** — either `PUT /api/v1/speech/preference` (the caller's user-principal) or `PATCH /api/v1/agents/{id}` setting `speech_driver_config_id` (per-agent override).
 4. **Mark a default** for global rows via `POST /api/v1/speech/provider-configs/{id}/set-default` (admin only; demotes the previous default in a `lockForUpdate` transaction).
 
-Deleting a configuration detaches every FK reference first — `agents.speech_driver_config_id` is nulled and `principal_preferences.preferred_speech_config_id` is dropped, so a stale preference can never resolve to a deleted row.
+Deleting a configuration detaches every FK reference first — `agents.speech_driver_config_id` is nulled and `principal_preferences.preferred_speech_config_id` is nulled (the preference row itself stays put, but with no FK behind it). A stale reference can never resolve to a deleted row, and `SpeechProviderConfigPersistence::detachConfigurationReferencesStatic()` is a belt-and-braces pass on top of the `ON DELETE SET NULL` FK semantics on the agent column.
 
 ## What's next
 

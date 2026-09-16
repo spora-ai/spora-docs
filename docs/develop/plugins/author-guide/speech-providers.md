@@ -148,18 +148,20 @@ Don't rely on the default unless your provider truly accepts all five.
 
 ## Settings via `#[ToolSetting]`
 
-The dynamic create-config form is built from your provider's `#[ToolSetting]` attributes. The schema walker lives in [`SpeechProviderConfigValidator::collectSettingsSchema()`](https://github.com/spora-ai/spora-core/blob/main/app/Services/SpeechProviderConfigValidator.php). Common keys:
+The dynamic create-config form is built from your provider's `#[ToolSetting]` attributes. The schema walker lives in [`SpeechProviderConfigValidator::collectSettingsSchema()`](https://github.com/spora-ai/spora-core/blob/main/app/Services/SpeechProviderConfigValidator.php). The OpenAI-compatible baseline:
 
-| Field                  | Type       | Required | Purpose                                                                                                               |
-| ---------------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------- |
-| `api_key`              | `password` | yes      | Bearer token. Encrypted at rest via `SecurityManager`; the wire response masks it as `'***'`.                         |
-| `display_name`         | `text`     | yes      | Operator-facing label. The registry calls `bindLabel()` with this on every request, so `getDisplayName()` returns it. |
-| `base_url`             | `text`     | no       | Vendor endpoint. Default the OpenAI URL for the OpenAI-multipart family.                                              |
-| `model`                | `text`     | no       | Vendor model id.                                                                                                      |
-| `language`             | `text`     | no       | Default BCP-47 hint; the per-request hint wins.                                                                       |
-| `http_timeout_seconds` | `text`     | no       | Per-request timeout. Regex `/^\d+$/`.                                                                                 |
+| Field                  | Type       | Required                | Purpose                                                                                                                                 |
+| ---------------------- | ---------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `api_key`              | `password` | yes                     | Bearer token. Encrypted at rest via `SecurityManager`; the wire response masks it as `'***'`.                                           |
+| `display_name`         | `text`     | yes (OpenAI-compatible) | Operator-facing label. The registry calls `bindLabel()` with this on every request, so `getDisplayName()` returns it.                   |
+| `base_url`             | `text`     | no                      | Vendor endpoint. Default the OpenAI URL for the OpenAI-multipart family.                                                                |
+| `model`                | `text`     | no                      | Vendor model id.                                                                                                                        |
+| `language`             | `text`     | no                      | Default BCP-47 hint; the per-request hint wins. (Not present on providers like MiniMax that always take the language from the request.) |
+| `http_timeout_seconds` | `text`     | no                      | Per-request timeout. Regex `/^\d+$/`.                                                                                                   |
 
-The full reference impl is `OpenAiCompatibleTranscriber` — read it before shipping a new provider that targets a vendor whose wire shape is even slightly different.
+The full reference impl is `OpenAiCompatibleTranscriber` — read it before shipping a new provider that targets a vendor whose wire shape is even slightly different. MiniMax ships the same five-key set (`api_key` / `display_name` / `model` / `base_url` / `http_timeout_seconds`) without a `language` field, because its API takes the language from a per-request header rather than a per-config default.
+
+`getName()` vs `getDisplayName()`: the registry populates both via `bindLabel()`, but providers differ in how they honour the bound value. `OpenAiCompatibleTranscriber::getName()` returns the bound label, then falls back to `'openai_compatible'`. `MiniMaxTranscribeProvider::getName()` always returns the literal `'minimax'` regardless of binding — `getDisplayName()` is the only one that reflects the operator's per-config override. Pick a consistent rule for your provider and document it; the SPA shows `display_name` next to the dropdown but uses `name` as the stable key for `preferred_audio_mimes` row matching.
 
 ## Exception rules
 

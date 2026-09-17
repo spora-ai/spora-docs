@@ -10,11 +10,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Required for GitHub Pages deploys
+# Permissions default to read-only at the workflow level; the write
+# permissions Pages deploys need are scoped to the jobs that use them so
+# every other job runs with the minimum token it needs (rule S8233).
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Don't deploy concurrent runs — they will conflict on the Pages environment
 concurrency:
@@ -25,6 +25,10 @@ jobs:
   build:
     name: Build site
     runs-on: ubuntu-latest
+    # `actions/upload-pages-artifact` needs `pages: write` to push the
+    # artifact into the Pages staging area.
+    permissions:
+      pages: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -83,6 +87,11 @@ jobs:
     name: Deploy to GitHub Pages
     needs: build
     runs-on: ubuntu-latest
+    # `actions/deploy-pages` writes the live Pages environment and signs
+    # the OIDC token the Pages backend uses to authorise the deploy.
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

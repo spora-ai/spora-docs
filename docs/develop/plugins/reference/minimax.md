@@ -157,6 +157,14 @@ Use `minimax:video` (H3) by default. Use `minimax:video_v1` only when:
 
 The Media Agent's `media-agent.json` routing table includes a fall-back rule that triggers on the `[2013]` error and switches to `minimax:video_v1` with the same prompt.
 
+## Speech-to-text provider
+
+In addition to the TTS tool above, the plugin contributes [`MiniMaxTranscribeProvider`](https://github.com/spora-ai/spora-plugin-minimax/blob/main/src/MiniMaxTranscribeProvider.php) to the [`SpeechToTextRegistry`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/SpeechToTextRegistry.php). Once installed, the recording button and the `/api/v1/speech/transcribe` endpoint can route through MiniMax's `asr-1.0` ASR model with the same `MINIMAX_API_KEY`.
+
+The provider declares an OGG-first `#[AcceptedAudioMime]` preference because MiniMax rejects the Matroska/WebM container (HTTP 502, error code `2013`) even though the underlying Opus codec is identical to OGG-over-Opus — see [Concepts → Speech providers](/reference/concepts/speech-providers#mime-negotiation) for the full MIME-negotiation rationale.
+
+Configuration lives in Settings → Tools → MiniMax (the `STT` section), with its own `display_name`, `model`, and `base_url` settings independent of the TTS tool's. Operators can run multiple MiniMax STT configs side-by-side (e.g. "MiniMax ASR (prod)" + "MiniMax ASR (China region)") and pick the per-agent / per-user default via the cascade in [Concepts → Speech providers → The cascade](/reference/concepts/speech-providers#the-cascade).
+
 ## Skills
 
 The plugin ships five skills:

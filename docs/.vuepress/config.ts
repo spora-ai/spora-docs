@@ -167,6 +167,10 @@ export default defineUserConfig({
                 { text: 'Admin UI', link: '/develop/plugins/author-guide/admin-ui' },
                 { text: 'Agent templates', link: '/develop/plugins/author-guide/agent-templates' },
                 { text: 'Distribution', link: '/develop/plugins/author-guide/distribution' },
+                {
+                  text: 'Speech providers',
+                  link: '/develop/plugins/author-guide/speech-providers',
+                },
               ],
             },
             { text: 'Local development', link: '/develop/plugins/local-development' },
@@ -241,6 +245,7 @@ export default defineUserConfig({
             { text: 'Media assets', link: '/reference/concepts/media-assets' },
             { text: 'Plugin system', link: '/reference/concepts/plugins-system' },
             { text: 'Schema', link: '/reference/concepts/schema' },
+            { text: 'Speech providers', link: '/reference/concepts/speech-providers' },
             { text: 'Testing', link: '/reference/concepts/testing' },
             { text: 'Tools', link: '/reference/concepts/tools' },
             { text: 'UTF-8 sanitizer', link: '/reference/concepts/utf8-sanitizer' },

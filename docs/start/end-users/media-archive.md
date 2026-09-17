@@ -45,6 +45,18 @@ The frontend sends the request as repeated `?principal_id[]=…` keys. The **arr
 - Active chips are styled with `bg-primary` / `text-primary-foreground`; inactive chips use muted text.
 - The chip row is wrapped in a `<fieldset>` + `<legend>` group so assistive tech announces it as a single-select "Scope" group.
 
+## Temporary files
+
+The grid hides temp rows by default — they crowd out the permanent grid with a stream of short-lived voice transcripts and other auto-uploaded artefacts. Three UI surfaces let operators opt back in:
+
+- **"Include temporary files" toggle** in `MediaFilters`. State persists in `localStorage` (`spora.media.showTemporary.v1`, default off). When off, the listing query sends `?include_temporary=false` and the filter happens server-side. Flipping the toggle reloads the grid.
+- **"Temporary" corner badge** on `MediaCard`. Renders only when the toggle is on and the asset is temp; otherwise the row is filtered out before it reaches the grid.
+- **"Keep file" button** on `MediaDetailPage` for temp assets. Calls `POST /api/v1/media/{id}/keep` to pin the row as permanent so the per-(user, agent) retention sweep leaves it alone. Idempotent — calling on a non-temp row returns 200 without re-saving. A toast confirms the pin; the detail payload refreshes with `is_temporary: false`.
+
+Keep-file auth: global admin OR the asset's `user_id == currentUserId`. Non-owners receive 403; missing rows 404.
+
+The retention sweep itself runs server-side (`media:gc --temporary [--older-than-hours N]`, default 24 h). Per-agent retention is governed by `agents.voice_message_retention_count` (default 5; 0 disables auto-purge — operators must then run the GC manually or hit `/keep` per row). See the Media API reference for the full lifecycle: `POST /api/v1/media` (temp opt-in via `is_temporary`), `GET /api/v1/media?include_temporary=true`, `POST /api/v1/media/{id}/keep`, and the `media:gc` CLI.
+
 ## Where the data comes from
 
 | Endpoint                                       | Used for                                                                                                                  |
@@ -56,6 +68,7 @@ The frontend sends the request as repeated `?principal_id[]=…` keys. The **arr
 | `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                       |
 | `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, markdown_content, public sharing. Validators are in `MediaArchiveUpdateValidator`. |
 | `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                        |
+| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                      |
 
 ## Related
 

@@ -68,7 +68,7 @@ The retention sweep itself runs server-side (`media:gc --temporary [--older-than
 | `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                       |
 | `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, markdown_content, public sharing. Validators are in `MediaArchiveUpdateValidator`. |
 | `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                        |
-| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                     |
+| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                      |
 
 ## Related
 

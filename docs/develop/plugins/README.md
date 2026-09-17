@@ -39,6 +39,7 @@ The 10 plugins currently in the Spora org:
 | [Calendar](/develop/plugins/reference/calendar)                 | CalDAV read/write — iCloud, Fastmail, Nextcloud, Radicale, Baïkal                                                |
 | [Email](/develop/plugins/reference/email)                       | SMTP send + IMAP read — 11 operations                                                                            |
 | [MiniMax](/develop/plugins/reference/minimax)                   | MiniMax's image, speech, music, video capabilities                                                               |
+| [Muse](/develop/plugins/reference/muse)                         | Meta Muse vendor home — image generation / editing + speech-to-text on a single Meta Model API key               |
 | [Zernio](/develop/plugins/reference/zernio)                     | Social-media scheduling and publishing across 15+ networks                                                       |
 
 For the architecture, manifest schema, and boot semantics that any plugin has to satisfy, see [Concepts → Plugin system](/reference/concepts/plugins-system).

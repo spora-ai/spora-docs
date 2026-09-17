@@ -329,9 +329,9 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | -------- | ----------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------- | ---------------- |
 | `GET`    | `/api/health`                                               | —                          | Check Health                                                           |                  |
 | `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth`               | Index AgentTemplate                                                    | Agent-templates  |
+| `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                                                     | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/import`                            | `cookieAuth` + `csrfToken` | Import AgentTemplate                                                   | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/validate`                          | `cookieAuth` + `csrfToken` | ValidatePayload AgentTemplate                                          | Agent-templates  |
-| `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                                                     | Agent-templates  |
 | `GET`    | `/api/v1/agents`                                            | `cookieAuth`               | Index Agent                                                            | Agents           |
 | `POST`   | `/api/v1/agents`                                            | `cookieAuth` + `csrfToken` | Store Agent                                                            | Agents           |
 | `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                                                             | Agents           |
@@ -353,8 +353,6 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth`               | Show PromptTemplate                                                    | Agents           |
 | `PUT`    | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth` + `csrfToken` | Update PromptTemplate                                                  | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/templates/{templateId}`                | `cookieAuth` + `csrfToken` | Destroy PromptTemplate                                                 | Agents           |
-| `GET`    | `/api/v1/agents/{id}/tools/operations`                      | `cookieAuth`               | GetToolsOperations AgentTool                                           | Agents           |
-| `GET`    | `/api/v1/agents/{id}/tools/status`                          | `cookieAuth`               | GetToolsStatus AgentTool                                               | Agents           |
 | `POST`   | `/api/v1/agents/{id}/tools/{toolId}/enable`                 | `cookieAuth` + `csrfToken` | EnableTool AgentTool                                                   | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/enable`                 | `cookieAuth` + `csrfToken` | DisableTool AgentTool                                                  | Agents           |
 | `GET`    | `/api/v1/agents/{id}/tools/{toolId}/operations/{operation}` | `cookieAuth`               | GetOperationOverride AgentOverride                                     | Agents           |
@@ -363,6 +361,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PUT`    | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | PutOverride AgentOverride                                              | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/tools/{toolId}/override`               | `cookieAuth` + `csrfToken` | DeleteOverride AgentOverride                                           | Agents           |
 | `GET`    | `/api/v1/agents/{id}/tools/{toolId}/status`                 | `cookieAuth`               | GetToolStatus AgentTool                                                | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/operations`                      | `cookieAuth`               | GetToolsOperations AgentTool                                           | Agents           |
+| `GET`    | `/api/v1/agents/{id}/tools/status`                          | `cookieAuth`               | GetToolsStatus AgentTool                                               | Agents           |
 | `POST`   | `/api/v1/agents/{id}/transfer`                              | `cookieAuth` + `csrfToken` | TransferPrincipal AgentTransfer                                        | Agents           |
 | `GET`    | `/api/v1/apps`                                              | `cookieAuth`               | Index Apps                                                             | Apps             |
 | `GET`    | `/api/v1/assets/{filename}`                                 | `cookieAuth`               | Show Asset                                                             | Assets           |
@@ -403,11 +403,11 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `DELETE` | `/api/v1/groups/{id}/tools/{toolClass}`                     | `cookieAuth` + `csrfToken` | Destroy GroupTools                                                     | Groups           |
 | `GET`    | `/api/v1/llm-configs`                                       | `cookieAuth`               | Index LLMConfig                                                        | Llm-configs      |
 | `POST`   | `/api/v1/llm-configs`                                       | `cookieAuth` + `csrfToken` | Store LLMConfig                                                        | Llm-configs      |
-| `GET`    | `/api/v1/llm-configs/global`                                | `cookieAuth`               | GlobalConfigs LLMConfig                                                | Llm-configs      |
 | `GET`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth`               | Show LLMConfig                                                         | Llm-configs      |
 | `PUT`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Update LLMConfig                                                       | Llm-configs      |
 | `DELETE` | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Destroy LLMConfig                                                      | Llm-configs      |
 | `POST`   | `/api/v1/llm-configs/{id}/set-default`                      | `cookieAuth` + `csrfToken` | SetDefault LLMConfig                                                   | Llm-configs      |
+| `GET`    | `/api/v1/llm-configs/global`                                | `cookieAuth`               | GlobalConfigs LLMConfig                                                | Llm-configs      |
 | `GET`    | `/api/v1/llm-drivers`                                       | `cookieAuth`               | Drivers LLMConfig                                                      | Llm-drivers      |
 | `GET`    | `/api/v1/mail-config`                                       | `cookieAuth`               | Index MailConfig                                                       | Mail-config      |
 | `PUT`    | `/api/v1/mail-config`                                       | `cookieAuth` + `csrfToken` | Update MailConfig                                                      | Mail-config      |
@@ -426,24 +426,24 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PUT`    | `/api/v1/me/profile`                                        | `cookieAuth` + `csrfToken` | PutProfile UserProfile                                                 | Me               |
 | `GET`    | `/api/v1/media`                                             | `cookieAuth`               | Index MediaArchive                                                     | Media            |
 | `POST`   | `/api/v1/media`                                             | `cookieAuth` + `csrfToken` | Store MediaUpload                                                      | Media            |
-| `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes                                                | Media            |
-| `POST`   | `/api/v1/media/resolve`                                     | `cookieAuth` + `csrfToken` | Resolve MediaResolve                                                   | Media            |
 | `POST`   | `/api/v1/media/{id}/derivatives`                            | `cookieAuth` + `csrfToken` | Create MediaDerivative                                                 | Media            |
 | `GET`    | `/api/v1/media/{id}/derivatives/options`                    | `cookieAuth`               | Index MediaDerivativeOptions                                           | Media            |
 | `POST`   | `/api/v1/media/{id}/keep`                                   | `cookieAuth` + `csrfToken` | Keep KeepMedia                                                         | Media            |
+| `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes                                                | Media            |
+| `POST`   | `/api/v1/media/resolve`                                     | `cookieAuth` + `csrfToken` | Resolve MediaResolve                                                   | Media            |
 | `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                                                     | Notifications    |
 | `DELETE` | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | DestroyAll Notification                                                | Notifications    |
+| `DELETE` | `/api/v1/notifications/{id}`                                | `cookieAuth` + `csrfToken` | Destroy Notification                                                   | Notifications    |
+| `POST`   | `/api/v1/notifications/{id}/read`                           | `cookieAuth` + `csrfToken` | MarkRead Notification                                                  | Notifications    |
 | `POST`   | `/api/v1/notifications/read-all`                            | `cookieAuth` + `csrfToken` | MarkAllRead Notification                                               | Notifications    |
 | `GET`    | `/api/v1/notifications/subscriptions`                       | `cookieAuth`               | Index NotificationSubscription                                         | Notifications    |
 | `POST`   | `/api/v1/notifications/subscriptions`                       | `cookieAuth` + `csrfToken` | Subscribe NotificationSubscription                                     | Notifications    |
 | `DELETE` | `/api/v1/notifications/subscriptions`                       | `cookieAuth` + `csrfToken` | Unsubscribe NotificationSubscription                                   | Notifications    |
-| `DELETE` | `/api/v1/notifications/{id}`                                | `cookieAuth` + `csrfToken` | Destroy Notification                                                   | Notifications    |
-| `POST`   | `/api/v1/notifications/{id}/read`                           | `cookieAuth` + `csrfToken` | MarkRead Notification                                                  | Notifications    |
 | `GET`    | `/api/v1/plugins`                                           | `cookieAuth`               | Index Plugins                                                          | Plugins          |
 | `POST`   | `/api/v1/plugins`                                           | `cookieAuth` + `csrfToken` | Store Plugins                                                          | Plugins          |
-| `GET`    | `/api/v1/plugins/catalog`                                   | `cookieAuth`               | Catalog Plugins                                                        | Plugins          |
 | `PATCH`  | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Update Plugins                                                         | Plugins          |
 | `DELETE` | `/api/v1/plugins/{package}`                                 | `cookieAuth` + `csrfToken` | Destroy Plugins                                                        | Plugins          |
+| `GET`    | `/api/v1/plugins/catalog`                                   | `cookieAuth`               | Catalog Plugins                                                        | Plugins          |
 | `GET`    | `/api/v1/principals/me`                                     | `cookieAuth`               | CurrentForUser Principal                                               | Principals       |
 | `GET`    | `/api/v1/public/media/{id}`                                 | —                          | Show PublicMedia                                                       | Public           |
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                                                            | Skills           |
@@ -453,10 +453,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PUT`    | `/api/v1/speech/preference`                                 | `cookieAuth` + `csrfToken` | Set or clear the caller's preferred speech-to-text configuration       | Speech           |
 | `GET`    | `/api/v1/speech/provider-configs`                           | `cookieAuth`               | List speech provider configurations visible to the caller              | Speech           |
 | `POST`   | `/api/v1/speech/provider-configs`                           | `cookieAuth` + `csrfToken` | Create a speech provider configuration                                 | Speech           |
-| `GET`    | `/api/v1/speech/provider-configs/schema`                    | `cookieAuth`               | Registered speech-to-text provider classes with their settings schemas | Speech           |
 | `PUT`    | `/api/v1/speech/provider-configs/{id}`                      | `cookieAuth` + `csrfToken` | Update an existing speech provider configuration                       | Speech           |
 | `DELETE` | `/api/v1/speech/provider-configs/{id}`                      | `cookieAuth` + `csrfToken` | Delete a speech provider configuration                                 | Speech           |
 | `POST`   | `/api/v1/speech/provider-configs/{id}/set-default`          | `cookieAuth` + `csrfToken` | Mark a global speech provider configuration as default                 | Speech           |
+| `GET`    | `/api/v1/speech/provider-configs/schema`                    | `cookieAuth`               | Registered speech-to-text provider classes with their settings schemas | Speech           |
 | `POST`   | `/api/v1/speech/transcribe`                                 | `cookieAuth` + `csrfToken` | Transcribe a recorded audio asset                                      | Speech           |
 | `GET`    | `/api/v1/sse/auth`                                          | `cookieAuth`               | Auth Sse                                                               | Sse              |
 | `GET`    | `/api/v1/sse/authorize`                                     | `cookieAuth`               | Authorize Sse                                                          | Sse              |

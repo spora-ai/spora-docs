@@ -189,6 +189,14 @@ The submitted payload `{decisions: [{provider_call_id, decision: 'approve'|'reje
 
 You can change an operation's default in **Settings → Tools → [tool] → Require approval by default**, and the per-agent override on the agent's **Tools** tab (`/agents/:id/tools`) under **Tools → [operation] → Approval**. Tool configuration no longer lives inside agent Settings.
 
+## Voice input in the chat composer
+
+If the chat composer's **Record** button is not visible and you see a "Voice not configured" pill instead, the agent does not have a Speech-to-Text provider configured at any scope the agent can read (agent, group, user, or global). The pill is read-only — configure a provider from **Settings → Speech** (or **Settings → Admin → Speech Providers** if you are a global admin and want the picker scoped to a plugin), then return to the agent page; the composer re-probes automatically on the next mount.
+
+> The pill is passive by design. Earlier revisions embedded a "Set up" deep-link in the disabled state; the link was removed because a mounted recording button never owns its own navigation context, and the global settings nav is the canonical place for provider configuration regardless of which agent surfaced the disabled state.
+
+If you switch between agents via the URL bar (for example `/agents/42` → `/agents/8`), the composer remounts against the new agent, so a freshly-mounted "Voice not configured" pill always reflects the agent being viewed (no stale "configured" state from the previous agent). The same remount-on-route-change behaviour also re-runs the agent's task history, header identity line, and chat follow-up composer against the newly-selected agent.
+
 ## Chat operations: handover and sub-agents
 
 The `handover` tool ships two operations — `handover` (transfer + close source task) and `sub_agent` (spawn child + wait for result). Both surface in the parent chat as a row in the timeline:

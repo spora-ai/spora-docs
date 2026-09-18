@@ -403,11 +403,11 @@ Every `#[ToolSetting]` declares **where** it can be configured via the `scope:` 
 
 ### Scope values
 
-| scope              | Admin operator defaults | User scope (`/settings/tools`) | Group scope (`/groups/{id}/tools`) | Agent override (`/agents/{id}/tools`) |
-| ------------------ | ----------------------- | ------------------------------- | ---------------------------------- | ------------------------------------ |
-| `'any'` (default)  | renders                 | renders                         | renders                            | renders                              |
-| `'principal'`      | **hidden**              | renders                         | renders                            | renders                              |
-| `'agent'`          | **hidden**              | **hidden**                      | **hidden**                         | renders                              |
+| scope             | Admin operator defaults | User scope (`/settings/tools`) | Group scope (`/groups/{id}/tools`) | Agent override (`/agents/{id}/tools`) |
+| ----------------- | ----------------------- | ------------------------------ | ---------------------------------- | ------------------------------------- |
+| `'any'` (default) | renders                 | renders                        | renders                            | renders                               |
+| `'principal'`     | **hidden**              | renders                        | renders                            | renders                               |
+| `'agent'`         | **hidden**              | **hidden**                     | **hidden**                         | renders                               |
 
 The picker multi-select on `scope: 'principal'` settings is **also scoped by `principal_id`** when rendered. The settings panel derives the principal from its own mode:
 

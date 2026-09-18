@@ -289,9 +289,15 @@ Settings are declared as `#[ToolSetting]` PHP attributes **directly on the tool 
     type: 'password',
     description: 'API key for the remote search service.',
     required: true,
+    // `scope` defaults to `'any'` so the example stays focused on the
+    // most common case — the field renders in every settings panel.
+    // See [Setting render scope](#setting-render-scope) below for the
+    // narrow scopes available when a setting only makes sense under a
+    // specific principal or agent context.
+    scope: 'any',
 )]
 #[ToolOperation(name: 'search', description: 'Search', enabledByDefault: true, requiresApprovalByDefault: false)]
-#[ToolParameter(name: 'query', type: 'string', description: 'The search query.', required: true)]
+#[ToolParameter(name: 'query', type: 'string', description: 'The query.', required: true)]
 final class MySearchTool extends AbstractTool
 {
     public function __construct(
@@ -380,6 +386,48 @@ The `exposeToLlm` parameter on `#[ToolSetting]` controls whether a setting's res
 
 Unconfigured settings are shown as `(not configured)` so the LLM knows a capability may be unavailable.
 
+## Setting render scope
+
+Every `#[ToolSetting]` declares **where** it can be configured via the `scope:` argument. The settings panel reads this metadata and renders each field only in compatible contexts, so a setting that only makes sense under a specific principal or agent context is never offered for editing where the resulting value would be meaningless or rejected at runtime.
+
+```php
+#[ToolSetting(
+    key: 'allowed_target_agents',
+    label: 'Allowed target agents',
+    type: 'multi-select',
+    required: true,
+    scope: 'principal',  // see matrix below
+    exposeToLlm: true,
+)]
+```
+
+### Scope values
+
+| scope              | Admin operator defaults | User scope (`/settings/tools`) | Group scope (`/groups/{id}/tools`) | Agent override (`/agents/{id}/tools`) |
+| ------------------ | ----------------------- | ------------------------------- | ---------------------------------- | ------------------------------------ |
+| `'any'` (default)  | renders                 | renders                         | renders                            | renders                              |
+| `'principal'`      | **hidden**              | renders                         | renders                            | renders                              |
+| `'agent'`          | **hidden**              | **hidden**                      | **hidden**                         | renders                              |
+
+The picker multi-select on `scope: 'principal'` settings is **also scoped by `principal_id`** when rendered. The settings panel derives the principal from its own mode:
+
+- `mode='user'` → the caller's user-principal (`usePrincipalsStore` lookup)
+- `mode='group'` → `useGroupDetailStore().group.principal_id`
+- per-agent override (`AgentToolOverrideForm`) → the agent's `principal_id`
+- `mode='global'` → no principal (and the field is hidden anyway by `scope: 'principal'`)
+
+The picker URL becomes `GET /api/v1/agents?select=id,name&principal_id={N}` so the backend `AgentController::index` intersection (`?principal_id=` ∩ `visiblePrincipalIds()`) only returns same-principal agents. The runtime gates that protect intra-principal semantics — `HandoverTool::sharePrincipal()`, `HandoverService`, `SubAgentService`, `ToolConfigSchemaInspector::fetchAgentNameMap()` — are independent of this UI hint and continue to defend against tampered or stale payloads.
+
+### When to pick each value
+
+- **`'any'`** — the default. Use when the setting's value is meaningful regardless of who owns the agent. Credentials, hosts, timeouts, and toggle capabilities all live here.
+- **`'principal'`** — use when the picker (or the value itself) is only coherent under a specific principal. Concrete example: `HandoverTool::allowed_target_agents` is a multi-select that lists agents; the runtime LLM-side filter only ever resolves names against the source agent's principal (`ToolConfigSchemaInspector::fetchAgentNameMap()`), so the picker is meaningless without one. Future tools that hold an allowlist of same-principal resources follow the same pattern.
+- **`'agent'`** — use when the setting is tied to a specific agent identity (e.g. a unique API token that's minted per agent). Currently no `#[ToolSetting]` in `spora-core` declares this scope; it's reserved for plugin-side or future-core settings.
+
+### Backward compatibility
+
+Existing operator-defaults `allowed_target_agents` rows written before this change still cascade down to users without overrides. The runtime LLM-side filter in `ToolConfigSchemaInspector::fetchAgentNameMap()` (`app/Services/ToolConfigSchemaInspector.php`) restricts the LLM-visible list to the source agent's principal, so stale foreign ids in a pre-existing global degrade to `"#id"` placeholders — the same as before. The change is purely UI-side: the operator can no longer see or edit the picker at admin-defaults scope, but the data still flows.
+
 ## Quick Reference: All Tool Settings Keys
 
 | Key            | Type | Tool Class    | Purpose                         | LLM Exposed |
@@ -402,6 +450,8 @@ The `Handover` tool (`app/Tools/HandoverTool.php`) is a single tool that declare
 The LLM-facing schema declares `op` as the discriminator (enum: `handover | sub_agent`); single-op agents may omit `op` — `OperationSchemaFilter` strips the discriminator from `required[]` when only one op is allowed (back-compat path for agents created before the second op shipped).
 
 The `target_agent_id` (handover) and `agent_id` (sub_agent) names are deliberately distinct — they identify the same target agent in each op, but the per-op rename keeps the LLM-facing schema self-documenting and avoids hidden field-aliasing surprises.
+
+`allowed_target_agents` declares `scope: 'principal'`, so the picker is hidden at the admin operator-defaults page where no principal context exists. The same picker renders under **Settings → Tools → Handover** (per-user overrides), **Groups → {name} → Tools → Handover** (per-group overrides), and the agent's **Tools** tab (per-agent override). Existing global rows continue to cascade down; the runtime LLM-side filter in `ToolConfigSchemaInspector::fetchAgentNameMap()` restricts the LLM-visible list to the source agent's principal, so stale foreign ids in a pre-existing global degrade to `"#id"` placeholders. See [Setting render scope](#setting-render-scope) for the full matrix.
 
 ## Built-in tools
 

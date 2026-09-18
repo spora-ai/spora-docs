@@ -115,6 +115,8 @@ The parent chat header shows a violet sub-agent count badge (`3 sub-agents · 1 
 
 When an agent **hands off** a task to another agent (the legacy `handover` op, `op: 'handover'`), the closed source chat shows a green final-response pill followed by an **Open &lt;Agent&gt; →** link under the reply, deep-linking to the target agent's page. If you open a child chat directly (for example from a sub-agent row), the child chat's header shows a small **Source task #N** breadcrumb linking back to the parent chat.
 
+Both the `handover` and `sub_agent` ops are **intra-principal**: the LLM can only delegate to agents that share the source agent's `principal_id` (user-principal OR group-principal). A user-principal agent can only target other user-principal agents on its owner; a group-principal agent can only target other group-principal agents in the same group. The picker in the settings UI is principal-scoped, so the model only ever sees options it can actually call. See [Concepts → Tools → Setting render scope](/reference/concepts/tools#setting-render-scope) for the matrix and the operator-side controls that gate it.
+
 For the underlying lifecycle (`AWAITING_SUB_AGENTS` → resume gates, worker-mode pickup, `data.spawned_sub_task_ids` and `data.sub_agent_expected_count` accounting), see [Concepts → Agent loop and async mode](/reference/concepts/agent-loop-async).
 
 ### Stop waiting for sub-agents

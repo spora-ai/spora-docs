@@ -120,20 +120,20 @@ The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech
 | `class`                 | This row's provider FQCN. Used by the SPA to pick the matching `preferred_audio_mimes[]` for the resolved row. Distinct from `effective_class` below.                                                                                                                    |
 | `effective_class`       | The cascade-resolved class (per principal / agent). Identical across every row in the response — same answer, different vantage points.                                                                                                                                  |
 | `effective_source`      | Which cascade tier produced the answer. See the table below.                                                                                                                                                                                                             |
-| `effective_config_id`   | The configuration row that backed the choice. `null` when no FK config exists at any tier (cascade returned `[null, null, null]`).                                                                                                                                 |
+| `effective_config_id`   | The configuration row that backed the choice. `null` when no FK config exists at any tier (cascade returned `[null, null, null]`).                                                                                                                                       |
 | `preferred_audio_mimes` | The MIMEs the SPA should offer the browser in order. Provider-declared via [`#[AcceptedAudioMime]`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/Attributes/AcceptedAudioMime.php); falls back to the common-superset default when the provider opts out. |
 
 ### `effective_source` values
 
 The string is the tier label the cascade resolver emitted. Each maps to one row in the cascade:
 
-| Value              | Source tier                                                                | Configurable by                                       |
-| ------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `agent`            | Per-agent tier 1 — agent override                                          | Agent editor (per-agent `speech_driver_config_id`).   |
-| `user_preference`  | Per-agent tier 2 (agent's principal is a user-principal) or caller tier 1  | Per-user speech preferences.                          |
-| `group_preference` | Per-agent tier 2 (agent's principal is a group-principal) or caller tier 2 | Per-group speech preferences.                         |
-| `global_default`   | Tier 3 — global default                                                    | Admin (Settings → Speech, or `POST .../set-default`). |
-| `null` (no source) | Tier 4 — no config resolved                                               | Cascade returns `[null, null, null]`; SPA renders "No speech provider configured". |
+| Value              | Source tier                                                                | Configurable by                                                                    |
+| ------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `agent`            | Per-agent tier 1 — agent override                                          | Agent editor (per-agent `speech_driver_config_id`).                                |
+| `user_preference`  | Per-agent tier 2 (agent's principal is a user-principal) or caller tier 1  | Per-user speech preferences.                                                       |
+| `group_preference` | Per-agent tier 2 (agent's principal is a group-principal) or caller tier 2 | Per-group speech preferences.                                                      |
+| `global_default`   | Tier 3 — global default                                                    | Admin (Settings → Speech, or `POST .../set-default`).                              |
+| `null` (no source) | Tier 4 — no config resolved                                                | Cascade returns `[null, null, null]`; SPA renders "No speech provider configured". |
 
 `null` only when **no** provider class is registered at all — the SPA treats that as "install a speech provider" rather than "configure one".
 

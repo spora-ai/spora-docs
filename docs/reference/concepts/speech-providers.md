@@ -5,7 +5,7 @@ description: How Spora picks which speech-to-text plugin transcribes a recording
 
 # Speech providers
 
-A speech provider is a class that turns recorded audio bytes into a text transcript. Spora's composer recording button and the `/api/v1/speech/transcribe` endpoint both call into the same [`SpeechToTextRegistry`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/SpeechToTextRegistry.php), which picks one provider per request via a five-tier preference cascade. Providers are contributed by spora-core (the built-in OpenAI-compatible transcriber) and by plugins (e.g. [spora-plugin-minimax](/develop/plugins/reference/minimax), which contributes MiniMax's `asr-1.0`).
+A speech provider is a class that turns recorded audio bytes into a text transcript. Spora's composer recording button and the `/api/v1/speech/transcribe` endpoint both call into the same [`SpeechToTextRegistry`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/SpeechToTextRegistry.php), which picks one provider per request via a four-tier preference cascade (the historical fifth "first-registered-wins" tier was removed in spora-core PR #253 — tier 4 now returns `[null, null, null]` so the SPA capability badge stops claiming a working provider when none is configured). Providers are contributed by spora-core (the built-in OpenAI-compatible transcriber) and by plugins (e.g. [spora-plugin-minimax](/develop/plugins/reference/minimax), which contributes MiniMax's `asr-1.0`).
 
 This page is the operator / agent-developer view: how the cascade works, what each preference row means, and how to read the capability endpoint's `effective_*` fields. The plugin-author contract lives in [Plugin author guide → Speech providers](/develop/plugins/author-guide/speech-providers). The auto-generated REST surface is in [API reference → Speech](/reference/api/speech).
 
@@ -36,8 +36,8 @@ This page is the operator / agent-developer view: how the cascade works, what ea
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Provider classes    | `Spora\Speech\SpeechToTextProviderInterface`                                                                                 | One per vendor / wire shape. Sync-only.                                                                |
 | Registry            | [`SpeechToTextRegistry`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/SpeechToTextRegistry.php)               | Discovers providers (core + plugins), binds the resolved config's settings, gates on `isConfigured()`. |
-| Cascade resolver    | [`SpeechToTextCascadeResolver`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/SpeechToTextCascadeResolver.php) | Walks the five preference tiers and returns `(class, source, config_id)`.                              |
-| Configuration table | `speech_provider_configurations` + `principal_preferences.preferred_speech_config_id` + `agents.speech_driver_config_id`     | Operator-managed rows that drive tiers 1-4.                                                            |
+| Cascade resolver    | [`SpeechToTextCascadeResolver`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/SpeechToTextCascadeResolver.php) | Walks the four preference tiers and returns `(class, source, config_id)`.                              |
+| Configuration table | `speech_provider_configurations` + `principal_preferences.preferred_speech_config_id` + `agents.speech_driver_config_id`     | Operator-managed rows that drive tiers 1-3.                                                            |
 | REST surface        | [`/api/v1/speech/*`](/reference/api/speech)                                                                                  | 10 endpoints for CRUD, defaults, capability, transcribe.                                               |
 
 ## The cascade
@@ -49,10 +49,10 @@ For a per-agent request (`agent_id > 0`), the resolver walks 4 tiers against the
 ```text
 1. Agent override         agents.speech_driver_config_id → speech_provider_configurations.provider_class
 2. Principal preference   principal_preferences.preferred_speech_config_id for the AGENT's principal
-                          (user-principal or group-principal, depending on agents.principal_id)
+                           (user-principal or group-principal, depending on agents.principal_id)
 3. Global default         speech_provider_configurations WHERE is_global = true AND is_default = true
-                          ORDER BY updated_at DESC, id DESC
-4. First-registered-wins  first provider in the registry's constructor list
+                           ORDER BY updated_at DESC, id DESC
+4. No config → null       if tiers 1–3 resolved nothing, the cascade returns [null, null, null]
 ```
 
 For a caller-scoped request (the composer recording button has no agent context), the resolver walks 4 tiers against the caller:
@@ -60,12 +60,12 @@ For a caller-scoped request (the composer recording button has no agent context)
 ```text
 1. User preference        principal_preferences.preferred_speech_config_id for the caller's user-principal
 2. Group preference       every group_memberships row for the caller, ordered by joined_at ASC
-                          first match wins
+                           first match wins
 3. Global default         same as above
-4. First-registered-wins  same as above
+4. No config → null       same as above — tier returns [null, null, null]
 ```
 
-The registry itself describes the cascade as "five tiers" by counting user + group preferences as separate tiers globally; each request walks 4 because the per-agent path collapses user + group preference into a single "principal preference" tier while the caller path treats them separately.
+Both paths walk the same four-tier shape; per-agent requests use the agent's principal for tier 2, caller-scoped requests split user + group preferences into tiers 1 and 2.
 
 Every tier validates that the resolved `provider_class` is currently registered. If the operator deletes a plugin without first clearing the FK references, the resolver treats the row as unset and falls through to the next tier — never to a class the registry doesn't have.
 
@@ -73,7 +73,7 @@ Every tier validates that the resolved `provider_class` is currently registered.
 
 ## Configuration rows
 
-Every tier (except fallback) reads from the `speech_provider_configurations` table:
+Every tier (except tier 4, which returns null when nothing resolved) reads from the `speech_provider_configurations` table:
 
 | Column           | Type               | Purpose                                                                                                                                                                                                                                                |
 | ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -120,20 +120,20 @@ The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech
 | `class`                 | This row's provider FQCN. Used by the SPA to pick the matching `preferred_audio_mimes[]` for the resolved row. Distinct from `effective_class` below.                                                                                                                    |
 | `effective_class`       | The cascade-resolved class (per principal / agent). Identical across every row in the response — same answer, different vantage points.                                                                                                                                  |
 | `effective_source`      | Which cascade tier produced the answer. See the table below.                                                                                                                                                                                                             |
-| `effective_config_id`   | The configuration row that backed the choice. `null` when the answer came from the tier-5 fallback (no FK behind it).                                                                                                                                                    |
+| `effective_config_id`   | The configuration row that backed the choice. `null` when no FK config exists at any tier (cascade returned `[null, null, null]`).                                                                                                                                       |
 | `preferred_audio_mimes` | The MIMEs the SPA should offer the browser in order. Provider-declared via [`#[AcceptedAudioMime]`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/Attributes/AcceptedAudioMime.php); falls back to the common-superset default when the provider opts out. |
 
 ### `effective_source` values
 
 The string is the tier label the cascade resolver emitted. Each maps to one row in the cascade:
 
-| Value              | Source tier                                                                | Configurable by                                       |
-| ------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `agent`            | Per-agent tier 1 — agent override                                          | Agent editor (per-agent `speech_driver_config_id`).   |
-| `user_preference`  | Per-agent tier 2 (agent's principal is a user-principal) or caller tier 1  | Per-user speech preferences.                          |
-| `group_preference` | Per-agent tier 2 (agent's principal is a group-principal) or caller tier 2 | Per-group speech preferences.                         |
-| `global_default`   | Tier 3 — global default                                                    | Admin (Settings → Speech, or `POST .../set-default`). |
-| `fallback`         | Tier 4 — first-registered-wins                                             | The plugin load order. Operator cannot configure.     |
+| Value              | Source tier                                                                | Configurable by                                                                    |
+| ------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `agent`            | Per-agent tier 1 — agent override                                          | Agent editor (per-agent `speech_driver_config_id`).                                |
+| `user_preference`  | Per-agent tier 2 (agent's principal is a user-principal) or caller tier 1  | Per-user speech preferences.                                                       |
+| `group_preference` | Per-agent tier 2 (agent's principal is a group-principal) or caller tier 2 | Per-group speech preferences.                                                      |
+| `global_default`   | Tier 3 — global default                                                    | Admin (Settings → Speech, or `POST .../set-default`).                              |
+| `null` (no source) | Tier 4 — no config resolved                                                | Cascade returns `[null, null, null]`; SPA renders "No speech provider configured". |
 
 `null` only when **no** provider class is registered at all — the SPA treats that as "install a speech provider" rather than "configure one".
 

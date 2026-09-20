@@ -257,3 +257,19 @@ Scheduled runs (recurring cron-style triggers and one-shot future triggers) send
 - **Server kill switch**: the operator can set `SPORA_NOTIFICATIONS_EMAIL_ENABLED=false` in `.env` to disable scheduled-run dispatch globally. Defaults to `true`. When disabled, the subscription UI shows a "currently disabled on this server" banner so you know your toggles still save state but no mail will go out.
 
 Subscriptions are mutable per user — toggling a row takes effect on the next scheduled-run dispatch. `trigger_user_id` (who clicked "Send") is not consulted for routing; it's purely the audit attribution on the task row.
+
+## Sidebar and command palette
+
+The left sidebar pins the bucket that owns your active agent at the top — either your personal **My Agents** section or the group the agent belongs to — and collapses every other bucket into a single **Other agents (N)** panel that you expand on demand. Agents without a `principal` (legacy fixtures) live in an **Unfiled** bucket inside that panel rather than getting their own pinned section.
+
+To jump around without scrolling, press **⌘K** (or **Ctrl-K** on non-Mac platforms). A global command palette opens with five sections:
+
+- **Actions** — quick links like "Create new agent" / "Create new group", shown only on an empty query.
+- **Groups** — every group you can see.
+- **My Agents** — agents you own directly.
+- **Agents by group** — every other agent, grouped by its owning group.
+- **Recent chats** — your last 20 conversations, searchable on `user_prompt` and `final_response`.
+
+Navigation: `↑` / `↓` move, `↵` activates, `Esc` or a backdrop click closes. The palette is wired to the existing Pinia stores and triggers no extra backend calls; if you open it before the dashboard data is loaded, it kicks off the same `ensureLoaded()` fetch the dashboard uses.
+
+The ⌘K button is also exposed as a discoverable search icon in the navbar (between the client-worker indicator and the Groups link) so mouse-first users don't have to memorise the shortcut.

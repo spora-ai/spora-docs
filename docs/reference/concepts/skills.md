@@ -5,7 +5,7 @@ description: How Spora's Skill system lets operators ship versionable, file-back
 
 # Skills
 
-A **Skill** is a versionable, file-backed bundle of operator knowledge an Agent can pull on demand. Skills are auto-discovered from three sources (project, framework, plugin), packaged as one normal Tool (`SkillTool`) the operator activates on an Agent, and gated per-Agent via a `multi-select` ToolSetting (mirrors `HandoverTool`'s `allowed_target_agents`).
+A **Skill** is a versionable, file-backed bundle of operator knowledge an Agent can pull on demand. Skills are auto-discovered from three sources (project, framework, plugin), packaged as one normal Tool (`SkillTool`) the operator activates on an Agent, and gated per-Agent via a `multi-select` ToolSetting (mirrors `SubAgentTool`'s `allowed_target_agents`).
 
 The Agent sees a small, curated list of skill _summaries_ (name + short description) and can pull bodies / sidecar files on demand.
 

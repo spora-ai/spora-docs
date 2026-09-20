@@ -120,7 +120,7 @@ Stores expose a `load()` action that pages call from `onMounted` and from refres
 
 ### Sub-task cache (`sub_agent` op)
 
-The `useTaskStore` exposes a reactive sub-task cache for the `HandoverTool` `sub_agent` op (`src/stores/tasks.ts`). `subTaskCache: Map<number, TaskDetail>` is keyed by child task id; `fetchSubTaskDetail(id)` populates it via `GET /api/v1/tasks/{id}` and SSE updates for non-active task ids patch the cached entry in place via `applyTaskUpdate` so per-row status badges flip live without a re-fetch. `clearSubTaskCache()` empties the map on `TaskChatPage` unmount so child rows do not leak across parent visits.
+The `useTaskStore` exposes a reactive sub-task cache for the `SubAgentTool` `sub_agent` op (`src/stores/tasks.ts`). `subTaskCache: Map<number, TaskDetail>` is keyed by child task id; `fetchSubTaskDetail(id)` populates it via `GET /api/v1/tasks/{id}` and SSE updates for non-active task ids patch the cached entry in place via `applyTaskUpdate` so per-row status badges flip live without a re-fetch. `clearSubTaskCache()` empties the map on `TaskChatPage` unmount so child rows do not leak across parent visits.
 
 ### `TaskDetail.data`
 

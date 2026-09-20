@@ -103,19 +103,20 @@ The ABORTED banner stays visible until the orchestrator receives your next instr
 
 ### Sub-agents and handovers
 
-When the agent delegates work to a sub-agent (the `handover` tool with `op: 'sub_agent'`), the chat inserts a **sub-agent row widget** under the assistant turn. It lists every spawned child task with its live status:
+The `sub_agent` tool (LLM-facing name) ships two operations on the `op` discriminator. The LLM fills `op` plus the shared `target_agent_id` + `prompt` parameters and picks one of:
 
-- **Running** (blue, pulsing dot) — the child task is still being executed.
-- **Awaiting approval** (amber row + ⚠ icon) — the child task is waiting on a tool-call decision. Click **Review approvals →** on the row to jump straight to the child chat's approvals section (`#approvals`).
-- **Queued / Done / Failed / Cancelled** — terminal-style indicators, no pulse.
+- `op: 'handover'` — transfer + close. The source chat ends with a green final-response pill followed by an **Open &lt;Agent&gt; →** link deep-linking to the target agent's page.
+- `op: 'sub_agent'` — spawn a child task and wait. The chat inserts a **sub-agent row widget** under the assistant turn listing every spawned child task with its live status:
+
+  - **Running** (blue, pulsing dot) — the child task is still being executed.
+  - **Awaiting approval** (amber row + ⚠ icon) — the child task is waiting on a tool-call decision. Click **Review approvals →** on the row to jump straight to the child chat's approvals section (`#approvals`).
+  - **Queued / Done / Failed / Cancelled** — terminal-style indicators, no pulse.
 
 A summary line appears above the row list when at least one child needs approval: `Sub-agents (N): X needs approval · Y running · Z done` — click the line to jump to the first awaiting child.
 
 The parent chat header shows a violet sub-agent count badge (`3 sub-agents · 1 needs approval · 1 running · 1 completed`) when the parent has spawned sub-agents; clicking it smooth-scrolls to the first awaiting child. The badge hides once every spawned child reaches a terminal state. While the parent is waiting, its status pill turns violet (`AWAITING_SUB_AGENTS`) on the dashboard.
 
-When an agent **hands off** a task to another agent (the legacy `handover` op, `op: 'handover'`), the closed source chat shows a green final-response pill followed by an **Open &lt;Agent&gt; →** link under the reply, deep-linking to the target agent's page. If you open a child chat directly (for example from a sub-agent row), the child chat's header shows a small **Source task #N** breadcrumb linking back to the parent chat.
-
-Both the `handover` and `sub_agent` ops are **intra-principal**: the LLM can only delegate to agents that share the source agent's `principal_id` (user-principal OR group-principal). A user-principal agent can only target other user-principal agents on its owner; a group-principal agent can only target other group-principal agents in the same group. The picker in the settings UI is principal-scoped, so the model only ever sees options it can actually call. See [Concepts → Tools → Setting render scope](/reference/concepts/tools#setting-render-scope) for the matrix and the operator-side controls that gate it.
+Both `op` values are **intra-principal**: the LLM can only delegate to agents that share the source agent's `principal_id` (user-principal OR group-principal). A user-principal agent can only target other user-principal agents on its owner; a group-principal agent can only target other group-principal agents in the same group. The picker in the settings UI is principal-scoped, so the model only ever sees options it can actually call. See [Concepts → Tools → Setting render scope](/reference/concepts/tools#setting-render-scope) for the matrix and the operator-side controls that gate it.
 
 For the underlying lifecycle (`AWAITING_SUB_AGENTS` → resume gates, worker-mode pickup, `data.spawned_sub_task_ids` and `data.sub_agent_expected_count` accounting), see [Concepts → Agent loop and async mode](/reference/concepts/agent-loop-async).
 

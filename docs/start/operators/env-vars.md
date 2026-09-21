@@ -39,7 +39,7 @@ See [Security](/start/operators/security) for the full key-resolution chain and 
 
 | Variable                    | Default     | Config key            | Description                                               |
 | --------------------------- | ----------- | --------------------- | --------------------------------------------------------- |
-| `SPORA_DB_DRIVER`           | `sqlite`    | `db_driver`           | `sqlite` (zero-config) or `mysql`.                        |
+| `SPORA_DB_DRIVER`           | `sqlite`    | `db_driver`           | `sqlite` (zero-config), `mysql`, or `mariadb`.            |
 | `SPORA_DB_HOST`             | `127.0.0.1` | `db_host`             | MySQL/MariaDB host.                                       |
 | `SPORA_DB_PORT`             | `3306`      | `db_port`             | MySQL/MariaDB port.                                       |
 | `SPORA_DB_NAME`             | `spora`     | `db_name`             | MySQL/MariaDB database name.                              |
@@ -49,7 +49,7 @@ See [Security](/start/operators/security) for the full key-resolution chain and 
 
 SQLite path is set in `config.php` (defaults to `storage/database.sqlite`).
 
-The DB driver is selected by `SPORA_DB_DRIVER` (`sqlite` or `mysql`) and is also what `php bin/spora db:reset` reads to decide whether to wipe the local SQLite file or run `DROP DATABASE` + `CREATE DATABASE` on the configured MySQL server. See [Install](/start/operators/install#troubleshooting) for the destructive `db:reset` flow.
+The DB driver is selected by `SPORA_DB_DRIVER` (`sqlite`, `mysql`, or `mariadb`) and is also what `php bin/spora db:reset` reads to decide whether to wipe the local SQLite file or run `DROP DATABASE` + `CREATE DATABASE` on the configured MySQL/MariaDB server. See [Install](/start/operators/install#troubleshooting) for the destructive `db:reset` flow.
 
 ## Worker runtime mode
 

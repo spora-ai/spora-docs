@@ -21,13 +21,13 @@ After install, the `calendar` tool is exposed. Operations are dispatched via the
 
 Settings → Tools → Calendar. The three required fields are the CalDAV collection URL, the username, and a password (most providers require an **app-specific password**, not your account password — see the vendor list below).
 
-| Setting        | Required | Default                | Notes                                                                                                                                  |
-| -------------- | -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`          | yes      | —                      | Full URL to a specific CalDAV calendar collection, e.g. `https://caldav.icloud.com/...`                                                |
-| `username`     | yes      | —                      | CalDAV account username (often the account email)                                                                                      |
-| `password`     | yes      | —                      | CalDAV password or app-specific token                                                                                                  |
-| `auth_method`  | no       | `auto`                 | HTTP authentication scheme — see [Authentication](#authentication) below.                                                               |
-| `http_timeout` | no       | `30`                   | Seconds before an HTTP request fails. Overrides `SPORA_TOOL_HTTP_TIMEOUT`                                                              |
+| Setting        | Required | Default | Notes                                                                                   |
+| -------------- | -------- | ------- | --------------------------------------------------------------------------------------- |
+| `url`          | yes      | —       | Full URL to a specific CalDAV calendar collection, e.g. `https://caldav.icloud.com/...` |
+| `username`     | yes      | —       | CalDAV account username (often the account email)                                       |
+| `password`     | yes      | —       | CalDAV password or app-specific token                                                   |
+| `auth_method`  | no       | `auto`  | HTTP authentication scheme — see [Authentication](#authentication) below.               |
+| `http_timeout` | no       | `30`    | Seconds before an HTTP request fails. Overrides `SPORA_TOOL_HTTP_TIMEOUT`               |
 
 The `password` field is encrypted at rest by Spora's `ToolConfigService`, masked in the UI, and never logged. ETag handling follows [RFC 7232](https://www.rfc-editor.org/rfc/rfc7232) for safe updates.
 
@@ -35,11 +35,11 @@ The `password` field is encrypted at rest by Spora's `ToolConfigService`, masked
 
 The `auth_method` setting controls how the plugin authenticates to the CalDAV server. The default (`auto`) covers every supported deployment without operator configuration:
 
-| Value     | Behaviour                                                                                                                                                                  | When to pick                                                                                              |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `auto`    | Sends HTTP Basic preemptively. If the server returns a `401` with a `WWW-Authenticate: Digest …` challenge, the plugin recomputes the request with a Digest Authorization header and retries once. | Default. Works against Nextcloud, Baïkal, Radicale, iCloud, Fastmail, Google, **and** all-inkl / Cyrus / Kerio. |
-| `basic`   | Sends Basic preemptively. Never retries. A Digest-only server returns `401` and the request surfaces as a credential error.                                                | Servers that explicitly forbid Digest (rare).                                                              |
-| `digest`  | Sends no Authorization on the first request so the server can issue its Digest challenge; computes the response from the challenge and retries once.                       | Pin to Digest for a known Digest-only server, e.g. debugging credential issues.                            |
+| Value    | Behaviour                                                                                                                                                                                          | When to pick                                                                                                    |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `auto`   | Sends HTTP Basic preemptively. If the server returns a `401` with a `WWW-Authenticate: Digest …` challenge, the plugin recomputes the request with a Digest Authorization header and retries once. | Default. Works against Nextcloud, Baïkal, Radicale, iCloud, Fastmail, Google, **and** all-inkl / Cyrus / Kerio. |
+| `basic`  | Sends Basic preemptively. Never retries. A Digest-only server returns `401` and the request surfaces as a credential error.                                                                        | Servers that explicitly forbid Digest (rare).                                                                   |
+| `digest` | Sends no Authorization on the first request so the server can issue its Digest challenge; computes the response from the challenge and retries once.                                               | Pin to Digest for a known Digest-only server, e.g. debugging credential issues.                                 |
 
 The Digest implementation follows [RFC 7616](https://www.rfc-editor.org/rfc/rfc7616) and supports `qop=auth` with MD5 (the variant all-inkl ships). All retries are bounded to a single attempt — a wrong-password response is reported as `HTTP 401` rather than silently looping.
 
@@ -49,14 +49,14 @@ The tool exposes a single `action` discriminator; each action takes the paramete
 
 Returns `ToolResult::ok` on success or `ToolResult::fail` on validation / HTTP failure — never throws.
 
-| Action           | Description                                                          | Parameters                                                                                                                                                                                                                                                                                                   |
-| ---------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `list_calendars` | Discover sibling calendars at the configured URL via `PROPFIND`.     | _(none — uses the configured `url`)_                                                                                                                                                                                                                                                                        |
-| `list_events`    | Fetch events within a date range.                                    | `start_date` (string, required), `end_date` (string, required)                                                                                                                                                                                                                                               |
-| `get_event`      | Get one event by its CalDAV URI.                                     | `event_uri` (string, required)                                                                                                                                                                                                                                                                               |
-| `create_event`   | Create a new event. Requires approval.                               | `summary` (string, required, max 255 chars), `start_date` (string, required), `end_date` (string, required), `description` (string, optional), `location` (string, optional), `timezone` (string, optional, IANA name like `Europe/Berlin`), `all_day` (bool, optional)                                     |
-| `edit_event`     | Edit an existing event. Requires approval.                           | `event_uri` (string, required), `etag` (string, optional — auto-fetched if omitted), `summary` (string, optional — falls back to existing), `start_date` (string, optional), `end_date` (string, optional), `description` (string, optional), `location` (string, optional), `timezone` (string, optional), `all_day` (bool, optional) |
-| `delete_event`   | Delete an event. Requires approval.                                  | `event_uri` (string, required), `etag` (string, optional — adds `If-Match` for safer deletion)                                                                                                                                                                                                               |
+| Action           | Description                                                      | Parameters                                                                                                                                                                                                                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_calendars` | Discover sibling calendars at the configured URL via `PROPFIND`. | _(none — uses the configured `url`)_                                                                                                                                                                                                                                                                                                   |
+| `list_events`    | Fetch events within a date range.                                | `start_date` (string, required), `end_date` (string, required)                                                                                                                                                                                                                                                                         |
+| `get_event`      | Get one event by its CalDAV URI.                                 | `event_uri` (string, required)                                                                                                                                                                                                                                                                                                         |
+| `create_event`   | Create a new event. Requires approval.                           | `summary` (string, required, max 255 chars), `start_date` (string, required), `end_date` (string, required), `description` (string, optional), `location` (string, optional), `timezone` (string, optional, IANA name like `Europe/Berlin`), `all_day` (bool, optional)                                                                |
+| `edit_event`     | Edit an existing event. Requires approval.                       | `event_uri` (string, required), `etag` (string, optional — auto-fetched if omitted), `summary` (string, optional — falls back to existing), `start_date` (string, optional), `end_date` (string, optional), `description` (string, optional), `location` (string, optional), `timezone` (string, optional), `all_day` (bool, optional) |
+| `delete_event`   | Delete an event. Requires approval.                              | `event_uri` (string, required), `etag` (string, optional — adds `If-Match` for safer deletion)                                                                                                                                                                                                                                         |
 
 `create_event` and `edit_event` write iCalendar payloads: when `timezone` is set, `DTSTART`/`DTEND` carry a `TZID` parameter; when `all_day` is `true`, dates are interpreted as date-only (`YYYY-MM-DD`) and emitted as `DTSTART;VALUE=DATE` / `DTEND;VALUE=DATE`. The plugin does not emit a `VTIMEZONE` component — most servers use their own timezone database to resolve unknown TZIDs.
 
@@ -76,45 +76,47 @@ Every action returns a `ToolResult` with two fields:
 ```jsonc
 // create_event success
 {
-  "status":    "ok",
-  "action":    "create_event",
+  "status": "ok",
+  "action": "create_event",
   "event_uri": "/calendars/user/cal/20260922-120000-test.ics",
-  "uid":       "abc123-1@spora",
-  "etag":      "\"2a94de303bff21294a6bcc0f473aa3f8\""
+  "uid": "abc123-1@spora",
+  "etag": "\"2a94de303bff21294a6bcc0f473aa3f8\"",
 }
 ```
 
 The same identifiers also appear in the human-readable text (multi-line `URI:` / `UID:` / `ETag:` block), so a follow-up `edit_event` or `delete_event` doesn't need a separate `list_events` round-trip just to discover them.
 
+```jsonc
 // list_events success
 {
-  "status": "ok",
-  "action": "list_events",
-  "count":  3,
-  "events": [
-    { "event_uri": "/…", "uid": "…", "summary": "Team Meeting", "dtstart": "20260922T120000Z", "dtend": "20260922T130000Z" }
-  ]
+"status": "ok",
+"action": "list_events",
+"count": 3,
+"events": [
+{ "event_uri": "/…", "uid": "…", "summary": "Team Meeting", "dtstart": "20260922T120000Z", "dtend": "20260922T130000Z" }
+]
 }
 
 // get_event success
 {
-  "status":       "ok",
-  "action":       "get_event",
-  "event_uri":    "/…",
-  "uid":          "…",
-  "summary":      "…",
-  "dtstart":      "20260922T120000",
-  "dtend":        "20260922T130000",
-  "dtstart_tzid": "America/New_York",
-  "dtend_tzid":   "America/New_York",
-  "description":  "…",
-  "location":     "…",
-  "etag":         "\"…\""
+"status": "ok",
+"action": "get_event",
+"event_uri": "/…",
+"uid": "…",
+"summary": "…",
+"dtstart": "20260922T120000",
+"dtend": "20260922T130000",
+"dtstart_tzid": "America/New_York",
+"dtend_tzid": "America/New_York",
+"description": "…",
+"location": "…",
+"etag": "\"…\""
 }
 ```
 
 `dtstart_tzid` / `dtend_tzid` carry the original `TZID=` parameter from the iCalendar payload. Pass them back to `edit_event` to round-trip without losing the timezone — without them, the re-write emits floating local time and the wall-clock drifts across a DST transition. If the source event had no TZID, these fields are `null`.
 
+```jsonc
 // list_calendars success
 {
   "status":    "ok",
@@ -149,15 +151,15 @@ The same identifiers also appear in the human-readable text (multi-line `URI:` /
 
 CalDAV is an open IETF protocol; any of these work with the same configuration shape. Most providers require an **app-specific password** rather than your account password.
 
-| Provider                     | CalDAV URL                                                                                                                                  | App password                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Apple iCloud                 | `https://caldav.icloud.com` (per-calendar URL from the Calendar app's "Calendar Sharing" dialog)                                            | <https://appleid.apple.com/account/manage> → App-Specific Passwords            |
-| Fastmail                     | Per-calendar URL from Settings → Calendars → ⋯ → "CalDAV URL" (host: `caldav.fastmail.com`)                                                 | Account password (Fastmail supports CalDAV directly with the account password) |
-| Google Calendar (via CalDAV) | `https://apidata.googleusercontent.com/caldav/v2/<calendarID>/events` (calendar ID from Google Calendar settings)                           | <https://myaccount.google.com/apppasswords>                                    |
-| Nextcloud                    | `https://<your-nextcloud>/remote.php/dav/calendars/<username>/<calendar-name>/` (copy from Calendar → Settings → "iOS/OS X CalDAV address") | Nextcloud user profile → Security → "App passwords"                            |
-| Radicale (self-hosted)       | `https://<your-radicale-host>/<user>/<calendar>/` (default port `5232`)                                                                     | Account password (configure auth in `config`)                                  |
-| Baïkal (self-hosted)         | `https://<your-baikal>/baikal/cal.php/calendars/<user>/<calendar>/`                                                                         | Account password                                                               |
-| all-inkl.com (webmail CalDAV)| Per-calendar URL from webmail → Settings → Calendars (host: `webmail.<domain>`)                                                              | Webmail password — server only advertises **Digest** auth (handled automatically by `auth_method=auto`) |
+| Provider                      | CalDAV URL                                                                                                                                  | App password                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Apple iCloud                  | `https://caldav.icloud.com` (per-calendar URL from the Calendar app's "Calendar Sharing" dialog)                                            | <https://appleid.apple.com/account/manage> → App-Specific Passwords                                     |
+| Fastmail                      | Per-calendar URL from Settings → Calendars → ⋯ → "CalDAV URL" (host: `caldav.fastmail.com`)                                                 | Account password (Fastmail supports CalDAV directly with the account password)                          |
+| Google Calendar (via CalDAV)  | `https://apidata.googleusercontent.com/caldav/v2/<calendarID>/events` (calendar ID from Google Calendar settings)                           | <https://myaccount.google.com/apppasswords>                                                             |
+| Nextcloud                     | `https://<your-nextcloud>/remote.php/dav/calendars/<username>/<calendar-name>/` (copy from Calendar → Settings → "iOS/OS X CalDAV address") | Nextcloud user profile → Security → "App passwords"                                                     |
+| Radicale (self-hosted)        | `https://<your-radicale-host>/<user>/<calendar>/` (default port `5232`)                                                                     | Account password (configure auth in `config`)                                                           |
+| Baïkal (self-hosted)          | `https://<your-baikal>/baikal/cal.php/calendars/<user>/<calendar>/`                                                                         | Account password                                                                                        |
+| all-inkl.com (webmail CalDAV) | Per-calendar URL from webmail → Settings → Calendars (host: `webmail.<domain>`)                                                             | Webmail password — server only advertises **Digest** auth (handled automatically by `auth_method=auto`) |
 
 Radicale's docs: <https://radicale.org/>. Baïkal: <https://sabre.io/baikal/>.
 

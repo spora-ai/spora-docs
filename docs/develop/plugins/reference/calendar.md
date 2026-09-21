@@ -21,14 +21,27 @@ After install, the `calendar` tool is exposed. Operations are dispatched via the
 
 Settings → Tools → Calendar. The three required fields are the CalDAV collection URL, the username, and a password (most providers require an **app-specific password**, not your account password — see the vendor list below).
 
-| Setting        | Required | Default | Notes                                                                                   |
-| -------------- | -------- | ------- | --------------------------------------------------------------------------------------- |
-| `url`          | yes      | —       | Full URL to a specific CalDAV calendar collection, e.g. `https://caldav.icloud.com/...` |
-| `username`     | yes      | —       | CalDAV account username (often the account email)                                       |
-| `password`     | yes      | —       | CalDAV password or app-specific token                                                   |
-| `http_timeout` | no       | `30`    | Seconds before an HTTP request fails. Overrides `SPORA_TOOL_HTTP_TIMEOUT`               |
+| Setting        | Required | Default                | Notes                                                                                                                                  |
+| -------------- | -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`          | yes      | —                      | Full URL to a specific CalDAV calendar collection, e.g. `https://caldav.icloud.com/...`                                                |
+| `username`     | yes      | —                      | CalDAV account username (often the account email)                                                                                      |
+| `password`     | yes      | —                      | CalDAV password or app-specific token                                                                                                  |
+| `auth_method`  | no       | `auto`                 | HTTP authentication scheme — see [Authentication](#authentication) below.                                                               |
+| `http_timeout` | no       | `30`                   | Seconds before an HTTP request fails. Overrides `SPORA_TOOL_HTTP_TIMEOUT`                                                              |
 
-The `password` field is encrypted at rest by Spora's `ToolConfigService`, masked in the UI, and never logged. The CalDAV client uses HTTP Basic auth (`auth_basic`) over HTTPS; ETag handling follows [RFC 7232](https://www.rfc-editor.org/rfc/rfc7232) for safe updates.
+The `password` field is encrypted at rest by Spora's `ToolConfigService`, masked in the UI, and never logged. ETag handling follows [RFC 7232](https://www.rfc-editor.org/rfc/rfc7232) for safe updates.
+
+## Authentication
+
+The `auth_method` setting controls how the plugin authenticates to the CalDAV server. The default (`auto`) covers every supported deployment without operator configuration:
+
+| Value     | Behaviour                                                                                                                                                                  | When to pick                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `auto`    | Sends HTTP Basic preemptively. If the server returns a `401` with a `WWW-Authenticate: Digest …` challenge, the plugin recomputes the request with a Digest Authorization header and retries once. | Default. Works against Nextcloud, Baïkal, Radicale, iCloud, Fastmail, Google, **and** all-inkl / Cyrus / Kerio. |
+| `basic`   | Sends Basic preemptively. Never retries. A Digest-only server returns `401` and the request surfaces as a credential error.                                                | Servers that explicitly forbid Digest (rare).                                                              |
+| `digest`  | Sends no Authorization on the first request so the server can issue its Digest challenge; computes the response from the challenge and retries once.                       | Pin to Digest for a known Digest-only server, e.g. debugging credential issues.                            |
+
+The Digest implementation follows [RFC 7616](https://www.rfc-editor.org/rfc/rfc7616) and supports `qop=auth` with MD5 (the variant all-inkl ships). All retries are bounded to a single attempt — a wrong-password response is reported as `HTTP 401` rather than silently looping.
 
 ## Per-tool parameters
 
@@ -58,6 +71,7 @@ CalDAV is an open IETF protocol; any of these work with the same configuration s
 | Nextcloud                    | `https://<your-nextcloud>/remote.php/dav/calendars/<username>/<calendar-name>/` (copy from Calendar → Settings → "iOS/OS X CalDAV address") | Nextcloud user profile → Security → "App passwords"                            |
 | Radicale (self-hosted)       | `https://<your-radicale-host>/<user>/<calendar>/` (default port `5232`)                                                                     | Account password (configure auth in `config`)                                  |
 | Baïkal (self-hosted)         | `https://<your-baikal>/baikal/cal.php/calendars/<user>/<calendar>/`                                                                         | Account password                                                               |
+| all-inkl.com (webmail CalDAV)| Per-calendar URL from webmail → Settings → Calendars (host: `webmail.<domain>`)                                                              | Webmail password — server only advertises **Digest** auth (handled automatically by `auth_method=auto`) |
 
 Radicale's docs: <https://radicale.org/>. Baïkal: <https://sabre.io/baikal/>.
 

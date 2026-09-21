@@ -13,12 +13,12 @@
       "link": "/reference/api/groups"
     },
     {
-      "text": "Auth",
-      "link": "/reference/api/auth"
-    },
-    {
       "text": "Tasks",
       "link": "/reference/api/tasks"
+    },
+    {
+      "text": "Auth",
+      "link": "/reference/api/auth"
     },
     {
       "text": "Speech",

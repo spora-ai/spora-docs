@@ -45,19 +45,81 @@ The Digest implementation follows [RFC 7616](https://www.rfc-editor.org/rfc/rfc7
 
 ## Per-tool parameters
 
-The tool exposes a single `action` discriminator; each action takes the parameters below. String dates use ISO-8601 (`YYYY-MM-DDTHH:MM:SS[±HH:MM]` or `YYYY-MM-DD` for all-day events). Returns `ToolResult::ok` on success or `ToolResult::fail` on validation / HTTP failure — never throws.
+The tool exposes a single `action` discriminator; each action takes the parameters below. String dates use ISO-8601 (`YYYY-MM-DDTHH:MM:SS[±HH:MM]`) — a bare `YYYY-MM-DD` is auto-expanded to `T00:00:00` for the start and `T23:59:59` for the end so a single-day range covers the full day without the server rejecting it. For all-day events, set `all_day=true` and pass `YYYY-MM-DD` as-is (the plugin emits `DTSTART;VALUE=DATE`).
 
-| Action         | Description                                | Parameters                                                                                                                                                                                                                                                                                                   |
-| -------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `list_events`  | Fetch events within a date range.          | `start_date` (string, required), `end_date` (string, required)                                                                                                                                                                                                                                               |
-| `get_event`    | Get one event by its CalDAV URI.           | `event_uri` (string, required)                                                                                                                                                                                                                                                                               |
-| `create_event` | Create a new event. Requires approval.     | `summary` (string, required), `start_date` (string, required), `end_date` (string, required), `description` (string, optional), `location` (string, optional), `timezone` (string, optional, IANA name like `Europe/Berlin`), `all_day` (bool, optional)                                                     |
-| `edit_event`   | Edit an existing event. Requires approval. | `event_uri` (string, required), `etag` (string, required), `summary` (string, optional — falls back to existing), `start_date` (string, optional), `end_date` (string, optional), `description` (string, optional), `location` (string, optional), `timezone` (string, optional), `all_day` (bool, optional) |
-| `delete_event` | Delete an event. Requires approval.        | `event_uri` (string, required), `etag` (string, optional — adds `If-Match` for safer deletion)                                                                                                                                                                                                               |
+Returns `ToolResult::ok` on success or `ToolResult::fail` on validation / HTTP failure — never throws.
+
+| Action           | Description                                                          | Parameters                                                                                                                                                                                                                                                                                                   |
+| ---------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `list_calendars` | Discover sibling calendars at the configured URL via `PROPFIND`.     | _(none — uses the configured `url`)_                                                                                                                                                                                                                                                                        |
+| `list_events`    | Fetch events within a date range.                                    | `start_date` (string, required), `end_date` (string, required)                                                                                                                                                                                                                                               |
+| `get_event`      | Get one event by its CalDAV URI.                                     | `event_uri` (string, required)                                                                                                                                                                                                                                                                               |
+| `create_event`   | Create a new event. Requires approval.                               | `summary` (string, required, max 255 chars), `start_date` (string, required), `end_date` (string, required), `description` (string, optional), `location` (string, optional), `timezone` (string, optional, IANA name like `Europe/Berlin`), `all_day` (bool, optional)                                     |
+| `edit_event`     | Edit an existing event. Requires approval.                           | `event_uri` (string, required), `etag` (string, optional — auto-fetched if omitted), `summary` (string, optional — falls back to existing), `start_date` (string, optional), `end_date` (string, optional), `description` (string, optional), `location` (string, optional), `timezone` (string, optional), `all_day` (bool, optional) |
+| `delete_event`   | Delete an event. Requires approval.                                  | `event_uri` (string, required), `etag` (string, optional — adds `If-Match` for safer deletion)                                                                                                                                                                                                               |
 
 `create_event` and `edit_event` write iCalendar payloads: when `timezone` is set, `DTSTART`/`DTEND` carry a `TZID` parameter; when `all_day` is `true`, dates are interpreted as date-only (`YYYY-MM-DD`). The plugin does not emit a `VTIMEZONE` component — most servers use their own timezone database to resolve unknown TZIDs.
 
-For safe edits, fetch the event with `get_event` first to obtain its current `etag` — the server returns `412 Precondition Failed` (mapped to a friendly `ToolResult::fail` message) if the event has been modified since.
+For safe edits, fetch the event with `get_event` first to obtain its current `etag` and pass it to `edit_event` — the server returns `412 Precondition Failed` (mapped to a friendly `ToolResult::fail` message) if the event has been modified since. If you omit `etag` entirely, the plugin auto-fetches the current ETag from the server before sending the conditional PUT — no extra round-trip beyond the `get_event`-equivalent it already does for field merging.
+
+`create_event` sends `If-None-Match: *` on every PUT (RFC 4791 §5.3.2), so retries cannot overwrite or duplicate an event the server already accepted. `summary` is capped at 255 characters to keep iCalendar payloads well under the RFC 5545 line-length limit.
+
+## Response shape
+
+Every action returns a `ToolResult` with two fields:
+
+- `content` — a human-readable summary (unchanged from earlier releases; existing agents keep working).
+- `data` — a structured payload new in this release. It always carries `status` (`ok` or `error`) and `action` (`list_events`, `create_event`, etc.) so programmatic consumers can branch without parsing the text. Successful results also include action-specific fields.
+
+```jsonc
+// create_event success
+{
+  "status":    "ok",
+  "action":    "create_event",
+  "event_uri": "/calendars/user/cal/20260922-120000-test.ics",
+  "uid":       "abc123-1@spora",
+  "etag":      "\"2a94de303bff21294a6bcc0f473aa3f8\""
+}
+
+// list_events success
+{
+  "status": "ok",
+  "action": "list_events",
+  "count":  3,
+  "events": [
+    { "event_uri": "/…", "uid": "…", "summary": "Team Meeting", "dtstart": "20260922T120000Z", "dtend": "20260922T130000Z" }
+  ]
+}
+
+// list_calendars success
+{
+  "status":    "ok",
+  "action":    "list_calendars",
+  "count":     2,
+  "calendars": [
+    { "href": "/calendars/user/personal/", "name": "Personal" },
+    { "href": "/calendars/user/work/",     "name": "Work" }
+  ]
+}
+
+// create_event validation failure
+{
+  "status":      "error",
+  "action":      "create_event",
+  "reason":      "summary_too_long",
+  "hint":        "Shorten the summary and retry.",
+  "field":       "summary"
+}
+
+// list_events HTTP failure
+{
+  "status":      "error",
+  "action":      "list_events",
+  "http_status": 500
+}
+```
+
+`event_uri` is always returned — even when the server rewrites the slug you provided into a server-assigned name. `uid` and `etag` from `create_event` are what `edit_event` / `delete_event` expect on subsequent calls.
 
 ## CalDAV servers
 

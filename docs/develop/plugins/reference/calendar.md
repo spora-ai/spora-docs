@@ -96,6 +96,25 @@ The same identifiers also appear in the human-readable text (multi-line `URI:` /
   ]
 }
 
+// get_event success
+{
+  "status":       "ok",
+  "action":       "get_event",
+  "event_uri":    "/…",
+  "uid":          "…",
+  "summary":      "…",
+  "dtstart":      "20260922T120000",
+  "dtend":        "20260922T130000",
+  "dtstart_tzid": "America/New_York",
+  "dtend_tzid":   "America/New_York",
+  "description":  "…",
+  "location":     "…",
+  "etag":         "\"…\""
+}
+```
+
+`dtstart_tzid` / `dtend_tzid` carry the original `TZID=` parameter from the iCalendar payload. Pass them back to `edit_event` to round-trip without losing the timezone — without them, the re-write emits floating local time and the wall-clock drifts across a DST transition. If the source event had no TZID, these fields are `null`.
+
 // list_calendars success
 {
   "status":    "ok",

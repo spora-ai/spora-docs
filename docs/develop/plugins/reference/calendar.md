@@ -60,7 +60,7 @@ Returns `ToolResult::ok` on success or `ToolResult::fail` on validation / HTTP f
 
 `create_event` and `edit_event` write iCalendar payloads: when `timezone` is set, `DTSTART`/`DTEND` carry a `TZID` parameter; when `all_day` is `true`, dates are interpreted as date-only (`YYYY-MM-DD`). The plugin does not emit a `VTIMEZONE` component — most servers use their own timezone database to resolve unknown TZIDs.
 
-For safe edits, fetch the event with `get_event` first to obtain its current `etag` and pass it to `edit_event` — the server returns `412 Precondition Failed` (mapped to a friendly `ToolResult::fail` message) if the event has been modified since. If you omit `etag` entirely, the plugin auto-fetches the current ETag from the server before sending the conditional PUT — no extra round-trip beyond the `get_event`-equivalent it already does for field merging.
+For safe edits, fetch the event with `get_event` first to obtain its current `etag` and pass it to `edit_event` — the server returns `412 Precondition Failed` (mapped to a friendly `ToolResult::fail` message) if the event has been modified since. If you omit `etag` entirely, or supply a placeholder like `initial` / `none` / `todo`, the plugin auto-fetches the current ETag from the server before sending the conditional PUT — no extra round-trip beyond the `get_event`-equivalent it already does for field merging. Any opaque tag that matches the real RFC 7232 shape (8+ alphanumerics inside `"…"` or `W/"…"`) is trusted as-is.
 
 `create_event` sends `If-None-Match: *` on every PUT (RFC 4791 §5.3.2), so retries cannot overwrite or duplicate an event the server already accepted. `summary` is capped at 255 characters to keep iCalendar payloads well under the RFC 5545 line-length limit.
 
@@ -80,6 +80,9 @@ Every action returns a `ToolResult` with two fields:
   "uid":       "abc123-1@spora",
   "etag":      "\"2a94de303bff21294a6bcc0f473aa3f8\""
 }
+```
+
+The same identifiers also appear in the human-readable text (multi-line `URI:` / `UID:` / `ETag:` block), so a follow-up `edit_event` or `delete_event` doesn't need a separate `list_events` round-trip just to discover them.
 
 // list_events success
 {

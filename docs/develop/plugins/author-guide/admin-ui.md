@@ -52,6 +52,7 @@ final class FooApp implements VueAppInterface
     public function displayName(): string { return 'Foo'; }
     public function description(): string { return 'Browse, filter, and manage foo records.'; }
     public function icon(): string { return 'puzzle'; }
+    public function accent(): string { return 'emerald'; }
 
     /** File inside the frontend package's `frontend/` directory. */
     public function entry(): string { return 'main.js'; }
@@ -59,6 +60,23 @@ final class FooApp implements VueAppInterface
 ```
 
 The host SPA fetches `entry()` via `/plugins/foo/main.js` at runtime and mounts the bundle's exported `mount(target, hostContext)` into the app slot. See [`spora-frontend/src/apps/registry.ts`](https://github.com/spora-ai/spora-frontend/blob/main/src/apps/registry.ts) for the full mount contract.
+
+## Tile accent (`accent`)
+
+`accent()` declares the colour token the host SPA applies to your app's tile in the navbar drawer. The frontend keeps a small palette of named tokens — `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` — each backed by a Tailwind gradient pair. Pick the closest match; if a genuinely new colour is needed, add it to **both** `spora-frontend/src/components/navbar/GlobalSheetApps.vue`'s `tileAccent()` map and the `accent` enum in `spora-core/plugin.schema.json` in the same change so the SPA doesn't ship an unstyled accent.
+
+**Precedence** — `AppsController` resolves the final token in this order:
+
+1. The PHP `accent()` method on your `App` class.
+2. The plugin manifest's `accent` field (lets a JSON-only plugin skip the PHP class):
+
+   ```json
+   { "slug": "foo", "class": "Spora\\Plugins\\Foo\\FooPlugin", "accent": "emerald" }
+   ```
+
+3. The default `"primary"`.
+
+Unknown / empty values fall back to `"primary"` silently — same posture as the `icon` field's unknown-name → `puzzle` resolver. Plugin authors won't see a crash for a typo, just a neutral tile until they fix it.
 
 ## Auto-requiring the frontend
 

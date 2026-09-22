@@ -56,6 +56,22 @@ The schedule lifecycle is symmetric for success and failure — both paths leave
 
 Manual recovery: **Schedules → [row] → Trigger now** enqueues an immediate execution regardless of `next_run_at` and regardless of whether the schedule is active or paused. The schedule's state is not changed by a manual trigger — recurring schedules stay recurring, paused one-shots stay paused (you can still trigger a paused one-shot once if you need to recover a stuck fire).
 
+## The agent's view: scheduling via the `schedule` tool
+
+If the `schedule` tool is enabled on an agent (it is on by default for new installs), the agent can call it directly to inspect and manage its own schedules without going through the **Schedules** tab. The tool surface mirrors the form above but exposes two behaviours worth knowing about when you read agent traces or watch the agent work.
+
+### Switching recurrence modes
+
+To switch a recurring schedule to one-shot, the agent sends `update_schedule({schedule_patch: {cron_expression: null, run_at: "<iso 8601>"}})`. To switch one-shot to recurring, it sends `{cron_expression: "<cron>", run_at: null}`. Either way, the two cadence fields are mutually exclusive — sending both populated in the same patch is rejected.
+
+As a shortcut, the agent can also send just the target field on its own: `{run_at: "<iso>"}` on a recurring schedule implicitly clears the existing `cron_expression` (and vice-versa). The two directions are symmetric from the agent's perspective, so the same call shape works whether the schedule is currently recurring or one-shot.
+
+### Clearing optional fields
+
+Five fields can be cleared by sending `null`: `template_id`, `cron_expression`, `run_at`, `max_steps_override` (on a schedule), and `max_steps` (on a prompt template). The validator accepts JSON `null` and — because LLM tool-call wire formats round-trip values as JSON-encoded strings — also accepts the literal four-character string `"null"` (case-insensitive) and an empty string as the same intent. Either form clears the field.
+
+This matters when reading agent traces: a model that emits `"cron_expression":"null"` instead of `"cron_expression":null` is doing the right thing — both clear the cron and switch the schedule to one-shot (or to "no cron" if no `run_at` is set).
+
 ## What's next
 
 - [Concepts → Worker deployment](/reference/concepts/worker-deployment) — cron and daemon modes, single-instance lock, reaper.

@@ -69,9 +69,11 @@ The host SPA fetches `entry()` via `/plugins/foo/main.js` at runtime and mounts 
 
 1. The PHP `accent()` method on your `App` class.
 2. The plugin manifest's `accent` field (lets a JSON-only plugin skip the PHP class):
+
    ```json
    { "slug": "foo", "class": "Spora\\Plugins\\Foo\\FooPlugin", "accent": "emerald" }
    ```
+
 3. The default `"primary"`.
 
 Unknown / empty values fall back to `"primary"` silently — same posture as the `icon` field's unknown-name → `puzzle` resolver. Plugin authors won't see a crash for a typo, just a neutral tile until they fix it.

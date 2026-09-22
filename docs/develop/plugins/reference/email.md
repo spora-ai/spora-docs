@@ -23,20 +23,21 @@ After install, the tool is registered as `email` in Spora's `communication` cate
 
 Settings → Tools → Email. The same `email_username` and `email_password` are used for both IMAP and SMTP authentication.
 
-| Setting                   | Required                  | Default               | Notes                                                                                                                                 |
-| ------------------------- | ------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `imap_host`               | yes (for read operations) | —                     | e.g. `imap.gmail.com`                                                                                                                 |
-| `imap_port`               | no                        | `993`                 | IMAPS port; use `143` with `tls` (STARTTLS)                                                                                           |
-| `imap_encryption`         | no                        | `ssl`                 | `ssl` (implicit TLS), `tls` (STARTTLS), or `notls` (not recommended)                                                                  |
-| `imap_timeout`            | no                        | `60`                  | Seconds before an IMAP connection fails                                                                                               |
-| `email_username`          | yes                       | —                     | Full email address, used for IMAP **and** SMTP                                                                                        |
-| `email_password`          | yes                       | —                     | Account password or app password                                                                                                      |
-| `smtp_host`               | yes (for send operations) | —                     | e.g. `smtp.gmail.com`                                                                                                                 |
-| `smtp_port`               | no                        | `587`                 | Submission port; use `465` with `ssl`                                                                                                 |
-| `smtp_encryption`         | no                        | `tls`                 | `ssl`, `tls`, or `notls`                                                                                                              |
-| `smtp_from`               | yes (for send/draft)      | —                     | The `From:` address the agent sends as                                                                                                |
-| `smtp_allowed_recipients` | no                        | _(empty = allow any)_ | Comma-separated exact addresses the agent may send to, or `*` for any. **Empty = unrestricted; set an explicit list for production.** |
-| `smtp_timeout`            | no                        | `30`                  | Seconds before an SMTP connection fails                                                                                               |
+| Setting                   | Required                  | Default                 | Notes                                                                                                                                                                                                                            |
+| ------------------------- | ------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `imap_host`               | yes (for read operations) | —                       | e.g. `imap.gmail.com`                                                                                                                                                                                                            |
+| `imap_port`               | no                        | `993`                   | IMAPS port; use `143` with `tls` (STARTTLS)                                                                                                                                                                                      |
+| `imap_encryption`         | no                        | `ssl`                   | `ssl` (implicit TLS), `tls` (STARTTLS), or `notls` (not recommended)                                                                                                                                                             |
+| `imap_timeout`            | no                        | `60`                    | Seconds before an IMAP connection fails                                                                                                                                                                                          |
+| `imap_drafts_folder`      | no                        | _(empty = auto-detect)_ | Explicit drafts folder path (e.g. `[Gmail]/Drafts`). Leave empty to auto-detect via RFC 6154 `\Drafts` with name-alias fallback for `Drafts`, `Draft`, `INBOX/Drafts`, `INBOX.Drafts`, `[Gmail]/Drafts`, `[Google Mail]/Drafts`. |
+| `email_username`          | yes                       | —                       | Full email address, used for IMAP **and** SMTP                                                                                                                                                                                   |
+| `email_password`          | yes                       | —                       | Account password or app password                                                                                                                                                                                                 |
+| `smtp_host`               | yes (for send operations) | —                       | e.g. `smtp.gmail.com`                                                                                                                                                                                                            |
+| `smtp_port`               | no                        | `587`                   | Submission port; use `465` with `ssl`                                                                                                                                                                                            |
+| `smtp_encryption`         | no                        | `tls`                   | `ssl`, `tls`, or `notls`                                                                                                                                                                                                         |
+| `smtp_from`               | yes (for send/draft)      | —                       | The `From:` address the agent sends as                                                                                                                                                                                           |
+| `smtp_allowed_recipients` | no                        | _(empty = allow any)_   | Comma-separated exact addresses the agent may send to, or `*` for any. **Empty = unrestricted; set an explicit list for production.**                                                                                            |
+| `smtp_timeout`            | no                        | `30`                    | Seconds before an SMTP connection fails                                                                                                                                                                                          |
 
 `email_password` is encrypted at rest by Spora's `ToolConfigService`, masked in the UI, and never logged. SMTP recipient filtering is enforced by `EmailSettingsResolver::validateSmtpSettings` before any message is queued to the Symfony Mailer transport.
 
@@ -44,19 +45,19 @@ Settings → Tools → Email. The same `email_username` and `email_password` are
 
 The `email` tool exposes 11 `action` values. The three read-side operations (`read_inbox`, `list_folders`, `read_folder`) are enabled by default; the remaining eight are gated behind a per-tool "require approval" flag and are disabled by default except `create_draft`, which defaults to off with no approval required.
 
-| Operation         | Approval | Purpose                                    | Parameters (types)                                                                                          |
-| ----------------- | -------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `read_inbox`      | no       | Recent messages from `INBOX`               | `limit` int (default 5, max 20), `unread_only` bool, `mark_as_read` bool (irreversible)                     |
-| `list_folders`    | no       | All mailbox folders                        | _(none)_                                                                                                    |
-| `read_folder`     | no       | Recent messages from a named folder        | `folder` string (required), `limit` int                                                                     |
-| `create_draft`    | no       | Save a draft to `Drafts` via IMAP `APPEND` | `to` string, `subject` string, `body` string (all required)                                                 |
-| `send_email`      | yes      | SMTP send via Symfony Mailer               | `to` string, `subject` string, `body` string (all required; `to` checked against `smtp_allowed_recipients`) |
-| `create_folder`   | yes      | IMAP `CREATE`                              | `new_folder` string (required)                                                                              |
-| `rename_folder`   | yes      | IMAP `RENAME`                              | `folder` string (old name), `new_folder` string (required)                                                  |
-| `delete_folder`   | yes      | IMAP `DELETE` (blocks system folders)      | `folder` string (required)                                                                                  |
-| `move_email`      | yes      | IMAP `COPY` + `EXPUNGE`                    | `uid` int, `folder` string (source), `new_folder` string (destination)                                      |
-| `delete_email`    | yes      | IMAP `EXPUNGE` (sets `\Deleted`)           | `uid` int, `folder` string                                                                                  |
-| `mark_email_read` | yes      | IMAP `STORE` `\Seen` flag                  | `uid` int, `folder` string, `read` bool (default true)                                                      |
+| Operation         | Approval | Purpose                                             | Parameters (types)                                                                                                                                                                     |
+| ----------------- | -------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `read_inbox`      | no       | Recent messages from `INBOX`                        | `limit` int (default 5, max 20), `unread_only` bool, `mark_as_read` bool (irreversible)                                                                                                |
+| `list_folders`    | no       | All mailbox folders                                 | _(none)_                                                                                                                                                                               |
+| `read_folder`     | no       | Recent messages from a named folder                 | `folder` string (required), `limit` int                                                                                                                                                |
+| `create_draft`    | no       | Save a draft to the drafts folder via IMAP `APPEND` | `to` string (comma- or `;`-separated recipients), `subject` string, `body` string (all required). **Not gated by `smtp_allowed_recipients`** — drafts bypass the allowlist by design.  |
+| `send_email`      | yes      | SMTP send via Symfony Mailer                        | `to` string (comma- or `;`-separated recipients; **every** address must match `smtp_allowed_recipients` or the whole send is rejected), `subject` string, `body` string (all required) |
+| `create_folder`   | yes      | IMAP `CREATE`                                       | `new_folder` string (required)                                                                                                                                                         |
+| `rename_folder`   | yes      | IMAP `RENAME`                                       | `folder` string (old name), `new_folder` string (required)                                                                                                                             |
+| `delete_folder`   | yes      | IMAP `DELETE` (blocks system folders)               | `folder` string (required)                                                                                                                                                             |
+| `move_email`      | yes      | IMAP `COPY` + `EXPUNGE`                             | `uid` int, `folder` string (source), `new_folder` string (destination)                                                                                                                 |
+| `delete_email`    | yes      | IMAP `EXPUNGE` (sets `\Deleted`)                    | `uid` int, `folder` string                                                                                                                                                             |
+| `mark_email_read` | yes      | IMAP `STORE` `\Seen` flag                           | `uid` int, `folder` string, `read` bool (default true)                                                                                                                                 |
 
 Read operations accept `limit` in `1..20`; out-of-range values fall back to the default of 5. `mark_as_read=true` via `read_inbox` sets the server-side `\Seen` flag; clear it with `mark_email_read(read=false)`.
 
@@ -71,6 +72,14 @@ SMTP and IMAP are protocols, not a SaaS — you point the plugin at any host. A 
 - **Fastmail** — IMAP/SMTP work with the account password (or an [app password](https://www.fastmail.com/help/clients/creating-an-app-password.html) if MFA is on). Hosts: `imap.fastmail.com:993`, `smtp.fastmail.com:587`.
 - **iCloud** — Requires an [app-specific password](https://support.apple.com/en-us/HT204397) (Apple ID MFA does not allow raw account passwords). Hosts: `imap.mail.me.com:993`, `smtp.mail.me.com:587`.
 - **Self-hosted Postfix + Dovecot** — Plain STARTTLS on `143`/`587`, or implicit TLS on `993`/`465`. Match `imap_encryption` and `smtp_encryption` to whatever the MTA exposes.
+
+### Drafts folder auto-detection
+
+`create_draft` resolves the drafts folder in this order:
+
+1. **Operator override** via the `imap_drafts_folder` setting — use when auto-detection is unreliable (exotic namespaces, non-RFC-6154 servers).
+2. **RFC 6154 `\Drafts` special-use flag** from the raw `LIST` response — works on RFC-6154-compliant servers.
+3. **Name alias fallback** matching `Drafts`, `Draft` (Yahoo), `INBOX/Drafts`, `INBOX.Drafts` (Dovecot alt namespace; common with German providers like GMX / Web.de), `[Gmail]/Drafts`, `[Google Mail]/Drafts`.
 
 Always use an **app password / app-specific password** when the provider supports MFA — raw account passwords are rejected by every major provider once MFA is enrolled, and storing a raw password in Spora config defeats the encryption-at-rest guarantees in `ToolConfigService`. Never commit config files containing real passwords; rotate any credential that does end up in git history.
 

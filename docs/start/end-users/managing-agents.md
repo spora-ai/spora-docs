@@ -127,6 +127,8 @@ For details on creating LLM configs, see **Settings → LLM drivers** (or, progr
 
 The tool allowlist. Every tool in the system is listed; check the ones you want the agent to call.
 
+Above the list sits a toolbar with a search input (matches display name, internal name, description, and operation name), a four-way status segmented filter — **All / Enabled / Needs setup / Off** — and a category multi-select. The **Needs setup** bucket groups two shapes: tools that are already enabled but missing required settings (amber "Missing config" pill), and tools where the cascade (global → user → group) has no defaults — these show a single **Set up & enable** button that opens the configuration modal and auto-enables the tool once you save (no second click needed). When filters narrow the list, empty category groups drop out of the view; the footer reads `Showing N of M`.
+
 For a new agent, **start with no tools**. Add tools one at a time to see how each changes the agent's behaviour. Common starting set:
 
 - `web_search` (Tavily) — for current-events questions

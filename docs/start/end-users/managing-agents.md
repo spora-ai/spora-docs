@@ -266,7 +266,7 @@ The left sidebar pins the bucket that owns your active agent at the top — eith
 
 To jump around without scrolling, press **⌘K** (or **Ctrl-K** on non-Mac platforms). A global command palette opens with five sections:
 
-- **Actions** — quick links like "Create new agent" / "Create new group", shown only on an empty query.
+- **Actions** — quick links like "Create new agent" / "Create new group", shown on an empty query and whenever the search needle matches an action label or its description.
 - **Groups** — every group you can see.
 - **My Agents** — agents you own directly.
 - **Agents by group** — every other agent, grouped by its owning group.

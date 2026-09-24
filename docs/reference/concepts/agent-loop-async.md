@@ -19,7 +19,7 @@ The `WorkerMode` enum at `app/Agents/ValueObjects/WorkerMode.php` is single-case
 
 - Lock the task row
 - Validate `status === 'RUNNING'`
-- Abort early if `step_count >= max_steps` (marks task `FAILED` with `"Max steps reached."`)
+- Abort early if `step_count >= max_steps` (flips to `ABORTED` via `TaskStatusWriter::autoAbortTransition($task, 'max_steps_reached', true)` so the existing follow-up flow covers continuation; the row carries `data.max_steps_reached: true` so the UI can label the banner — added in spora-core PR #266)
 - Commit → lock released
 
 ### Phase 2 — Load + LLM call (outside the transaction)
@@ -57,7 +57,8 @@ stateDiagram-v2
     PENDING_APPROVAL --> RUNNING : resume() / reject() picks up on next tick
     PENDING_APPROVAL --> PENDING_APPROVAL : resume() (partial approval — pending_state rewritten)
 
-    RUNNING --> FAILED : max_steps or exception
+    RUNNING --> ABORTED : max_steps (data.max_steps_reached)
+    RUNNING --> FAILED : exception
 
     RUNNING --> AWAITING_SUB_AGENTS : sub_agent tool (SubAgentTool) spawns child
     AWAITING_SUB_AGENTS --> RUNNING : every child TERMINAL (resume on next tick)

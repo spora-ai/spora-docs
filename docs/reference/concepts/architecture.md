@@ -79,6 +79,7 @@ flowchart LR
     history2["append history"]
     completed(["COMPLETED"])
     failed(["FAILED"])
+    aborted(["ABORTED"])
     pending(["PENDING_APPROVAL"])
     cancel(["CANCELLED"])
     resume(["resume()"])
@@ -96,17 +97,17 @@ flowchart LR
     pending -->|resume| resume --> tick
     pending -->|reject| reject --> tick
     tick --> max
-    max -->|yes| failed
+    max -->|yes| aborted
     max -.->|no| claim
 
     classDef entry fill:var(--spora-paper),stroke:var(--spora-warm),color:var(--spora-ink)
     classDef action fill:var(--spora-paper-deep),stroke:var(--spora-warm-deep),color:var(--spora-ink)
     classDef terminal fill:var(--spora-cream),stroke:var(--spora-warm-deep),color:var(--spora-ink),font-weight:bold
     class start,tick,claim,llm,text,input,output,required,approved,grant,history1,history2,max action
-    class completed,failed,pending,cancel,resume,reject terminal
+    class completed,failed,aborted,pending,cancel,resume,reject terminal
 ```
 
-Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVAL ⇄ RUNNING → CANCELLED` and `RUNNING → AWAITING_SUB_AGENTS → RUNNING (sync) | QUEUED (worker)` (added in spora-core PR #196 — `AWAITING_SUB_AGENTS` is set by the `SubAgentTool` `sub_agent` op while the parent task waits for every spawned child to reach a terminal state) plus `RUNNING → ABORTED` and `AWAITING_SUB_AGENTS → ABORTED` (quiescent, added in spora-core PR #207 via `POST /api/v1/tasks/{id}/abort`). `ABORTED` is resumable via `POST /api/v1/tasks/{id}/continue` and `data.aborted_at` is wiped on resume. PENDING is the initial value written by the migration; in practice the worker transitions QUEUED→RUNNING before the first tick. The `CANCELLED` terminal status is set by `TaskService::cancelRetryChain`; the `ABORTED` quiescent status is set by `Orchestrator::abort` (`app/Agents/Orchestrator.php`) — `REJECTED` is the analogous status for `tool_calls` rows, not `tasks`.
+Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVAL ⇄ RUNNING → CANCELLED` and `RUNNING → AWAITING_SUB_AGENTS → RUNNING (sync) | QUEUED (worker)` (added in spora-core PR #196 — `AWAITING_SUB_AGENTS` is set by the `SubAgentTool` `sub_agent` op while the parent task waits for every spawned child to reach a terminal state) plus `RUNNING → ABORTED` and `AWAITING_SUB_AGENTS → ABORTED` (quiescent, added in spora-core PR #207 via `POST /api/v1/tasks/{id}/abort`) and `RUNNING → ABORTED` from the step cap (system-initiated, added in spora-core PR #266 via `TaskStatusWriter::autoAbortTransition` — the row carries `data.max_steps_reached: true` to distinguish it from operator aborts; the existing follow-up flow covers continuation). `ABORTED` is resumable via `POST /api/v1/tasks/{id}/continue` and `data.aborted_at` (and `data.max_steps_reached`, where present) is wiped on resume. PENDING is the initial value written by the migration; in practice the worker transitions QUEUED→RUNNING before the first tick. The `CANCELLED` terminal status is set by `TaskService::cancelRetryChain`; the `ABORTED` quiescent status is set by `Orchestrator::abort` or by `TaskStatusWriter::autoAbortTransition` (the step-cap path) — `REJECTED` is the analogous status for `tool_calls` rows, not `tasks`.
 
 ### Worker runtime modes (`SPORA_WORKER_RUNTIME_MODE`)
 

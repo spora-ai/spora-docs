@@ -94,12 +94,16 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 While the agent is in `RUNNING` (the typing dots are bouncing), a small **Abort** button appears below the dots in the chat. Click it to halt the loop at the next natural break point (after the in-flight tool call returns, or between LLM turns). What happens after:
 
 1. The label flips to **Aborting…** with a spinner so you know the click registered — the dots disappear, the spinner is your acknowledgement.
-2. The server flips the task status to `ABORTED`, stamps `data.aborted_at`, and publishes the change to Mercure. The chat renders the **Aborted — send a new instruction to continue.** banner and inserts the **Aborted at HH:MM** divider above the banner.
+2. The server flips the task status to `ABORTED`, stamps `data.aborted_at`, and publishes the change to Mercure. The chat renders the **Aborted — paused by you** banner (with a small **manual** badge and a **Resume** button that offers a default _"continue"_ prompt) and inserts the **Aborted at HH:MM** divider above the banner.
 3. The composer at the bottom of the chat focuses automatically. Type your next instruction and press Enter; the chat sends it as a follow-up, the orchestrator clears `data.aborted_at`, and the task resumes.
 
 > **Auto-abort on `continue`.** You don't need to click Abort before sending a follow-up to a running task — the chat also sends the follow-up directly. `POST /api/v1/tasks/{taskId}/continue` accepts `RUNNING` as a source, auto-aborts first (writing an `abort_marker` history row inside the same transaction), then re-prompts with your message. The visible difference: clicking Abort lands you in the ABORTED banner state with an empty composer; sending a follow-up skips the ABORTED banner and goes straight into the next tick.
 
 The ABORTED banner stays visible until the orchestrator receives your next instruction. After the follow-up is sent, the banner disappears, the typing dots return, and the chat resumes as normal. If the agent was halted mid-tool-call, the chat shows an `abort_marker` system row in the history so you can see exactly where the loop was interrupted.
+
+### Auto-aborted when the step cap is hit
+
+When the agent loop exhausts its `max_steps` allowance without reaching a terminal state, the backend flips the task to `ABORTED` and stamps `data.max_steps_reached = true`. The same banner renders with the **Auto-aborted — max steps reached** headline, a small **system** badge, and a sub-line that reads `This task ran N of M allowed steps without finishing.` Click **Resume** (or type a fresh instruction in the composer) exactly like the manual case — the only difference is the headline, badge, and step-count sub-line.
 
 ### Sub-agents and handovers
 

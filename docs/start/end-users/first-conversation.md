@@ -84,16 +84,16 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 
 - **Your message** (right-aligned, plain text)
 - **The agent's "thinking"** — appears when the assistant message contains `content_blocks` entries of type `thinking` (Anthropic with thinking enabled) or `redacted_thinking`. Token counts are surfaced separately in the `usage` panel (`input_tokens`, `output_tokens`, `cache_creation_tokens`, `cache_read_tokens`, …).
-- **Tool calls** — the LLM's `tool_use` block, shown with the tool name, arguments, and the result
+- **Tool calls** — collapsed into a single live pill per user turn (and one per sub-agent boundary). The pill header shows the current tool icon + name and a growing "N tools called" count; click the pill to expand every individual tool call with its arguments and result. Reasoning rows (the LLM's `thinking` blocks) interleave with the tool rows in the same chain.
 - **The final reply** (left-aligned, the agent's actual response)
 - **Aborted at HH:MM** — a faint horizontal divider the chat inserts after the last assistant turn when the agent loop was halted. Renders only when the task carries a `system` history row with `kind: abort_marker`. The timestamp matches the wall-clock stamp the ABORTED banner displays.
 - **The follow-up input** — when the task is in a quiescent state (COMPLETED, FAILED, ABORTED, PENDING_APPROVAL, AWAITING_SUB_AGENTS) and the agent allows followup, the chat shows a single-line composer at the bottom; press Enter to send a new instruction.
 
 ## Aborting a running agent
 
-While the agent is in `RUNNING` (the typing dots are bouncing), a small **Abort** button appears below the dots in the chat. Click it to halt the loop at the next natural break point (after the in-flight tool call returns, or between LLM turns). What happens after:
+While the agent is in `RUNNING`, a subtle indicator stays visible below the chat — a spinning loader, a step counter (`Step 3 of 5`), and an **Abort** button. The indicator remains visible throughout the agent loop and coexists with the per-turn tool-stream pill (the pill carries the per-tool progress signal; the indicator hosts the canonical Abort + step counter). Click **Abort** to halt the loop at the next natural break point (after the in-flight tool call returns, or between LLM turns). What happens after:
 
-1. The label flips to **Aborting…** with a spinner so you know the click registered — the dots disappear, the spinner is your acknowledgement.
+1. The Abort button label flips to **Aborting…** and disables itself so you know the click registered. The indicator stays visible for the entire request window even if Mercure races `task.status` to ABORTED before the HTTP response lands.
 2. The server flips the task status to `ABORTED`, stamps `data.aborted_at`, and publishes the change to Mercure. The chat renders the **Aborted — paused by you** banner (with a small **manual** badge and a **Resume** button that offers a default _"continue"_ prompt) and inserts the **Aborted at HH:MM** divider above the banner.
 3. The composer at the bottom of the chat focuses automatically. Type your next instruction and press Enter; the chat sends it as a follow-up, the orchestrator clears `data.aborted_at`, and the task resumes.
 

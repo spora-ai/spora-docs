@@ -29,6 +29,10 @@
       "link": "/reference/api/users"
     },
     {
+      "text": "Me",
+      "link": "/reference/api/me"
+    },
+    {
       "text": "Notifications",
       "link": "/reference/api/notifications"
     },
@@ -47,10 +51,6 @@
     {
       "text": "Mail-templates",
       "link": "/reference/api/mail-templates"
-    },
-    {
-      "text": "Me",
-      "link": "/reference/api/me"
     },
     {
       "text": "Plugins",

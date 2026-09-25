@@ -299,13 +299,13 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Tasks](/reference/api/tasks) — 13 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Speech](/reference/api/speech) — 10 routes
-- [Users](/reference/api/users) — 9 routes
+- [Users](/reference/api/users) — 10 routes
+- [Me](/reference/api/me) — 9 routes
 - [Notifications](/reference/api/notifications) — 8 routes
 - [Llm-configs](/reference/api/llm-configs) — 7 routes
 - [Media](/reference/api/media) — 7 routes
 - [Tools](/reference/api/tools) — 7 routes
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
-- [Me](/reference/api/me) — 6 routes
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
@@ -427,6 +427,9 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/me/locations`                                      | `cookieAuth` + `csrfToken` | PostLocation UserProfile                                               | Me               |
 | `PUT`    | `/api/v1/me/locations/{id}`                                 | `cookieAuth` + `csrfToken` | PutLocation UserProfile                                                | Me               |
 | `DELETE` | `/api/v1/me/locations/{id}`                                 | `cookieAuth` + `csrfToken` | DeleteLocation UserProfile                                             | Me               |
+| `GET`    | `/api/v1/me/picture`                                        | `cookieAuth`               | Show UserPicture                                                       | Me               |
+| `POST`   | `/api/v1/me/picture/image`                                  | `cookieAuth` + `csrfToken` | UploadImage UserPicture                                                | Me               |
+| `DELETE` | `/api/v1/me/picture/image`                                  | `cookieAuth` + `csrfToken` | DeleteImage UserPicture                                                | Me               |
 | `GET`    | `/api/v1/me/profile`                                        | `cookieAuth`               | GetProfile UserProfile                                                 | Me               |
 | `PUT`    | `/api/v1/me/profile`                                        | `cookieAuth` + `csrfToken` | PutProfile UserProfile                                                 | Me               |
 | `GET`    | `/api/v1/media`                                             | `cookieAuth`               | Index MediaArchive                                                     | Media            |
@@ -494,6 +497,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PUT`    | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Update User                                                            | Users            |
 | `PATCH`  | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Update User                                                            | Users            |
 | `DELETE` | `/api/v1/users/{id}`                                        | `cookieAuth` + `csrfToken` | Destroy User                                                           | Users            |
+| `GET`    | `/api/v1/users/{id}/picture`                                | `cookieAuth`               | Show UserPictureAsset                                                  | Users            |
 | `GET`    | `/api/v1/users/{id}/roles`                                  | `cookieAuth`               | ListRoles User                                                         | Users            |
 | `POST`   | `/api/v1/users/{id}/roles`                                  | `cookieAuth` + `csrfToken` | GrantRole User                                                         | Users            |
 | `DELETE` | `/api/v1/users/{id}/roles/{role}`                           | `cookieAuth` + `csrfToken` | RevokeRole User                                                        | Users            |

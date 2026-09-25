@@ -196,11 +196,16 @@ The `tools` array on an agent lists the tool activations for that agent. Each en
 
 The `tool_calls[]` array on every task response is the canonical
 `ToolCallSerializer::toArray()` shape — `operation`, `operation_description`,
-and a live-derived `parameter_schema` (from the registered `ToolInterface`
-instance or reflection fallback) are all present on both `GET
-/api/v1/tasks/{taskId}` and the Mercure live-update stream. See
+a live-derived `parameter_schema` (from the registered `ToolInterface`
+instance or reflection fallback), and a server-resolved `icon` (same
+3-layer chain as the Agent resource: `#[Tool(icon: ...)]` wins, then the
+owning plugin's `plugin.json` `icon`, then `null` — the frontend
+`<Icon>` component falls back to `'puzzle'` on its own) are all present on
+both `GET /api/v1/tasks/{taskId}` and the Mercure live-update stream. See
 [Concepts → Tools → Discovery from the LLM](/reference/concepts/tools#discovery-from-the-llm)
-for the per-tool LLM-facing contract returned by `AgentTool.get_available_tools`.
+for the per-tool LLM-facing contract returned by `AgentTool.get_available_tools`,
+and [Concepts → Tools → Icon resolution](/reference/concepts/tools#icon-resolution)
+for the resolution chain.
 
 ### Plugins (operator, gated by `SPORA_PLUGIN_INSTALL_ENABLED`)
 

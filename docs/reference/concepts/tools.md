@@ -247,7 +247,7 @@ This split keeps tool activation on the calling agent under explicit operator co
 
 ## Icon resolution
 
-A tool may declare a `?string $icon` argument on the `#[Tool(...)]` attribute — a kebab-case key from the [bundled icon palette](/reference/plugin-schema#icon-field--three-forms) (e.g. `'calendar'`, `'mail'`, `'search'`, `'globe'`). The icon is surfaced on the Agent resource (`GET /api/v1/agents` / `GET /api/v1/agents/{id}`) so the admin UI can render a matching tile for the tool.
+A tool may declare a `?string $icon` argument on the `#[Tool(...)]` attribute — a kebab-case key from the [bundled icon palette](/reference/plugin-schema#icon-field--three-forms) (e.g. `'calendar'`, `'mail'`, `'search'`, `'globe'`). The icon is surfaced on the Agent resource (`GET /api/v1/agents` / `GET /api/v1/agents/{id}`) so the admin UI can render a matching tile for the tool, **and on every ToolCall in `tool_calls[]` (REST + Mercure live-update)** so the chat UI's compact tool stream can render per-tool icons.
 
 Resolution is a 3-layer chain, evaluated server-side:
 

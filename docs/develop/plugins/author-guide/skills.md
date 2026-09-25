@@ -207,6 +207,32 @@ The agentskills.io spec defines an `allowed-tools` field — a space-separated l
 
 When an Agent calls `skill(action: "read", name: "<slug>", filename: "SKILL.md")` (the default filename), the chat transcript replaces the standard tool-call card with a compact `Loaded skill: <slug>` badge. The same op against a sidecar file, and `skill(action: "files", …)` listings, keep the standard card. Plugin authors don't configure this — it's driven by the spora-frontend renderer (matching on `tool_name` + `action` + `filename`); no backend change.
 
+## Validation
+
+When your plugin's tool declares `#[Tool(recommendsSkills: [...])]`, the framework's strict-mode contract kicks in: `GET /api/v1/tools` returns HTTP 500 `TOOLS_RECOMMENDS_SKILLS_MISSING` for the entire operator instance if any declared slug is not on disk under the scanner roots. **spora-core's build-time gate only validates CORE tools** — `tests/Unit/Tools/ToolRecommendsSkillsValidationCoreTest` (in [spora-core](https://github.com/spora-ai/spora-core/blob/main/tests/Unit/Tools/ToolRecommendsSkillsValidationCoreTest.php)) walks every framework tool class against the framework's bundled skills. Each plugin must validate its own tool/skill pair, because the framework cannot enumerate your tool classes for you.
+
+The recommended pattern mirrors the framework test — construct the three pieces over your own inputs and assert the validator returns an empty list:
+
+```php
+use Psr\Log\NullLogger;
+use Spora\Services\ToolConfigNameResolver;
+use Spora\Services\ToolsRecommendsSkillsValidator;
+use Spora\Skills\SkillScanner;
+use Spora\Plugins\YourPlugin\Tools\YourTool;
+
+it('declares only recommendsSkills slugs that exist on disk', function (): void {
+    $scanner = new SkillScanner([
+        ['path' => __DIR__ . '/../skills', 'source' => 'your-plugin'],
+    ]);
+    $resolver = new ToolConfigNameResolver(new NullLogger(), [YourTool::class]);
+    $validator = new ToolsRecommendsSkillsValidator($resolver, $scanner);
+
+    expect($validator->validate())->toBe([]);
+});
+```
+
+This catches the failure mode at PR time on your plugin's own CI instead of at runtime on the operator's instance. The validator short-circuits with HTTP 500 only because the framework is the source of truth for the rule; the test is where you prove your plugin complies.
+
 ## End-to-end example
 
 A minimal plugin that ships one skill:

@@ -79,6 +79,17 @@ When the operator activates the Skill tool on an Agent, the Agent gets two opera
 
 The Skill tool's only setting is `allowed_skills: multi-select`. Operators pick which skills are available to that Agent on the agent's **Tools** tab (`/agents/:id/tools`). The list of skills shown in the dropdown comes from `GET /api/v1/skills` (powered by the skill scanner).
 
+### Bundling a skill with a tool
+
+A tool can declare that it depends on one or more skills via `#[Tool(recommendsSkills: [...])]` on the PHP attribute — see [Concepts → Tool system → Bundled skills](/reference/concepts/tools#bundled-skills) for the authoring side. The operator sees this on the agent's **Tools** tab:
+
+- **Enabling a tool with bundled skills** renders a footer row on the tool card with an **Enable skill** button. Clicking it activates `SkillTool` (if it is not already on) and adds every slug from `recommends_skills` to its `allowed_skills` in one motion. Once wired up, the footer shows a green **Skill enabled** pill instead.
+- **Disabling a tool whose bundled skills are uniquely recommended by it** opens a confirm dialog titled **Remove bundled skill(s)?** with the action labels **Remove** (primary) and **Keep** (cancel). The dialog lists the unique slugs only — slugs that another registered tool also recommends are skipped. Both buttons disable the tool; **Remove** additionally strips the unique slugs from `SkillTool`'s `allowed_skills`. Tools that do not declare any `recommends_skills` skip the affordance entirely.
+
+The uniqueness rule means two tools that both recommend the same skill will not prompt for cleanup when only one is disabled — the skill stays available to the remaining tool's bundle. Shared slugs are removed automatically the moment no tool recommends them.
+
+Plugin authors should declare their bundled skills so operators do not have to wire them up by hand. See [Plugin author guide → Skills → Validation](/develop/plugins/author-guide/skills#validation) for the build-time check that keeps the bundled-skill list honest, and the [API error contract](/reference/concepts/tools#errors) when the declaration drifts from the on-disk scanner.
+
 ### LLM exposure
 
 The `allowed_skills` setting has `exposeToLlm: true`. The LLM sees a list of `{name, description}` pairs (description truncated to ~80 chars) appended to the tool's description in the system message — Stage 1 of the [agentskills.io progressive disclosure](https://agentskills.io/specification#progressive-disclosure) model. The skill body is read on demand via `skill(action: "read", …)` (Stage 2); sidecar files are loaded as the Agent needs them (Stage 3).

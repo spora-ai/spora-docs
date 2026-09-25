@@ -98,6 +98,17 @@ The concrete `AgentMemoryTool` schema includes `action`, `name`, and `content` a
 
 > **Note on `#[ToolOperation]`:** `HasOperations` reads operation attributes only from the concrete class — it does **not** walk parent classes. Always declare `#[ToolOperation]` on the concrete tool class, otherwise dispatch will fail to resolve operations advertised by an inherited schema.
 
+### `#[Tool]` reference
+
+| Field              | Type             | Notes                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`             | `string`         | LLM-facing name — snake_case, `/^[a-z][a-z0-9_]*$/`. Plugin tools are auto-prefixed with `<plugin-slug>:` on the wire.                                                                                                                                                                                                                                                             |
+| `description`      | `string`         | Sent to the LLM.                                                                                                                                                                                                                                                                                                                                                                   |
+| `displayName`      | `?string`        | Operator-facing label; falls back to the class basename when omitted.                                                                                                                                                                                                                                                                                                              |
+| `category`         | `string`         | One of `'general'` (default), `'research'`, `'communication'`, `'productivity'`, `'data'`, `'system'`. Drives the agent-tools UI grouping.                                                                                                                                                                                                                                         |
+| `icon`             | `?string`        | Bundled icon key (e.g. `'calendar'`, `'mail'`, `'search'`, `'globe'`). Layer 1 of the [icon resolution chain](#icon-resolution); falls back to the owning plugin's `plugin.json#icon` and finally to `'puzzle'`.                                                                                                                                                                   |
+| `recommendsSkills` | `?array<string>` | Optional list of skill slugs this tool bundles with. When the operator enables the tool, the agent-tools UI offers to also activate `SkillTool` and add these slugs to its `allowed_skills`. Slugs must match the agentskills.io pattern (lowercase, alphanumeric + hyphen, 1–64 chars, no leading/trailing hyphen, no `--`). Default `[]`. See [Bundled skills](#bundled-skills). |
+
 ### `#[ToolParameter]` reference
 
 | Field                 | Type                                  | Notes                                                                                                                                                                                                                                                                                            |
@@ -144,6 +155,24 @@ final class MyPluginTool extends ThirdPartyBase implements ToolInterface
 ```
 
 The schema builder works on any FQCN via reflection — no path coupling.
+
+### Bundled skills
+
+A tool can declare that it "bundles" one or more [Skills](/reference/concepts/skills) — knowledge the operator would otherwise have to remember to activate separately. The `recommendsSkills` argument on `#[Tool]` takes a list of agentskills.io slug strings; the agent-tools UI then offers to also enable `SkillTool` and seed its `allowed_skills` with those slugs when the operator turns the bundling tool on, and asks whether to clean up the allowlist when the operator turns it off again.
+
+```php
+#[Tool(
+    name: 'git_workflow',
+    description: 'Run git operations against the operator-configured repo.',
+    recommendsSkills: ['git', 'conventional-commits'],
+)]
+```
+
+The intent is to make implicit dependencies explicit. A `git_workflow` tool that needs the `git` and `conventional-commits` skills to produce useful output should declare that on its attribute so operators do not have to read every tool's source to wire up the right allowlist.
+
+**Strict mode is on by default.** Declaring a slug that does not exist on disk (under the framework, project, or plugin scan roots) makes `GET /api/v1/tools` return HTTP 500 with code `TOOLS_RECOMMENDS_SKILLS_MISSING` for the entire operator instance until the typo is fixed — there is no soft warning and no env-flag opt-out. The trade-off is deliberate: a misconfigured plugin (declared slug, no shipped skill) is a packaging bug operators must see, not a silently empty allowlist. Core tools are validated by [`tests/Unit/Tools/ToolRecommendsSkillsValidationCoreTest`](https://github.com/spora-ai/spora-core/blob/main/tests/Unit/Tools/ToolRecommendsSkillsValidationCoreTest.php); plugin authors should mirror the same shape over their own scanner roots — see [Validation in the plugin author guide](/develop/plugins/author-guide/skills#validation).
+
+The full operator flow (the "Enable skill" button, the "Skill enabled" pill, and the "Remove bundled skill(s)?" confirm dialog) is documented under [Skills → Bundling a skill with a tool](/reference/concepts/skills#bundling-a-skill-with-a-tool).
 
 ## Tool naming
 
@@ -235,6 +264,47 @@ The LLM-facing agent creation flow is **two-phase** — `create_agent` does NOT 
 3. **`read_agent(agent_id: <id>)`** — verify the toolset is exactly what was wanted.
 
 The full agent-template shape (`id` / `version` / nested `agent{}` / `tools[]` / `required_plugins[]`) is reserved for the operator-upload endpoint at `POST /api/v1/agent-templates/import` (see [Agent template schema](/reference/agent-template-schema)). `create_agent` rejects the nested-object shape with a literal "send X instead" example; see `skills/agent-creation/SKILL.md` for the full protocol.
+
+### `/api/v1/tools` response shape
+
+`GET /api/v1/tools` is the admin-side registry endpoint that powers the agent-tools UI. The shape is built by [`ToolSchemaPresenter`](https://github.com/spora-ai/spora-core/blob/main/app/Tools/ToolSchemaPresenter.php) and includes every field the frontend needs to render a tool row plus the bundled-skill affordance:
+
+| Field               | Type             | Notes                                                                                                                                                                                                                                                                    |
+| ------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tool_class`        | `string`         | FQCN of the registered tool class.                                                                                                                                                                                                                                       |
+| `tool_name`         | `string`         | The class basename (`SubAgentTool` → `SubAgentTool`).                                                                                                                                                                                                                    |
+| `display_name`      | `string`         | Operator-facing label, falls back to `tool_name`.                                                                                                                                                                                                                        |
+| `description`       | `string`         | Tool description, sent to the LLM.                                                                                                                                                                                                                                       |
+| `category`          | `string`         | One of `general` / `research` / `communication` / `productivity` / `data` / `system`. Drives the agent-tools UI grouping.                                                                                                                                                |
+| `icon`              | `string \| null` | Resolved icon key (3-layer chain — see [Icon resolution](#icon-resolution)).                                                                                                                                                                                             |
+| `recommends_skills` | `string[]`       | Skill slugs this tool bundles. Default `[]`. Powers the [bundled-skill affordance](#bundled-skills). **Strict-mode:** if any entry does not resolve on disk, the entire endpoint short-circuits with HTTP 500 `TOOLS_RECOMMENDS_SKILLS_MISSING` — see [Errors](#errors). |
+| `operations`        | `object[]`       | Per-operation `{ name, description, enabledByDefault, requiresApprovalByDefault, discriminatorKey }`.                                                                                                                                                                    |
+
+#### Errors
+
+| HTTP | Code                              | When                                                                                                                                                                                                                                                                          |
+| ---- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 500  | `TOOLS_RECOMMENDS_SKILLS_MISSING` | One or more `recommends_skills` entries do not resolve under the framework / project / plugin scan roots. The strict-mode check has no env-flag opt-out — the response shape carries the offenders under `error.details.violations[]` so operators can pinpoint the mismatch: |
+
+```json
+{
+  "error": {
+    "code": "TOOLS_RECOMMENDS_SKILLS_MISSING",
+    "message": "2 tool(s) declare recommendsSkills slugs that are not on disk. See details for offenders.",
+    "details": {
+      "violations": [
+        {
+          "tool_class": "Spora\\Plugins\\AcmeSearch\\Tools\\AcmeSearchTool",
+          "tool_name": "AcmeSearchTool",
+          "missing": ["git", "conventional-commits"]
+        }
+      ]
+    }
+  }
+}
+```
+
+The 500 affects only the list endpoint — per-tool settings (`/api/v1/tools/{toolId}/settings`, `/user-settings`) keep working, so operators can fix the underlying slug declaration without losing access to the rest of the admin UI.
 
 ### Tool activation is operator-only
 

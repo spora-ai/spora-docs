@@ -182,6 +182,7 @@ export default defineUserConfig({
                 { text: 'Calendar', link: '/develop/plugins/reference/calendar' },
                 { text: 'Email', link: '/develop/plugins/reference/email' },
                 { text: 'MiniMax', link: '/develop/plugins/reference/minimax' },
+                { text: 'Muse', link: '/develop/plugins/reference/muse' },
                 { text: 'Semantic Scholar', link: '/develop/plugins/reference/semantic-scholar' },
                 { text: 'Serper', link: '/develop/plugins/reference/serper' },
                 { text: 'Staan', link: '/develop/plugins/reference/staan' },

@@ -29,7 +29,7 @@ The Spora org is split across several repos. Most contributions land in one or t
 | [spora-frontend](https://github.com/spora-ai/spora-frontend)   | The prebuilt Vue 3 admin SPA.                                                                        | UI changes (operator or end-user facing).           |
 | [spora-installer](https://github.com/spora-ai/spora-installer) | The Composer plugin that routes `spora-plugin` and `spora-frontend` packages.                        | Composer routing changes.                           |
 | [spora-maker](https://github.com/spora-ai/spora-maker)         | The project scaffolder (`make:tool`, `make:controller`, `make:app`).                                 | New scaffold commands.                              |
-| [spora-plugin-*](https://github.com/spora-ai)                  | The 9 production plugins (Tavily, Serper, etc.) and the skeleton.                                    | Plugin-specific features.                           |
+| [spora-plugin-*](https://github.com/spora-ai)                  | The production plugins (Tavily, Serper, Staan, etc.) and the skeleton.                               | Plugin-specific features.                           |
 | [spora-docs](https://github.com/spora-ai/spora-docs)           | This site (VuePress 2 + Plume theme).                                                                | Docs content, IA, design.                           |
 
 ## Before you start

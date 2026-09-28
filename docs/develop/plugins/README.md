@@ -26,13 +26,14 @@ For the operator-facing HTTP API (`POST /api/v1/plugins`, `DELETE /api/v1/plugin
 
 ## Reference: shipped plugins
 
-The 10 plugins currently in the Spora org:
+The 12 plugins currently in the Spora org:
 
 | Plugin                                                          | What it adds                                                                                                     |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | [Skeleton](/develop/plugins/reference/plugin-skeleton)          | Minimal template — start here for new plugins                                                                    |
 | [Tavily](/develop/plugins/reference/tavily)                     | AI-native web search (LLM-optimised answer + ranked sources)                                                     |
 | [Serper](/develop/plugins/reference/serper)                     | Google Search via Serper.dev — 9 operations (web, images, news, video, scholar, shopping, patents, maps, places) |
+| [Staan](/develop/plugins/reference/staan)                       | EU-hosted web search — fast ranked results, or the same search with relevance-scored page excerpts               |
 | [Semantic Scholar](/develop/plugins/reference/semantic-scholar) | Academic paper search and metadata (free, no key)                                                                |
 | [World News](/develop/plugins/reference/worldnews)              | Top news by country and full-text news search                                                                    |
 | [Weather](/develop/plugins/reference/weather)                   | Current conditions, forecasts, astronomy (WeatherAPI.com)                                                        |

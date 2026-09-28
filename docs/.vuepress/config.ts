@@ -184,6 +184,7 @@ export default defineUserConfig({
                 { text: 'MiniMax', link: '/develop/plugins/reference/minimax' },
                 { text: 'Semantic Scholar', link: '/develop/plugins/reference/semantic-scholar' },
                 { text: 'Serper', link: '/develop/plugins/reference/serper' },
+                { text: 'Staan', link: '/develop/plugins/reference/staan' },
                 { text: 'Tavily', link: '/develop/plugins/reference/tavily' },
                 { text: 'Weather', link: '/develop/plugins/reference/weather' },
                 { text: 'World News', link: '/develop/plugins/reference/worldnews' },

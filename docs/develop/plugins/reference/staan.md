@@ -26,18 +26,39 @@ Settings → Tools → Staan Search. Authentication uses a Bearer token against 
 | Setting | Type | Required | Default | Notes |
 | ------- | ---- | -------- | ------- | ----- |
 | `api_key` | password | yes | — | From [staan.ai](https://staan.ai). Encrypted at rest, masked in the UI, never logged, and sent as an `Authorization` header — never in the payload. |
-| `market` | select | no | `fr-fr` | `fr-fr` / `en-us` / `de-de`. Exposed to the LLM so it knows the effective value. |
-| `min_score` | text | no | `0.2` | `enriched_search` only. Drops excerpts below this relevance (0–1). Raise to cut noise. |
-| `max_snippets` | text | no | `3` | `enriched_search` only. Excerpts kept per page (1–10). |
+| `market` | select | no | `fr-fr` | The 12 markets below. Exposed to the LLM so it knows the effective value. |
+| `min_score` | text | no | `0.2` | `enriched_search` only. Drops excerpts below this relevance (0–1). Operator-only — a lower floor means more context. |
+| `max_snippets` | text | no | `3` | `enriched_search` only. The **ceiling** on excerpts kept per page (1–10). The agent may ask for fewer; never more. |
 | `result_limit` | text | no | `10` | How many results reach the agent (1–10). Staan always returns 10 per page; this truncates what the agent pays context for. |
 | `http_timeout` | text | no | `30` | Overridden by `SPORA_TOOL_HTTP_TIMEOUT`. `enriched_search` fetches every result page, so keep headroom above the 10s Staan recommends. |
 
+### Markets
+
+Staan's prose guides advertise three. The v2 API reference enum is wider — twelve — and the docs site collapses its tail behind a "show 4 more" control, so the full list is only recoverable from the reference page source. All twelve are exposed:
+
+| | | |
+| --- | --- | --- |
+| `fr-fr` | French — France *(default)* | `en-ca` — English — Canada |
+| `de-de` | German — Germany | `en-au` — English — Australia |
+| `en-us` | English — United States | `en-nz` — English — New Zealand |
+| `en-gb` | English — United Kingdom | `en-in` — English — India |
+| `en-ie` | English — Ireland | `en-sg` — English — Singapore |
+| `en-fr` | English — France | `en-za` — English — South Africa |
+
+`en-fr` is the one worth knowing about on a French deployment: it returns English-language pages *hosted in France*, which `fr-fr` will not.
+
 ### Tuning the context cost
 
-An un-capped `enriched_search` response is 10 results × 5 excerpts × 1800 characters — roughly 90k characters, or 25k tokens, in a single tool result. The plugin truncates every excerpt to 800 characters and the result list to `result_limit`, so a default call is bounded to about 24k characters. Two dials let you trade fidelity for cost:
+An un-capped `enriched_search` response is 10 results × 5 excerpts × 1800 characters — roughly 90k characters, or 25k tokens, in a single tool result. The plugin truncates every excerpt to 800 characters and the result list to `result_limit`, so a default call is bounded to about 24k characters.
 
-- **Lower the cost** — `result_limit: 5` and `max_snippets: 2` puts a call at ~8k characters.
-- **Raise fidelity** — `min_score: 0.1` widens the excerpt pool; `max_snippets: 5` is Staan's own recommended baseline.
+| Want | Do this | Cost |
+| ---- | ------- | ---- |
+| Cheaper | `result_limit: 5`, `max_snippets: 2` | ~8k characters |
+| Default | — | ~24k characters |
+| Wider excerpt pool | `min_score: 0.1` | more, lower-scoring passages |
+| More per page | `max_snippets: 5` (Staan's own baseline) | ~40k characters |
+
+The agent can lower `max_snippets` per call but cannot raise it, so a runaway agent can never exceed the ceiling you set here. `result_limit` and `min_score` are operator-only.
 
 ## Operations
 
@@ -55,8 +76,9 @@ An un-capped `enriched_search` response is 10 results × 5 excerpts × 1800 char
 | Parameter | Type | Required | Default | Notes |
 | --------- | ---- | -------- | ------- | ----- |
 | `query` | string | yes | — | Max 400 characters. Keyword-style, not a full question. |
-| `market` | string | no | the setting | `fr-fr` / `en-us` / `de-de`. Per-call override. |
+| `market` | string | no | the setting | Any of the 12 markets. Per-call override. |
 | `offset` | integer | no | `0` | `0` / `10` / `20` / `30`. `30` is the API maximum (40 results). Values are rounded down to the nearest page. |
+| `max_snippets` | integer | no | the setting | `1`–`10`, `enriched_search` only. **Can only lower** the operator's `max_snippets` ceiling — an over-ask is capped, never granted. |
 
 ### Domain filtering
 
@@ -129,7 +151,7 @@ The tool never throws — a single API failure cannot kill the agent loop. Failu
 | --------- | ------- |
 | No API key | Points at the Staan Search settings. |
 | Query over 400 characters | **Rejected, not truncated** — reports the length and asks for keywords. A silently shortened query would return results for a *different* question. |
-| Unknown `market` | Rejected, naming the three valid values. |
+| Unknown `market` | Rejected, naming all twelve valid values. |
 | HTTP 401 / 403 | "Staan rejected the API key" — points at the settings. |
 | HTTP 429 | Names the documented 20 req/s limit and warns against parallel searches. |
 | HTTP 4xx / 5xx | Status plus a flattened, truncated excerpt of the upstream body. |

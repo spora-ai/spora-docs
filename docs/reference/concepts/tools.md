@@ -172,7 +172,7 @@ The intent is to make implicit dependencies explicit. A `git_workflow` tool that
 
 **Strict mode is on by default.** Declaring a slug that does not exist on disk (under the framework, project, or plugin scan roots) makes `GET /api/v1/tools` return HTTP 500 with code `TOOLS_RECOMMENDS_SKILLS_MISSING` for the entire operator instance until the typo is fixed — there is no soft warning and no env-flag opt-out. The trade-off is deliberate: a misconfigured plugin (declared slug, no shipped skill) is a packaging bug operators must see, not a silently empty allowlist. Core tools are validated by [`tests/Unit/Tools/ToolRecommendsSkillsValidationCoreTest`](https://github.com/spora-ai/spora-core/blob/main/tests/Unit/Tools/ToolRecommendsSkillsValidationCoreTest.php); plugin authors should mirror the same shape over their own scanner roots — see [Validation in the plugin author guide](/develop/plugins/author-guide/skills#validation).
 
-The full operator flow (the "Enable skill" button, the "Skill enabled" pill, and the "Remove bundled skill(s)?" confirm dialog) is documented under [Skills → Bundling a skill with a tool](/reference/concepts/skills#bundling-a-skill-with-a-tool).
+The full operator flow — per-skill toggle list with title-cased names, the parent-tool disable cascade that strips unique slugs while leaving SkillTool enabled, and the status refresh that keeps the SkillTool card in sync — is documented under [Skills → Bundled skills on the agent tools UI](/reference/concepts/skills#bundled-skills-on-the-agent-tools-ui).
 
 ## Tool naming
 

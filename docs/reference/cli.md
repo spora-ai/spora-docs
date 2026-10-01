@@ -116,6 +116,7 @@ For the operator-facing workflows (install, plugin management, log tail), see [O
 ## What's next
 
 - [REST API reference](/reference/api) — the HTTP surface
+- [Concepts → Skills](/reference/concepts/skills) — the `skill` tool, the allowlist, and custom skills
 - [Config keys](/reference/config-keys) — the `config.php` reference
 - [Plugin schema](/reference/plugin-schema) — the `plugin.json` manifest spec
 - [Operations → Day-2 ops](/start/operators/operations) — operator workflows

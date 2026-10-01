@@ -521,6 +521,27 @@ The LLM-facing schema declares `op` as the discriminator (enum: `handover | sub_
 
 `allowed_target_agents` declares `scope: 'principal'`, so the picker is hidden at the admin operator-defaults page where no principal context exists. The same picker renders under **Settings → Tools → Sub-Agent** (per-user overrides), **Groups → {name} → Tools → Sub-Agent** (per-group overrides), and the agent's **Tools** tab (per-agent override). Existing global rows continue to cascade down; the runtime LLM-side filter in `ToolConfigSchemaInspector::fetchAgentNameMap()` restricts the LLM-visible list to the source agent's principal, so stale foreign ids in a pre-existing global degrade to `"#id"` placeholders. See [Setting render scope](#setting-render-scope) for the full matrix.
 
+## Reading vs writing skills
+
+Skills are read and written by **different tools on purpose**, and they live in different places.
+
+|                    | `skill` (read)                           | `manage_skill` (write)                                                                 |
+| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| Ships in           | `spora-core`                             | [`spora-plugin-custom-skills`](https://github.com/spora-ai/spora-plugin-custom-skills) |
+| Operations         | `read`, `files`                          | `create`, `update`, `delete`                                                           |
+| Scope              | Every visible skill — shipped and custom | The execution's principal's custom skills only                                         |
+| Gated by           | The agent's `allowed_skills`             | Per-call operator approval                                                             |
+| Approval           | none                                     | `create` / `update` / `delete` all `requiresApprovalByDefault: true`                   |
+| Enabled by default | yes                                      | `create` and `update` yes; **`delete` no**                                             |
+
+The asymmetry is the design. Reading a skill is a read of operator- or user-authored knowledge, gated by the allowlist the operator already curates. Writing one is a config change to the principal's instruction set — principal-scoped, approval-gated, and absent from core entirely, because core has nothing to write to.
+
+`delete` ships `enabledByDefault: false` for the same reason `write_notes_overwrite` does in `AgentTool`: a tool that creates and updates but cannot delete generates a support path immediately, but the destructive path must not ride on the safe default. Every write records `provenance: agent` and snapshots the previous state for a one-step restore, and an approved write goes live — there is no draft/published gate, because the approval card _is_ the review.
+
+One consequence worth knowing: a write is **not** a read. Writing a custom skill does not put it in any agent's `allowed_skills` — that is still an operator action on the agent's Tools tab (or a group/user default). The plugin's admin panel lists which agents currently allowlist a skill precisely because the alternative is an author asking the agent to use a skill and getting only _"Skill 'x' is not in the allowed_skills list for this agent."_
+
+There is no LLM-visible way to bypass the allowlist: `manage_skill` writes, `skill` reads, and the read still checks the list. See [Concepts → Skills → Custom skills](/reference/concepts/skills#custom-skills) for the visibility rules that apply to a custom skill once it exists.
+
 ## Built-in tools
 
 The tools below ship inside `spora-core` (not as plugins). Operators can configure their settings, but the implementations themselves are not pluggable — every operator gets the same behavior out of the box.

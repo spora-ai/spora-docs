@@ -22,7 +22,7 @@ The two are complementary — a template can reference a skill by name, and a sk
 
 ## Discovery
 
-Skills are discovered from three sources, scanned in priority order:
+Skills are discovered from three **on-disk** sources, scanned in priority order:
 
 1. The project-level `<base>/skills/` directory (if it exists).
 2. The framework's bundled `<spora-core>/skills/` directory. The framework ships `time-arithmetic/` as a worked example.
@@ -38,6 +38,8 @@ public function skillPaths(): array
     return [__DIR__ . '/../skills'];
 }
 ```
+
+A fourth source — a `skillProviders()` hook — covers skills with no directory at all. All four are read through one `SkillProviderRegistry`, with core's filesystem provider first. See [Custom skills](#custom-skills).
 
 ## On-disk format
 
@@ -77,7 +79,9 @@ When the operator activates the Skill tool on an Agent, the Agent gets two opera
 
 ### Per-agent allowlist
 
-The Skill tool's only setting is `allowed_skills: multi-select`. Operators pick which skills are available to that Agent on the agent's **Tools** tab (`/agents/:id/tools`). The list of skills shown in the dropdown comes from `GET /api/v1/skills` (powered by the skill scanner).
+The Skill tool's only setting is `allowed_skills: multi-select`. Operators pick which skills are available to that Agent on the agent's **Tools** tab (`/agents/:id/tools`). The list of skills shown in the dropdown comes from `GET /api/v1/skills` (powered by the skill registry), narrowed by `?principal_id=`. Shipped and custom skills appear in the same list.
+
+The allowlist is a **names** list, not a capability grant. An allowlisted name still has to resolve for the execution's principal, so a personal custom skill on a group agent's allowlist does not become readable by the group — see [Visibility](#visibility).
 
 ### Bundled skills on the agent tools UI
 
@@ -103,9 +107,65 @@ The `allowed_skills` setting has `exposeToLlm: true`. The LLM sees a list of `{n
 
 ### Security
 
-- `name` must be in the Agent's `allowed_skills` (re-validated server-side).
-- `filename` is path-traversal-hardened (no `..`, no leading `/`, no null bytes, realpath-containment check against the resolved skill root).
-- The resolved skill is the first-wins match across the three sources.
+Two gates, in this order — the order is the point:
+
+1. `name` must be in the Agent's `allowed_skills` (re-validated server-side).
+2. The skill must be visible to the **execution's principal**, not just to whoever is signed in. A skill allowlisted on a group agent whose provider scopes by principal fails this gate, which is what stops one tenant's `allowed_skills` from becoming a cross-tenant read primitive.
+
+Then, on the read itself:
+
+- `filename` is path-traversal-hardened (no `..`, no leading `/`, no null bytes), and the file must appear in the provider's **own** listing before a read is attempted. The provider re-validates containment independently — the tool's filter is the cheap first pass, not the defence — and both the provider and the tool re-assert the 50 KB cap.
+- The resolved skill is the first-wins match across the sources, with core's filesystem provider first.
+
+### Custom skills
+
+A **custom skill** is a skill that has no directory. Everything above — `skillPaths()`, the scanner, the `SKILL.md` on disk — is the _shipped_ case, where the content is a static part of a release. Custom skills are authored by a person or written by an agent, stored in a database, and scoped to one principal.
+
+They arrive through a fourth source: the `skillProviders()` hook on [`SporaExtensionInterface`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/SporaExtensionInterface.php). The container builds one `SkillProviderRegistry` from core's `FilesystemSkillProvider` plus every plugin's provider classes, in that order, and the `skill` tool, `SkillController`, and the `allowed_skills` projection all read through it. The tool is unchanged — a custom skill is read with the same `skill(action: "read", …)` call as a shipped one.
+
+|               | Shipped skill                          | Custom skill                                                        |
+| ------------- | -------------------------------------- | ------------------------------------------------------------------- |
+| Lives in      | A directory with a `SKILL.md`          | A `custom_skills` row (+ sidecar rows)                              |
+| Registered by | `skillPaths()`                         | `skillProviders()`                                                  |
+| Visible to    | Everyone                               | One principal (see the rules below)                                 |
+| Authored by   | The plugin / operator, at release time | A person in the admin UI, or the agent via `manage_skill`           |
+| Deleted by    | Removing the file                      | `DELETE` on the plugin's own route, which also scrubs the allowlist |
+
+The first plugin to ship custom skills is [`spora-ai/spora-plugin-custom-skills`](https://github.com/spora-ai/spora-plugin-custom-skills), which contributes the **Custom Skills** admin panel at `/apps/custom-skills` and the `manage_skill` tool. Read and write are deliberately different tools — `skill` is core, read-only, and gated by `allowed_skills`; `manage_skill` is the plugin's, principal-scoped and approval-gated. See [Tool system → Reading vs writing skills](/reference/concepts/tools#reading-vs-writing-skills).
+
+#### Visibility
+
+Custom skills are scoped per principal, and the read and write gates are deliberately asymmetric:
+
+| Caller's relation to the principal | Read       | Write      |
+| ---------------------------------- | ---------- | ---------- |
+| Own user-principal                 | ✅         | ✅         |
+| Group they belong to, **any role** | ✅         | ❌         |
+| Group owner or admin               | ✅         | ✅         |
+| Unrelated principal                | ❌ (`404`) | ❌ (`403`) |
+
+Reading a group's custom skills needs only **membership**. Writing into a group's instruction set needs **owner or admin** (`callerControlsPrincipal`). A member can read a group's skills but cannot author into them — a skill is instructions the model will follow, not shared notes, so the write gate is the stronger of the two. A principal the caller cannot see is a `404` rather than a `403` on reads: a `403` would confirm the skill exists, which is a cross-tenant existence oracle.
+
+Shipped skills are outside this entirely. Core's `FilesystemSkillProvider` ignores `$principalId` — operator-authored content is identical for everyone, and scoping it per principal would mean a copy per user of a file the operator already controls.
+
+#### Identity, precedence, and collisions
+
+Identity is the frontmatter `name`, not a directory slug — the allowlist stores names, the tool lowercases and trims what the model sends, and the route is name-keyed. Custom skills force `name === slug` at write time so the two cannot diverge, because they are the same column on the same row.
+
+Precedence is **first provider wins, and core is first**: `SkillProviderRegistry` dedupes names claimed by an _earlier_ provider, so a custom skill named `typst` is shadowed by a shipped `typst` rather than replacing it. Within a single provider, duplicate names pass through — a provider surfacing one name twice is reporting a defect in itself, and hiding it would discard the evidence. A write that collides with a shipped name is rejected up front (`409 SKILL_NAME_RESERVED`) rather than creating a row the model could never resolve.
+
+`source` is a bucket label, not a lookup key. Each skill reports its own `source` (`project`, `core`, `<plugin-slug>`, `custom-skills`) and the SPA groups by it; the provider-level `source()` never overwrites it.
+
+#### Lifecycle, caps, and deletion
+
+There is **no draft/published workflow**. A `manage_skill` write goes live when it is approved — the per-call approval card _is_ the review step, and a second `draft` → `published` gate would be redundant. What is kept instead:
+
+- `provenance` (`human` | `agent`) so the UI can say "Last edited by agent · 14:02".
+- `previous_snapshot` (frontmatter + body + files), written on every update, for a one-step restore. Restoring re-snapshots the current state first, so restore is itself undoable.
+
+Caps are enforced as **errors** with named codes, not warnings — 25 skills per principal, 20 sidecar files per skill, 200 KB total per skill, 50 KB per file, `description` ≤ 1024 chars. The reasoning is that `SkillValidator` emits a soft `SKILL_BODY_OVERSIZE` _warning_ and `ValidationResult::isValid()` checks errors only, so without hard caps a user-authored body is unbounded.
+
+Deleting a custom skill also **scrubs its name from every `allowed_skills` array for that principal**, in the same transaction, and the response names the agents it touched. Without that, a deleted skill is silently dropped from the tool definition and every agent that used it loses a capability with no signal. Only principal-owned custom skills are deletable through the plugin, so a shipped skill can never be scrubbed from an agent's config.
 
 ## HTTP surface
 
@@ -114,13 +174,19 @@ The `allowed_skills` setting has `exposeToLlm: true`. The LLM sees a list of `{n
 | `GET`  | `/api/v1/skills`        | List → `[{name, description, source, license, files_count, has_warnings}]`. Powers the `allowed_skills` multi-select. |
 | `GET`  | `/api/v1/skills/{slug}` | One skill, full `files` listing + raw `SKILL.md` body.                                                                |
 
+`?principal_id=N` narrows the listing to one principal — the SPA already sends it and derives it per editor mode (agent / group / personal), so honouring it is what stops a group admin's personal skills appearing in the group's picker. An id the caller cannot see is discarded before it reaches a provider, so a hand-crafted `?principal_id=` cannot read another tenant's skills, bodies included.
+
+This is the **read** surface and it covers both kinds of skill. Custom-skill CRUD is not here: those routes are the plugin's own, under `/api/v1/custom-skills*`, and the frontend must not re-fetch shipped skills from the plugin.
+
 ## Worked example: `time-arithmetic`
 
 The framework ships a `time-arithmetic` skill at `<spora-core>/skills/time-arithmetic/`. It uses only the `time` tool (with the `now` and `format` operations — both ops also return a `weekday` field, long English name on an ISO 8601 Monday-based week) and the `calculator` tool, and is the canonical reference for plugin authors writing their first skill. The skill's v2.0 revision also doubles as a worked example of how to [reference tools correctly in skill prose](/develop/plugins/author-guide/skills#tool-reference-style) — earlier versions referenced tool names that don't exist in the LLM schema (`current_time.now()`, `skill_read`).
 
 ## See also
 
-- [Plugin author guide: Skills](/develop/plugins/author-guide/skills)
+- [Plugin author guide: Skills](/develop/plugins/author-guide/skills) — shipping a directory, or writing a `SkillProviderInterface` provider
+- [Tool system → Reading vs writing skills](/reference/concepts/tools#reading-vs-writing-skills) — `skill` vs. `manage_skill`
+- [REST API reference](/reference/api) — the HTTP surface
 - [agentskills.io specification](https://agentskills.io/specification) (the open format Spora follows)
 - [Agent templates](/reference/concepts/agent-templates) (complementary mechanism for Agent identity)
 - **Chat-UI rendering**: when the Agent calls `skill(action: "read", …)` on `SKILL.md`, the chat UI renders a compact `Loaded skill: <slug>` badge in place of the standard tool-call card. `skill(action: "read", …)` of any sidecar file and `skill(action: "files", …)` keep the standard tool-call card. The badge is driven by `tool_name` + `action` + `filename` matching in `TaskChatMessageList.vue`; no backend change.

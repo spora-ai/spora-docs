@@ -153,9 +153,115 @@ Operators don't activate skills directly. They activate the **Skill tool** on an
 
 The Skill tool is shipped with `spora-core`; you don't need to ship a separate tool class. The framework's `SkillController` powers the admin UI dropdown.
 
+## Directory or provider?
+
+Pick one. `skillPaths()` and `skillProviders()` are not two ways to do the same job.
+
+|                     | `skillPaths()` — ship a directory                | `skillProviders()` — ship a provider              |
+| ------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| The content is…     | a static part of your release                    | per-user, per-tenant, or synthesised at runtime   |
+| It lives in…        | a directory under your plugin, with a `SKILL.md` | your database, an API, anywhere                   |
+| Registration        | return the directory from `skillPaths()`         | return the provider class from `skillProviders()` |
+| Implementation work | write Markdown                                   | implement five methods, honour the principal      |
+| Shipped by          | the release                                      | the admin panel or an agent tool                  |
+
+**If your skill is the same for every user on the instance, ship a directory.** A provider for static content is strictly more work: you synthesise the `SKILL.md` from columns, re-implement containment checks, and you have opted into a principal you may not need. `spora-plugin-custom-skills` is the worked example of the _other_ column — user-authored, tenant-scoped, database-backed.
+
+The `SpellingRulebook` — a plugin that ships a `spelling/SKILL.md` any user of the instance should get — is the case for a directory, not a provider.
+
+## Shipping a provider, not a directory
+
+`skillProviders()` is a **data hook** on `SporaExtensionInterface`, mirroring `speechToTextProviders()`. It returns class names; the container resolves them and builds one `SkillProviderRegistry` in a fixed order — core's `FilesystemSkillProvider` first, then your plugin's. See [Plugin system → Why `skillProviders()` is a data hook](/reference/concepts/plugins-system#why-skillproviders-is-a-data-hook-and-not-an-event) for why this is not a PSR-14 event.
+
+```php
+namespace Acme\TenantSkills;
+
+use Spora\Plugins\AbstractPlugin;
+use Spora\Skills\SkillProviderInterface;
+
+final class AcmePlugin extends AbstractPlugin
+{
+    /** @return list<class-string<SkillProviderInterface>> */
+    public function skillProviders(): array
+    {
+        return [TenantSkillProvider::class];
+    }
+}
+```
+
+### The interface contract
+
+```php
+namespace Spora\Skills;
+
+interface SkillProviderInterface
+{
+    public const MAX_FILE_BYTES = 50_000;
+
+    public function source(): string;
+    public function getSkills(?int $principalId): array;                       // list<SkillSummary>
+    public function getSkillDetails(string $name, ?int $principalId): ?SkillDescriptor;
+    public function getSkillFiles(string $name, ?int $principalId): ?array;    // list<array{path, bytes}>|null
+    public function getSkillFile(string $name, string $path, ?int $principalId): ?string;
+}
+```
+
+**Two wire types, on purpose.** `SkillSummary` is the list shape (`name`, `description`, `license`, `source`, `slug`, `fileCount`, `hasWarnings`); `SkillDescriptor` is the detail shape (a `SkillSummary` plus `body`, `compatibility`, `allowedTools`, `metadata`, `files`, `warnings`). Neither carries `body` on the list path: the `allowed_skills` multi-select loads every visible skill at once, and a body on the list type is 50 KB per dropdown row. Never return a descriptor from `getSkills()`.
+
+**`source()` is a label, not a lookup key.** It is a bucket for operators and the UI. Each skill's own `SkillSummary::source` is what wins in the response and what the SPA groups by — a single provider serving mixed content must not have its `source()` overwrite that.
+
+**Identity is the frontmatter `name`.** Every lookup keys on it, matching `ToolConfigService`'s name→skill map and the name-keyed route. `slug` is a storage column and a URL segment, nothing more.
+
+### Four rules the registry depends on
+
+These are not style preferences. Each one is load-bearing for a caller that cannot defend itself.
+
+1. **`null` and `[]` are different answers.** `getSkillFiles()` returns `null` for an unknown _or invisible_ skill and `[]` for a known skill with no files. Collapsing them turns "no such skill" into "a skill with nothing in it".
+2. **An empty string is a legal body, not a "not found" signal.** `getSkillFile()` returns `null` only when `$path` is not a member of the skill. A zero-byte sidecar must come back as `''`.
+3. **Fail closed on the principal.** A principal-scoped provider returns `[]` for `$principalId === null` and for any unresolvable id (`<= 0`, or an id whose row is gone). Callers pass `null` on operator-default and strict-mode paths; widening there would leak one tenant's skills into another's view.
+4. **`getSkillFile()` re-validates, independently of the caller.** Do not normalise or resolve `$name` / `$path`, do not pass them to a filesystem API, and enforce `MAX_FILE_BYTES` **before** materialising content — checking after the read has already paid the memory the cap exists to avoid. The two-call `getSkillFiles()` → `getSkillFile()` flow is why: it opens a window a single-pass implementation does not have. `SkillTool` checks the listing before reading, and re-asserts the cap on whatever comes back, but a check the caller cannot enforce on the callee is not a check. Cover it with a test that returns content for a path the provider does not list.
+
+### Precedence
+
+`SkillProviderRegistry` dedupes **first-provider-wins across providers**; a provider's own duplicate names both pass through. Core's `FilesystemSkillProvider` is first in the static class list, so **installing your plugin can never shadow a shipped skill** — a custom skill named `typst` loses to a shipped `typst` rather than replacing it. Surface that at write time by rejecting a colliding name outright, so a user is not invited to author a skill the model could never resolve.
+
+### Version floor
+
+Pin `spora-ai/spora-core` to the release that first ships `SkillProviderInterface` and guard at boot:
+
+```php
+public function boot(): void
+{
+    if (!interface_exists(SkillProviderInterface::class)) {
+        throw new PluginLoadFailedException('skillProviders() needs a newer spora-core.');
+    }
+}
+```
+
+This is not belt-and-braces. `PluginLoader::dispatchWithTolerance()` swallows listener exceptions, and an older core never knows the hook exists — so a provider class that `implements` a non-existent interface is simply never loaded. The result is the worst possible outcome: CRUD works, the admin panel lists the skills the user just wrote, and the agent can never see one. Fail loudly instead.
+
 ## Validation surface
 
 The `SkillScanner` calls `SkillValidator` on every `SKILL.md` it finds. Errors and warnings surface on the skill's summary, surfaced to operators in the admin UI.
+
+### Reusing `SkillValidator` from a provider
+
+A provider that stores a skill as rows has no `SKILL.md` to hand the scanner, so it calls the validator itself — on the in-memory frontmatter array, which is all the validator ever read:
+
+```php
+public function validate(array $frontmatter, ?string $body = null, ?string $parentDirName = null): ValidationResult
+```
+
+**That signature is frozen and plugin-facing.** A provider that validates user-authored content should reuse it rather than reimplement the rules, so a skill written in the admin panel is held to exactly the same standard as one shipped in a release. `ValidationResult` is the return type: `errors()` (the skill cannot be used), `warnings()` (advisory), `isValid()` (errors only — a warning never makes a result invalid), and `toArray()` for the wire.
+
+Two adjustments make it fit a provider:
+
+- Map your tool/route parameter `allowed_tools` to the **hyphenated** `allowed-tools` key first. `ALLOWED_TOP_KEYS` expects the spec form and raises `UNKNOWN_TOP_LEVEL_KEY` — a hard error — on the snake_case spelling.
+- Strip `files` before validating. `SkillValidator` has no `files` concept and would reject it as an unknown top-level key. Your sidecar set is validated by your own caps.
+
+`$parentDirName` is the filesystem-only third argument: it is what raises `NAME_DIR_MISMATCH` when a `SKILL.md`'s `name` differs from its parent directory. A database row has no directory, so pass `null` — and enforce the equivalent invariant yourself. `spora-plugin-custom-skills` forces `name === slug` at write time for exactly this reason.
+
+Enforce hard caps as **errors** on the write path. `BODY_SOFT_BYTE_LIMIT` emits a warning, and `isValid()` checks errors only, so a validator call alone leaves a user-authored body unbounded.
 
 ### SkillValidator (frontmatter rules)
 
@@ -280,3 +386,10 @@ final class YourPlugin extends AbstractPlugin
 ```
 
 Run `composer test` after building — the framework's `SkillScannerTest` discovers your skill automatically. Operators see it in the Agent settings form as soon as your plugin is installed.
+
+## See also
+
+- [Concepts → Skills](/reference/concepts/skills) — the operator view: discovery, the `allowed_skills` allowlist, and custom skills
+- [Plugin system](/reference/concepts/plugins-system#why-skillproviders-is-a-data-hook-and-not-an-event) — the hook table and why `skillProviders()` is data, not an event
+- [`spora-plugin-custom-skills`](https://github.com/spora-ai/spora-plugin-custom-skills) — a shipped provider: database-backed, principal-scoped, with a `manage_skill` write tool
+- [`agentskills.io`](https://agentskills.io/specification) — the open on-disk format Spora follows

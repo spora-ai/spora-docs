@@ -241,7 +241,46 @@ See [Concepts → Architecture](/reference/concepts/architecture) for the full H
 | `GET`  | `/api/v1/skills`        | session | List discovered skills (powers the `allowed_skills` multi-select) |
 | `GET`  | `/api/v1/skills/{slug}` | session | One skill — full `files` listing + raw `SKILL.md` body            |
 
-Skills are auto-discovered from three sources (project, framework, plugin). See [Concepts → Skills](/reference/concepts/skills).
+Skills are auto-discovered from three sources (project, framework, plugin). Both accept `?principal_id=N` to narrow the listing to one principal the caller can see; a name not visible to the caller is a `404`, never a `403`. See [Concepts → Skills](/reference/concepts/skills).
+
+### Custom skills (`spora-plugin-custom-skills`)
+
+**These routes ship with the plugin, not with core.** They exist only once [`spora-plugin-custom-skills`](https://github.com/spora-ai/spora-plugin-custom-skills) is installed; a stock install returns `404` on all of them. They are listed here because the admin panel and the `manage_skill` tool call them, and because the write side of the [Skills](/reference/concepts/skills#custom-skills) story has no core equivalent.
+
+Base path `/api/v1/custom-skills`. Every route sits behind `[AuthMiddleware, CsrfMiddleware]`. `?principal_id=N` selects the acting principal: absent, the caller's own user-principal. Success envelopes are `{"data": …}`, errors `{"error": {"code": "…", "message": "…"}}`.
+
+| Method   | Path                                        | Success                                            | Errors                                                              |
+| -------- | ------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
+| `GET`    | `/api/v1/custom-skills`                     | `{"data": {"skills": [CustomSkillResource, …]}}`   | —                                                                   |
+| `GET`    | `/api/v1/custom-skills/{name}`              | `{"data": {"skill": CustomSkillResource}}`         | `404 SKILL_NOT_FOUND`                                               |
+| `GET`    | `/api/v1/custom-skills/{name}/files`        | `{"data": {"files": [{path, bytes}, …]}}`          | `404 SKILL_NOT_FOUND`                                               |
+| `GET`    | `/api/v1/custom-skills/{name}/files/{path}` | `{"data": {"path", "content", "bytes"}}`           | `404 SKILL_NOT_FOUND` · `404 FILE_NOT_FOUND` · `413 FILE_TOO_LARGE` |
+| `POST`   | `/api/v1/custom-skills`                     | `201 {"data": {"skill": …}}`                       | `422` · `409 SKILL_NAME_TAKEN` · `409 SKILL_NAME_RESERVED`          |
+| `PUT`    | `/api/v1/custom-skills/{name}`              | `200 {"data": {"skill": …}}`                       | `404` · `422` · `409`                                               |
+| `DELETE` | `/api/v1/custom-skills/{name}`              | `{"data": {"deleted", "name", "scrubbed_agents"}}` | `404 SKILL_NOT_FOUND`                                               |
+| `POST`   | `/api/v1/custom-skills/{name}/restore`      | `200 {"data": {"skill": …}}`                       | `404` · `409 NO_PREVIOUS_VERSION`                                   |
+| `GET`    | `/api/v1/custom-skills/{name}/allowlist`    | `{"data": {"agents": [{id, name, scope}]}}`        | `404 SKILL_NOT_FOUND`                                               |
+
+`CustomSkillResource` is the shape every route returns: `id`, `principal_id`, `name`, `slug`, `description`, `license`, `compatibility`, `allowed_tools`, `metadata`, `body`, `body_bytes`, `provenance` (`human` \| `agent`), `created_by_user_id`, `updated_by_user_id`, `created_at`, `updated_at`, `files[]` (`SKILL.md` first, always), `has_previous`, and `warnings[]` with `warning_count`. `name === slug` is enforced at write time; a name change on `PUT` is a `422`.
+
+`POST` / `PUT` bodies take `{name, description, body, license?, compatibility?, allowed_tools?, metadata?, files?}`, where `files` is a `{path: content}` map that **fully replaces** the sidecar set. The response's `warnings[]` are `SkillValidator` entries verbatim.
+
+`{path}` matches the rest of the path, percent-encoded by the client (`examples%2Finvoice.md`).
+
+Principal resolution — the read and write gates differ on purpose:
+
+| Caller relation to principal   | GET                   | POST/PUT/DELETE |
+| ------------------------------ | --------------------- | --------------- |
+| Own user-principal             | 200                   | 200/201         |
+| Group they belong to, any role | 200                   | `403 FORBIDDEN` |
+| Group owner/admin              | 200                   | 200/201         |
+| Unrelated principal            | `404 SKILL_NOT_FOUND` | `403 FORBIDDEN` |
+
+Cap errors (all `422`): `SKILL_LIMIT_REACHED` (25 skills per principal) · `TOO_MANY_FILES` (20 per skill) · `TOTAL_SIZE_EXCEEDED` (200 000 bytes per skill) · `FILE_TOO_LARGE` (50 000 bytes per file) · `DESCRIPTION_TOO_LONG` (1024 chars). A `422 SKILL_INVALID` carries the `ValidationResult` array in `data.errors`.
+
+`DELETE` also scrubs the name from every `allowed_skills` array for that principal, in the same transaction, and names the agents it touched in `scrubbed_agents` — that is what the delete confirmation dialog renders, and what `manage_skill`'s `delete` `describeAction` quotes. Only principal-owned custom skills are deletable here, so a shipped skill can never be scrubbed.
+
+Deliberately **not** endpoints: pre-shipped skills come from the host's `GET /api/v1/skills` (the frontend must not re-fetch them from this plugin); there is no draft/publish pair (`provenance` + `has_previous` are the whole lifecycle); and there is no cross-principal publishing — a skill belongs to exactly one principal.
 
 ## Envelope
 

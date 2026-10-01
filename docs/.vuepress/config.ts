@@ -166,6 +166,7 @@ export default defineUserConfig({
                 { text: 'Migrations', link: '/develop/plugins/author-guide/migrations' },
                 { text: 'Admin UI', link: '/develop/plugins/author-guide/admin-ui' },
                 { text: 'Agent templates', link: '/develop/plugins/author-guide/agent-templates' },
+                { text: 'Skills', link: '/develop/plugins/author-guide/skills' },
                 { text: 'Distribution', link: '/develop/plugins/author-guide/distribution' },
                 {
                   text: 'Speech providers',
@@ -247,6 +248,7 @@ export default defineUserConfig({
             { text: 'Media assets', link: '/reference/concepts/media-assets' },
             { text: 'Plugin system', link: '/reference/concepts/plugins-system' },
             { text: 'Schema', link: '/reference/concepts/schema' },
+            { text: 'Skills', link: '/reference/concepts/skills' },
             { text: 'Speech providers', link: '/reference/concepts/speech-providers' },
             { text: 'Testing', link: '/reference/concepts/testing' },
             { text: 'Tools', link: '/reference/concepts/tools' },

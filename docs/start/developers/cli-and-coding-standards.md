@@ -36,6 +36,7 @@ The most-used commands:
 | `assets:gc`                               | Garbage-collect unreferenced assets.                                                                                                                                                                                           |
 | `tool:settings:migrate`                   | One-shot tool settings migration (if you upgrade across a settings-schema change).                                                                                                                                             |
 | `spora:openapi [--output] [--check]`      | Generate / drift-check the OpenAPI 3.0 spec from `RouteDefinitions`. Dev-only — gated on `zircote/swagger-php`.                                                                                                                |
+| `spora:audit-operation-overrides`         | Read-only report of `agent_tool_operation_overrides` / `agent_tools` rows whose `tool_class` no longer resolves. No options; exits 1 when orphans are found.                                                                   |
 
 The `spora:` prefix on the install/setup/openapi commands is convention — the plugin namespace is unprefixed (`plugin:install` not `spora:plugin:install`). Older docs sometimes use the prefixed form; both work in current versions.
 

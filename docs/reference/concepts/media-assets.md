@@ -41,13 +41,13 @@ A final, stateless utility class in `app/Tools/MediaEmbed.php`. These return the
 
 `forAsset(MediaAsset $asset, MediaType $type, string $url, string $alt): string` is the single `MediaType` → embed dispatch, and the entry point to prefer. Every operation that surfaces an asset routes through it — `get_media`, `get_embed_code`, `create_media`, `create_derivative` — so one artifact looks the same however it came to exist. Matching on `MediaType` at your own call site is how a PDF ends up rendered as a download card by one operation and a bare link by the next.
 
-| `MediaType`                          | Rendered as                                       |
-| ------------------------------------ | ------------------------------------------------- |
-| `Image`                              | `image()` — inline markdown image                 |
-| `Audio`                              | `audioFromUrl()` — `<audio controls>`             |
-| `Video`                              | `videoFromUrl()` — `<video controls>`             |
-| `Document` (`text/*`, `application/*`) | `fileCard()` — one-line download card             |
-| `Unknown`                            | `link()` — plain markdown link                    |
+| `MediaType`                            | Rendered as                           |
+| -------------------------------------- | ------------------------------------- |
+| `Image`                                | `image()` — inline markdown image     |
+| `Audio`                                | `audioFromUrl()` — `<audio controls>` |
+| `Video`                                | `videoFromUrl()` — `<video controls>` |
+| `Document` (`text/*`, `application/*`) | `fileCard()` — one-line download card |
+| `Unknown`                              | `link()` — plain markdown link        |
 
 `Document` is the bucket PDFs and Word documents land in, and the card it produces is styled in `spora-frontend/src/style.css` under `.chat-bubble-content .spora-file-card*`. Emit those class names verbatim if you build your own card — a rename degrades to an unstyled link, still functional because `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` server-side. `Unknown` stays a link deliberately: it means the `media_type` column itself was null or unrecognised, and nothing about such a row is reliably a download.
 
@@ -196,9 +196,9 @@ Contract, and the reasons behind each part:
 - **Run in registration order** until one returns non-`null`; `null` means decline, and the next refiner gets its turn.
 - **`$bytes` is the full payload**, not the 4 KiB prefix the sniffer works from — but you should still bound what you do with it. Refiners run inside the upload allowlist gate, before any size rejection, so an unbounded read is on the path for every archive a user ever attaches.
 - **Runs after the built-in Typst `text/plain` → `text/x-typst` upgrade**, so `$sniffedMime` is the most specific verdict core can produce.
-- **A refiner that throws is caught and declined**, not propagated. Plugin code is untrusted: an uncaught exception here would travel through `ingestFromBytes()` and fail every media upload in the process over one MIME verdict. This mirrors `MediaArchiveIngestPipeline::runConversionPipeline()`, which wraps the plugin-supplied *converter* the same way.
+- **A refiner that throws is caught and declined**, not propagated. Plugin code is untrusted: an uncaught exception here would travel through `ingestFromBytes()` and fail every media upload in the process over one MIME verdict. This mirrors `MediaArchiveIngestPipeline::runConversionPipeline()`, which wraps the plugin-supplied _converter_ the same way.
 
-This is the third of the three discovery registries — `MediaConverterDiscovery`, `MediaDerivativeProducerDiscovery`, `MediaMimeRefinerDiscovery` — and all three share one registration shape through the `DiscoversRegistrations` trait. They have independent storage, which is worth knowing if you extend them: a `private static` property declared on a shared *parent class* would be inherited by every subclass and silently merge the three lists into one.
+This is the third of the three discovery registries — `MediaConverterDiscovery`, `MediaDerivativeProducerDiscovery`, `MediaMimeRefinerDiscovery` — and all three share one registration shape through the `DiscoversRegistrations` trait. They have independent storage, which is worth knowing if you extend them: a `private static` property declared on a shared _parent class_ would be inherited by every subclass and silently merge the three lists into one.
 
 ## 6. What the chat UI does with the HTML
 

@@ -1,6 +1,6 @@
 ---
 title: Media assets
-description: Embedding images, audio, and video in tool results — AssetStore, MediaEmbed, StoresBinaryAssets trait.
+description: Embedding images, audio, video, and downloadable documents in tool results — AssetStore, MediaEmbed, StoresBinaryAssets trait.
 ---
 
 # Plugin Author Guide — Embedding Media in Tool Results
@@ -37,7 +37,21 @@ The container binds `AssetStore::class` to whichever mode the operator picks via
 
 ### `Spora\Tools\MediaEmbed`
 
-A final, stateless utility class in `app/Tools/MediaEmbed.php`. Five static helpers — `image()`, `audioFromUrl()`, `videoFromUrl()`, `audioFromBytes()`, `videoFromBytes()`. These return the canonical HTML the chat UI knows how to render (see [Frontend markdown allow-list](https://github.com/spora-ai/spora-frontend/blob/main/src/composables/useMarkdown.ts) for the source of truth).
+A final, stateless utility class in `app/Tools/MediaEmbed.php`. These return the canonical HTML the chat UI knows how to render (see [Frontend markdown allow-list](https://github.com/spora-ai/spora-frontend/blob/main/src/composables/useMarkdown.ts) for the source of truth).
+
+`forAsset(MediaAsset $asset, MediaType $type, string $url, string $alt): string` is the single `MediaType` → embed dispatch, and the entry point to prefer. Every operation that surfaces an asset routes through it — `get_media`, `get_embed_code`, `create_media`, `create_derivative` — so one artifact looks the same however it came to exist. Matching on `MediaType` at your own call site is how a PDF ends up rendered as a download card by one operation and a bare link by the next.
+
+| `MediaType`                            | Rendered as                           |
+| -------------------------------------- | ------------------------------------- |
+| `Image`                                | `image()` — inline markdown image     |
+| `Audio`                                | `audioFromUrl()` — `<audio controls>` |
+| `Video`                                | `videoFromUrl()` — `<video controls>` |
+| `Document` (`text/*`, `application/*`) | `fileCard()` — one-line download card |
+| `Unknown`                              | `link()` — plain markdown link        |
+
+`Document` is the bucket PDFs and Word documents land in, and the card it produces is styled in `spora-frontend/src/style.css` under `.chat-bubble-content .spora-file-card*`. Emit those class names verbatim if you build your own card — a rename degrades to an unstyled link, still functional because `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` server-side. `Unknown` stays a link deliberately: it means the `media_type` column itself was null or unrecognised, and nothing about such a row is reliably a download.
+
+`fileCard()` emits one line, and no icon element — the download glyph is a CSS `::before` pseudo-element on the link, because `aria-hidden` is not in the sanitizer's `ALLOWED_ATTR` and would be silently stripped, and because a generated text glyph would still be announced by a screen reader. `download` is likewise omitted, for the same server-side reason.
 
 ## 2. Configuration
 
@@ -137,11 +151,62 @@ is enough — the container will inject the configured `AssetStore` automaticall
 
 If your tool uses the `StoresBinaryAssets` trait, the trait's `setAssetStore(AssetStore)` setter is auto-wired by PHP-DI too — you do **not** need to inject `AssetStore` explicitly through your constructor (though you can if you want to).
 
+### Correcting a coarse sniffed MIME
+
+Uploads are gated on the **sniffed** MIME (`MediaUploadController::checkMimeAllowed()`) before any converter is consulted, so a format your libmagic build reports as its container type is rejected outright. Word OOXML is the common case: a 200-byte prefix reads as `application/zip`, and older libmagic versions report that for every OOXML flavour. `MimeSniffer::MAGIC_SIGNATURES` cannot help — the `PK\x03\x04` local-file-header signature matches every zip archive in existence.
+
+A refiner upgrades the verdict:
+
+```php
+final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMimeRefinerInterface
+{
+    // No constructor — see the contract below.
+    public function refine(string $bytes, ?string $filename, string $sniffedMime): ?string
+    {
+        if ($sniffedMime !== 'application/zip') {
+            return null; // not our concern; decline
+        }
+
+        // `PK\x03\x04` alone proves nothing — check for the part that
+        // distinguishes Word from xlsx / pptx / epub, or you will relabel
+        // every spreadsheet upload as a document.
+        $zip = new ZipArchive();
+        if ($zip->open($stagedPath, ZipArchive::RDONLY) !== true) {
+            return null;
+        }
+
+        try {
+            return $zip->locateName('word/document.xml') !== false
+                ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                : null;
+        } finally {
+            $zip->close();
+        }
+    }
+}
+```
+
+```php
+MediaMimeRefinerDiscovery::add(WordDocxMimeRefiner::class);
+```
+
+Contract, and the reasons behind each part:
+
+- **No-arg constructor, required.** `MimeSniffer` instantiates refiners with `new $class()`, which is what lets the sniffer itself stay argument-free — it is `new MimeSniffer()`-ed at its test call sites and bound as a bare construction in `ContainerDefinitions`.
+- **Run in registration order** until one returns non-`null`; `null` means decline, and the next refiner gets its turn.
+- **`$bytes` is the full payload**, not the 4 KiB prefix the sniffer works from — but you should still bound what you do with it. Refiners run inside the upload allowlist gate, before any size rejection, so an unbounded read is on the path for every archive a user ever attaches.
+- **Runs after the built-in Typst `text/plain` → `text/x-typst` upgrade**, so `$sniffedMime` is the most specific verdict core can produce.
+- **A refiner that throws is caught and declined**, not propagated. Plugin code is untrusted: an uncaught exception here would travel through `ingestFromBytes()` and fail every media upload in the process over one MIME verdict. This mirrors `MediaArchiveIngestPipeline::runConversionPipeline()`, which wraps the plugin-supplied _converter_ the same way.
+
+This is the third of the three discovery registries — `MediaConverterDiscovery`, `MediaDerivativeProducerDiscovery`, `MediaMimeRefinerDiscovery` — and all three share one registration shape through the `DiscoversRegistrations` trait. They have independent storage, which is worth knowing if you extend them: a `private static` property declared on a shared _parent class_ would be inherited by every subclass and silently merge the three lists into one.
+
 ## 6. What the chat UI does with the HTML
 
 - `<img>`, `<audio>`, `<video>`, `<source>` are in the allow-list.
+- `<div>`, `<span>` and `class` are in the allow-list too, which is what lets `MediaEmbed::fileCard()` ship a styled download card as raw HTML rather than markdown.
 - `data:` URIs are allowed on `src` of `<audio>`, `<video>`, and `<source>` (via a per-call DOMPurify hook) but blocked on `<a href>` so `data:text/html,…` XSS stays closed.
-- Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`.
+- `download` and `aria-hidden` are **not** in the allow-list. `download` is harmless here, since `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` from `media_assets.filename` regardless — but `aria-hidden` being dropped means an icon glyph inside a card cannot be hidden from assistive tech. Use a CSS pseudo-element or a background image instead of an element with a glyph character in it.
+- Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`; the download card is styled under `.chat-bubble-content .spora-file-card*` in the same block.
 
 If you emit HTML outside the canonical helpers (`MediaEmbed::*`), test that the result survives sanitization. Run the frontend tests in `spora-frontend/tests/composables/useMarkdown.spec.ts` against your markup.
 

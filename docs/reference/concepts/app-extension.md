@@ -42,77 +42,81 @@ The hook surface is identical for both. Promoting an App to a Plugin is a mechan
 
 All hooks are inherited from [`SporaExtensionInterface`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/SporaExtensionInterface.php). Implementations may extend [`AbstractExtension`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/AbstractExtension.php) to get empty defaults for every hook.
 
-| Hook                               | When called                          | Default    | Purpose                                             |
-| ---------------------------------- | ------------------------------------ | ---------- | --------------------------------------------------- |
-| `getName()`                        | Discovery                            | (required) | Human-readable name shown in the UI / logs          |
-| `autoload()`                       | Discovery                            | `[]`       | Additional PSR-4 mappings for the App's own classes |
-| `tools()`                          | Container build                      | `[]`       | Tool class FQCNs contributed to the Tool Registry   |
-| `drivers()`                        | Container build                      | `[]`       | LLM drivers contributed (`provider => FQCN`)        |
-| `recipePaths()`                    | Container build                      | `[]`       | Absolute paths to recipe directories                |
-| `schemaVersion()`                  | Schema install                       | `0`        | Bump when adding migrations                         |
-| `migrationsPath()`                 | Schema install                       | `null`     | Absolute path to migration directory                |
-| `apps()`                           | Container build                      | `[]`       | UI side-panels (`Spora\Apps\AppInterface` FQCNs)    |
-| `register(ContainerBuilder)`       | Before container build               | no-op      | Apply DI bindings                                   |
-| `routes(MiddlewareRouteCollector)` | Before router build                  | no-op      | Register HTTP routes                                |
-| `boot()`                           | After container build, every request | no-op      | Lifecycle hook — safe to use container services     |
+| Hook                      | When called     | Default    | Purpose                                              |
+| ------------------------- | --------------- | ---------- | ---------------------------------------------------- |
+| `getName()`               | Discovery       | (required) | Human-readable name shown in the UI / logs           |
+| `tools()`                 | Container build | `[]`       | Tool class FQCNs contributed to the Tool Registry    |
+| `agentTemplatePaths()`    | Container build | `[]`       | Absolute paths to Agent template files               |
+| `skillPaths()`            | Container build | `[]`       | Absolute paths to directories of `SKILL.md` skills   |
+| `skillProviders()`        | Container build | `[]`       | Skill providers for skills with no directory on disk |
+| `speechToTextProviders()` | Container build | `[]`       | Speech-to-text providers for the STT registry        |
+| `searchProviders()`       | Container build | `[]`       | Search providers for the host ⌘K palette             |
+| `schemaVersion()`         | Schema install  | `0`        | Bump when adding migrations                          |
+| `migrationsPath()`        | Schema install  | `null`     | Absolute path to migration directory                 |
+| `apps()`                  | Container build | `[]`       | UI side-panels (`Spora\Apps\AppInterface` FQCNs)     |
+
+> **Removed in 1.0.** The hooks `autoload()`, `drivers()`, `recipePaths()`, `register(ContainerBuilder)`, `routes(MiddlewareRouteCollector)`, and `boot()` are **not** on `SporaExtensionInterface`. PSR-4 mappings for an App's own classes moved into the **host project's** `composer.json` (`"App\\": "app/"`), and for a plugin into `plugin.json`'s `autoload.psr-4`; the other five hooks had no consumers. The three side-effect hooks became PSR-14 events — see [Side effects are events](#side-effects-are-events) below.
+
+### Side effects are events
+
+Data hooks answer "what does this extension contribute?". DI bindings, route registration, and per-request setup are behaviour, and they are delivered as PSR-14 events: implement `Symfony\Contracts\EventDispatcher\EventSubscriberInterface`, return the event → method map from `getSubscribedEvents()`, and let the framework call you at the right moment.
+
+```php
+use Spora\Events\ContainerBuildingEvent;
+use Spora\Events\RoutesRegisteringEvent;
+use Spora\Events\BootingEvent;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
+final class App extends AbstractExtension implements EventSubscriberInterface
+{
+    public function getSubscribedEvents(): array
+    {
+        return [
+            ContainerBuildingEvent::class => 'onContainerBuilding',
+            RoutesRegisteringEvent::class => 'onRoutesRegistering',
+            BootingEvent::class           => 'onBooting',
+        ];
+    }
+
+    public function onContainerBuilding(ContainerBuildingEvent $event): void
+    {
+        $event->builder()->addDefinitions([
+            MyServiceInterface::class => \DI\autowire(MyService::class),
+        ]);
+    }
+
+    public function onRoutesRegistering(RoutesRegisteringEvent $event): void
+    {
+        $event->routes()->addRoute(
+            'GET',
+            '/api/v1/hello',
+            [\App\Http\Controllers\HelloController::class, 'index'],
+            [\Spora\Http\Middleware\AuthMiddleware::class],
+        );
+    }
+
+    public function onBooting(BootingEvent $event): void
+    {
+        // Safe to read container services here — the container is built.
+    }
+}
+```
+
+| Event                    | Payload (`$event->…`)                           | When                                                                                                    |
+| ------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `ContainerBuildingEvent` | `builder(): DI\ContainerBuilder`                | Once per process, before the container is built. Mutate the builder to add DI bindings.                 |
+| `RoutesRegisteringEvent` | `routes(): MiddlewareRouteCollector`            | Per request, after core routes are registered, before the router is built. Add routes to the collector. |
+| `BootingEvent`           | `container(): Psr\Container\ContainerInterface` | Per request, after the container is built and the database has booted. Read services off the container. |
 
 ### Lifecycle ordering
 
 1. **Discovery** — `app/App.php` is loaded; the implementing class is instantiated.
-2. **Autoload** — `App::autoload()` PSR-4 mappings are registered with Composer's ClassLoader so the App's own classes become resolvable.
-3. **DI bindings** — `App::register(ContainerBuilder)` is called BEFORE the container is built. Its bindings are merged into the same builder that the framework's core definitions come from.
-4. **Container build** — PHP-DI compiles the merged definitions.
-5. **Routes** — `RouteDefinitions::register()` runs first (core routes), then `App::routes()` runs (app routes appended). The router is built once.
-6. **Boot** — `Database->boot()` (schema install), then `App::boot()`, then request dispatch.
+2. **DI bindings** — `PluginLoader::registerPlugins()` fires the `ContainerBuildingEvent` BEFORE the container is built. The App and the plugins share one dispatcher, so an App subscriber's bindings land in the same builder as core's and the plugins'.
+3. **Container build** — PHP-DI compiles the merged definitions.
+4. **Routes** — `RouteDefinitions::register()` runs first (core routes), then `RoutesRegisteringEvent` (App and plugin routes appended). The router is built once.
+5. **Boot** — `Database->boot()` (schema install), then `BootingEvent`, then request dispatch.
 
-### Hook details
-
-#### `register(ContainerBuilder)`
-
-`register()` is the most powerful hook — it lets the App contribute DI bindings to the framework's container. This is the "Symfony bundle build()" equivalent.
-
-```php
-public function register(\DI\ContainerBuilder $builder): void
-{
-    $builder->addDefinitions([
-        'my_service' => static fn(\Psr\Container\ContainerInterface $c) => new MyService(),
-        MyServiceInterface::class => static fn(\Psr\Container\ContainerInterface $c) => new MyService(),
-    ]);
-}
-```
-
-The hook is called BEFORE the container is built. Bindings registered here behave like core framework bindings: any controller, tool, or service can type-hint them.
-
-> **Note:** the `register()` hook was previously declared on `PluginInterface` but never actually wired into the running container. It is now wired (see `ContainerDefinitions`). Plugins that already override `register()` start working as expected without code changes.
-
-#### `routes(MiddlewareRouteCollector)`
-
-The App contributes HTTP routes via imperative registration. This mirrors how core routes are declared in `RouteDefinitions::register()`.
-
-```php
-public function routes(MiddlewareRouteCollector $r): void
-{
-    $r->addRoute(
-        'GET',
-        '/api/v1/hello',
-        [\App\Http\Controllers\HelloController::class, 'index'],
-        [\Spora\Http\Middleware\AuthMiddleware::class],
-    );
-}
-```
-
-#### `boot()`
-
-`boot()` runs once per request, after the container is built and the DB is up. Safe to use any container service here.
-
-```php
-public function boot(): void
-{
-    // Initialise a singleton, warm a cache, register a Mercure subscriber, …
-}
-```
-
-Note: `boot()` is called BEFORE the request is dispatched, not "once per process". For long-running workers that handle many requests, use `boot()` only for idempotent setup.
+`AppLoader::load()` only instantiates the App; it dispatches nothing itself. `AppLoader::wireEventSubscribers()` attaches the App to the shared dispatcher on every boot, warm or cold, mirroring `PluginLoader::wireEventSubscribers()`.
 
 ## Promoting an App to a Plugin
 

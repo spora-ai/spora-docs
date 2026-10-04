@@ -153,7 +153,7 @@ If your tool uses the `StoresBinaryAssets` trait, the trait's `setAssetStore(Ass
 
 ### Correcting a coarse sniffed MIME
 
-Uploads are gated on the **sniffed** MIME (`MediaUploadController::checkMimeAllowed()`) before any converter is consulted, so a format your libmagic build reports as its container type is rejected outright. Word OOXML is the common case: a 200-byte prefix reads as `application/zip`, and older libmagic versions report that for every OOXML flavour. `MimeSniffer::MAGIC_SIGNATURES` cannot help — the `PK\x03\x04` local-file-header signature matches every zip archive in existence.
+Uploads are gated on the **sniffed** MIME (`MediaUploadController::checkMimeAllowed()`), so a format your libmagic build reports as its container type is rejected outright. Word OOXML is the common case: a 200-byte prefix reads as `application/zip`, and older libmagic versions report that for every OOXML flavour. `MimeSniffer::MAGIC_SIGNATURES` cannot help — the `PK\x03\x04` local-file-header signature matches every zip archive in existence.
 
 A refiner upgrades the verdict:
 
@@ -208,11 +208,123 @@ Contract, and the reasons behind each part:
 - **Run in registration order** until one returns non-`null`; `null` means decline, and the next refiner gets its turn.
 - **`$bytes` is the full payload**, not the 4 KiB prefix the sniffer works from — but you should still bound what you do with it. Refiners run inside the upload allowlist gate, before any size rejection, so an unbounded read is on the path for every archive a user ever attaches.
 - **Runs after the built-in Typst `text/plain` → `text/x-typst` upgrade**, so `$sniffedMime` is the most specific verdict core can produce.
-- **A refiner that throws is caught and declined**, not propagated. Plugin code is untrusted: an uncaught exception here would travel through `ingestFromBytes()` and fail every media upload in the process over one MIME verdict. This mirrors `MediaArchiveIngestPipeline::runConversionPipeline()`, which wraps the plugin-supplied _converter_ the same way.
+- **A refiner that throws is caught and declined**, not propagated. Plugin code is untrusted: an uncaught exception here would travel through `ingestFromBytes()` and fail every media upload in the process over one MIME verdict. The same tolerance applies to the plugin-supplied _derivative producer_ that runs later in the ingest: `MediaDerivativeService::ensureTextDerivative()` swallows and logs a throw rather than failing the upload.
 
-This is the third of the three discovery registries — `MediaConverterDiscovery`, `MediaDerivativeProducerDiscovery`, `MediaMimeRefinerDiscovery` — and all three share one registration shape through the `DiscoversRegistrations` trait. They have independent storage, which is worth knowing if you extend them: a `private static` property declared on a shared _parent class_ would be inherited by every subclass and silently merge the three lists into one.
+This is one of two discovery registries — `MediaDerivativeProducerDiscovery` and `MediaMimeRefinerDiscovery` — and both share one registration shape through the `DiscoversRegistrations` trait. They have independent storage, which is worth knowing if you extend them: a `private static` property declared on a shared _parent class_ would be inherited by every subclass and silently merge the two lists into one.
 
-## 6. What the chat UI does with the HTML
+## 6. Derivatives
+
+A **derivative** is a second `media_assets` row linked back to its parent through the `media_derivatives` join table. It is a full asset: its own bytes in the same `AssetStore` the original used, its own UUID, its own `asset_url`, reachable through the same routes and the "Convert to" dropdown in the operator UI.
+
+Every kind of derivative goes through one owner: `Spora\Services\MediaArchive\MediaDerivativeService`. The producer registry, the REST controller (`MediaDerivativeController`), the LLM-facing `create_derivative` / `list_derivatives` operations, and the text-extraction path all call into it, so a new producer or a new attribution field is a single-site change.
+
+### The producer contract
+
+`MediaDerivativeProducerInterface` is a **model → model** contract, not a `bytes → string` one. That is the whole point of routing extraction through derivatives: a producer receives the parent `MediaAsset` and returns a `DerivativeOutput` carrying the bytes plus the metadata needed to populate the new row's columns.
+
+```php
+final class MyOcrProducer implements Spora\Services\MediaArchive\MediaDerivativeProducerInterface
+{
+    public function supportedSourceFormats(): array
+    {
+        // MIMEs *and* bare extensions — see the allowlist warning below.
+        return ['image/png', 'application/pdf', 'png', 'pdf'];
+    }
+
+    public function supportedDerivativeFormats(): array
+    {
+        return ['md'];
+    }
+
+    public function pluginSlug(): string { return 'my-ocr'; }
+
+    public function operationName(): string { return 'ocr.extract'; }
+
+    public function produce(MediaAsset $source, string $format, array $options = []): DerivativeOutput
+    {
+        $bytes = file_get_contents($this->resolvePath($source));
+        return new DerivativeOutput(
+            bytes: $this->engine->recognise($bytes),
+            mime: 'text/markdown',
+        );
+    }
+}
+```
+
+`DerivativeOutput` is immutable and readonly: `bytes` and `mime` are required; `width`, `height`, and `durationSeconds` are optional and stay null when your producer does not know them. The service derives `byte_size`, `media_type`, and the extension from those two, so a producer never sets them by hand.
+
+- **Producers may take constructor arguments.** The service resolves each registered class through the DI container, so `TypstRenderProducer`'s `TypstWorldFactory` dependency is wired normally. This is the opposite of the refiner rule above, and worth keeping straight.
+- **`supportedSourceFormats()` / `supportedDerivativeFormats()` are advisory.** The service uses them to short-list candidates; `produce()` is the source of truth on accept/reject, because the hint list can go stale and a producer may need to introspect bytes the caller never looked at.
+- **`produce()` may throw any `Throwable`.** The REST layer maps a throw to 422, the LLM tool to a `ToolResult::fail()`. The one exception is the eager text-extraction path, which is best-effort by design — see below.
+- **The filename is derived, not chosen.** `MediaDerivativeService` builds it from the parent's basename plus the format slug, so a `report.pdf` gets `report.md`. A producer that needs a different name has no seam for it; that is intentional, so the join row and the filename stay consistent.
+
+### The natural key and attribution
+
+The join row's natural key is `(parent_id, format, producer_plugin, producer_operation)`. Rendering the same source with the same producer **overwrites** the existing derivative rather than stacking a second row — which is what makes a blind retry of `create_derivative` the safe pattern, and what `refresh()` keys on.
+
+Attribution rides along on the same key, so it is set by the producer rather than by the caller:
+
+| Column               | Written from                                |
+| -------------------- | ------------------------------------------- |
+| `producer_plugin`    | `pluginSlug()` — your stable plugin slug    |
+| `producer_operation` | `operationName()` — a stable operation name |
+
+Both are mirrored onto the derivative's own `media_assets` row as `plugin_slug` and `tool_name`, matching how core attributes any other asset. Two producers that render the same format from the same source — an OCR producer and a text-layer producer, say — produce two distinct derivatives rather than overwriting each other, which is usually what you want.
+
+### Field inheritance
+
+`createNew()` writes a fresh `media_assets` row, so it has to decide, field by field, what the derivative inherits from its parent. The per-field table is deliberate; do not "helpfully" copy the whole parent:
+
+| Field                 | Action               | Why                                                                                                                                                                                                              |
+| --------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `principal_id`        | precedence chain     | Parent's value wins; else the supplied `PrincipalContext`; else `PrincipalService::ensureUserPrincipal($userId)`; else null. Same chain the ingest pipeline uses, so LIST and CREATE agree on a row's principal. |
+| `user_id`             | **inherit**          | `AssetController` gates reads on the owner. A derivative with a null `user_id` is unreadable by the non-admin who created it.                                                                                    |
+| `agent_id`            | **inherit**          | `MediaTool` gates agent-scoped reads on `asset.agent_id`. Without it a `scope=agent` agent gets "not found" on a derivative it caused.                                                                           |
+| `is_temporary`        | **inherit**          | `MediaArchiveRetention`'s sweep filters on `(user_id, agent_id, is_temporary)`. A row with null `user_id` **and** null `agent_id` matches no sweep and grows without bound.                                      |
+| `task_id`             | do **not** inherit   | The derivative outlives the turn. Leaving it null keeps LIST scoping simple.                                                                                                                                     |
+| `tool_call_id`        | do **not** inherit   | It would collide with the ingest dedup key `(tool_call_id, source_url)`.                                                                                                                                         |
+| `tags` / `prompt`     | do **not** inherit   | They describe the source, not a render of it.                                                                                                                                                                    |
+| `public_access_token` | **must not** inherit | Inheriting it would mint a second unauthenticated read path for a derived document that nobody chose to share.                                                                                                   |
+
+### The `md` format, and what gets extracted
+
+`md` is the format slug for a Markdown derivative: the producer emits `text/markdown`, and `MediaType::fromMime('text/markdown')` classifies it as a `Document`, so it previews and downloads as one. Core registers the slug with a human label so the "Convert to" dropdown reads **Markdown**, not `MD`. A derivative's filename always ends in `.md`.
+
+`md` is not a special case — it is the format **all** text extraction routes through. `MediaDerivativeService::ensureTextDerivative(MediaAsset)` is the single get-or-create entry point, and it runs at two places: at the end of ingest, and at attach time in the controller for every path that accepts `media_ids` (task create, follow-up, continue). The attach-time call is what stops a document attached to a running task from arriving with no readable text. It is **best-effort**: a throw is swallowed and logged, so a corrupt PDF never fails an upload. A scanned PDF with no text layer is the one case nothing rescues — the producer returns nothing, and the operator's route is to archive a `.md` alongside it.
+
+`ReadUrlTool::fetch_pdf` keeps working, and does so through one implementation rather than two: a private core `PdfMarkdownExtractor` that the `md` producer and the tool share. It stays SSRF-guarded and still caps fetched PDFs at 50 MiB.
+
+### The invariant
+
+> **A text-ish source within the inline budget is its own text. Anything else gets an `md` derivative — and if it still doesn't fit, the LLM is told where to read it.**
+
+`MessageHistoryBuilder` applies it in three branches when it turns an attachment into LLM-facing text:
+
+1. **In-bounds text** — a `text/*` or allowlisted text-application mime, within the inline budget, with no NUL byte in the first 4 KB — is inlined raw. No derivative, no second copy. This is the branch `create_media` and a `note.txt` land in, and it is why there is deliberately **no passthrough producer** for text: one that re-emitted in-bounds text would store the same bytes twice, which is the duplication the derivative path exists to avoid.
+2. **Binary documents** — `application/pdf`, docx — are read through their `md` derivative.
+3. **Out of bounds** — past the budget, or NUL-containing text that no byte cap can rescue — falls through to a metadata-only block whose message **names `get_source`**, so the LLM is told where the content is instead of reporting "no extractable text" and stopping.
+
+The inline budget is **512 KB** (`MAX_INLINE_TEXT_BYTES`), and it applies to **both** the raw-text branch and the derivative branch. The raw-text branch was previously capped at 256 KB, and the derivative branch was not capped at all, which meant a 200-page PDF's full markdown was inlined uncapped — the latent context bug. The fix loosens text and tightens PDFs in one move: a text source up to 512 KB now arrives inline with no extra tool round-trip, and an oversized PDF's markdown is bounded.
+
+Two caps still bound the same content and are **not** interchangeable. The 512 KB inline budget governs what reaches the model in a turn; the ~8 KiB preview cap governs the excerpt `get_media` inlines next to a binary asset's card. Do not harmonise them — they answer different questions.
+
+Because the derivative path is a second `MediaAsset::find()` plus a real `file_get_contents()` per attachment per turn, it is **not** a like-for-like swap for a column that was already deserialized: the inline read checks `byte_size` **before** touching disk, so an oversized derivative costs a column read rather than a file read.
+
+### The producer union is a second allowlist surface
+
+`MediaAllowedTypesService` builds the upload allowlist from four sources: the static text list, the static audio list, the operator's image config, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all. It is the only reason `application/pdf` and the docx mime stay allowlisted out of the box, since neither appears in any static list.
+
+That makes the union a **second, parallel allowlist surface**, and it has to stay in sync with the MIME-refiner chain. Nothing structurally enforces the coupling: a `.docx` that sniffs as `application/zip` is fixed by `WordDocxMimeRefiner` _before_ the gate and still works, but no code path asserts that a refiner's target mime is also in some producer's source list. If you ship a refiner that upgrades a format into a mime, confirm a producer claims that mime — there is a test for the drift, and no owner designated for the invariant.
+
+`supportedSourceFormats()` returns **bare extensions as well as mimes** — `TypstRenderProducer` returns `['text/x-typst', 'typ']`, `MarkdownToDocxProducer` returns `['text/markdown', 'md', 'markdown']` — and producer resolution checks both. The allowlist union does not: it must filter on entries containing `/`, or `md`, `typ`, and `markdown` leak into the LLM-facing `Allowed: %s` string in `create_media`'s rejection message. The leak is **invisible in the upload UI**: `allowedExtensions()` maps every mime through `extensionForMime()`, and a bare `md` yields null and is silently dropped from the `accept=` attribute. It only ever surfaces in the LLM contract.
+
+### Discovery: `search` hides derivatives
+
+`MediaArchiveService::list()` filters derivative rows out of the query, so a derivative never appears as a top-level library asset. That is correct for the operator grid — a thumbnail next to the source it was derived from is noise, and the operator reaches a derivative through its parent's detail page and the VersionsStrip.
+
+It is not neutral for the LLM. `search` is the only way an agent discovers assets it was not handed, and post-cut a PDF's markdown is **not** discoverable through it. `get_media`'s `derivatives[]` array only appears if the agent already knows the parent id. So the net effect of routing extraction through derivatives is a **capability regression**: text an LLM used to get for free from an attached PDF now requires it to already hold the parent's id. `list_derivatives` is the real discovery path, and the `media-library` skill tells the agent to use it.
+
+## 7. What the chat UI does with the HTML
 
 - `<img>`, `<audio>`, `<video>`, `<source>` are in the allow-list.
 - `<div>`, `<span>` and `class` are in the allow-list too, which is what lets `MediaEmbed::fileCard()` ship a styled download card as raw HTML rather than markdown.
@@ -233,13 +345,13 @@ That reset is the second hand-written rule, and its reason is worth knowing befo
 
 If you emit HTML outside the canonical helpers (`MediaEmbed::*`), test that the result survives sanitization. Run the frontend tests in `spora-frontend/tests/composables/useMarkdown.spec.ts` against your markup.
 
-## 7. Local-mode URLs are stable, not permanent
+## 8. Local-mode URLs are stable, not permanent
 
 `LocalAssetStore` mints a token that embeds a daily-rotating HMAC. A URL generated today is valid until midnight UTC tomorrow; a URL from last week returns 404 even if the file is still on disk.
 
 If you want long-term retention, run `php bin/spora assets:gc --max-age-days=N` periodically (cron) to free disk. The command does **not** invalidate URLs that are still in their validity window — it only unlinks files past `--max-age-days`.
 
-## 8. End-to-end example
+## 9. End-to-end example
 
 ```php
 final class TtsTool extends AbstractTool {

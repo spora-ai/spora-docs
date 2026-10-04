@@ -49,7 +49,7 @@ A final, stateless utility class in `app/Tools/MediaEmbed.php`. These return the
 | `Document` (`text/*`, `application/*`) | `fileCard()` — one-line download card |
 | `Unknown`                              | `link()` — plain markdown link        |
 
-`Document` is the bucket PDFs and Word documents land in, and the card it produces is styled in `spora-frontend/src/style.css` under `.chat-bubble-content .spora-file-card*`. Emit those class names verbatim if you build your own card — a rename degrades to an unstyled link, still functional because `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` server-side. `Unknown` stays a link deliberately: it means the `media_type` column itself was null or unrecognised, and nothing about such a row is reliably a download.
+`Document` is the bucket PDFs and Word documents land in, and the card it produces is styled entirely by Tailwind utilities that `spora-frontend` registers in `src/style.css` — see [Styling the download card](#styling-the-download-card-register-your-classes) for what that obliges of you if you build your own. `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` server-side, so a card that loses its styling still downloads rather than navigating. `Unknown` stays a link deliberately: it means the `media_type` column itself was null or unrecognised, and nothing about such a row is reliably a download.
 
 `fileCard()` emits one line, and no icon element — the download glyph is a CSS `::before` pseudo-element on the link, because `aria-hidden` is not in the sanitizer's `ALLOWED_ATTR` and would be silently stripped, and because a generated text glyph would still be announced by a screen reader. `download` is likewise omitted, for the same server-side reason.
 
@@ -170,8 +170,19 @@ final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMime
         // `PK\x03\x04` alone proves nothing — check for the part that
         // distinguishes Word from xlsx / pptx / epub, or you will relabel
         // every spreadsheet upload as a document.
+        //
+        // ZipArchive opens a path, not a string, so the bytes have to be
+        // staged. Bound it: refiners run before any size rejection, so this
+        // write is on the path for every archive a user ever attaches.
+        $stagedPath = tempnam(sys_get_temp_dir(), 'spora-refine-');
+        if ($stagedPath === false || file_put_contents($stagedPath, $bytes) === false) {
+            return null;
+        }
+
         $zip = new ZipArchive();
         if ($zip->open($stagedPath, ZipArchive::RDONLY) !== true) {
+            unlink($stagedPath);
+
             return null;
         }
 
@@ -181,6 +192,7 @@ final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMime
                 : null;
         } finally {
             $zip->close();
+            unlink($stagedPath);
         }
     }
 }
@@ -192,7 +204,7 @@ MediaMimeRefinerDiscovery::add(WordDocxMimeRefiner::class);
 
 Contract, and the reasons behind each part:
 
-- **No-arg constructor, required.** `MimeSniffer` instantiates refiners with `new $class()`, which is what lets the sniffer itself stay argument-free — it is `new MimeSniffer()`-ed at its test call sites and bound as a bare construction in `ContainerDefinitions`.
+- **No-arg constructor, required.** `MimeSniffer` instantiates refiners with `new $class()` and has no container to resolve their collaborators with, so a refiner that needs a collaborator has to reach for it statically itself. (The sniffer itself is _not_ argument-free — it takes an optional logger, which is why the constraint is on your refiner and not on it.)
 - **Run in registration order** until one returns non-`null`; `null` means decline, and the next refiner gets its turn.
 - **`$bytes` is the full payload**, not the 4 KiB prefix the sniffer works from — but you should still bound what you do with it. Refiners run inside the upload allowlist gate, before any size rejection, so an unbounded read is on the path for every archive a user ever attaches.
 - **Runs after the built-in Typst `text/plain` → `text/x-typst` upgrade**, so `$sniffedMime` is the most specific verdict core can produce.

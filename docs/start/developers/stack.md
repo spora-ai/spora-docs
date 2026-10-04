@@ -11,27 +11,27 @@ The table below is the source-of-truth dependency list (verified against `spora-
 
 ## Runtime dependencies
 
-| Package                                               | Role                     | Why                                                                            |
-| ----------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------ |
-| `symfony/http-foundation`                             | Request/response objects | Cleaner API than raw PHP globals (`$request->query->get('x')` vs `$_GET['x']`) |
-| `symfony/console`                                     | CLI framework            | Powers `bin/spora` commands; well-known Symfony UX                             |
-| `symfony/http-client`                                 | HTTP client              | HTTP transport for LLM driver requests (Anthropic, OpenAI, custom)             |
-| `symfony/mailer`                                      | Email sending            | `SendEmailTool` via Symfony Mailer (SMTP transport)                            |
-| `symfony/yaml`                                        | YAML parsing             | Parsing recipe definition files (`recipes/*.yaml`)                             |
-| `symfony/process`                                     | Process management       | Used by plugin install/uninstall (shell out to `composer`)                     |
-| `nikic/fast-route`                                    | Routing                  | Fast, standalone router — no framework coupling                                |
-| `php-di/php-di`                                       | Dependency injection     | Framework-agnostic DI container (annotation-based + XML)                       |
-| `illuminate/database` (Eloquent)                      | Database ORM             | Zero-config ORM with first-class SQLite support                                |
-| `illuminate/filesystem`                               | Filesystem               | Used by PluginLoader for manifest discovery                                    |
-| `illuminate/pagination`                               | Pagination               | Used by admin UI for long lists                                                |
-| `delight-im/auth`                                     | Authentication           | Lightweight, standalone session+password auth                                  |
-| `monolog/monolog`                                     | Logging                  | PSR-3 logger with PII-safe argument policy                                     |
-| `dragonmantank/cron-expression`                       | Cron parsing             | Parsing `cron_expression` for scheduled runs                                   |
-| `vlucas/phpdotenv`                                    | Env loading              | Loading `.env` files on boot                                                   |
-| `webklex/php-imap`                                    | Email reading            | IMAP access for `ReadEmailTool`                                                |
-| `chriskonnertz/string-calc`                           | Math expressions         | Evaluating math strings in `CalculatorTool`                                    |
-| `pestphp/pest`                                        | PHP testing              | Elegant testing framework (only in dev)                                        |
-| Vue 3 + Vite + Tailwind + radix-vue + lucide-vue-next | Frontend                 | Modern JS stack (shared with Laravel Breeze/Fortify patterns)                  |
+| Package                                               | Role                     | Why                                                                                            |
+| ----------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `symfony/http-foundation`                             | Request/response objects | Cleaner API than raw PHP globals (`$request->query->get('x')` vs `$_GET['x']`)                 |
+| `symfony/console`                                     | CLI framework            | Powers `bin/spora` commands; well-known Symfony UX                                             |
+| `symfony/http-client`                                 | HTTP client              | HTTP transport for LLM driver requests (Anthropic, OpenAI, custom)                             |
+| `symfony/mailer`                                      | Email sending            | `SendEmailTool` via Symfony Mailer (SMTP transport)                                            |
+| `symfony/yaml`                                        | YAML parsing             | Parsing `.yaml` / `.yml` agent templates, `email-templates/*.yaml`, and `SKILL.md` frontmatter |
+| `symfony/process`                                     | Process management       | Used by plugin install/uninstall (shell out to `composer`)                                     |
+| `nikic/fast-route`                                    | Routing                  | Fast, standalone router — no framework coupling                                                |
+| `php-di/php-di`                                       | Dependency injection     | Framework-agnostic DI container (annotation-based + XML)                                       |
+| `illuminate/database` (Eloquent)                      | Database ORM             | Zero-config ORM with first-class SQLite support                                                |
+| `illuminate/filesystem`                               | Filesystem               | Used by PluginLoader for manifest discovery                                                    |
+| `illuminate/pagination`                               | Pagination               | Used by admin UI for long lists                                                                |
+| `delight-im/auth`                                     | Authentication           | Lightweight, standalone session+password auth                                                  |
+| `monolog/monolog`                                     | Logging                  | PSR-3 logger with PII-safe argument policy                                                     |
+| `dragonmantank/cron-expression`                       | Cron parsing             | Parsing `cron_expression` for scheduled runs                                                   |
+| `vlucas/phpdotenv`                                    | Env loading              | Loading `.env` files on boot                                                                   |
+| `webklex/php-imap`                                    | Email reading            | IMAP access for `ReadEmailTool`                                                                |
+| `chriskonnertz/string-calc`                           | Math expressions         | Evaluating math strings in `CalculatorTool`                                                    |
+| `pestphp/pest`                                        | PHP testing              | Elegant testing framework (only in dev)                                                        |
+| Vue 3 + Vite + Tailwind + radix-vue + lucide-vue-next | Frontend                 | Modern JS stack (shared with Laravel Breeze/Fortify patterns)                                  |
 
 All Composer constraints are pinned to `^8.0` (Symfony 8), `^13.0` (Eloquent 13), `^9.0` (delight-im/auth 9), etc. — the project keeps up with the latest minor of each major.
 

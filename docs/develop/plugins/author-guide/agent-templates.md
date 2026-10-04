@@ -35,7 +35,7 @@ final class YourPlugin extends AbstractPlugin
 }
 ```
 
-The scanner aggregates your paths alongside the framework's `agent-templates/` directory and any paths contributed by the project App. Templates are deduped by `id`.
+The scanner aggregates your paths alongside the project's own `agent-templates/` directory, the framework's, and any paths contributed by the project App. The result is a **flat list with no dedupe** — two directories shipping the same `id` both appear, and the by-id endpoints resolve to the first match. The `<plugin-slug>/<slug>` namespacing rule is what actually keeps two plugins from colliding; see [Concepts → Agent templates](/reference/concepts/agent-templates) for the resolution order.
 
 ## JSON / YAML schema
 

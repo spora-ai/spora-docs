@@ -1,11 +1,11 @@
 ---
 title: Customization
-description: How to extend a Spora install with custom tools, agents, recipes, and theming.
+description: How to extend a Spora install with custom tools, agents, agent templates, and theming.
 ---
 
 ## Customization
 
-How to extend a Spora install with custom tools, agents, and recipes.
+How to extend a Spora install with custom tools, agents, and agent templates.
 
 ## Custom tools
 
@@ -69,9 +69,21 @@ $agent = new Agent([
 $agent->save();
 ```
 
-## Custom recipes
+## Custom agent templates
 
-Recipes are YAML files in `recipes/`. Schema: see the [Architecture overview](/reference/concepts/architecture). Drop a new YAML file in, then refresh the recipe list (admin UI or CLI).
+Agent templates are the shipped way to share an agent's setup. Each one is a JSON or YAML file holding a name, system prompt, max steps, tool activations, and per-operation auto-approve defaults.
+
+Drop your own files into `agent-templates/` at the project root. The framework also reads its own bundled `spora-core/agent-templates/` (currently `core-assistant.json`) and any directory a plugin returns from `agentTemplatePaths()`. Each directory is read one level deep and its `.json`, `.yaml`, and `.yml` files are validated; a file that fails to parse is listed with its warnings rather than silently skipped.
+
+> **Note:** there is no CLI command to refresh templates. The scanner runs when the admin UI loads the template gallery in the **Create agent** dialog.
+
+Templates never carry secrets. Settings declared as `#[ToolSetting(type: 'password')]` are rejected at validation, and the optional `tools[].settings` block only appears on an export you opt into with `?include_settings=1`. Recipients still fill in API keys in **Settings → Tools** after importing.
+
+Plugin-shipped templates must namespace their `id` as `<plugin-slug>/<name>`. A bare slug is reserved for operator uploads and raises a `NAMESPACE_MISMATCH` warning.
+
+- [Concepts → Agent templates](/reference/concepts/agent-templates) — discovery order, the HTTP surface, and importer semantics.
+- [Agent template schema](/reference/agent-template-schema) — every field, with examples.
+- [Plugin author guide → Agent templates](/develop/plugins/author-guide/agent-templates) — shipping templates from a plugin.
 
 ## Custom mail templates
 

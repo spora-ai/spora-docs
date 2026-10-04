@@ -5,7 +5,7 @@ description: Complete bin/spora command catalog with options, examples, and sour
 
 # CLI reference
 
-`bin/spora` is the runtime CLI entry point. Every operational task — install, plugin management, database ops, worker control, asset cleanup, media archiving — is a subcommand. Build-time tools (OpenAPI generation, recipe lint, etc.) live in `bin/spora-build` and deliberately skip the Kernel / DI / secret-key boot so they can run in a clean checkout.
+`bin/spora` is the runtime CLI entry point. Every operational task — install, plugin management, database ops, worker control, asset cleanup, media archiving — is a subcommand. Build-time tools (OpenAPI generation) live in `bin/spora-build` and deliberately skip the Kernel / DI / secret-key boot so they can run in a clean checkout.
 
 For the developer-oriented view (the same commands + the dev workflow, testing, and coding standards), see [Developers → CLI & coding standards](/start/developers/cli-and-coding-standards).
 
@@ -70,7 +70,7 @@ Exit codes: `0` when no orphans, `1` (`Command::FAILURE`) when at least one is f
 
 ## Build-time CLI: `bin/spora-build`
 
-`bin/spora-build` is the build-time companion to `bin/spora`. It boots **without** the Kernel / DI / secret-key so it works in a clean checkout with only the source tree — which is what downstream tooling (CI, sibling-repo docs builds) actually has. Today it ships the OpenAPI generator; future build-time tools (recipe lint, migration dry-run, etc.) will live alongside it under `app/Build/`.
+`bin/spora-build` is the build-time companion to `bin/spora`. It boots **without** the Kernel / DI / secret-key so it works in a clean checkout with only the source tree — which is what downstream tooling (CI, sibling-repo docs builds) actually has. Today it ships only the two OpenAPI commands below; future build-time tools (migration dry-run, etc.) will live alongside them under `app/Build/`.
 
 | Command                   | Description                                                                                                                                           | Source                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |

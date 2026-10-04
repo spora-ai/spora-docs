@@ -140,16 +140,53 @@ Each tool has operator-configurable settings (API keys, hostnames). Configure th
 
 Each tool tile in the picker shows an icon determined by the tool's `#[Tool]` attribute (or the owning plugin's `plugin.json` icon, or the default puzzle icon) — see the [`icon` field](/reference/api#agent-resource) on the Agent resource for the resolution chain.
 
-## Recipes _(WIP — not yet shipped)_
+## Agent templates
 
-> **Status: WIP** — recipes are not yet shipped in this release. The recipe scaffolding exists in the codebase (`RecipeScanner`, `RecipeController`, `agents.recipe_id`, `PluginInterface::recipePaths()`), but the system is **not usable**: `recipes/` is empty, the agent create/edit UI does not yet wire up the `recipe_id` field, and no recipe picker drives the run flow yet. See [Roadmap → Medium](/about/roadmap) for the open work items.
+An **agent template** is a file — JSON or YAML — that bundles an agent's identity (name, description, system prompt, max steps, follow-up behaviour) with the tools it starts out with. Templates are how a working agent definition gets shared, and how plugins ship curated starter agents.
 
-A **recipe** is a YAML file that bundles a system prompt + tool allowlist + LLM config into a one-click template. Recipes would live in `recipes/` (operator-authored) or in a plugin's `recipes/` (plugin-supplied). The intended behaviour once shipped:
+**Agents → New** opens a dialog that asks how you want to start. Three cards:
 
-- **Agent → Recipe** dropdown lets you pick a recipe. The recipe's settings (system prompt, LLM, tools) are loaded into the form. You can then tweak the agent without losing the recipe as a starting point.
-- A recipe is **not** a snapshot — once an agent is built from a recipe, edits to the recipe don't propagate. The agent is a copy.
+- **Blank agent** — start from a name and an optional system prompt. Tools are added in the next step.
+- **From template** — browse the gallery, grouped by source (**Core** first, then one group per contributing plugin). Each card shows the template's `id`, version, and how many tools it enables.
+- **Upload template** — import a `.json` file someone exported from another Spora instance. The file is read in your browser, then sent to your own Spora instance for a dry-run validation pass before anything is written.
 
-For details on the recipe format (when it's documented), see [Concepts → Architecture](/reference/concepts/architecture).
+If you also control a group, the **Pick an owner** step runs after you choose a card — the same owner decision as [Step 0](#step-0--owner) above.
+
+The framework ships exactly one bundled template: **Spora Core Agent** (`core/core-assistant`), a general-purpose starter with the time and math tools. An empty gallery reads _"No templates available. Install a plugin or ship one with spora-core."_
+
+### The warnings step
+
+Picking a template — or uploading a file — opens a **Warnings** step listing anything the recipient has to sort out first. None of these block the import; the button reads **Import** when the list is empty and **Import anyway** when it is not.
+
+| Warning                     | What it means                                                            |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `PLUGIN_MISSING`            | A plugin the template expects is not installed.                          |
+| `TOOL_PLUGIN_MISSING`       | A tool the template enables is not registered here. The tool is skipped. |
+| `TOOL_NEEDS_CONFIGURATION`  | The tool will be enabled but has no settings yet.                        |
+| `OPERATION_UNKNOWN`         | An operation the template names does not exist on the tool.              |
+| `SYSTEM_PROMPT_MISSING`     | The template declares no system prompt.                                  |
+| `METADATA_CATEGORY_UNKNOWN` | The template's `metadata.category` is not a known category.              |
+
+A file that fails validation outright (a hard error rather than a warning) is rejected before you reach this step.
+
+> **Note:** templates never carry secrets. A tool setting declared as a password is rejected at validation, and inherited global / user values are never written into an export. Recipients fill in their own keys under **Settings → Tools** after the import — a `TOOL_NEEDS_CONFIGURATION` warning is the prompt to do exactly that.
+>
+> **Note:** plugins are never installed for you. A template's `required_plugins` list is advisory; a missing plugin produces a warning, not an install.
+
+### Templates are a starting point, not a link
+
+An agent created from a template is an ordinary agent. Nothing on it records which template it came from, and editing the template file later does not reach agents built from it — there is no "revert to template" and no out-of-date badge. Treat the import as a one-time copy and edit the agent from there.
+
+### Export an agent as a template
+
+An existing agent's toolbar carries an **Export** button. The dialog asks what to include, then shows you the payload before anything downloads:
+
+- **Without settings** — the agent definition, the enabled tools, and their operations. Best for sharing widely without exposing any configuration.
+- **Include settings (no secrets)** — also adds agent-specific tool settings such as the active skill allowlist. API keys and inherited values are still **not** included.
+
+The download lands as `{template-id}.json`, which is exactly the file the **Upload template** card expects.
+
+For the file format, the field-by-field table, and the complete warning-code list, see [Concepts → Agent templates](/reference/concepts/agent-templates) and [Agent template schema](/reference/agent-template-schema).
 
 ## Edit vs disable
 
@@ -171,13 +208,15 @@ Delete only when:
 
 > Pin and archive are independent of `enabled`: a pinned-and-archived agent still floats to the top when the Archived filter is on, and an unarchived agent with `enabled = false` still surfaces in the default list (greyed out) but does not respond to new messages. To take an agent fully offline, disable it; archive is for decluttering, not for stopping it.
 
-## Recipes and the plugin system _(WIP — not yet shipped)_
+## Agent templates and the plugin system
 
-> **Status: WIP** — see the note at the top of [Recipes](#recipes-wip--not-yet-shipped). The plugin → recipe pipeline is scaffolded but not yet shipping.
+Plugins can ship their own agent templates. When a plugin is installed, the template directories it contributes are scanned and its templates appear in the **From template** gallery under a group headed by the plugin's slug — so installing a plugin is what adds curated starter agents to your picker. The framework's own bundled templates are grouped under **Core**.
 
-Plugins would ship their own recipes. When a plugin is installed, its `recipes/` directory would be scanned and the recipes would appear in the agent's Recipe dropdown.
+Plugin templates namespace their `id` as `<plugin-slug>/<slug>`, so two plugins can never collide on the same short name. A template that breaks that convention still shows up, flagged with a `NAMESPACE_MISMATCH` warning.
 
-For example, the `spora-plugin-email` plugin might ship an "Email Assistant" recipe that bundles a system prompt + the `email` tool. Installing the plugin makes the recipe available in every agent's create form.
+Nothing is installed on your behalf. If a template lists a plugin you don't have, you get a `PLUGIN_MISSING` warning and the import proceeds with the rest — install the plugin from **Plugins**, then re-import if you want its tools.
+
+Authors: see [Develop → Plugin author guide → Agent templates](/develop/plugins/author-guide/agent-templates) for the `agentTemplatePaths()` hook, the schema, and the full warning table.
 
 ## Approval and tool permissions
 

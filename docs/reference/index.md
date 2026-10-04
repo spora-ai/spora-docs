@@ -11,7 +11,7 @@ This page is the canonical TOC for the Spora reference material. The user-facing
 
 | Topic                                                                                   | Location                                                             | Source                               |
 | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------ |
-| Architecture (config priority, orchestrator, plugin system, recipes, database)          | [/reference/concepts/architecture](/reference/concepts/architecture) | `spora-core/docs/01_architecture.md` |
+| Architecture (config priority, orchestrator, plugin system, agent templates, database)  | [/reference/concepts/architecture](/reference/concepts/architecture) | `spora-core/docs/01_architecture.md` |
 | Database schema (tables, columns, migrations)                                           | [/reference/concepts/schema](/reference/concepts/schema)             | `spora-core/docs/02_schema.md`       |
 | PHP interface contracts (ToolInterface, Orchestrator, LLMDriverConfig, PluginInterface) | [/reference/concepts/interfaces](/reference/concepts/interfaces)     | `spora-core/docs/03_interfaces.md`   |
 

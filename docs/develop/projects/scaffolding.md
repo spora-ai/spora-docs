@@ -5,7 +5,7 @@ description: spora-maker commands — make:tool, make:controller, make:skill, ma
 
 # Scaffolding
 
-`spora-maker` is the project scaffolder for Spora. It exposes a small set of `make:*` commands on the existing `bin/spora` console that generate the boilerplate for project-local code: a new Tool class, a new HTTP controller, or a fresh `app/App.php` entry class. The skeleton already includes `spora-ai/spora-maker` in `require-dev`; the path repository points at this repo locally, and Packagist will resolve it once published.
+`spora-maker` is the project scaffolder for Spora. It exposes a small set of `make:*` commands on the existing `bin/spora` console that generate the boilerplate for project-local code: a new Tool class, a new HTTP controller, a new skill bundle, or a fresh `app/App.php` entry class. The skeleton already includes `spora-ai/spora-maker` in `require-dev`; the path repository points at this repo locally, and Packagist will resolve it once published.
 
 ## Install
 
@@ -15,7 +15,7 @@ The skeleton already wires this up. If you need to add it manually to an existin
 composer require-dev spora-ai/spora-maker
 ```
 
-After install, all three commands below are available under `bin/spora`.
+After install, all four commands below are available under `bin/spora`.
 
 ## Conventions
 
@@ -198,11 +198,11 @@ For the full hook surface and lifecycle ordering, see [Concepts → App extensio
 
 ## Adding a new `make:*` command
 
-If the three built-in commands don't cover what your project needs, add your own. The scaffolder is designed for extension — three steps, no other wiring required.
+If the four built-in commands don't cover what your project needs, add your own. The scaffolder is designed for extension — three steps, no other wiring required.
 
-> **Note:** the `make:recipe` command below is shown as an extension example, but **recipes are WIP — not yet shipped** in this release. See [Managing agents → Recipes _(WIP)_](/start/end-users/managing-agents#recipes-wip--not-yet-shipped) for status.
+> **Note:** adding a maker is a change to the `spora-ai/spora-maker` package, not to the consuming project. The `MAKERS` list in `MakeCommand` is intentionally hardcoded rather than discovered, so the entry points stay grep-able.
 
-1. **Create the maker** at `src/Maker/<Name>.php` (in the `spora-ai/spora-maker` package — this is a scaffolder change, not a project change). The class extends `Spora\Maker\AbstractMaker` (which itself extends `Symfony\Component\Console\Command\Command` and implements `Spora\Maker\MakerInterface`):
+1. **Create the maker** at `src/Maker/<Name>.php` (in the `spora-ai/spora-maker` package). The class extends `Spora\Maker\AbstractMaker` (which itself extends `Symfony\Component\Console\Command\Command` and implements `Spora\Maker\MakerInterface`) and sets the three `COMMAND_*` constants the base constructor wires into the console definition. The example below scaffolds an Agent template file — modelled on `MakeSkill`, the simplest of the built-ins.
 
    ```php
    <?php
@@ -215,34 +215,58 @@ If the three built-in commands don't cover what your project needs, add your own
    use Spora\Maker\Generator;
    use Symfony\Component\Console\Input\InputInterface;
    use Symfony\Component\Console\Output\OutputInterface;
+   use Symfony\Component\Console\Style\SymfonyStyle;
 
-   final class MakeRecipe extends AbstractMaker
+   final class MakeAgentTemplate extends AbstractMaker
    {
-       protected const COMMAND_NAME = 'make:recipe';
-       protected const COMMAND_DESCRIPTION = 'Create a new Recipe YAML under recipes/.';
-       protected const COMMAND_ARG_HELP = 'The recipe slug (lowercase, hyphenated).';
+       protected const COMMAND_NAME = 'make:agent-template';
+       protected const COMMAND_DESCRIPTION = 'Create a new Agent template under agent-templates/.';
+       protected const COMMAND_ARG_HELP = 'The template slug (lowercase, hyphenated).';
 
        public function generate(InputInterface $input, OutputInterface $output, Generator $generator): void
        {
-           $slug = $input->getArgument('name');
-           $path = 'recipes/' . $slug . '.yaml';
-           $body = "id: {$slug}\nname: TODO\ndescription: TODO\nsystem_prompt: |\n  TODO.\n";
+           $io = new SymfonyStyle($input, $output);
+           $slug = (string) $input->getArgument('name');
 
-           $this->renderFile($path, $body, $generator);
+           $generator->generateFile(
+               'agent-templates/' . $slug . '.json',
+               $this->templateStub($slug),
+           );
+
+           $io->note("Point the project App at the directory from agentTemplatePaths(),\n"
+               . 'then Import it from the operator agent gallery.');
        }
 
        public function getSuccessMessage(): string
        {
-           return 'Recipe scaffolded. Edit recipes/<slug>.yaml to set the system prompt and tool allowlist.';
+           return 'Agent template scaffolded. Fill in the system prompt and the tools[] entries.';
+       }
+
+       private function templateStub(string $slug): string
+       {
+           return <<<JSON
+               {
+                 "\$schema": "https://docs.spora-ai.com/schemas/agent-template.schema.json",
+                 "id": "{$slug}",
+                 "name": "TODO",
+                 "version": "1.0.0",
+                 "agent": {
+                   "system_prompt": "TODO",
+                   "max_steps": 10
+                 },
+                 "tools": []
+               }
+
+               JSON;
        }
    }
    ```
 
-2. **Use the generator** to write the file. `$generator->generateFile('relative/path.php', $contents)` queues the file; the underlying `FileManager` raises `RuntimeException` if the target already exists.
+2. **Use the generator** to write the file. `$generator->generateFile('relative/path.json', $contents)` queues the write; the underlying `FileManager` raises `RuntimeException` if the target already exists, so a maker never partially overwrites. `$this->renderClass(...)` is the shorthand for the PHP-class case — it takes a namespace, a `use` list, a class name, a parent, an inner body, and a target path, and builds the file for you.
 
-3. **Register the maker** by appending the FQCN to the `MakeCommand::MAKERS` array in `spora-maker/src/MakeCommand.php`. No other wiring — the command is auto-registered with Symfony Console on the next `composer dump-autoload`.
+3. **Register the maker** by appending the FQCN to the `MakeCommand::MAKERS` array in `spora-maker/src/MakeCommand.php`. No other wiring — the command is available under `bin/spora` on the next `composer dump-autoload`.
 
-That's it. The new command shows up under `bin/spora` immediately and inherits the abstract maker's standard options (target directory, dry-run, etc.) without extra code.
+That's it. The new command shows up under `bin/spora` immediately, picks up the `name` argument the base class declares, and writes relative to the project root — `MakeCommand::buildMakers()` hands every maker a `Generator` bound to the project directory. There are no extra options to wire up.
 
 ## Repository
 

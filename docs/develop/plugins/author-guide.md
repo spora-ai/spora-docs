@@ -43,5 +43,5 @@ This page used to be a single 564-line document. The chapter split happened in P
 - `#adding-an-llm-driver` → [LLM drivers](/develop/plugins/author-guide/drivers)
 - `#adding-migrations` → [Migrations](/develop/plugins/author-guide/migrations)
 - `#adding-an-admin-ui` → [Admin UI](/develop/plugins/author-guide/admin-ui)
-- `#recipes-wip--not-yet-shipped` → [Agent templates](/develop/plugins/author-guide/agent-templates)
+- `#recipes-wip--not-yet-shipped`, `#agent-templates` → [Agent templates](/develop/plugins/author-guide/agent-templates)
 - `#the-spora-plugin-keyword`, `#psr-4-entry-point-quirk`, `#testing`, `#versioning`, `#reference-implementations` → [Distribution](/develop/plugins/author-guide/distribution)

@@ -70,7 +70,7 @@ Looking for the architecture deep-dive? See [Concepts](/reference/concepts/).
 
 | Repo                                                             | Role                                                 |
 | ---------------------------------------------------------------- | ---------------------------------------------------- |
-| [`spora-core`](https://github.com/spora-ai/spora-core)           | PHP framework, plugins, drivers _(recipes WIP)_      |
+| [`spora-core`](https://github.com/spora-ai/spora-core)           | PHP framework, plugins, drivers                      |
 | [`spora`](https://github.com/spora-ai/spora)                     | Skeleton — what you deploy                           |
 | [`spora-frontend`](https://github.com/spora-ai/spora-frontend)   | Vue 3 + Vite + Tailwind admin SPA                    |
 | [`spora-plugin-*`](https://github.com/spora-ai)                  | Tool plugins (calendar, email, web search, etc.)     |

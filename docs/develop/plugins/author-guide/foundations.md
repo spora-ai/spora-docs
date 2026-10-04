@@ -14,16 +14,19 @@ The complete plugin system reference (load order, manifest validation, boot-time
 A Spora plugin is a Composer package — installable via `composer require` and shipped to Packagist like any other PHP library — that contributes runtime capabilities to a Spora deployment:
 
 - **Tools** callable by an agent (web search, image generation, calendar ops).
-- **LLM drivers** that plug into the driver factory alongside OpenAI and Anthropic.
+- **Skills** that ship on disk via `skillPaths()` (a directory of `SKILL.md` folders) or that are generated at runtime via `skillProviders()`. See [Skills](/develop/plugins/author-guide/skills).
+- **Apps** — operator-facing UI side-panels contributed via `apps()`. See [Admin UI](/develop/plugins/author-guide/admin-ui).
 - **Migrations** that create plugin-owned database tables.
 - **Agent templates** that bundle a system prompt + tool activations + per-operation auto-approve defaults into a one-click Agent. See [Agent templates](/develop/plugins/author-guide/agent-templates).
+
+A plugin does **not** contribute LLM providers. There is no `drivers()` hook — LLM drivers are _configured_ per agent by the operator (config key, `base_url`, API key), not contributed by a plugin. See [Concepts → LLM drivers](/reference/concepts/drivers).
 
 A plugin is identified by a **Composer package** with `type: "spora-plugin"`. On install, the `spora-ai/installer` Composer plugin routes the package to the host Spora's `plugins/{slug}/` directory and the host's `PluginLoader` picks up its manifest on the next request.
 
 Two reference layouts:
 
 - **Skeleton template** — `spora-ai/spora-plugin-skeleton`. Copy this repo to bootstrap a new plugin.
-- **Production example** — `spora-ai/spora-plugin-memories`. Two tools (agent-scoped memory, principal-scoped memory), an admin app, two migrations, custom DI bindings, 14 REST routes, and the `memories-assistant` agent template — the canonical subscriber for the [lifecycle events](/reference/concepts/plugins-system#lifecycle-events).
+- **Production example** — `spora-ai/spora-plugin-memories`. Two tools (agent-scoped memory, principal-scoped memory), an admin app, two migrations, custom DI bindings, 14 REST routes, and the `memories/assistant` agent template — the canonical subscriber for the [lifecycle events](/reference/concepts/plugins-system#lifecycle-events).
 
 ### Standard layout
 
@@ -133,29 +136,78 @@ final class AcmeSearchPlugin extends AbstractPlugin
 
 ### Available hooks
 
-All hooks live on `Spora\Plugins\PluginInterface` (re-exported from `Spora\Extensions\SporaExtensionInterface`). Most plugins override one or two; the rest stay at their `AbstractPlugin` no-op defaults.
+`Spora\Extensions\SporaExtensionInterface` declares **exactly ten** methods, and that is the complete data-hook surface. `Spora\Plugins\PluginInterface` re-exports it, so the table below is the whole contract. `AbstractPlugin` provides a no-op default for every one of them — you only override what you actually use, and in practice that is `getName()` and `tools()`.
 
-| Hook                                       | Returns                             | Purpose                                                                                                                                                                                              |
-| ------------------------------------------ | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getName()`                                | `string`                            | Human-facing name shown in admin UIs.                                                                                                                                                                |
-| `autoload()`                               | `array<string, string>` (ns → path) | Additional PSR-4 namespace → path mappings registered at boot.                                                                                                                                       |
-| `tools()`                                  | `class-string<ToolInterface>[]`     | Tools contributed to the tool registry.                                                                                                                                                              |
-| `drivers()`                                | `string[]` (id → FQCN)              | LLM drivers contributed to the driver factory.                                                                                                                                                       |
-| `recipePaths()`                            | `string[]`                          | **Removed** in 1.0 — not part of `SporaExtensionInterface`. `agents.recipe_id` was dropped by migration `0055_drop_recipe_id_from_agents.php`; agent templates are files on disk, not database rows. |
-| `agentTemplatePaths()`                     | `string[]`                          | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates).                                                           |
-| `apps()`                                   | `class-string<AppInterface>[]`      | UI side-panels contributed to the App registry.                                                                                                                                                      |
-| `migrationsPath()`                         | `?string`                           | Absolute path to plugin migrations directory, or `null` if no schema.                                                                                                                                |
-| `schemaVersion()`                          | `int`                               | Bump every time a new migration file is added. `0` if no schema.                                                                                                                                     |
-| `register(ContainerBuilder $builder)`      | `void`                              | Hook for arbitrary DI bindings, middleware, or services.                                                                                                                                             |
-| `boot()`                                   | `void`                              | Lifecycle hook fired once after DI container is built, before the first request.                                                                                                                     |
-| `routes(MiddlewareRouteCollector $routes)` | `void`                              | Register HTTP routes into the running middleware collector.                                                                                                                                          |
+| Hook                      | Returns                                         | Default | Purpose                                                                                                                                                                           |
+| ------------------------- | ----------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getName()`               | `string`                                        | —       | Human-facing name shown in admin UIs.                                                                                                                                             |
+| `tools()`                 | `class-string<ToolInterface>[]`                 | `[]`    | Tools contributed to the tool registry. See [Tools](/develop/plugins/author-guide/tools).                                                                                         |
+| `agentTemplatePaths()`    | `string[]`                                      | `[]`    | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates).                                        |
+| `skillPaths()`            | `string[]`                                      | `[]`    | Absolute paths to skill directories; each immediate subdirectory is a skill root containing a `SKILL.md`. See [Skills](/develop/plugins/author-guide/skills).                     |
+| `schemaVersion()`         | `int`                                           | `0`     | Bump every time a new migration file is added. `0` if the plugin has no schema. See [Migrations](/develop/plugins/author-guide/migrations).                                       |
+| `migrationsPath()`        | `?string`                                       | `null`  | Absolute path to the plugin's migrations directory, or `null` if it has no schema.                                                                                                |
+| `apps()`                  | `class-string<AppInterface>[]`                  | `[]`    | UI side-panels contributed to the App registry. See [Admin UI](/develop/plugins/author-guide/admin-ui).                                                                           |
+| `speechToTextProviders()` | `class-string<SpeechToTextProviderInterface>[]` | `[]`    | Speech-to-text provider classes. See [Speech providers](/develop/plugins/author-guide/speech-providers).                                                                          |
+| `skillProviders()`        | `class-string<SkillProviderInterface>[]`        | `[]`    | Skill providers for skills with **no directory** — user-authored, tenant-scoped, or synthesised. A shipped skill is a directory plus `skillPaths()`.                              |
+| `searchProviders()`       | `class-string<SearchProviderInterface>[]`       | `[]`    | Sources of ⌘K palette hits. Makes a resource **findable**, where `skillProviders()` makes it **readable**. Core's own provider already searches everything in the skill registry. |
 
-For the new hook surface and why `PluginInterface` is now a marker (with `SporaExtensionInterface` carrying the contract), see the docblock on [PluginInterface](https://github.com/spora-ai/spora-core/blob/main/app/Plugins/PluginInterface.php) in the framework repo.
+### Lifecycle is events, not hooks
+
+Six hooks that pre-1.0 plugins used to implement — `autoload()`, `drivers()`, `recipePaths()`, `register()`, `routes()`, and `boot()` — are **gone** from the interface. The first three had no callers (PSR-4 data lives in `composer.json` / `plugin.json`, and LLM providers are configured per agent rather than contributed); the last three became PSR-14 events.
+
+To do the work `register()`, `routes()`, and `boot()` used to do, implement the event subscriber interface and return the events you care about from `getSubscribedEvents()`:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use Spora\Events\ContainerBuildingEvent;
+use Spora\Events\RoutesRegisteringEvent;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
+final class AcmeSearchPlugin extends AbstractPlugin implements EventSubscriberInterface
+{
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            ContainerBuildingEvent::class => 'onContainerBuilding',
+            RoutesRegisteringEvent::class => 'onRoutesRegistering',
+        ];
+    }
+
+    public function onContainerBuilding(ContainerBuildingEvent $event): void
+    {
+        $event->builder()->addDefinitions([
+            AcmeSearchService::class => \DI\autowire(),
+        ]);
+    }
+
+    public function onRoutesRegistering(RoutesRegisteringEvent $event): void
+    {
+        $event->routes()->addRoute('GET', '/api/v1/acme-search', [AcmeController::class, 'index'], [AuthMiddleware::class]);
+    }
+}
+```
+
+> **Import the `Symfony\Component\EventDispatcher` interface, not the `Symfony\Contracts` one.** Both loaders check `instanceof Symfony\Component\EventDispatcher\EventSubscriberInterface` (`Spora\Extensions\AppLoader::wireEventSubscribers()` and `Spora\Plugins\PluginLoader::wireEventSubscribers()`), and so does every real plugin — `MemoriesPlugin` and `EmailPlugin` both import the `Component` variant. The two interfaces are not related by inheritance, so a plugin implementing the `Contracts` variant is silently never wired: no DI bindings, no routes, and no boot-time init, with no error. Note that the `SporaExtensionInterface` docblock itself still names the `Contracts` variant; ignore it.
+
+The three events, all in the `Spora\Events` namespace:
+
+| Event                    | When                                                                   | Accessor              |
+| ------------------------ | ---------------------------------------------------------------------- | --------------------- |
+| `ContainerBuildingEvent` | Once per process, **before** the DI container is built.                | `$event->builder()`   |
+| `RoutesRegisteringEvent` | Per request, after core and App routes are registered.                 | `$event->routes()`    |
+| `BootingEvent`           | Per request, after the container is built and the database has booted. | `$event->container()` |
+
+`BootingEvent` is the one to use for stateful init that needs resolved DI services. Subscriber exceptions are caught and logged, so one broken subscriber does not abort the rest of the plugin set. Full dispatch semantics are in [Concepts → Plugin system](/reference/concepts/plugins-system#lifecycle-events).
+
+For the rationale behind the trim and the `PluginInterface`-as-marker split, see the docblock on [PluginInterface](https://github.com/spora-ai/spora-core/blob/main/app/Plugins/PluginInterface.php) in the framework repo.
 
 ## What's next
 
 - [Tools](/develop/plugins/author-guide/tools) — add the first callable surface
-- [LLM drivers](/develop/plugins/author-guide/drivers) — register a new driver with the factory (rare; tools are usually enough)
+- [Skills](/develop/plugins/author-guide/skills) — ship `SKILL.md` directories or generate skills at runtime
 - [Migrations](/develop/plugins/author-guide/migrations) — when your plugin needs its own tables
 - [Admin UI](/develop/plugins/author-guide/admin-ui) — when your plugin needs an operator-facing panel
 - [Distribution](/develop/plugins/author-guide/distribution) — when you have working code on `main` and want to ship it

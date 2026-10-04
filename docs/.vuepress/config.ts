@@ -162,7 +162,7 @@ export default defineUserConfig({
                 { text: 'Overview', link: '/develop/plugins/author-guide' },
                 { text: 'Foundations', link: '/develop/plugins/author-guide/foundations' },
                 { text: 'Tools', link: '/develop/plugins/author-guide/tools' },
-                { text: 'LLM drivers', link: '/develop/plugins/author-guide/drivers' },
+                { text: 'LLM drivers (removed)', link: '/develop/plugins/author-guide/drivers' },
                 { text: 'Migrations', link: '/develop/plugins/author-guide/migrations' },
                 { text: 'Admin UI', link: '/develop/plugins/author-guide/admin-ui' },
                 { text: 'Agent templates', link: '/develop/plugins/author-guide/agent-templates' },

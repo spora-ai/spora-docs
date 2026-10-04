@@ -24,7 +24,12 @@ Since spora-core#165, `required` accepts `bool|list<string>` — list form is pe
 
 Unified tool interface — replaces the previous `InputToolInterface` / `OutputToolInterface` split. Per-operation enabled/approval state is read from `#[ToolOperation]`. Tools without `#[ToolOperation]` declarations are treated as single-operation tools with class-level defaults.
 
-- `execute(array $arguments, int $agentId, ?int $userId = null): ToolResult` — MUST NOT throw; encode errors in `ToolResult`. `userId` is **sourced by the Orchestrator from the calling Agent's row** (see [Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop)); the dispatcher never threads a session user id. User settings are merged before agent overrides.
+- `execute(array $arguments, int $agentId, ?int $userId = null, ?int $taskId = null, ?PrincipalContext $context = null): ToolResult` — five parameters; MUST NOT throw, encode errors in `ToolResult`. The only call site is `Orchestrator::safeExecute()` (`app/Agents/Orchestrator.php:563`, see [Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop)), which fills every argument:
+  - `$arguments` — key-value pairs matching the `#[ToolParameter]` names.
+  - `$agentId` — the agent issuing the call.
+  - `$userId` — **legacy** user context, sourced by the Orchestrator from the calling Agent's row (`tasks.user_id`), not from the session; the dispatcher never threads a session user id. Retained for tools that still look up user-scoped settings or media by user id. User settings are merged before agent overrides.
+  - `$taskId` — the current tick's task id, so chat-level tools (`sub_agent`, `summarize`, `archive`) can reference the source `Task` without re-querying by user id.
+  - `$context` — the preferred ownership bundle (`Spora\Services\PrincipalContext`, built by `PrincipalResolver::resolveForToolExecute()` from the agent's principal plus the latest task). Read `ownerUserId` for "who pays" — credential encryption, settings scope, audit attribution — and `runnerUserId` for "who clicked" — memory-write attribution, Mercure publish targets, the `tasks.user_id` column. Guard tenant-scoped code with `$context?->isResolvable()` rather than comparing against `0`; a missing agent row and a dangling `principal_id` produce two different unresolvable sentinels.
 - `describeAction(array $arguments): string` — human-readable, markdown-safe description for the approval UI.
 - `getParametersSchema(): array` — returns the JSON Schema `parameters` object (`type: "object"`, `properties`, `required`).
 
@@ -54,11 +59,14 @@ Settings are stored encrypted in `LLMDriverConfiguration.settings` (JSON blob) a
 
 ## `PluginInterface` (`app/Plugins/PluginInterface.php`)
 
-- `getName(): string` — human-readable plugin name, shown in the UI and logs.
-- `autoload(): array<string, string>` — PSR-4 namespace → path mappings for the plugin's own classes.
-- `tools(): array<class-string<\Spora\Tools\ToolInterface>>` — tool FQCNs to register with the Tool Registry.
-- `drivers(): array<string, class-string<\Spora\Drivers\LLMDriverInterface>>` — provider name → driver class (keys match the `llm_provider` string stored on agents).
-- `recipePaths(): list<string>` — **removed in 1.0**, not part of the interface. Agent templates ship through `agentTemplatePaths(): string[]`; see the [Plugin system](/reference/concepts/plugins-system#hooks) page for the current hook table.
-- `schemaVersion(): int` — DB schema version this plugin requires (default 0).
-- `migrationsPath(): ?string` — absolute path to the directory containing this plugin's Laravel Migration files (default null).
-- `register(ContainerBuilder $builder): void` — arbitrary DI bindings, middleware, or services.
+`PluginInterface` is a **pure marker**:
+
+```php
+interface PluginInterface extends SporaExtensionInterface {}
+```
+
+It declares no methods of its own. The whole contract — the ten hooks, plus the three PSR-14 lifecycle events — lives on the parent `Spora\Extensions\SporaExtensionInterface`, so a project App (`Spora\Extensions\AppInterface`, also a bare marker) and a Composer-distributed plugin share one contract and one wiring. Extend `Spora\Plugins\AbstractPlugin` for empty defaults on every hook, or `Spora\Extensions\AbstractExtension` for the same defaults on either side.
+
+For the authoritative list of hooks, returns, and purposes, see [Plugin system → Hooks](/reference/concepts/plugins-system#hooks). For the behavioural half — `ContainerBuildingEvent`, `RoutesRegisteringEvent`, and `BootingEvent` — see [Plugin system → Lifecycle Events](/reference/concepts/plugins-system#lifecycle-events) and [App extensions → Lifecycle events](/reference/concepts/app-extension#lifecycle-events).
+
+> **Note:** six methods that pre-1.0 docs listed on this interface no longer exist: `autoload()`, `drivers()`, and `recipePaths()` had no callers (PSR-4 data moved to `composer.json` / `plugin.json`; LLM providers are configured, not contributed), and `register()`, `routes()`, and `boot()` became PSR-14 events that extensions opt into by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface`.

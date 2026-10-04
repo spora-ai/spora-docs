@@ -18,7 +18,7 @@ SPORA_LOG_LEVEL=warning  # Default — only unexpected conditions
 SPORA_LOG_LEVEL=error    # Only failures and exceptions
 ```
 
-The default is `warning`. The level is mapped to Monolog's `Level` enum (e.g. `warning` → `Monolog\Level::Warning`) and applied to the single `StreamHandler` registered in `app/Core/container.php` (`LoggerInterface` definition, lines 191–206). Messages below the configured level are discarded by the handler.
+The default is `warning`. The level is mapped to Monolog's `Level` enum (e.g. `warning` → `Monolog\Level::Warning`) and applied to the single `StreamHandler` registered by the `LoggerInterface` definition in `app/Core/ContainerDefinitions.php:486-500`. Messages below the configured level are discarded by the handler.
 
 The logger channel name is `spora` (visible in Monolog's JSON `channel` field) and the default log destination is `storage/spora.log` — the env-less LAMP/FTP fallback written inside the framework's own writable directory. **Docker deployments should set `SPORA_LOG_PATH=stdout`** so Monolog records stream to the container's log driver (`docker compose logs -f spora`) instead of being written into the bind-mounted `storage/` volume. See [Environment variables → Logging](/start/operators/env-vars#logging) for the full `SPORA_LOG_PATH` row and the recommended env files per deploy path.
 

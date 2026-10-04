@@ -1,35 +1,38 @@
 ---
-title: Plugin author guide — LLM drivers
-description: Adding a new LLM driver — a rare authoring surface; most plugins should add tools, not drivers.
+title: Plugin author guide — LLM drivers (removed)
+description: The drivers() hook was removed in Spora 1.0. A plugin no longer contributes LLM providers; here is what to do instead.
 ---
 
-# LLM drivers
+# LLM drivers (removed)
 
-Drivers work the same way as tools: a class in `src/Drivers/`, referenced by FQCN from the plugin's `drivers()` hook. Drivers implement `Spora\Drivers\LLMDriverInterface` and are picked up by the driver factory alongside the built-in OpenAI and Anthropic drivers.
+> **This chapter is a tombstone.** The `drivers()` hook it used to teach was **removed in Spora 1.0** and is no longer part of `Spora\Extensions\SporaExtensionInterface`. There is no code to copy here, because there is no code to call.
 
-Driver registration contracts (config keys, `LLMDriverConfigInterface`, environment overrides) are documented in [Concepts → LLM drivers](/reference/concepts/drivers). Plugin drivers follow the same rules — return the FQCN from `drivers()` and the plugin loader registers it under the declared id.
+## What changed
 
-```php
-/** @return array<string, class-string<\Spora\Drivers\LLMDriverInterface>> */
-public function drivers(): array
-{
-    return [
-        'acme-anthropic-compatible' => AcmeAnthropicDriver::class,
-    ];
-}
-```
+`Spora\Extensions\SporaExtensionInterface` declares exactly ten methods, and `drivers()` is not one of them. The hook had no callers in the boot sequence, so an implementation of it was silently ignored — a plugin that "registered a driver" this way shipped a class the driver factory never loaded.
 
-## When to add a driver (rarely)
+The driver's id → FQCN map is now a static list in the container: `Spora\Core\ContainerDefinitions::llmDefinitions()` holds exactly `OpenAICompatibleDriver` and `AnthropicCompatibleDriver`. The old `llm_driver_classes_merged` entry survives only as an alias of that same static list so `LLMConfigService` can inject it without a rewrite — it no longer merges anything from plugins.
 
-For most plugins, **adding tools is more useful than adding a new driver** — drivers require parallel API-compat implementations across the Anthropic / OpenAI / Gemini surface, while a tool just needs an HTTP endpoint to call. Reach for a new driver only when:
+If you are porting a pre-1.0 plugin, delete the `drivers()` method and the class it referenced. Nothing else in the plugin needs to change.
 
-- The provider has a non-OpenAI-compatible API contract (no other plugin can call it).
-- The provider requires a streaming or function-calling semantics that the existing drivers cannot approximate.
-- The user explicitly asked for a custom driver and you have a use case the built-in OpenAI/Anthropic drivers cannot satisfy.
+## What to do instead
 
-In all other cases, the OpenAI-compatible driver can point at the new provider with just a `base_url` and an API key — no plugin code needed.
+**Almost always: configure the existing OpenAI driver.** Both built-in drivers expose a `base_url` setting, so any OpenAI-shaped vendor works with no plugin code at all — set `base_url` to the vendor's endpoint and paste an API key. The same `base_url` override is what makes Ollama, Groq, LM Studio, Azure, and friends work. The full contract — the config keys, `LLMDriverConfigInterface`, the `LLMDriverConfiguration` model, per-field password encryption, and how the factory resolves the effective config for an agent — is in [Concepts → LLM drivers](/reference/concepts/drivers).
+
+A new driver class is only worth building if the vendor's API is genuinely not OpenAI- or Anthropic-shaped: a different streaming protocol, a tool-calling dialect the existing drivers cannot express, or a request/response contract that `base_url` plus a key cannot reach. Note that a class you write still has to be registered in the container's `llm_driver_classes` entry by the host — a plugin cannot do that for you.
+
+## The plugin seams that do exist
+
+If what you actually wanted to extend was a provider-shaped surface, these are the real hooks:
+
+- **[Speech providers](/develop/plugins/author-guide/speech-providers)** — `speechToTextProviders()` contributes `Spora\Speech\SpeechToTextProviderInterface` implementations. Same shape as the old idea, and genuinely wired: plugins returning a non-empty list join the `SpeechToTextRegistry`, where the first configured provider wins per request. Here too, the built-in `OpenAiCompatibleTranscriber` covers the whole OpenAI-multipart family through configuration alone, so a vendor-specific provider is rarely justified.
+- **[Skills](/develop/plugins/author-guide/skills)** — `skillPaths()` ships `SKILL.md` directories; `skillProviders()` generates skills that have no directory.
+- **[Agent templates](/develop/plugins/author-guide/agent-templates)** — `agentTemplatePaths()` ships curated one-click Agents.
+- **[Tools](/develop/plugins/author-guide/tools)** — the canonical surface, and what most plugins ship instead.
+
+The full ten-hook table is in [Foundations → Available hooks](/develop/plugins/author-guide/foundations#available-hooks).
 
 ## What's next
 
-- [Migrations](/develop/plugins/author-guide/migrations)
-- [Admin UI](/develop/plugins/author-guide/admin-ui)
+- [Foundations](/develop/plugins/author-guide/foundations) — the ten hooks that actually exist
+- [Tools](/develop/plugins/author-guide/tools) — the canonical plugin surface

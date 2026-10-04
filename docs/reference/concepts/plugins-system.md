@@ -1,11 +1,11 @@
 ---
 title: Plugin system
-description: Plugin manifest, auto-discovery, bundled deps, agent templates, contributing tools/drivers.
+description: Plugin manifest, auto-discovery, bundled deps, agent templates, contributing tools/apps/providers.
 ---
 
 # Spora Plugin System
 
-Plugins extend Spora with additional LLM drivers, tools, and agent templates. Each plugin is a self-contained directory deployed alongside the core application.
+Plugins extend Spora with additional tools, admin apps, agent templates, skills, and providers. Each plugin is a self-contained directory deployed alongside the core application.
 
 ## Directory layout
 
@@ -148,16 +148,19 @@ The data hook surface after the 1.0 cut. Every hook is optional — `AbstractPlu
 | `apps()`                  | `class-string<AppInterface>[]`                  | Admin-UI side-panels contributed to the AppRegistry at container build time.                                                                                                                                                                                                                                                                        |
 | `speechToTextProviders()` | `class-string<SpeechToTextProviderInterface>[]` | Speech-to-text provider classes participating in `Spora\Speech\SpeechToTextRegistry` alongside core's OpenAI-compatible transcriber. Only needed for a wire shape OpenAI-multipart cannot express. See [Speech providers](/develop/plugins/author-guide/speech-providers).                                                                          |
 | `skillProviders()`        | `class-string<SkillProviderInterface>[]`        | Skill provider classes for skills that have **no directory** — user-authored, tenant-scoped, or synthesised. Ships [custom skills](/reference/concepts/skills#custom-skills); a static class list, read by the container at build time. See [Authoring a skill provider](/develop/plugins/author-guide/skills#shipping-a-provider-not-a-directory). |
+| `searchProviders()`       | `class-string<SearchProviderInterface>[]`       | Search provider classes contributing hits to the host ⌘K palette. `skillProviders()` makes a resource _readable_; this makes it _findable_. Most plugins need neither hook for skills — core's own `SkillSearchProvider` already searches everything in the skill registry.                                                                         |
 
 > **Moved to events in 1.0.** The hooks `register()`, `routes()`, and `boot()` no longer exist on the interface. They became PSR-14 events — see [Lifecycle Events](#lifecycle-events) below. The hooks `autoload()`, `drivers()`, and `recipePaths()` were removed entirely; their data lives in `plugin.json` (PSR-4 mappings) or has no current consumers.
 
 ### Why `skillProviders()` is a data hook and not an event
 
-`speechToTextProviders()` and `skillProviders()` both contribute a **static list of class names**, and both are read the same way: the container asks `PluginLoader` for the merged class list once, during build, and resolves the classes itself. Neither is behaviour, so neither is a PSR-14 event.
+`speechToTextProviders()`, `skillProviders()`, and `searchProviders()` all contribute a **static list of class names**, and all are read the same way: the container asks `PluginLoader` for the merged class list once, during build, and resolves the classes itself. None is behaviour, so none is a PSR-14 event.
 
 The timing is what settles it. Subscriber wiring runs _after_ plugin discovery and _before_ the container is built, but a plugin that tried to register a provider from a listener would be registering into a registry the container is in the middle of constructing — a second owner, and one that has to be re-entrant on warm boots where the manifest cache short-circuits discovery. A list returned from a data hook has neither problem: `PluginLoader::skillProviderClasses()` is a pure read over the already-discovered plugins, so it is correct on cold and warm boots alike.
 
 `PluginLoader` explains the same reasoning at the accessor: a mutable registry populated from `boot()` "would arrive too late — the registry that would read it is built in the same pass — and would need a second owner." Core's own `FilesystemSkillProvider` is listed first in the static class list, so a plugin provider can never shadow a shipped skill by reusing its name; see [Custom skills](/reference/concepts/skills#custom-skills).
+
+`searchProviders()` merges the same way, but at search time rather than build time: the container concatenates core's `SkillSearchProvider` with `PluginLoader::searchProviderClasses()`, and `SearchProviderRegistry` resolves the union. A `SearchProviderInterface` is deliberately narrower than a skill provider — `search()` returns provenance-filtered summaries only, so there is no file read to police, and an implementation must stay inside the `SearchContext` it is handed (an empty context means return `[]`; widening it is a cross-tenant read).
 
 ## Lifecycle Events
 
@@ -177,7 +180,7 @@ The three lifecycle events:
 
 ### Worked example — `spora-plugin-memories`
 
-[`spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) is the canonical subscriber reference: it ships two migrations, one admin app, two LLM-callable tools, 14 REST routes, and the `memories-assistant` agent template. Its entry point subscribes to both `ContainerBuildingEvent` and `RoutesRegisteringEvent`:
+[`spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) is the canonical subscriber reference: it ships two migrations, one admin app, two LLM-callable tools, 14 REST routes, and the `memories/assistant` agent template. Its entry point subscribes to both `ContainerBuildingEvent` and `RoutesRegisteringEvent`:
 
 ```php
 namespace Spora\Plugins\Memories;
@@ -237,7 +240,7 @@ Spora divides its PHP surface into two zones. Plugins should depend only on the 
 
 ### Plugin-stable (depend freely)
 
-- `Spora\Plugins\PluginInterface` and the data hooks on `Spora\Extensions\SporaExtensionInterface` (`getName`, `tools`, `apps`, `skillPaths`, `skillProviders`, `speechToTextProviders`, `agentTemplatePaths`, `schemaVersion`, `migrationsPath`).
+- `Spora\Plugins\PluginInterface` and the ten data hooks on `Spora\Extensions\SporaExtensionInterface` (`getName`, `tools`, `apps`, `skillPaths`, `skillProviders`, `searchProviders`, `speechToTextProviders`, `agentTemplatePaths`, `schemaVersion`, `migrationsPath`).
 - `Spora\Skills\SkillProviderInterface` plus its two wire types `SkillSummary` / `SkillDescriptor` and the `SkillProviderRegistry` — the seam a custom-skill plugin implements. The five members and the `MAX_FILE_BYTES` constant are frozen; see [Authoring a skill provider](/develop/plugins/author-guide/skills#the-interface-contract).
 - `Spora\Events\*` (the three lifecycle events) and the PSR-14 `Symfony\Component\EventDispatcher\EventSubscriberInterface` opt-in pattern documented in [Lifecycle Events](#lifecycle-events).
 - The orchestrator and task services: `Spora\Agents\AgentOrchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
@@ -299,7 +302,7 @@ Plugin tools are automatically prefixed with their `slug` when sent to the LLM, 
 
 Core tools use their plain `#[Tool(name:)]` value without any prefix.
 
-The Orchestrator derives the prefix automatically from the loaded plugins (via `PluginLoader::getPlugins()` in `app/Agents/Orchestrator.php:1177-1188`) — no changes to the plugin's `#[Tool]` attribute are needed.
+The prefix is derived automatically from the loaded plugins — `ToolDefinitionBuilder::qualifiedToolName()` walks `PluginLoader::getPlugins()` and prepends the slug of the first plugin whose `tools()` list contains the class (`app/Agents/ToolDefinitionBuilder.php:307-317`) — so no changes to the plugin's `#[Tool]` attribute are needed.
 
 ## Shipping third-party dependencies
 
@@ -352,7 +355,7 @@ The cache is invalidated automatically when any manifest's path, mtime, or conte
 
 Spora plugins are distributed as standalone PHP packages. The canonical way to install one is the `plugin:install` CLI command — it wraps `composer require` with the `spora-ai/installer` package so the plugin lands in the right place and its manifest is picked up on the next request. The `plugins/` directory is still supported as an escape hatch for plugin authors iterating on a sibling git checkout; see the options below.
 
-The canonical reference implementation is [`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) — it ships two migrations, an admin app, two LLM-callable tools, 14 REST routes, and the `memories-assistant` agent template. It is the canonical subscriber for the [lifecycle events](#lifecycle-events) above. Use it as a starting point when authoring your own plugin.
+The canonical reference implementation is [`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) — it ships two migrations, an admin app, two LLM-callable tools, 14 REST routes, and the `memories/assistant` agent template. It is the canonical subscriber for the [lifecycle events](#lifecycle-events) above. Use it as a starting point when authoring your own plugin.
 
 ### Recommended — `bin/spora plugin:install`
 

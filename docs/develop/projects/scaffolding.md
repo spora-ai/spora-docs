@@ -262,7 +262,7 @@ If the four built-in commands don't cover what your project needs, add your own.
    }
    ```
 
-2. **Use the generator** to write the file. `$generator->generateFile('relative/path.json', $contents)` queues the write; the underlying `FileManager` raises `RuntimeException` if the target already exists, so a maker never partially overwrites. `$this->renderClass(...)` is the shorthand for the PHP-class case — it takes a namespace, a `use` list, a class name, a parent, an inner body, and a target path, and builds the file for you.
+2. **Use the generator** to write the file. `$generator->generateFile('relative/path.json', $contents)` queues the write; the queue is flushed by `Generator::writeChanges()` once `generate()` returns, and the underlying `FileManager` raises `FileAlreadyExistsException` (a `RuntimeException`, which `MakerRunner` turns into `Command::FAILURE`) if the target already exists — so an **existing** file is never clobbered. Note that the flush is not transactional: queued files are written one at a time, so a collision on the third file leaves the first two on disk. `$this->renderClass(...)` is the shorthand for the PHP-class case — it takes a namespace, a `use` list, a class name, a parent, an inner body, a target path, **and the `Generator` itself** (all seven are required; an optional eighth takes a class-attribute string), then queues the built file for you.
 
 3. **Register the maker** by appending the FQCN to the `MakeCommand::MAKERS` array in `spora-maker/src/MakeCommand.php`. No other wiring — the command is available under `bin/spora` on the next `composer dump-autoload`.
 

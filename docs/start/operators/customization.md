@@ -79,7 +79,7 @@ Drop your own files into `agent-templates/` at the project root. The framework a
 
 Templates never carry secrets. Settings declared as `#[ToolSetting(type: 'password')]` are rejected at validation, and the optional `tools[].settings` block only appears on an export you opt into with `?include_settings=1`. Recipients still fill in API keys in **Settings → Tools** after importing.
 
-Plugin-shipped templates must namespace their `id` as `<plugin-slug>/<name>`. A bare slug is reserved for operator uploads and raises a `NAMESPACE_MISMATCH` warning.
+Every scanned file's `id` is checked against a required namespace prefix, and a mismatch raises a `NAMESPACE_MISMATCH` warning (the template still loads). The prefix is the name of the **directory** the file lives in — not the plugin slug — and since every hook returns a directory named `agent-templates`, the convention that actually holds is `agent-templates/<name>`. Uploads bypass the check entirely: the import endpoint builds the template straight from the raw payload, so a bare slug is fine there.
 
 - [Concepts → Agent templates](/reference/concepts/agent-templates) — discovery order, the HTTP surface, and importer semantics.
 - [Agent template schema](/reference/agent-template-schema) — every field, with examples.

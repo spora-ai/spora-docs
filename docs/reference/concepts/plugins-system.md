@@ -35,12 +35,15 @@ The full JSON Schema is in [`plugin.schema.json`](https://github.com/spora-ai/sp
 
 ### Optional fields
 
-| Field            | Type   | Description                                                                                                                                                                                                                                                                                                                        |
-| ---------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                                      |
-| `icon`           | string | Icon for the inventory UI. Three forms are accepted — bundled name, full `<svg>` string, or raw SVG path. Defaults to `"puzzle"` when omitted. Lets a plugin ship its own visual identity without coordinating with the Spora frontend. See [Bundled icons](#bundled-icons) for the curated palette and the three forms in detail. |
-| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                                                               |
-| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                                                                |
+| Field            | Type   | Description                                                                                                                                                                                                                                                                                 |
+| ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                               |
+| `icon`           | string | Icon for the inventory UI. Two forms are accepted — a bundled name or a raw SVG path. Defaults to `"puzzle"` when omitted. See [Bundled icons](#bundled-icons) for the curated palette, or the [schema reference](/reference/plugin-schema#icon-field--two-forms) for both forms in detail. |
+| `accent`         | string | Tile accent colour for the plugin's app tile. One of `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` (default). Precedence: PHP `App::accent()` > this field > `"primary"`.                                                                                                          |
+| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                        |
+| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                         |
+
+> **Note:** the published schema's only top-level fields are `slug`, `class`, `description`, `icon`, and `accent`. The two `autoload.*` rows above describe what `PluginLoader` reads at runtime, not part of the schema — see the [schema reference](/reference/plugin-schema#top-level-fields) for the contract.
 
 ### Minimal example
 
@@ -64,9 +67,9 @@ The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors 
 | Tools & code     | `zap`, `code`                                                                                                                                                                                                                                                                                                         |
 | UI utility       | `bell`, `check`, `x`, `plus`, `chevron-right/down/left`, `arrow-right`, `menu`, `grid`, `user`, `logout`, `settings`, `sun`, `moon`, `warning`, `pencil`, `trash`, `star`, `clock`, `computer`, `tools`, `file`, `chat`, `agents`, `shield-check`, `user-plus`, `eye`, `lock`, `check-circle`, `info`, `error-circle` |
 
-### Three forms of plugin-supplied icons
+### Two forms of plugin-supplied icons
 
-The `icon` field in `plugin.json` accepts three forms. The frontend tries them in this order:
+The `icon` field in `plugin.json` accepts two forms. The frontend tries them in this order:
 
 1. **Bundled name** — any kebab-case identifier from the table above (or the wider UI palette). Smallest in JSON, no shipping required. Best for the common case.
 
@@ -74,15 +77,7 @@ The `icon` field in `plugin.json` accepts three forms. The frontend tries them i
    { "icon": "puzzle" }
    ```
 
-2. **Full `<svg>` string** — a complete `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">…</svg>` for multi-primitive icons (e.g. circle + path, rect + path). The host's outer `<svg>` tag is discarded and the host's `class`, `fill`, `stroke`, `viewBox`, `stroke-width` win. The inner children are sanitized to a tight allowlist (`path`, `circle`, `ellipse`, `polyline`, `polygon`, `rect`, `g` plus the attributes the template reads) before being rendered via `v-html` — any other tags or attributes are stripped. Use this when you need a lucide icon (or a hand-rolled one) that uses non-`<path>` primitives.
-
-   ```json
-   {
-     "icon": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/></svg>"
-   }
-   ```
-
-3. **Raw SVG path** — a single path string starting with a path command letter (`M`/`L`/`H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, uppercase or lowercase). Smaller than the full `<svg>` form, but limited to single-path icons.
+2. **Raw SVG path** — a single path string starting with a path command letter (`M`/`L`/`H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, uppercase or lowercase). Smallest in JSON, but limited to single-path icons — compose multi-shape glyphs with subpaths via `M`.
 
    ```json
    {
@@ -90,9 +85,9 @@ The `icon` field in `plugin.json` accepts three forms. The frontend tries them i
    }
    ```
 
-If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend renders the bundled `puzzle` icon. If `icon` is set but matches none of the three forms (typo, non-SVG garbage, etc.), the frontend falls back to the bundled `puzzle` icon — silently, not an error. A whitespace-only `icon` value is treated the same as missing.
+If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend renders the bundled `puzzle` icon. If `icon` is set but matches neither form (typo, non-SVG garbage, etc.), the frontend falls back to the bundled `puzzle` icon — silently, not an error. A whitespace-only `icon` value is treated the same as missing.
 
-**Security note:** Plugin authors are operators with shell access to the Spora host — see § Security. The frontend trust boundary is the plugin manifest itself, not user input. The `<svg>` form is rendered via Vue's `v-html` only on the inner children of a trusted plugin's `<svg>` string, and only after DOMPurify has stripped everything outside the SVG-primitive allowlist. The host's outer `<svg>` tag is discarded and cannot be overridden.
+> **There is no inline `<svg>` form any more.** A complete `<svg>…</svg>` blob used to be a third accepted form, sanitised through DOMPurify's SVG profile and injected with `v-html`. It is not accepted today: historical mXSS bypasses in that profile are why the frontend dropped the `v-html` path entirely, so manifest strings are no longer rendered as markup at all. Ship a single `d` string. The [schema reference](/reference/plugin-schema#icon-field--two-forms) has the full reasoning, the bundled-name list, and the accepted path commands. The trust boundary is otherwise unchanged — plugin authors are operators with shell access; see [Security](#security).
 
 ### Full example
 
@@ -102,6 +97,7 @@ If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend ren
   "class": "Acme\\Search\\Plugin",
   "description": "Search the public web via the Acme API.",
   "icon": "M11 4a7 7 0 1 1-4.95 11.95l-2.43 2.43a1 1 0 0 1-1.42-1.42l2.43-2.43A7 7 0 0 1 11 4Zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
+  "accent": "sky",
   "autoload": {
     "psr-4": {
       "Acme\\Search\\": "src/",

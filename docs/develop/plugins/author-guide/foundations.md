@@ -33,7 +33,7 @@ Two reference layouts:
 ```text
 spora-plugin-foo/
 ├── composer.json         # type: "spora-plugin"
-├── plugin.json           # manifest (slug, class, description, icon)
+├── plugin.json           # manifest (slug, class, description, icon, accent)
 ├── plugin.schema.json    # (optional) $schema pointer for editor hints
 ├── src/
 │   ├── FooPlugin.php     # entry-point class (FQCN = Spora\Plugins\Foo\FooPlugin)
@@ -54,7 +54,7 @@ The directory name is up to you (Composer picks files by namespace, not director
 
 ## `plugin.json` manifest
 
-The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) in the framework repo. JSON-schema validation rejects extra fields outright (`additionalProperties: false`); `Spora\Plugins\PluginLoader` separately validates the two required fields (`slug` and `class`) and refuses to load if they are missing or malformed.
+The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) in the framework repo, and the field-by-field reference — including every validation rule — is on the [Plugin manifest schema](/reference/plugin-schema) page. JSON-schema validation rejects extra fields outright (`additionalProperties: false`); `Spora\Plugins\PluginLoader` separately validates the two required fields (`slug` and `class`) and refuses to load if they are missing or malformed.
 
 ### Required fields
 
@@ -65,10 +65,11 @@ The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/s
 
 ### Optional fields
 
-| Field         | Type   | Description                                                                                                                                                                                                                                                                                                            |
-| ------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description` | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                          |
-| `icon`        | string | Icon shown next to the plugin in admin UIs. Three accepted forms — bundled name (`"puzzle"`, `"brain"`, `"globe"`…), a full `<svg>` string, or a raw SVG path string. Defaults to `"puzzle"` when omitted. See [Plugin system → Bundled icons](/reference/concepts/plugins-system#bundled-icons) for the full palette. |
+| Field         | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description` | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                                                                                                         |
+| `icon`        | string | Icon shown next to the plugin in admin UIs. Two accepted forms — a bundled name (`"puzzle"`, `"brain"`, `"globe"`…) or a single raw SVG path string. A full `<svg>…</svg>` blob is **not** accepted: the frontend no longer renders manifest markup. Defaults to `"puzzle"` when omitted. See [Plugin system → Bundled icons](/reference/concepts/plugins-system#bundled-icons) for the full palette. |
+| `accent`      | string | Tile accent colour for the plugin's app tile — one of `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` (default). PHP `App::accent()` wins over this field; unknown or missing values fall back to `"primary"`.                                                                                                                                                                                 |
 
 ### Minimal example
 
@@ -86,7 +87,8 @@ The full JSON Schema lives at [plugin.schema.json](https://github.com/spora-ai/s
   "slug": "acme-search",
   "class": "Spora\\Plugins\\AcmeSearch\\AcmeSearchPlugin",
   "description": "Web search via the Acme API.",
-  "icon": "globe"
+  "icon": "globe",
+  "accent": "sky"
 }
 ```
 
@@ -96,7 +98,7 @@ The previous schema (`<= v0.5.x`) accepted `version`, `dependencies`, `autoload`
 
 - **Version** is taken from the git tag Composer recorded at install time (`Composer\InstalledVersions::getPrettyVersion()`). The runtime never reads `composer.json#version` — both the manifest contract and the runtime resolution are tag-driven, so a hand-edited bump can't drift from the release that operators actually see.
 - **Inter-plugin dependencies** are declared in `composer.json` (`"require"`), not the manifest.
-- **Autoload PSR-4 mappings** are declared exclusively in `composer.json`. The manifest no longer accepts an `autoload` block.
+- **Autoload PSR-4 mappings** are declared in `composer.json`. The schema's only top-level fields are `slug`, `class`, `description`, `icon`, and `accent`, so a manifest carrying an `autoload` block does not validate — even though `PluginLoader` still reads one when it finds it, and a handful of shipped plugins ship it. See the [`autoload` block](/reference/plugin-schema#autoload-block) section for the full nuance.
 - **`file` override** is gone — the loader instantiates `class` via PSR-4 and throws on failure.
 
 If you are maintaining an older plugin, see the [PSR-4 entry-point quirk](/develop/plugins/author-guide/distribution#psr-4-entry-point-quirk) section in the Distribution chapter.

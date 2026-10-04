@@ -36,12 +36,12 @@ Skip [Migrations](/develop/plugins/author-guide/migrations), [Skills](/develop/p
 
 ## Looking for an older link?
 
-This page used to be a single 564-line document. The chapter split happened in Phase 11 (July 2026). If you followed an old in-page anchor, the new URL is one of the chapters above:
+This page used to be a single 564-line document. The chapter split happened in Phase 11 (July 2026). If you followed an old in-page anchor, the content moved to one of the chapter URLs above — these are hand-maintained pointers, not configured redirects, so nothing rewrites an inbound link for you:
 
 - `#what-a-spora-plugin-is`, `#pluginjson-manifest`, `#entry-point-class` → [Foundations](/develop/plugins/author-guide/foundations)
 - `#adding-a-tool` → [Tools](/develop/plugins/author-guide/tools)
 - `#adding-an-llm-driver` → [LLM drivers](/develop/plugins/author-guide/drivers) — the `drivers()` hook was removed in 1.0, so that page is now a tombstone pointing at what replaced it
 - `#adding-migrations` → [Migrations](/develop/plugins/author-guide/migrations)
 - `#adding-an-admin-ui` → [Admin UI](/develop/plugins/author-guide/admin-ui)
-- `#recipes-wip--not-yet-shipped`, `#agent-templates` → [Agent templates](/develop/plugins/author-guide/agent-templates)
+- `#recipes-wip--not-yet-shipped` → [Agent templates](/develop/plugins/author-guide/agent-templates)
 - `#the-spora-plugin-keyword`, `#psr-4-entry-point-quirk`, `#testing`, `#versioning`, `#reference-implementations` → [Distribution](/develop/plugins/author-guide/distribution)

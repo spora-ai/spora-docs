@@ -358,6 +358,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Llm-drivers](/reference/api/llm-drivers) — 1 route
 - [Principals](/reference/api/principals) — 1 route
 - [Public](/reference/api/public) — 1 route
+- [Search](/reference/api/search) — 1 route
 - [Worker](/reference/api/worker) — 1 route
 
 ### Security schemes
@@ -493,6 +494,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/plugins/catalog`                                   | `cookieAuth`               | Catalog Plugins                                                        | Plugins          |
 | `GET`    | `/api/v1/principals/me`                                     | `cookieAuth`               | CurrentForUser Principal                                               | Principals       |
 | `GET`    | `/api/v1/public/media/{id}`                                 | —                          | Show PublicMedia                                                       | Public           |
+| `GET`    | `/api/v1/search`                                            | `cookieAuth`               | Index Search                                                           | Search           |
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                                                            | Skills           |
 | `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                                                             | Skills           |
 | `GET`    | `/api/v1/speech/capability`                                 | `cookieAuth`               | Speech-to-text provider capability                                     | Speech           |

@@ -105,6 +105,10 @@
       "link": "/reference/api/public"
     },
     {
+      "text": "Search",
+      "link": "/reference/api/search"
+    },
+    {
       "text": "Worker",
       "link": "/reference/api/worker"
     }

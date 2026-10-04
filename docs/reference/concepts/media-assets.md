@@ -49,7 +49,7 @@ A final, stateless utility class in `app/Tools/MediaEmbed.php`. These return the
 | `Document` (`text/*`, `application/*`) | `fileCard()` — one-line download card |
 | `Unknown`                              | `link()` — plain markdown link        |
 
-`Document` is the bucket PDFs and Word documents land in, and the card it produces is styled in `spora-frontend/src/style.css` under `.chat-bubble-content .spora-file-card*`. Emit those class names verbatim if you build your own card — a rename degrades to an unstyled link, still functional because `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` server-side. `Unknown` stays a link deliberately: it means the `media_type` column itself was null or unrecognised, and nothing about such a row is reliably a download.
+`Document` is the bucket PDFs and Word documents land in, and the card it produces is styled entirely by Tailwind utilities that `spora-frontend` registers in `src/style.css` — see [Styling the download card](#styling-the-download-card-register-your-classes) for what that obliges of you if you build your own. `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` server-side, so a card that loses its styling still downloads rather than navigating. `Unknown` stays a link deliberately: it means the `media_type` column itself was null or unrecognised, and nothing about such a row is reliably a download.
 
 `fileCard()` emits one line, and no icon element — the download glyph is a CSS `::before` pseudo-element on the link, because `aria-hidden` is not in the sanitizer's `ALLOWED_ATTR` and would be silently stripped, and because a generated text glyph would still be announced by a screen reader. `download` is likewise omitted, for the same server-side reason.
 
@@ -170,8 +170,19 @@ final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMime
         // `PK\x03\x04` alone proves nothing — check for the part that
         // distinguishes Word from xlsx / pptx / epub, or you will relabel
         // every spreadsheet upload as a document.
+        //
+        // ZipArchive opens a path, not a string, so the bytes have to be
+        // staged. Bound it: refiners run before any size rejection, so this
+        // write is on the path for every archive a user ever attaches.
+        $stagedPath = tempnam(sys_get_temp_dir(), 'spora-refine-');
+        if ($stagedPath === false || file_put_contents($stagedPath, $bytes) === false) {
+            return null;
+        }
+
         $zip = new ZipArchive();
         if ($zip->open($stagedPath, ZipArchive::RDONLY) !== true) {
+            unlink($stagedPath);
+
             return null;
         }
 
@@ -181,6 +192,7 @@ final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMime
                 : null;
         } finally {
             $zip->close();
+            unlink($stagedPath);
         }
     }
 }
@@ -192,7 +204,7 @@ MediaMimeRefinerDiscovery::add(WordDocxMimeRefiner::class);
 
 Contract, and the reasons behind each part:
 
-- **No-arg constructor, required.** `MimeSniffer` instantiates refiners with `new $class()`, which is what lets the sniffer itself stay argument-free — it is `new MimeSniffer()`-ed at its test call sites and bound as a bare construction in `ContainerDefinitions`.
+- **No-arg constructor, required.** `MimeSniffer` instantiates refiners with `new $class()` and has no container to resolve their collaborators with, so a refiner that needs a collaborator has to reach for it statically itself. (The sniffer itself is _not_ argument-free — it takes an optional logger, which is why the constraint is on your refiner and not on it.)
 - **Run in registration order** until one returns non-`null`; `null` means decline, and the next refiner gets its turn.
 - **`$bytes` is the full payload**, not the 4 KiB prefix the sniffer works from — but you should still bound what you do with it. Refiners run inside the upload allowlist gate, before any size rejection, so an unbounded read is on the path for every archive a user ever attaches.
 - **Runs after the built-in Typst `text/plain` → `text/x-typst` upgrade**, so `$sniffedMime` is the most specific verdict core can produce.
@@ -206,7 +218,18 @@ This is the third of the three discovery registries — `MediaConverterDiscovery
 - `<div>`, `<span>` and `class` are in the allow-list too, which is what lets `MediaEmbed::fileCard()` ship a styled download card as raw HTML rather than markdown.
 - `data:` URIs are allowed on `src` of `<audio>`, `<video>`, and `<source>` (via a per-call DOMPurify hook) but blocked on `<a href>` so `data:text/html,…` XSS stays closed.
 - `download` and `aria-hidden` are **not** in the allow-list. `download` is harmless here, since `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` from `media_assets.filename` regardless — but `aria-hidden` being dropped means an icon glyph inside a card cannot be hidden from assistive tech. Use a CSS pseudo-element or a background image instead of an element with a glyph character in it.
-- Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`; the download card is styled under `.chat-bubble-content .spora-file-card*` in the same block.
+- Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`.
+- The download card shows the filename and, when the archive knows it, the size. There is no MIME: the extension on the filename already says what the file is, and a long MIME overflowed the row and squeezed the filename to nothing in a narrow bubble.
+
+### Styling the download card: register your classes
+
+The card's **layout is Tailwind utilities that live in a PHP string**, and Tailwind's scanner only reads this repo — so it never sees them. `spora-frontend` registers the card's exact class list with `@source inline(...)` in `src/style.css`, and that registration is the only reason the card is styled at all.
+
+This matters for your plugin because the failure mode is silent. A class missing from the list is **not generated**: no build error, no warning, no failing test, just an unstyled card in the chat. So if you emit card-like markup with utility classes, add every one of them to that list in the same change. `MediaEmbedFileCardTest` in `spora-core` asserts that the classes core's PHP emits are a subset of the registered list — that test covers core's card, not yours.
+
+Only `spora-file-card__glyph` is a real class hook: it is not a utility, it names the `::before` mask that draws the download glyph, and it is the one card selector in `src/style.css` besides the colour/underline reset.
+
+That reset is the second hand-written rule, and its reason is worth knowing before you add a third. This stylesheet's own link styling (`.chat-bubble-content a`) is **unlayered**, and unlayered author CSS outranks every layered declaration _regardless of specificity_ — so `text-inherit` and `no-underline` on the card lose to it and are undone by a rule instead. Specificity only breaks the tie once the layers match, so do not assume a utility class can win against the bubble's link styling.
 
 If you emit HTML outside the canonical helpers (`MediaEmbed::*`), test that the result survives sanitization. Run the frontend tests in `spora-frontend/tests/composables/useMarkdown.spec.ts` against your markup.
 

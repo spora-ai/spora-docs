@@ -9,7 +9,7 @@ A Symfony-style single-class extension point for project-local Spora code.
 
 ## TL;DR
 
-Drop a class at `app/App.php` implementing `Spora\Extensions\SporaExtensionInterface` (easiest: extend `Spora\Extensions\AbstractExtension`, which supplies an empty default for every hook). `Spora\Extensions\AppInterface` is a pure marker that extends the same contract — the hook surface lives on the parent either way. Override only what you need. That's it — the framework discovers the file via reflection, reads your hooks at the right lifecycle points, and lets you promote the App to a distributable plugin with a one-file rename.
+Drop a class at `app/App.php` implementing `Spora\Extensions\SporaExtensionInterface` (easiest: extend `Spora\Extensions\AbstractExtension`, which supplies an empty default for every hook except `getName()`). `Spora\Extensions\AppInterface` is a pure marker that extends the same contract — the hook surface lives on the parent either way. Override only what you need. That's it — the framework discovers the file via reflection, reads your hooks at the right lifecycle points, and lets you promote the App to a distributable plugin with a one-file rename.
 
 ```php
 // app/App.php
@@ -79,11 +79,11 @@ All ten hooks are declared on [`SporaExtensionInterface`](https://github.com/spo
 
 `register()`, `routes()`, and `boot()` are gone from the contract. An App that needs DI bindings, HTTP routes, or post-build init implements `Symfony\Component\EventDispatcher\EventSubscriberInterface` alongside the extension contract and returns an event → method map. App and plugin subscribers share one framework-wide dispatcher, resolved from the container as `event_dispatcher`.
 
-| Event                    | Payload accessor                                | When                                                                           |
-| ------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| `ContainerBuildingEvent` | `builder(): DI\ContainerBuilder`                | Once per process, after discovery, before the container is built.              |
-| `RoutesRegisteringEvent` | `routes(): MiddlewareRouteCollector`            | Per request, after the core routes are registered, before the router is built. |
-| `BootingEvent`           | `container(): Psr\Container\ContainerInterface` | Per request, after the container is built and the database has booted.         |
+| Event                    | Payload accessor                                | When                                                                                                             |
+| ------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `ContainerBuildingEvent` | `builder(): DI\ContainerBuilder`                | Once per process, after discovery, before the container is built.                                                |
+| `RoutesRegisteringEvent` | `routes(): MiddlewareRouteCollector`            | Per request, after the core routes are registered, before the router is built.                                   |
+| `BootingEvent`           | `container(): Psr\Container\ContainerInterface` | Once per process — on the first request handled by it, after the container is built and the database has booted. |
 
 ```php
 // app/App.php
@@ -140,7 +140,7 @@ final class App extends AbstractExtension implements EventSubscriberInterface
 }
 ```
 
-> **Note:** the container is **not** resolvable inside `onContainerBuilding()` — only the builder is, and it is still mutable. Use `BootingEvent` when the listener needs a live service. A listener that throws does not abort the rest: `PluginLoader::dispatchWithTolerance()` logs the failure and carries on with the next subscriber.
+> **Note:** the container is **not** resolvable inside `onContainerBuilding()` — only the builder is, and it is still mutable. Use `BootingEvent` when the listener needs a live service. A listener that throws does not fail the boot: `PluginLoader::dispatchWithTolerance()` wraps the whole dispatch in one `try`/`catch` and writes the failure to `error_log()`. That catch is around the dispatch, not around each listener, so the remaining subscribers **for that event** are skipped — the next event still dispatches, and the failure surfaces only as an `error_log` line, not through the Spora logger.
 
 ## Promoting an App to a Plugin
 

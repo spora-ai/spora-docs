@@ -96,9 +96,9 @@ For the full `#[Tool]` / `#[ToolOperation]` / `#[ToolParameter]` / `#[ToolSettin
 php bin/spora make:controller MyApi
 ```
 
-Creates `app/Http/Controllers/MyApiController.php` with a placeholder `index()` method that returns a basic JSON response, and prints the route-registration snippet to paste into `app/App.php` inside `routes(MiddlewareRouteCollector $r)`.
+Creates `app/Http/Controllers/MyApiController.php` with a placeholder `index()` method that returns a basic JSON response, and prints the route-registration snippet for you to paste into a `RoutesRegisteringEvent` subscriber on the project App.
 
-The generated controller has no parent class (Spora controllers are plain Symfony-style objects, not framework base classes). Routes are registered imperatively — the `addRoute()` call is printed for the developer to paste, not auto-injected, because each project owns its own route table and middleware stack.
+The generated controller has no parent class (Spora controllers are plain Symfony-style objects, not framework base classes). Routes are registered imperatively through the event's route collector — the `addRoute()` call is printed for the developer to paste, not auto-injected, because each project owns its own route table and middleware stack.
 
 The default route path is `/api/v1/<name-in-kebab-case>` (e.g. `make:controller MyApi` → `/api/v1/my-api`).
 
@@ -128,11 +128,9 @@ final class MyApiController
 }
 ```
 
-After creation, the scaffolder prints:
+After creation, the scaffolder prints the route call:
 
 ```text
-Paste this into app/App.php inside routes(MiddlewareRouteCollector $r):
-
 $r->addRoute(
     'GET',
     '/api/v1/my-api',
@@ -140,6 +138,40 @@ $r->addRoute(
     [\Spora\Http\Middleware\AuthMiddleware::class, \Spora\Http\Middleware\CsrfMiddleware::class],
 );
 ```
+
+The maker's own instruction line tells you to paste that call into `app/App.php` inside `routes(MiddlewareRouteCollector $r)`. That hook was **removed in 1.0** — there is no `routes()` method to paste into. The call itself is unchanged; only its target moved. Paste it into an `onRoutesRegistering()` listener instead:
+
+```php
+// app/App.php
+namespace App;
+
+use Spora\Events\RoutesRegisteringEvent;
+use Spora\Extensions\AbstractExtension;
+use Spora\Http\Middleware\AuthMiddleware;
+use Spora\Http\Middleware\CsrfMiddleware;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
+final class App extends AbstractExtension implements EventSubscriberInterface
+{
+    /** @return array<class-string, string> */
+    public static function getSubscribedEvents(): array
+    {
+        return [RoutesRegisteringEvent::class => 'onRoutesRegistering'];
+    }
+
+    public function onRoutesRegistering(RoutesRegisteringEvent $event): void
+    {
+        $event->routes()->addRoute(
+            'GET',
+            '/api/v1/my-api',
+            [\App\Http\Controllers\MyApiController::class, 'index'],
+            [AuthMiddleware::class, CsrfMiddleware::class],
+        );
+    }
+}
+```
+
+> **Note:** `make:controller` still prints the pre-1.0 wording verbatim — that string lives in `spora-maker/src/Maker/MakeController.php:63` and has not been updated. The route-registration model itself is unchanged; `RoutesRegisteringEvent::routes()` returns the same `MiddlewareRouteCollector` that the old `routes()` hook received.
 
 The middleware stack (`AuthMiddleware` + `CsrfMiddleware`) matches every other admin route. Change the HTTP verb, add a new route for another verb, or strip the auth/CSRF stack for a public route by editing the snippet before pasting.
 
@@ -194,7 +226,12 @@ final class App extends AbstractExtension
 }
 ```
 
-For the full hook surface and lifecycle ordering, see [Concepts → App extensions](/reference/concepts/app-extension).
+> **Note:** the scaffolder still emits that comment verbatim (`spora-maker/src/Maker/MakeApp.php:33-34`) — it has not been updated for 1.0, so **do not treat the list as the hook surface**. Only four of those nine names are hooks today: `tools()`, `schemaVersion()`, `migrationsPath()`, and `apps()`. The other five were removed in 1.0:
+>
+> - `drivers()` and `recipePaths()` had no callers and are simply gone.
+> - `register()`, `routes()`, and `boot()` became PSR-14 events — `ContainerBuildingEvent` (payload `builder()`), `RoutesRegisteringEvent` (payload `routes()`), and `BootingEvent` (payload `container()`) respectively. An App takes part by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface`, exactly as the `make:controller` snippet above does.
+
+The full ten-hook table and the three lifecycle events are in [Concepts → App extensions](/reference/concepts/app-extension); the same contract from the plugin side is in [Foundations → Available hooks](/develop/plugins/author-guide/foundations#available-hooks).
 
 ## Adding a new `make:*` command
 
@@ -262,7 +299,7 @@ If the four built-in commands don't cover what your project needs, add your own.
    }
    ```
 
-2. **Use the generator** to write the file. `$generator->generateFile('relative/path.json', $contents)` queues the write; the underlying `FileManager` raises `RuntimeException` if the target already exists, so a maker never partially overwrites. `$this->renderClass(...)` is the shorthand for the PHP-class case — it takes a namespace, a `use` list, a class name, a parent, an inner body, and a target path, and builds the file for you.
+2. **Use the generator** to write the file. `$generator->generateFile('relative/path.json', $contents)` queues the write; the queue is flushed by `Generator::writeChanges()` once `generate()` returns, and the underlying `FileManager` raises `FileAlreadyExistsException` (a `RuntimeException`, which `MakerRunner` turns into `Command::FAILURE`) if the target already exists — so an **existing** file is never clobbered. Note that the flush is not transactional: queued files are written one at a time, so a collision on the third file leaves the first two on disk. `$this->renderClass(...)` is the shorthand for the PHP-class case — it takes a namespace, a `use` list, a class name, a parent, an inner body, a target path, **and the `Generator` itself** (all seven are required; an optional eighth takes a class-attribute string), then queues the built file for you.
 
 3. **Register the maker** by appending the FQCN to the `MakeCommand::MAKERS` array in `spora-maker/src/MakeCommand.php`. No other wiring — the command is available under `bin/spora` on the next `composer dump-autoload`.
 

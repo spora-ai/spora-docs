@@ -147,10 +147,10 @@ An **agent template** is a file — JSON or YAML — that bundles an agent's ide
 **Agents → New** opens a dialog that asks how you want to start. Three cards:
 
 - **Blank agent** — start from a name and an optional system prompt. Tools are added in the next step.
-- **From template** — browse the gallery, grouped by source (**Core** first, then one group per contributing plugin). Each card shows the template's `id`, version, and how many tools it enables.
+- **From template** — browse the gallery, grouped by the template's `source` value. Each card shows the template's `id`, version, and how many tools it enables.
 - **Upload template** — import a `.json` file someone exported from another Spora instance. The file is read in your browser, then sent to your own Spora instance for a dry-run validation pass before anything is written.
 
-If you also control a group, the **Pick an owner** step runs after you choose a card — the same owner decision as [Step 0](#step-0--owner) above.
+If you also control a group, the **Pick an owner** step runs after you choose a card — the same owner decision as the **Step 0 — Owner** step above.
 
 The framework ships exactly one bundled template: **Spora Core Agent** (`core/core-assistant`), a general-purpose starter with the time and math tools. An empty gallery reads _"No templates available. Install a plugin or ship one with spora-core."_
 
@@ -158,17 +158,26 @@ The framework ships exactly one bundled template: **Spora Core Agent** (`core/co
 
 Picking a template — or uploading a file — opens a **Warnings** step listing anything the recipient has to sort out first. None of these block the import; the button reads **Import** when the list is empty and **Import anyway** when it is not.
 
-| Warning                     | What it means                                                            |
-| --------------------------- | ------------------------------------------------------------------------ |
-| `PLUGIN_MISSING`            | A plugin the template expects is not installed.                          |
-| `TOOL_PLUGIN_MISSING`       | A tool the template enables is not registered here. The tool is skipped. |
-| `TOOL_NEEDS_CONFIGURATION`  | The tool will be enabled but has no settings yet.                        |
-| `OPERATION_UNKNOWN`         | An operation the template names does not exist on the tool.              |
-| `SYSTEM_PROMPT_MISSING`     | The template declares no system prompt.                                  |
-| `METADATA_CATEGORY_UNKNOWN` | The template's `metadata.category` is not a known category.              |
+This step is fed by one dry-run validation pass over the payload you are about to import, so it only ever shows the three codes the validator itself raises:
 
-A file that fails validation outright (a hard error rather than a warning) is rejected before you reach this step.
+| Warning                     | What it means                                               |
+| --------------------------- | ----------------------------------------------------------- |
+| `OPERATION_UNKNOWN`         | An operation the template names does not exist on the tool. |
+| `SYSTEM_PROMPT_MISSING`     | The template declares no system prompt.                     |
+| `METADATA_CATEGORY_UNKNOWN` | The template's `metadata.category` is not a known category. |
 
+A further three warnings are only knowable _after_ the import runs, so they never appear on this step. They reach you as a count on the toast that lands after the agent is created — `Agent #12 created (2 warnings)` — and the agent exists at that point:
+
+| Warning                    | What it means                                                            |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `PLUGIN_MISSING`           | A plugin the template expects is not installed.                          |
+| `TOOL_PLUGIN_MISSING`      | A tool the template enables is not registered here. The tool is skipped. |
+| `TOOL_NEEDS_CONFIGURATION` | The tool will be enabled but has no settings yet.                        |
+
+An uploaded file that fails validation outright (a hard error rather than a warning) is rejected before you reach this step. A template picked from the gallery is not gated the same way — a hard error there still shows the Warnings step, and the import is then refused by the server.
+
+> **Note:** two scan-time warnings never reach the Warnings step. `GET /api/v1/agent-templates/{id}` does return them alongside the template, but the dialog discards them and re-validates the raw payload instead — so a file that fails to parse, or an id that breaks the namespace rule, is not listed there. A `NAMESPACE_MISMATCH` does light up the amber warning triangle on the template's gallery card, though the number beside the triangle is the template's required-plugin count, not its warning count.
+>
 > **Note:** templates never carry secrets. A tool setting declared as a password is rejected at validation, and inherited global / user values are never written into an export. Recipients fill in their own keys under **Settings → Tools** after the import — a `TOOL_NEEDS_CONFIGURATION` warning is the prompt to do exactly that.
 >
 > **Note:** plugins are never installed for you. A template's `required_plugins` list is advisory; a missing plugin produces a warning, not an install.
@@ -210,11 +219,13 @@ Delete only when:
 
 ## Agent templates and the plugin system
 
-Plugins can ship their own agent templates. When a plugin is installed, the template directories it contributes are scanned and its templates appear in the **From template** gallery under a group headed by the plugin's slug — so installing a plugin is what adds curated starter agents to your picker. The framework's own bundled templates are grouped under **Core**.
+Plugins can ship their own agent templates. When a plugin is installed, every directory it returns from `agentTemplatePaths()` is scanned and its templates join the **From template** gallery — installing a plugin is what adds curated starter agents to your picker.
 
-Plugin templates namespace their `id` as `<plugin-slug>/<slug>`, so two plugins can never collide on the same short name. A template that breaks that convention still shows up, flagged with a `NAMESPACE_MISMATCH` warning.
+> **Known upstream defect:** the gallery does **not** group by plugin, and the bundled template is not grouped under **Core**, even though the UI is written as if it did. The group heading is the template's raw `source` value, and the backend derives `source` from the **name of the directory** the file lives in — not from the plugin slug. It only resolves to `core` when the filename without its extension is literally `core`, which the bundled `core-assistant.json` is not. Every hook today returns a directory named `agent-templates`, so on a real install the bundled template and every plugin template land in one single group headed `agent-templates`. Worth filing upstream.
 
-Nothing is installed on your behalf. If a template lists a plugin you don't have, you get a `PLUGIN_MISSING` warning and the import proceeds with the rest — install the plugin from **Plugins**, then re-import if you want its tools.
+The same defect is why id-namespacing does not work as intended. A scanned file's `id` has to be prefixed with its resolved `source` — the directory basename, not the plugin slug — so the rule the code actually enforces today is `agent-templates/<name>`. A plugin shipping `agent-templates/assistant.json` with the id `memories/assistant` gets a `NAMESPACE_MISMATCH` warning, and so does the bundled `core/core-assistant`. The check is skipped for the sources `core` and `uploaded`, and uploaded files never reach it at all because the import endpoint builds the template straight from the raw payload. `NAMESPACE_MISMATCH` is a warning, not a rejection: the template still appears in the gallery and still imports. The intended `<plugin-slug>/<name>` form is a documented-but-unimplemented convention.
+
+Nothing is installed on your behalf. If a template lists a plugin you don't have, you get a `PLUGIN_MISSING` warning — reported on the post-import toast rather than the Warnings step — and the import proceeds with the rest. Install the plugin from **Plugins**, then re-import if you want its tools.
 
 Authors: see [Develop → Plugin author guide → Agent templates](/develop/plugins/author-guide/agent-templates) for the `agentTemplatePaths()` hook, the schema, and the full warning table.
 

@@ -41,7 +41,7 @@ Scheduled-run prompts support `{{var}}` and `{{var:default}}` substitution, but 
 
 A fixed set of built-ins resolves before the run's own variables, so a template can reference `current_date` (alias `date`), `current_time` (alias `time`), `current_datetime` (alias `datetime`), `day_of_week`, `day_of_month`, `month`, `year`, `agent_name`, and `user_name` without declaring them (`app/Services/ScheduledRunService.php:559`).
 
-To finish: (1) decide whether to adopt a full templating engine (or grow the hand-rolled substituter) and backfill the existing `{{var}}` syntax, (2) support lists and per-item rendering so one template can drive a multi-step run, and (3) publish the complete placeholder list in one place — it is currently split between the two private methods above and a partial mention in the [API reference](/reference/api).
+To finish: (1) decide whether to adopt a full templating engine (or grow the hand-rolled substituter) and backfill the existing `{{var}}` syntax, (2) support lists and per-item rendering so one template can drive a multi-step run, and (3) publish the complete placeholder list in one place — it is currently split between the three private methods above and a partial mention in the [API reference](/reference/api).
 
 ## Low
 

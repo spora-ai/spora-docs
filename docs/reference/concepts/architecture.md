@@ -119,7 +119,7 @@ For the full three-configuration overview (server + Mercure, server + polling, c
 
 ## Plugin System
 
-Drop a folder into `plugins/` with a `plugin.json` manifest (and optional `Plugin.php`). Auto-discovered at boot — no manual registration.
+Drop a folder into `plugins/` with a `plugin.json` manifest whose `class` field names the entry point (by convention the folder ships a `Plugin.php`, but the manifest is what the loader reads). Auto-discovered at boot — no manual registration.
 
 Boot sequence (`app/Plugins/PluginLoader.php`):
 

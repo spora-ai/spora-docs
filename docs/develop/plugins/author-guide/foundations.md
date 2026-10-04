@@ -138,7 +138,7 @@ final class AcmeSearchPlugin extends AbstractPlugin
 
 ### Available hooks
 
-`Spora\Extensions\SporaExtensionInterface` declares **exactly ten** methods, and that is the complete data-hook surface. `Spora\Plugins\PluginInterface` re-exports it, so the table below is the whole contract. `AbstractPlugin` provides a no-op default for every one of them — you only override what you actually use, and in practice that is `getName()` and `tools()`.
+`Spora\Extensions\SporaExtensionInterface` declares **exactly ten** methods, and that is the complete data-hook surface. `Spora\Plugins\PluginInterface` re-exports it, so the table below is the whole contract. `AbstractPlugin` supplies a default for all ten: nine of them are the empty value their return type allows — `[]` for the seven list hooks, `0` for `schemaVersion()`, `null` for `migrationsPath()` — and `getName()` returns the short class name with a trailing `Plugin` stripped (`SkeletonPlugin` → `Skeleton`) rather than a no-op. You only override what you actually use, and in practice that is `getName()` and `tools()`.
 
 | Hook                      | Returns                                         | Default | Purpose                                                                                                                                                                           |
 | ------------------------- | ----------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -192,17 +192,17 @@ final class AcmeSearchPlugin extends AbstractPlugin implements EventSubscriberIn
 }
 ```
 
-> **Import the `Symfony\Component\EventDispatcher` interface, not the `Symfony\Contracts` one.** Both loaders check `instanceof Symfony\Component\EventDispatcher\EventSubscriberInterface` (`Spora\Extensions\AppLoader::wireEventSubscribers()` and `Spora\Plugins\PluginLoader::wireEventSubscribers()`), and so does every real plugin — `MemoriesPlugin` and `EmailPlugin` both import the `Component` variant. The two interfaces are not related by inheritance, so a plugin implementing the `Contracts` variant is silently never wired: no DI bindings, no routes, and no boot-time init, with no error. Note that the `SporaExtensionInterface` docblock itself still names the `Contracts` variant; ignore it.
+> **Import the `Symfony\Component\EventDispatcher` interface, not the `Symfony\Contracts` one.** Both loaders check `instanceof Symfony\Component\EventDispatcher\EventSubscriberInterface` (`Spora\Extensions\AppLoader::wireEventSubscribers()` and `Spora\Plugins\PluginLoader::wireEventSubscribers()`), and so does every real plugin — `MemoriesPlugin` and `EmailPlugin` both import the `Component` variant. `Symfony\Contracts\EventDispatcher\EventSubscriberInterface` **does not exist** — `symfony/event-dispatcher-contracts` ships only `EventDispatcherInterface` and `Event`, so importing it is a fatal `Interface "…EventSubscriberInterface" not found` at class-load time, not a silently unwired subscriber. Note that the `SporaExtensionInterface` docblock itself still names the `Contracts` variant; ignore it.
 
 The three events, all in the `Spora\Events` namespace:
 
-| Event                    | When                                                                   | Accessor              |
-| ------------------------ | ---------------------------------------------------------------------- | --------------------- |
-| `ContainerBuildingEvent` | Once per process, **before** the DI container is built.                | `$event->builder()`   |
-| `RoutesRegisteringEvent` | Per request, after core and App routes are registered.                 | `$event->routes()`    |
-| `BootingEvent`           | Per request, after the container is built and the database has booted. | `$event->container()` |
+| Event                    | When                                                                        | Accessor              |
+| ------------------------ | --------------------------------------------------------------------------- | --------------------- |
+| `ContainerBuildingEvent` | Once per process, **before** the DI container is built.                     | `$event->builder()`   |
+| `RoutesRegisteringEvent` | Per request, after core and App routes are registered.                      | `$event->routes()`    |
+| `BootingEvent`           | Once per process, after the container is built and the database has booted. | `$event->container()` |
 
-`BootingEvent` is the one to use for stateful init that needs resolved DI services. Subscriber exceptions are caught and logged, so one broken subscriber does not abort the rest of the plugin set. Full dispatch semantics are in [Concepts → Plugin system](/reference/concepts/plugins-system#lifecycle-events).
+`BootingEvent` is the one to use for stateful init that needs resolved DI services. Subscriber exceptions are tolerated, but the tolerance is coarser than it looks: `PluginLoader` wraps the **whole** dispatch in one `try`/`catch` that writes to `error_log()`, and Symfony's own dispatch loop has no per-listener catch — so a listener that throws skips the **remaining subscribers for that event** (later events still dispatch). The failure reaches the Spora log as nothing at all; it is an `error_log` line only. Full dispatch semantics are in [Concepts → Plugin system](/reference/concepts/plugins-system#lifecycle-events).
 
 For the rationale behind the trim and the `PluginInterface`-as-marker split, see the docblock on [PluginInterface](https://github.com/spora-ai/spora-core/blob/main/app/Plugins/PluginInterface.php) in the framework repo.
 

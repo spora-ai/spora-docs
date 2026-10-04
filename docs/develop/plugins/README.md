@@ -1,6 +1,6 @@
 ---
 title: Plugins
-description: Extending Spora with plugins — Composer packages that ship tools, drivers, and migrations.
+description: Extending Spora with plugins — Composer packages that ship tools, skills, apps, and migrations.
 ---
 
 # Plugins
@@ -8,15 +8,17 @@ description: Extending Spora with plugins — Composer packages that ship tools,
 A Spora plugin is a Composer package — installable via `composer require` and shipped to Packagist like any other PHP library — that contributes runtime capabilities to a Spora deployment:
 
 - **Tools** callable by an agent (web search, image generation, calendar ops)
-- **LLM drivers** that plug into the driver factory alongside OpenAI and Anthropic
+- **Skills** that ship on disk via `skillPaths()` or are generated at runtime via `skillProviders()`
 - **Migrations** that create plugin-owned database tables
 - **Admin UI** (optional) — a Vue IIFE bundle that the host SPA mounts as a plugin app
+
+A plugin does **not** contribute LLM providers. There is no `drivers()` hook — LLM drivers are _configured_ per agent by the operator (config key, `base_url`, API key), not contributed by a plugin. See [Concepts → LLM drivers](/reference/concepts/drivers).
 
 For the local-development workflow (Composer path repos, the 3-terminal HMR walkthrough for plugins with a Vue frontend), see **[Local plugin development](/develop/plugins/local-development)**.
 
 ## Authoring a plugin
 
-If you want to write a plugin — either for your own Spora install or to publish on Packagist — start with the **[Plugin author guide](/develop/plugins/author-guide)**. It walks you through the manifest, the entry-point class, tools, drivers, migrations, admin UI, local development, the `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, and SemVer versioning.
+If you want to write a plugin — either for your own Spora install or to publish on Packagist — start with the **[Plugin author guide](/develop/plugins/author-guide)**. It walks you through the manifest, the entry-point class, tools, skills, migrations, admin UI, local development, the `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, and SemVer versioning.
 
 > Plugins can also ship **Agent templates** — a `.json` / `.yaml` file that bundles a system prompt, tool activations, and auto-approve defaults into a one-click Agent. Declare them under `agent-templates/` and return the directory from `agentTemplatePaths()`; see [Agent templates](/develop/plugins/author-guide/agent-templates).
 

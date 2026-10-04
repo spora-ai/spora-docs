@@ -11,7 +11,7 @@ description: The drivers() hook was removed in Spora 1.0. A plugin no longer con
 
 `Spora\Extensions\SporaExtensionInterface` declares exactly ten methods, and `drivers()` is not one of them. The hook had no callers in the boot sequence, so an implementation of it was silently ignored — a plugin that "registered a driver" this way shipped a class the driver factory never loaded.
 
-The driver's id → FQCN map is now a static list in the container: `Spora\Core\ContainerDefinitions::llmDefinitions()` holds exactly `OpenAICompatibleDriver` and `AnthropicCompatibleDriver`. The old `llm_driver_classes_merged` entry survives only as an alias of that same static list so `LLMConfigService` can inject it without a rewrite — it no longer merges anything from plugins.
+The drivers are now a flat, positional list in the container: `Spora\Core\ContainerDefinitions::llmDefinitions()` hard-codes exactly `OpenAICompatibleDriver` and `AnthropicCompatibleDriver` under `llm_driver_classes`, with no id key in the entry. Each driver's id lives on the class itself, in a private `PROVIDER_KEY` const surfaced through its static `getName()` — `openai_compatible` and `anthropic_compatible` respectively. The old `llm_driver_classes_merged` entry survives only as an `array_values(array_unique(...))` copy of that same static list so `LLMConfigService` can inject it without a rewrite; it merges nothing from plugins.
 
 If you are porting a pre-1.0 plugin, delete the `drivers()` method and the class it referenced. Nothing else in the plugin needs to change.
 

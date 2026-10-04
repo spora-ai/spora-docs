@@ -1,6 +1,6 @@
 ---
 title: Typst
-description: Compile Typst source to PDF/PNG/SVG from an agent conversation, with Inter/DejaVu/Latin Modern fonts bundled under the OFL.
+description: Compile Typst source to PDF/PNG/SVG from an agent conversation, with Inter and Latin Modern bundled under the OFL and the DejaVu families under the Bitstream Vera / Arev licence.
 ---
 
 # Typst Plugin for Spora
@@ -50,7 +50,7 @@ The tools declare no `#[ToolSetting]` attributes, so there is nothing to fill in
   <image files>         # images live flat at the root, not in an images/ subdir
 ```
 
-Every path is scoped to the **principal** (a user, a team, or an org), not to the operator globally. Two principals on the same Spora install each get their own template directory, their own font directory, and their own image library; neither sees the other's resources through `list`, `read`, or `delete`. `TypstWorldFactory` also sets the per-principal root as ext-typst's `template_dir`, so a `#include` cannot reach across principals even by accident.
+Every path is scoped to the **principal** (a user, a team, or an org), not to the operator globally. Two principals on the same Spora install each get their own template directory, their own font directory, and their own image library; neither sees the other's resources through `list`, `read`, or `delete`. `TypstWorldFactory` also sets the per-principal root as ext-typst's `template_dir`, so a relative `#include "templates/foo.typ"` resolves there and nowhere else. That is a statement about where relative paths land, not an isolation guarantee: the plugin does no path validation at compile time, so an absolute or `../` path in a document is ext-typst's problem, not something the plugin denies.
 
 Images live at the principal root rather than an `images/` subdirectory on purpose: `template_dir` is the principal root, so `#image("logo.png")` resolves there. The image listing filters by extension so the shared directory stays clean in the API.
 
@@ -67,15 +67,17 @@ Tier-2 shadows tier-1 on a basename collision, so an operator can override a bun
 
 ### Limits
 
-| Limit                                   | Value                                                                        | Source                                                                       |
-| --------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Bytes per resource (write **and** read) | 5 MiB (5 242 880)                                                            | `TypstResourceStore::MAX_BYTES`, `TypstImageStore::MAX_BYTES`                |
-| Basename charset                        | `A-Z a-z 0-9 . _ -`, max 128 chars; `/`, `\`, `..` rejected                  | `TypstResourceStore::validateBasename()`                                     |
-| Image MIME allowlist                    | `image/png`, `image/jpeg`, `image/webp`, `image/svg+xml`                     | `TypstImageStore::ALLOWED_MIMES`                                             |
-| Source MIME                             | `text/x-typst` (the de-facto convention; ext-typst registers no MIME for it) | `TypstRenderProducer::SUPPORTED_SOURCE_MIMES`                                |
-| Derivative formats                      | `pdf`, `png`, `svg`                                                          | `TypstRenderProducer::SUPPORTED_FORMATS`                                     |
-| PNG `ppi`                               | 36–600 on the wire, default 144; operator UI offers 72 / 144 / 288 / 600     | `TypstRenderProducer::MIN_PPI` / `MAX_PPI` / `DEFAULT_PPI` / `SUPPORTED_PPI` |
-| ext-typst world cache                   | 64 MiB per `World` allocation                                                | `TypstWorldFactory::CACHE_BYTES`                                             |
+| Limit                               | Value                                                                        | Source                                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Bytes per resource (**write only**) | 5 MiB (5 242 880)                                                            | `TypstResourceStore::MAX_BYTES`, `TypstImageStore::MAX_BYTES`                |
+| Basename charset                    | `A-Z a-z 0-9 . _ -`, max 128 chars; `/`, `\`, `..` rejected                  | `TypstResourceStore::validateBasename()`                                     |
+| Image MIME allowlist                | `image/png`, `image/jpeg`, `image/webp`, `image/svg+xml`                     | `TypstImageStore::ALLOWED_MIMES`                                             |
+| Source MIME                         | `text/x-typst` (the de-facto convention; ext-typst registers no MIME for it) | `TypstRenderProducer::SUPPORTED_SOURCE_MIMES`                                |
+| Derivative formats                  | `pdf`, `png`, `svg`                                                          | `TypstRenderProducer::SUPPORTED_FORMATS`                                     |
+| PNG `ppi`                           | 36–600 on the wire, default 144; operator UI offers 72 / 144 / 288 / 600     | `TypstRenderProducer::MIN_PPI` / `MAX_PPI` / `DEFAULT_PPI` / `SUPPORTED_PPI` |
+| ext-typst world cache               | 64 MiB per `World` allocation                                                | `TypstWorldFactory::CACHE_BYTES`                                             |
+
+The 5 MiB cap is enforced on the **write** path only — `TypstResourceStore::validateBytes()` and `TypstImageStore`'s equivalent run inside `write()`. `read()` applies no cap of its own; reads are merely bounded by the fact that nothing larger than the cap can be written into tier-2, which is what `TypstResourcesTool::readResource()`'s docblock relies on when it inlines the bytes. A file placed under tier-2 out of band is the one case the bound does not cover.
 
 ## Fonts
 
@@ -94,11 +96,11 @@ Tier-2 shadows tier-1 on a basename collision, so an operator can override a bun
 The recommended cascade, which the plugin also preprends to every source it renders (so a document with no explicit font choice still renders):
 
 ```typst
-#set text(font: ("Inter", "DejaVu Sans", "DejaVu Serif"))
+#set text(font: ("Inter", "DejaVu Sans", "DejaVu Serif"), lang: "en")
 #show math.equation: set text(font: ("Latin Modern Math", "DejaVu Sans"))
 ```
 
-`TypstWorldFactory::prelude()` supplies the first two lines. Because the prelude is prepended, an operator's own `#set text(font: …)` later in the file overrides it. `embed_default_fonts` is `false` on the world, so ext-typst does not silently bake Latin Modern into every output.
+`TypstWorldFactory::prelude()` supplies exactly those two lines, `lang: "en"` included. Because the prelude is prepended, an operator's own `#set text(font: …)` later in the file overrides it. `embed_default_fonts` is `false` on the world, so ext-typst does not silently bake Latin Modern into every output.
 
 ## Per-tool parameters
 

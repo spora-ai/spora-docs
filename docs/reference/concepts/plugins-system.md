@@ -35,13 +35,13 @@ The full JSON Schema is in [`plugin.schema.json`](https://github.com/spora-ai/sp
 
 ### Optional fields
 
-| Field            | Type   | Description                                                                                                                                                                                                                                                                                 |
-| ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                               |
-| `icon`           | string | Icon for the inventory UI. Two forms are accepted — a bundled name or a raw SVG path. Defaults to `"puzzle"` when omitted. See [Bundled icons](#bundled-icons) for the curated palette, or the [schema reference](/reference/plugin-schema#icon-field--two-forms) for both forms in detail. |
-| `accent`         | string | Tile accent colour for the plugin's app tile. One of `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` (default). Precedence: PHP `App::accent()` > this field > `"primary"`.                                                                                                          |
-| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                        |
-| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                         |
+| Field            | Type   | Description                                                                                                                                                                                                                                                                                  |
+| ---------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                |
+| `icon`           | string | Icon for the inventory UI. Two forms are accepted — a bundled name or a raw SVG path. Defaults to `"puzzle"` when omitted. See [Bundled icons](#bundled-icons) for the curated palette, or the [schema reference](/reference/plugin-schema#icon-field-—-two-forms) for both forms in detail. |
+| `accent`         | string | Tile accent colour for the plugin's app tile. One of `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` (default). Precedence: PHP `App::accent()` > this field > `"primary"`.                                                                                                           |
+| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                         |
+| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                          |
 
 > **Note:** the published schema's only top-level fields are `slug`, `class`, `description`, `icon`, and `accent`. The two `autoload.*` rows above describe what `PluginLoader` reads at runtime, not part of the schema — see the [schema reference](/reference/plugin-schema#top-level-fields) for the contract.
 
@@ -56,7 +56,7 @@ The full JSON Schema is in [`plugin.schema.json`](https://github.com/spora-ai/sp
 
 ### Bundled icons
 
-The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors can reference any of these by name from the manifest's `icon` field without shipping their own SVG. For categories not covered below, fall back to a raw SVG path string (the `icon` field accepts anything starting with a path command letter).
+The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors can reference any of these by name from the manifest's `icon` field without shipping their own SVG. For categories not covered below, fall back to a raw SVG path string — the shipped renderer only draws a path that opens with a moveto (`M` or `m` followed by a coordinate); see the [schema reference](/reference/plugin-schema#icon-field-—-two-forms) for the command list the schema describes.
 
 | Category         | Names                                                                                                                                                                                                                                                                                                                 |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -77,7 +77,7 @@ The `icon` field in `plugin.json` accepts two forms. The frontend tries them in 
    { "icon": "puzzle" }
    ```
 
-2. **Raw SVG path** — a single path string starting with a path command letter (`M`/`L`/`H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, uppercase or lowercase). Smallest in JSON, but limited to single-path icons — compose multi-shape glyphs with subpaths via `M`.
+2. **Raw SVG path** — a single path string. The renderer recognises one that opens with a moveto — `M` or `m` followed by a coordinate — and a path opening with any other command silently falls through to the `puzzle` fallback, so always start at the top-left of the glyph. Smallest in JSON, but limited to single-path icons — compose multi-shape glyphs with subpaths via `M`.
 
    ```json
    {
@@ -87,9 +87,11 @@ The `icon` field in `plugin.json` accepts two forms. The frontend tries them in 
 
 If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend renders the bundled `puzzle` icon. If `icon` is set but matches neither form (typo, non-SVG garbage, etc.), the frontend falls back to the bundled `puzzle` icon — silently, not an error. A whitespace-only `icon` value is treated the same as missing.
 
-> **There is no inline `<svg>` form any more.** A complete `<svg>…</svg>` blob used to be a third accepted form, sanitised through DOMPurify's SVG profile and injected with `v-html`. It is not accepted today: historical mXSS bypasses in that profile are why the frontend dropped the `v-html` path entirely, so manifest strings are no longer rendered as markup at all. Ship a single `d` string. The [schema reference](/reference/plugin-schema#icon-field--two-forms) has the full reasoning, the bundled-name list, and the accepted path commands. The trust boundary is otherwise unchanged — plugin authors are operators with shell access; see [Security](#security).
+> **There is no inline `<svg>` form any more.** A complete `<svg>…</svg>` blob used to be a third accepted form, sanitised through DOMPurify's SVG profile and injected with `v-html`. It is not accepted today: historical mXSS bypasses in that profile are why the frontend dropped the `v-html` path entirely, so manifest strings are no longer rendered as markup at all. Ship a single `d` string. The [schema reference](/reference/plugin-schema#icon-field-—-two-forms) has the full reasoning, the bundled-name list, and the accepted path commands. The trust boundary is otherwise unchanged — plugin authors are operators with shell access; see [Security](#security).
 
 ### Full example
+
+Every field the schema accepts, and nothing else:
 
 ```json
 {
@@ -97,16 +99,11 @@ If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend ren
   "class": "Acme\\Search\\Plugin",
   "description": "Search the public web via the Acme API.",
   "icon": "M11 4a7 7 0 1 1-4.95 11.95l-2.43 2.43a1 1 0 0 1-1.42-1.42l2.43-2.43A7 7 0 0 1 11 4Zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
-  "accent": "sky",
-  "autoload": {
-    "psr-4": {
-      "Acme\\Search\\": "src/",
-      "Acme\\Shared\\": "lib/"
-    },
-    "files": ["vendor/autoload.php"]
-  }
+  "accent": "sky"
 }
 ```
+
+Add the [`autoload` block](/reference/plugin-schema#autoload-block) if your plugin ships its own vendor tree or a non-Composer source layout — the loader honours it, the schema does not describe it.
 
 ## Entry-point class
 

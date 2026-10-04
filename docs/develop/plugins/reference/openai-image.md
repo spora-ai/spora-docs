@@ -62,7 +62,7 @@ The tool exposes **two** operations on the auto-synthesised `action` discriminat
 
 ¹ `prompt` is required for `generate` and required for `generate_variations` _unless_ `input_image` is supplied. The tool returns `generate_variations requires either 'prompt' or 'input_image'.` when both are empty, and `Prompt cannot be empty.` for a blank `generate` prompt.
 
-Fields set to `auto` are omitted from the outbound body entirely rather than sent as the literal string, so the provider picks its own default. `size`, `quality`, and `background` are ignored upstream on image-based variations — the `/v1/images/variations` contract does not accept them.
+Fields set to `auto` are omitted from the outbound body entirely rather than sent as the literal string, so the provider picks its own default. `size` **is** forwarded on image-based variations — the multipart body carries `image`, `n` and `size`. Only `quality` and `background` are dropped there, because `/v1/images/variations` does not accept them; the tool's own parameter descriptions say so, and say nothing of the sort about `size`.
 
 ### Resolving `input_image`
 
@@ -74,7 +74,7 @@ Fields set to `auto` are omitted from the outbound body entirely rather than sen
 | `data:` URI                                          | Decoded directly.                                                                                                                                                    |
 | `http(s)` URL                                        | Fetched server-side.                                                                                                                                                 |
 
-A UUID that does not resolve, or that the caller cannot see, fails the call with an actionable message rather than a generic HTTP error. Assets larger than the 25 MB `data:` URI cap are rejected with the actual size in the message, and externally-stored assets (no Spora-side bytes) are rejected too. Only the first table row is Spora-specific; the last two are plain upstream behaviour.
+A UUID that does not resolve, or that the caller cannot see, fails the call with an actionable message rather than a generic HTTP error, as does an asset over the 25 MB `data:` URI cap — the message carries the actual size. Externally-stored assets are **not** a failure case: they are forwarded as their source URL and fetched server-side, so only the two inlining paths (`data_url` and `local`) are subject to the size cap. Only the first table row is Spora-specific; the last two are plain upstream behaviour.
 
 ## The verbatim-echo rule
 
@@ -149,9 +149,9 @@ composer analyse           # PHPStan
 composer lint              # php-cs-fixer dry-run
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan (2G memory limit), php-cs-fixer dry-run, a coverage job producing `coverage.xml` via Xdebug, and a `sonarcloud` job (project key `spora-ai_spora-plugin-openai-image`, 30-day leak period) that ingests it. MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan (2G memory limit), php-cs-fixer dry-run, a `coverage` job producing `coverage.xml` via Xdebug, and a `sonar` job (display name `SonarCloud scan`, project key `spora-ai_spora-plugin-openai-image`, 30-day `sonar.leak.period` from `sonar-project.properties`) that ingests it. MIT license.
 
-`plugin.json` sets `icon` to a **raw SVG path string** rather than a bundled icon name — the host's `<Icon>` component treats anything starting with a path-command letter as a single-path icon, which lets a plugin ship a bespoke glyph without coordinating a name with the Spora frontend. That is one of the two forms the manifest's `icon` field accepts; the other is a bundled name.
+`plugin.json` sets `icon` to a **raw SVG path string** rather than a bundled icon name — the host's `<Icon>` component falls back to a single-path icon only when the value matches `/^(?:(?:M\s*\d)|(?:m\s*-?\d))/`, i.e. it must begin `M` (or `m`) immediately followed by a digit. This plugin's value starts `M5 3h14…`, so it renders as the bespoke glyph it was written for; a path opening with `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A` or `Z` would **not** match and would silently render as the `puzzle` fallback icon. That is one of the two forms the manifest's `icon` field accepts; the other is a bundled name.
 
 ---
 

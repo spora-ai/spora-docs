@@ -206,7 +206,18 @@ This is the third of the three discovery registries — `MediaConverterDiscovery
 - `<div>`, `<span>` and `class` are in the allow-list too, which is what lets `MediaEmbed::fileCard()` ship a styled download card as raw HTML rather than markdown.
 - `data:` URIs are allowed on `src` of `<audio>`, `<video>`, and `<source>` (via a per-call DOMPurify hook) but blocked on `<a href>` so `data:text/html,…` XSS stays closed.
 - `download` and `aria-hidden` are **not** in the allow-list. `download` is harmless here, since `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` from `media_assets.filename` regardless — but `aria-hidden` being dropped means an icon glyph inside a card cannot be hidden from assistive tech. Use a CSS pseudo-element or a background image instead of an element with a glyph character in it.
-- Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`; the download card is styled under `.chat-bubble-content .spora-file-card*` in the same block.
+- Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`.
+- The download card shows the filename and, when the archive knows it, the size. There is no MIME: the extension on the filename already says what the file is, and a long MIME overflowed the row and squeezed the filename to nothing in a narrow bubble.
+
+### Styling the download card: register your classes
+
+The card's **layout is Tailwind utilities that live in a PHP string**, and Tailwind's scanner only reads this repo — so it never sees them. `spora-frontend` registers the card's exact class list with `@source inline(...)` in `src/style.css`, and that registration is the only reason the card is styled at all.
+
+This matters for your plugin because the failure mode is silent. A class missing from the list is **not generated**: no build error, no warning, no failing test, just an unstyled card in the chat. So if you emit card-like markup with utility classes, add every one of them to that list in the same change. `MediaEmbedFileCardTest` in `spora-core` asserts that the classes core's PHP emits are a subset of the registered list — that test covers core's card, not yours.
+
+Only `spora-file-card__glyph` is a real class hook: it is not a utility, it names the `::before` mask that draws the download glyph, and it is the one card selector in `src/style.css` besides the colour/underline reset.
+
+That reset is the second hand-written rule, and its reason is worth knowing before you add a third. This stylesheet's own link styling (`.chat-bubble-content a`) is **unlayered**, and unlayered author CSS outranks every layered declaration _regardless of specificity_ — so `text-inherit` and `no-underline` on the card lose to it and are undone by a rule instead. Specificity only breaks the tie once the layers match, so do not assume a utility class can win against the bubble's link styling.
 
 If you emit HTML outside the canonical helpers (`MediaEmbed::*`), test that the result survives sanitization. Run the frontend tests in `spora-frontend/tests/composables/useMarkdown.spec.ts` against your markup.
 

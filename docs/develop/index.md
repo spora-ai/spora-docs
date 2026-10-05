@@ -15,11 +15,11 @@ A project is a single Spora deployment customised with project-local code. The s
 
 ## [Plugins](/develop/plugins/)
 
-A Spora plugin is a Composer package that ships tools, drivers, and migrations to a Spora deployment. Authoring, install, and per-plugin reference docs:
+A Spora plugin is a Composer package that ships tools, skills, apps, and migrations to a Spora deployment. Authoring, install, and per-plugin reference docs:
 
-- **[Plugin author guide](/develop/plugins/author-guide)** — end-to-end guide for writing a plugin (manifest, entry-point class, tools, drivers, migrations, testing, publishing)
+- **[Plugin author guide](/develop/plugins/author-guide)** — end-to-end guide for writing a plugin (manifest, entry-point class, tools, skills, migrations, testing, publishing)
 - **[Local plugin development](/develop/plugins/local-development)** — Composer path repositories for local dev; 3-terminal HMR walkthrough for plugins with a Vue frontend
 - **[Install API](/develop/plugins/install-api)** — `POST /api/v1/plugins` HTTP endpoints used by the Web UI (gated by `SPORA_PLUGIN_INSTALL_ENABLED`); CLI is always available
-- **[Plugin reference](/develop/plugins/reference/)** — per-plugin reference for the 12 plugins in the Spora org (Tavily, Serper, Staan, Semantic Scholar, World News, Weather, Calendar, Email, MiniMax, Muse, Zernio, Skeleton)
+- **[Plugin reference](/develop/plugins/reference/)** — per-plugin reference for the 19 plugins in the Spora org (Skeleton, Tavily, Serper, Staan, Semantic Scholar, World News, Weather, Calendar, Email, MiniMax, Muse, Zernio, Custom skills, Media archive, Memories, OpenAI Image, Team graph, Typst, Word)
 
 > Agent templates are the shipped way to reuse an agent definition — the framework bundles one (`core/core-assistant`) and plugins contribute their own via `agentTemplatePaths()`. See [Managing agents → Agent templates](/start/end-users/managing-agents#agent-templates) for the operator flow and [Plugin author guide → Agent templates](/develop/plugins/author-guide/agent-templates) for authoring one.

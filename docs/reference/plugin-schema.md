@@ -61,7 +61,7 @@ The distinction that matters in practice: **the lead is restricted to `M`/`m`, b
 
 > **Leading-dot coordinates are a known gap.** `M.5`, `M-.5` and `m-.5` are legal SVG and are what several icon sets emit, but they do not satisfy the host's lead test and fall back to `puzzle`. Write `M0.5` or `M 0.5` for a positive leading dot, and `m-0.5` or `m -0.5` for a negative one.
 
-Full `<svg>…</svg>` blobs are **not** accepted. The host used to sanitise them through DOMPurify's SVG profile and render via `v-html`, but historical mXSS bypasses in that profile motivated dropping the `v-html` path entirely. Ship a single `d` string.
+Full `<svg>…</svg>` blobs are **not** accepted — a third form older revisions of this page documented, and one early plugin authors shipped. The host used to sanitise them through DOMPurify's SVG profile and render them via `v-html`, but historical mXSS bypasses in that profile motivated dropping the `v-html` path entirely, so manifest strings are no longer rendered as markup at all. A blob matches neither form: no error, no warning, just the `puzzle` fallback. Ship a single `d` string, and if the glyph needs primitives beyond a single path — a `circle`, a `rect`, a custom `stroke-width` — re-cut it as one; a single `d` string is the only shape the renderer still draws.
 
 If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set but matches neither form, the frontend falls back to the bundled `puzzle` icon — so a rejected value is indistinguishable from an omitted one.
 
@@ -88,12 +88,15 @@ If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set bu
 
 ## Full example
 
+A plugin that ships its own vendor tree — a non-Composer source layout, or a sibling clone — carries the [`autoload` block](#autoload-block) alongside:
+
 ```json
 {
   "slug": "acme-search",
   "class": "Acme\\Search\\AcmeSearchPlugin",
   "description": "Web search via the Acme API.",
   "icon": "globe",
+  "accent": "sky",
   "autoload": {
     "psr-4": {
       "Acme\\Search\\": "src/",
@@ -142,4 +145,4 @@ The cache is invalidated automatically when any manifest's path, mtime, or conte
 
 - [Develop → Plugins → Author guide](/develop/plugins/author-guide) — how to write a plugin
 - [Install API](/develop/plugins/install-api) — the operator install flow
-- [Plugin reference](/develop/plugins/reference/) — per-plugin reference for the 10 plugins in the Spora org
+- [Plugin reference](/develop/plugins/reference/) — per-plugin reference for the 19 plugins in the Spora org

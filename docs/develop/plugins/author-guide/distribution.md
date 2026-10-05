@@ -127,10 +127,8 @@ The catalog indexes tags on every push; releasing a tag without a GitHub Release
 The two canonical starting points:
 
 - **[`spora-ai/spora-plugin-skeleton`](https://github.com/spora-ai/spora-plugin-skeleton)** — minimal template, copy-and-rename. The `composer.json` is the canonical example of `type`, `keywords`, scripts, and PSR-4 mapping.
-- **[`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories)** — production example. Two tools, an admin app, two migrations with both `up()` and `down()`, custom DI bindings, 14 REST routes, and the canonical `EventSubscriberInterface` opt-in for the [lifecycle events](/reference/concepts/plugins-system#lifecycle-events). The closest real-world analogue to anything an author will actually need to build.
+- **[`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories)** — production example. Two tools, an admin app, two migrations (the second is forward-only — its `down()` is an empty body, so there is no rollback path for the principals/type/UUID change), custom DI bindings, 14 REST routes, and the canonical `Symfony\Component\EventDispatcher\EventSubscriberInterface` opt-in for the [lifecycle events](/reference/concepts/plugins-system#lifecycle-events). The closest real-world analogue to anything an author will actually need to build.
 
 Other public plugins (`spora-plugin-tavily`, `spora-plugin-serper`, `spora-plugin-semantic-scholar`, `spora-plugin-worldnews`, `spora-plugin-weather`, `spora-plugin-calendar`, `spora-plugin-email`) are minimal single-tool plugins — ideal for studying the **minimum viable plugin** shape before adding tooling.
 
-Per-plugin reference pages (Installation, Configuration, Per-tool parameters, Development) live under [Plugins → Reference](/develop/plugins/reference/):
-
-- [Skeleton](/develop/plugins/reference/plugin-skeleton) · [Tavily](/develop/plugins/reference/tavily) · [Serper](/develop/plugins/reference/serper) · [Semantic Scholar](/develop/plugins/reference/semantic-scholar) · [World News](/develop/plugins/reference/worldnews) · [Weather](/develop/plugins/reference/weather) · [Calendar](/develop/plugins/reference/calendar) · [Email](/develop/plugins/reference/email) · [MiniMax](/develop/plugins/reference/minimax) · [Zernio](/develop/plugins/reference/zernio)
+Per-plugin reference pages (Installation, Configuration, Per-tool parameters, Development) live under [Plugins → Reference](/develop/plugins/reference/) — that index is the maintained list, one entry per plugin.

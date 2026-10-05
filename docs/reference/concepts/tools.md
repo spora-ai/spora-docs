@@ -317,12 +317,12 @@ This split keeps tool activation on the calling agent under explicit operator co
 
 ## Icon resolution
 
-A tool may declare a `?string $icon` argument on the `#[Tool(...)]` attribute — a kebab-case key from the [bundled icon palette](/reference/plugin-schema#icon-field--three-forms) (e.g. `'calendar'`, `'mail'`, `'search'`, `'globe'`). The icon is surfaced on the Agent resource (`GET /api/v1/agents` / `GET /api/v1/agents/{id}`) so the admin UI can render a matching tile for the tool, **and on every ToolCall in `tool_calls[]` (REST + Mercure live-update)** so the chat UI's compact tool stream can render per-tool icons.
+A tool may declare a `?string $icon` argument on the `#[Tool(...)]` attribute — a kebab-case key from the [bundled icon palette](/reference/plugin-schema#icon-field-—-two-forms) (e.g. `'calendar'`, `'mail'`, `'search'`, `'globe'`). The icon is surfaced on the Agent resource (`GET /api/v1/agents` / `GET /api/v1/agents/{id}`) so the admin UI can render a matching tile for the tool, **and on every ToolCall in `tool_calls[]` (REST + Mercure live-update)** so the chat UI's compact tool stream can render per-tool icons.
 
 Resolution is a 3-layer chain, evaluated server-side:
 
 1. The `*Tool` class's `#[Tool(icon: ...)]` argument (most specific — wins for multi-tool plugins).
-2. The owning plugin's [`plugin.json` `icon`](/reference/plugin-schema#icon-field--three-forms) field (plugin-level identity — covers single-tool plugins automatically).
+2. The owning plugin's [`plugin.json` `icon`](/reference/plugin-schema#icon-field-—-two-forms) field (plugin-level identity — covers single-tool plugins automatically).
 3. `null` — the frontend `<Icon>` component falls back to `'puzzle'`.
 
 Single-tool plugins don't need to set `#[Tool(icon: ...)]` — their `plugin.json` `icon` field is enough via the layer-2 fallback. Multi-tool plugins should set both: `plugin.json` for the plugin's overall identity and `#[Tool(icon: ...)]` per tool for the per-tool override.

@@ -348,8 +348,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
+- [Skills](/reference/api/skills) — 3 routes
 - [Sse](/reference/api/sse) — 3 routes
-- [Skills](/reference/api/skills) — 2 routes
 - [User-preferences](/reference/api/user-preferences) — 2 routes
 - [Apps](/reference/api/apps) — 1 route
 - [Assets](/reference/api/assets) — 1 route
@@ -497,6 +497,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/search`                                            | `cookieAuth`               | Index Search                                                           | Search           |
 | `GET`    | `/api/v1/skills`                                            | `cookieAuth`               | Index Skill                                                            | Skills           |
 | `GET`    | `/api/v1/skills/{slug}`                                     | `cookieAuth`               | Show Skill                                                             | Skills           |
+| `GET`    | `/api/v1/skills/{slug}/files/{path}`                        | `cookieAuth`               | File Skill                                                             | Skills           |
 | `GET`    | `/api/v1/speech/capability`                                 | `cookieAuth`               | Speech-to-text provider capability                                     | Speech           |
 | `GET`    | `/api/v1/speech/preference`                                 | `cookieAuth`               | Read the caller's preferred speech-to-text provider                    | Speech           |
 | `PUT`    | `/api/v1/speech/preference`                                 | `cookieAuth` + `csrfToken` | Set or clear the caller's preferred speech-to-text configuration       | Speech           |

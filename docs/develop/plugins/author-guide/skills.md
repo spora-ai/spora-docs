@@ -227,7 +227,7 @@ These are not style preferences. Each one is load-bearing for a caller that cann
 
 ### Version floor
 
-Pin `spora-ai/spora-core` to the release that first ships `SkillProviderInterface`, and put the guard in your **constructor** — the one moment the loader calls your code directly:
+Require a `spora-ai/spora-core` that ships `SkillProviderInterface` — and note that as of this writing no tagged release does, so the constraint belongs in `require-dev` or behind a `dev-main` alias rather than a version floor you can actually pin today. Either way, put the guard in your **constructor** — the one moment the loader calls your code directly:
 
 ```php
 final class AcmePlugin extends AbstractPlugin

@@ -131,6 +131,4 @@ The two canonical starting points:
 
 Other public plugins (`spora-plugin-tavily`, `spora-plugin-serper`, `spora-plugin-semantic-scholar`, `spora-plugin-worldnews`, `spora-plugin-weather`, `spora-plugin-calendar`, `spora-plugin-email`) are minimal single-tool plugins — ideal for studying the **minimum viable plugin** shape before adding tooling.
 
-Per-plugin reference pages (Installation, Configuration, Per-tool parameters, Development) live under [Plugins → Reference](/develop/plugins/reference/):
-
-- [Skeleton](/develop/plugins/reference/plugin-skeleton) · [Tavily](/develop/plugins/reference/tavily) · [Serper](/develop/plugins/reference/serper) · [Semantic Scholar](/develop/plugins/reference/semantic-scholar) · [World News](/develop/plugins/reference/worldnews) · [Weather](/develop/plugins/reference/weather) · [Calendar](/develop/plugins/reference/calendar) · [Email](/develop/plugins/reference/email) · [MiniMax](/develop/plugins/reference/minimax) · [Zernio](/develop/plugins/reference/zernio)
+Per-plugin reference pages (Installation, Configuration, Per-tool parameters, Development) live under [Plugins → Reference](/develop/plugins/reference/) — that index is the maintained list, one entry per plugin.

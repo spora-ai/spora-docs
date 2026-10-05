@@ -28,21 +28,30 @@ For the operator-facing HTTP API (`POST /api/v1/plugins`, `DELETE /api/v1/plugin
 
 ## Reference: shipped plugins
 
-The 12 plugins currently in the Spora org:
+The 19 plugins currently in the Spora org:
 
-| Plugin                                                          | What it adds                                                                                                     |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| [Skeleton](/develop/plugins/reference/plugin-skeleton)          | Minimal template — start here for new plugins                                                                    |
-| [Tavily](/develop/plugins/reference/tavily)                     | AI-native web search (LLM-optimised answer + ranked sources)                                                     |
-| [Serper](/develop/plugins/reference/serper)                     | Google Search via Serper.dev — 9 operations (web, images, news, video, scholar, shopping, patents, maps, places) |
-| [Staan](/develop/plugins/reference/staan)                       | EU-hosted web search — fast ranked results, or the same search with relevance-scored page excerpts               |
-| [Semantic Scholar](/develop/plugins/reference/semantic-scholar) | Academic paper search and metadata (free, no key)                                                                |
-| [World News](/develop/plugins/reference/worldnews)              | Top news by country and full-text news search                                                                    |
-| [Weather](/develop/plugins/reference/weather)                   | Current conditions, forecasts, astronomy (WeatherAPI.com)                                                        |
-| [Calendar](/develop/plugins/reference/calendar)                 | CalDAV read/write — iCloud, Fastmail, Nextcloud, Radicale, Baïkal                                                |
-| [Email](/develop/plugins/reference/email)                       | SMTP send + IMAP read — 11 operations                                                                            |
-| [MiniMax](/develop/plugins/reference/minimax)                   | MiniMax's image, speech, music, video capabilities                                                               |
-| [Muse](/develop/plugins/reference/muse)                         | Meta Muse vendor home — image generation / editing + speech-to-text on a single Meta Model API key               |
-| [Zernio](/develop/plugins/reference/zernio)                     | Social-media scheduling and publishing across 15+ networks                                                       |
+| Plugin                                                                  | What it adds                                                                                                          |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [Skeleton](/develop/plugins/reference/plugin-skeleton)                  | Minimal template — start here for new plugins                                                                         |
+| [Tavily](/develop/plugins/reference/tavily)                             | AI-native web search (LLM-optimised answer + ranked sources)                                                          |
+| [Serper](/develop/plugins/reference/serper)                             | Google Search via Serper.dev — 9 operations (web, images, news, video, scholar, shopping, patents, maps, places)      |
+| [Staan](/develop/plugins/reference/staan)                               | EU-hosted web search — fast ranked results, or the same search with relevance-scored page excerpts                    |
+| [Semantic Scholar](/develop/plugins/reference/semantic-scholar)         | Academic paper search and metadata (free, no key)                                                                     |
+| [World News](/develop/plugins/reference/worldnews)                      | Top news by country and full-text news search                                                                         |
+| [Weather](/develop/plugins/reference/weather)                           | Current conditions, forecasts, astronomy (WeatherAPI.com)                                                             |
+| [Calendar](/develop/plugins/reference/calendar)                         | CalDAV read/write — iCloud, Fastmail, Nextcloud, Radicale, Baïkal                                                     |
+| [Email](/develop/plugins/reference/email)                               | SMTP send + IMAP read — 11 operations                                                                                 |
+| [MiniMax](/develop/plugins/reference/minimax)                           | MiniMax's image, speech, music, video capabilities                                                                    |
+| [Muse](/develop/plugins/reference/muse)                                 | Meta Muse vendor home — image generation / editing + speech-to-text on a single Meta Model API key                    |
+| [Zernio](/develop/plugins/reference/zernio)                             | Social-media scheduling and publishing across 15+ networks                                                            |
+| [Custom skills](/develop/plugins/reference/custom-skills)               | Principal-scoped custom skills — author them by hand or ask the agent to, served through core's `skill` tool          |
+| [Media archive](https://github.com/spora-ai/spora-plugin-media-archive) | Browse, filter, and download media generated by your agents — a filterable admin panel over `MediaArchiveService`     |
+| [Memories](/develop/plugins/reference/memories)                         | Persistent memory storage for agents and users — the Memories admin panel plus `memory` / `global_memory` tools       |
+| [OpenAI Image](/develop/plugins/reference/openai-image)                 | OpenAI-compatible image generation — configure the model, API URL, and key for OpenAI or any compatible provider      |
+| [Team graph](https://github.com/spora-ai/spora-plugin-team-graph)       | A directed graph of the spawning relationships between this principal's agents, rendered via Mermaid in the admin SPA |
+| [Typst](/develop/plugins/reference/typst)                               | Compile Typst source to PDF/PNG/SVG via ext-typst — Inter OFL fonts and a writable per-principal example store        |
+| [Word](https://github.com/spora-ai/spora-plugin-word)                   | Convert Markdown to Word (.docx), and read .docx back as Markdown for the LLM                                         |
+
+> **Note:** [`spora-plugin-mistral`](https://github.com/spora-ai/spora-plugin-mistral) also lives in the org but is **archived** — it is no longer maintained and is excluded from the count above.
 
 For the architecture, manifest schema, and boot semantics that any plugin has to satisfy, see [Concepts → Plugin system](/reference/concepts/plugins-system).

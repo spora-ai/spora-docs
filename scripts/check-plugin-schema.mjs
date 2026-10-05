@@ -107,7 +107,9 @@ const DECLARED_EXCLUSIONS = new Set(['plugins_invalid_manifest'])
 function searchRoots() {
   if (process.env.SPORA_PLUGIN_SCHEMA_DIRS) {
     return {
-      roots: process.env.SPORA_PLUGIN_SCHEMA_DIRS.split(':').filter(Boolean).map((d) => resolve(d)),
+      roots: process.env.SPORA_PLUGIN_SCHEMA_DIRS.split(':')
+        .filter(Boolean)
+        .map((d) => resolve(d)),
       source: 'SPORA_PLUGIN_SCHEMA_DIRS',
     }
   }
@@ -115,17 +117,27 @@ function searchRoots() {
   // Sibling plugin repos — the manifests that actually ship. Sorted so the
   // output order is stable between runs.
   const sibling = resolve(ROOT, '..')
+  for (const dir of siblingPluginDirs(sibling)) {
+    roots.push(dir)
+  }
+  return { roots, source: 'auto-discovery' }
+}
+
+// Sibling plugin repos — the manifests that actually ship. Sorted so the
+// output order is stable between runs.
+function siblingPluginDirs(sibling) {
   const entries = existsSync(sibling) ? readdirSync(sibling) : []
+  const dirs = []
   for (const entry of entries.sort((a, b) => a.localeCompare(b))) {
     if (!entry.startsWith('spora-plugin-') || entry.includes('worktree')) continue
     const dir = resolve(sibling, entry)
     try {
-      if (statSync(dir).isDirectory()) roots.push(dir)
+      if (statSync(dir).isDirectory()) dirs.push(dir)
     } catch {
       // Dangling symlink or unreadable entry — nothing to collect from it.
     }
   }
-  return { roots, source: 'auto-discovery' }
+  return dirs
 }
 
 // An unreadable directory (permissions, or a symlink that dangles) is skipped
@@ -169,23 +181,29 @@ function walkManifests(root) {
     for (const entry of readDirSafe(dir)) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
-        const { kind } = classifyDir(entry.name)
-        if (kind === 'descend') stack.push(full)
-        else if (kind === 'structural') structuralSkips += 1
-        else {
-          // Quantified, not just named — the reader should see what the
-          // exclusion costs in coverage, not have to go count it.
-          excluded.push({
-            dir: displayPath(full),
-            reason: `${countManifests(full)} manifest(s) omitted — ${entry.name} commits deliberately invalid manifests for PluginLoader's boot-time rejection tests`,
-          })
-        }
+        const outcome = classifySubtree(full, entry.name)
+        if (outcome.kind === 'descend') stack.push(full)
+        else if (outcome.kind === 'structural') structuralSkips += 1
+        else excluded.push({ dir: displayPath(full), reason: outcome.reason })
         continue
       }
       if (entry.name === 'plugin.json') found.push(full)
     }
   }
   return { found, excluded, structuralSkips }
+}
+
+// A directory's verdict, plus the sentence to print when it is skipped.
+// Quantified rather than just named, so the reader sees what the exclusion
+// costs in coverage without going to count it.
+function classifySubtree(full, name) {
+  const { kind } = classifyDir(name)
+  if (kind === 'structural') return { kind }
+  if (kind === 'descend') return { kind }
+  return {
+    kind,
+    reason: `${countManifests(full)} manifest(s) omitted — ${name} commits deliberately invalid manifests for PluginLoader's boot-time rejection tests`,
+  }
 }
 
 // Prefer a path relative to this checkout. A single leading `..` is a sibling
@@ -228,9 +246,7 @@ function findIconResolver() {
 // here would leave the icon contract unverified while looking green.
 function readIconLeadTest(resolverPath) {
   const source = readFileSync(resolverPath, 'utf8')
-  const line = source
-    .split('\n')
-    .find((l) => l.includes(`${ICON_LEAD_CONST} =`))
+  const line = source.split('\n').find((l) => l.includes(`${ICON_LEAD_CONST} =`))
   if (line === undefined) {
     throw new Error(`${ICON_LEAD_CONST} not found in ${displayPath(resolverPath)}`)
   }
@@ -267,54 +283,58 @@ function readIconRegistry(resolverPath) {
   return names
 }
 
-// Three assertions, all resolvable without parsing prose:
-//
-//   1. The description quotes the resolver's regex verbatim. This is the
-//      anti-drift anchor: if `SVG_PATH_LEAD` ever changes, the description has
-//      to change with it or this fails.
-//   2. A `pattern` on `icon`, if one is ever added, must not accept a string
-//      the resolver rejects. There is deliberately no pattern today — one regex
-//      cannot express "bundled name OR raw path" — but a loose one added later
-//      would be a silent contract widening.
-//   3. Every `examples` entry is either a name in the resolver's registry or a
-//      string the resolver's lead test accepts.
-//
-// A prose-level "did you re-widen the letter list" check is deliberately NOT
-// attempted: distinguishing "L/H/C are invalid leads" from "L/H/C are valid
-// leads" needs negation-aware parsing, and a wrong version of that check
-// false-positives on correct text. The verbatim quote is the enforceable part.
+// The three assertions below are all resolvable without parsing prose, which is
+// what keeps them from false-positiving on correct text. A prose-level "did you
+// re-widen the letter list" check is deliberately NOT attempted: distinguishing
+// "L/H/C are invalid leads" from "L/H/C are valid leads" needs negation-aware
+// parsing. The verbatim quote is the enforceable part.
 function checkIconContract(schema, leadTest, registry) {
-  const failures = []
   const icon = schema.properties?.icon
   if (icon === undefined) {
     return ['schema has no `icon` property to check against the host resolver']
   }
-  const description = icon.description ?? ''
-  const lead = leadTest.test
-  const accepted = deriveLeadingLetters(lead)
+  const accepted = deriveLeadingLetters(leadTest.test)
   const rule = `${ICON_LEAD_CONST} = /${leadTest.source}/`
 
-  if (!description.includes(leadTest.source)) {
+  const failures = []
+  if (!(icon.description ?? '').includes(leadTest.source)) {
     failures.push(
       `icon description does not quote the resolver's actual lead test (${rule}). ` +
         `Quote it so the published contract cannot drift from the implementation — ` +
         `the resolver accepts only ${accepted.join('/')} followed by a digit.`,
     )
   }
+  failures.push(...checkIconPattern(icon, accepted, rule))
+  failures.push(...checkIconExamples(icon, leadTest.test, registry, rule))
 
-  if (typeof icon.pattern === 'string') {
-    const pattern = new RegExp(icon.pattern, 'u')
-    for (const letter of PATH_COMMAND_LETTERS) {
-      if (accepted.includes(letter)) continue
-      if (pattern.test(`${letter}1 1`)) {
-        failures.push(
-          `icon.pattern /${icon.pattern}/ accepts "${letter}1 1", which the resolver ` +
-            `rejects (${rule}) — it would silently fall back to "puzzle".`,
-        )
-      }
+  return failures
+}
+
+// A `pattern` on `icon`, if one is ever added, must not accept a string the
+// resolver rejects. There is deliberately no pattern today — one regex cannot
+// express "bundled name OR raw path" — but a loose one added later would be a
+// silent contract widening.
+function checkIconPattern(icon, accepted, rule) {
+  if (typeof icon.pattern !== 'string') return []
+  const pattern = new RegExp(icon.pattern, 'u')
+  const failures = []
+  for (const letter of PATH_COMMAND_LETTERS) {
+    if (accepted.includes(letter)) continue
+    if (pattern.test(`${letter}1 1`)) {
+      failures.push(
+        `icon.pattern /${icon.pattern}/ accepts "${letter}1 1", which the resolver ` +
+          `rejects (${rule}) — it would silently fall back to "puzzle".`,
+      )
     }
   }
+  return failures
+}
 
+// Every `examples` entry is either a name in the resolver's registry or a
+// string the resolver's lead test accepts. A name is checked before the lead
+// test so a bundled name that happens to look like path data still passes.
+function checkIconExamples(icon, lead, registry, rule) {
+  const failures = []
   for (const example of icon.examples ?? []) {
     if (typeof example !== 'string') continue
     const trimmed = example.trim()
@@ -325,7 +345,6 @@ function checkIconContract(schema, leadTest, registry) {
         `render as the "puzzle" fallback.`,
     )
   }
-
   return failures
 }
 
@@ -511,7 +530,9 @@ function main() {
   }
 
   const inUse = [...sink.observed].sort((a, b) => a.localeCompare(b))
-  console.log(`\n${discovery.manifests.length} manifest(s) validate. Keys in use: ${inUse.join(', ')}.`)
+  console.log(
+    `\n${discovery.manifests.length} manifest(s) validate. Keys in use: ${inUse.join(', ')}.`,
+  )
   for (const key of FORWARD_COMPAT_ALLOWANCE.keys()) {
     if (sink.observed.has(key)) continue
     console.log(`Permitted but unused: ${key} (allowed: ${FORWARD_COMPAT_ALLOWANCE.get(key)})`)

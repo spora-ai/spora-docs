@@ -29,13 +29,14 @@ final class YourPlugin extends AbstractPlugin
 {
     public function agentTemplatePaths(): array
     {
-        // Paths may point to directories (scanned depth-0) or individual files.
+        // Directories, scanned depth-0 for .json / .yaml / .yml.
+        // A path that is not a directory is skipped.
         return [__DIR__ . '/../agent-templates'];
     }
 }
 ```
 
-The scanner aggregates your paths alongside the project's own `agent-templates/` directory, the framework's, and any paths contributed by the project App. The result is a **flat list with no dedupe** — nothing is keyed, merged, or sorted by `id`, so two directories shipping the same `id` both appear, and the by-id lookups (`GET /api/v1/agent-templates/{id}` and the built-in import path) both return the **first** match. See [Concepts → Agent templates](/reference/concepts/agent-templates) for the resolution order and for the id-namespacing rule as the scanner actually implements it.
+The scanner aggregates your paths alongside the project's own `agent-templates/` directory, the framework's, and any paths contributed by the project App. Your paths are labelled with your plugin slug, and so are theirs — `project`, `core`, `app` — which is what the gallery groups on and what your ids are checked against. The result is a **flat list with no dedupe** — nothing is keyed, merged, or sorted by `id`, so two directories shipping the same `id` both appear, and the by-id lookups (`GET /api/v1/agent-templates/{id}` and the built-in import path) both return the **first** match. See [Concepts → Agent templates](/reference/concepts/agent-templates) for the full resolution order.
 
 ## JSON / YAML schema
 
@@ -44,7 +45,7 @@ The full schema lives at [`https://docs.spora-ai.com/schemas/agent-template.sche
 ```json
 {
   "$schema": "https://docs.spora-ai.com/schemas/agent-template.schema.json",
-  "id": "agent-templates/research-assistant",
+  "id": "serper/research-assistant",
   "name": "Research Assistant",
   "description": "Looks things up on the web and reports back.",
   "version": "1.0.0",
@@ -79,7 +80,14 @@ The full schema lives at [`https://docs.spora-ai.com/schemas/agent-template.sche
 }
 ```
 
-> **Namespace prefix checked at scan time.** For every scanned file except the sources `core` and `uploaded`, the scanner requires `id` to start with the resolved `source` followed by `/` — and `source` is the **name of the directory the file lives in**, not your plugin slug. With the `agent-templates/` directory shown above, `"id": "agent-templates/research-assistant"` passes and `"id": "serper/research-assistant"` raises a `NAMESPACE_MISMATCH` **warning** — the template still loads and still imports, it is just flagged. Because the prefix is the directory basename, naming your template directory something plugin-specific is what actually namespaces your ids. Uploads skip the check entirely (the import endpoint builds the template straight from the raw payload), so a bare slug is fine there. The `<plugin-slug>/<slug>` form is what the published schema's `id` description documents, but nothing enforces it today — treat that as a known upstream gap. See [Agent template schema → `id`](/reference/agent-template-schema) for the exact regex.
+> **Namespace prefix checked at scan time.** Prefix your `id` with **your own plugin slug** — the `slug` field in your `plugin.json`, the same string the gallery names your group after. `PluginLoader::agentTemplatePaths()` labels every path you return with that slug, and the scanner checks your `id` against it, so `"id": "serper/research-assistant"` is clean. Two things worth knowing:
+>
+> - It is a **warning, not a rejection.** A mismatch raises `NAMESPACE_MISMATCH`; the template still loads, still appears in the gallery, and still imports. It just carries a flag, and the flag does not reach the operator's import dialog (see [Operator experience](#operator-experience)).
+> - The sources `core` and `uploaded` are **exempt** — the framework's own bundled templates and operator uploads, neither of which competes with a plugin for the same id. Uploads skip the check entirely anyway: the import endpoint builds the template straight from the raw payload, so a bare slug is fine there.
+>
+> Because the label travels with your paths rather than being read off the directory name, keeping the directory called `agent-templates/` is fine and does not affect your ids. See [Agent template schema → `id`](/reference/agent-template-schema) for the exact regex.
+>
+> Three plugins currently ship a bare id and so do warn on every scan — `typst-expert` in spora-plugin-typst, `image-agent` in spora-plugin-openai-image, `media-agent` in spora-plugin-minimax. Renaming them to `typst/typst-expert`, `openai-image/image-agent` and `minimax/media-agent` is the fix, and it lives in the plugin's own repo.
 
 YAML is accepted for third-party plugins. The framework itself ships JSON so diffs stay clean.
 
@@ -88,7 +96,7 @@ YAML is accepted for third-party plugins. The framework itself ships JSON so dif
 ## Operator experience
 
 1. Operator opens the agent gallery in the admin UI and picks your template.
-2. A dry-run validation pass surfaces the payload's own non-fatal warnings — `OPERATION_UNKNOWN`, `SYSTEM_PROMPT_MISSING`, `METADATA_CATEGORY_UNKNOWN` and, on a scanned file, `NAMESPACE_MISMATCH`.
+2. A dry-run validation pass surfaces the payload's own non-fatal warnings — `OPERATION_UNKNOWN`, `SYSTEM_PROMPT_MISSING`, `METADATA_CATEGORY_UNKNOWN`. `NAMESPACE_MISMATCH` is a **scan-time** warning and does not reach that step: the dialog re-validates the raw payload and discards the warnings the scan attached. It does light up the amber triangle on your template's gallery card.
 3. The operator can **Import anyway** — disabled/missing tools are silently skipped; the remaining warnings are reported once the agent exists.
 4. After import, the operator configures API keys in Settings → Tools.
 
@@ -96,12 +104,12 @@ YAML is accepted for third-party plugins. The framework itself ships JSON so dif
 
 The codes are split by **when they become knowable**, because an author only ever sees the first group on their own file:
 
-| Code                        | Raised by  | Meaning                                                          |
-| --------------------------- | ---------- | ---------------------------------------------------------------- |
-| `SYSTEM_PROMPT_MISSING`     | validation | The template did not declare a `system_prompt`.                  |
-| `OPERATION_UNKNOWN`         | validation | An operation name is not declared by the tool. Skipped silently. |
-| `METADATA_CATEGORY_UNKNOWN` | validation | `metadata.category` is not in the known enum.                    |
-| `NAMESPACE_MISMATCH`        | scanner    | `id` does not start with the source directory's name.            |
+| Code                        | Raised by  | Meaning                                                                                                  |
+| --------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
+| `SYSTEM_PROMPT_MISSING`     | validation | The template did not declare a `system_prompt`.                                                          |
+| `OPERATION_UNKNOWN`         | validation | An operation name is not declared by the tool. Skipped silently.                                         |
+| `METADATA_CATEGORY_UNKNOWN` | validation | `metadata.category` is not in the known enum.                                                            |
+| `NAMESPACE_MISMATCH`        | scanner    | `id` does not start with the root's `source` label — your plugin slug. `core` and `uploaded` are exempt. |
 
 These four are what `POST /api/v1/agent-templates/validate` returns, and the four more below only surface once an import actually runs, because they depend on what is installed on the recipient's instance:
 

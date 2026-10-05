@@ -27,7 +27,6 @@
 //      `additionalProperties: false` the loader silently ignores such a key at
 //      boot, so this is exactly the case where the schema would be lying.
 //   3. Reverse drift — a key the schema permits that *no* manifest uses and
-//   3. Reverse drift — a key the schema permits that *no* manifest uses and
 //      that is not listed in FORWARD_COMPAT_ALLOWANCE below. Without this the
 //      schema rots in the other direction by accumulating plausible fields
 //      nothing uses.
@@ -296,18 +295,26 @@ function checkIconContract(schema, leadTest, registry) {
   const accepted = deriveLeadingLetters(leadTest.test)
   const rule = `${ICON_LEAD_CONST} = /${leadTest.source}/`
 
-  const failures = []
-  if (!(icon.description ?? '').includes(leadTest.source)) {
-    failures.push(
-      `icon description does not quote the resolver's actual lead test (${rule}). ` +
-        `Quote it so the published contract cannot drift from the implementation — ` +
-        `the resolver accepts only ${accepted.join('/')} followed by a digit.`,
-    )
-  }
-  failures.push(...checkIconPattern(icon, accepted, rule))
-  failures.push(...checkIconExamples(icon, leadTest.test, registry, rule))
+  // One array, built rather than accumulated: each sub-check returns its own
+  // failures, and the three are independent, so there is nothing to sequence and
+  // nothing to report as a run.
+  return [
+    ...checkIconDescription(icon, leadTest.source, accepted, rule),
+    ...checkIconPattern(icon, accepted, rule),
+    ...checkIconExamples(icon, leadTest.test, registry, rule),
+  ]
+}
 
-  return failures
+// The description has to quote the resolver's test verbatim, because every other
+// claim in it — the accepted leads, the digit requirement, the minus sign — is
+// prose the check cannot parse. Quoting is what makes the rest checkable.
+function checkIconDescription(icon, leadTestSource, accepted, rule) {
+  if ((icon.description ?? '').includes(leadTestSource)) return []
+  return [
+    `icon description does not quote the resolver's actual lead test (${rule}). ` +
+      `Quote it so the published contract cannot drift from the implementation — ` +
+      `the resolver accepts only ${accepted.join('/')} followed by a digit.`,
+  ]
 }
 
 // A `pattern` on `icon`, if one is ever added, must not accept a string the

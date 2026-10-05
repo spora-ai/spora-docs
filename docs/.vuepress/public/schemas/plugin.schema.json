@@ -2,21 +2,32 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://docs.spora-ai.com/schemas/plugin.schema.json",
     "title": "Spora Plugin Manifest",
-    "description": "Schema for plugin.json — the manifest every Spora plugin must ship.",
+    "description": "Schema for plugin.json — the manifest every Spora plugin ships at its package root.\n\nThis mirrors the contract Spora\\Plugins\\PluginLoader enforces at boot: only `slug` and `class` are hard-required, and a manifest missing either (or carrying a non-string value) is rejected with PluginLoadFailedException before the rest of the application boots. Every other field is optional.\n\n`additionalProperties: false` is deliberate, not incidental. The loader *silently ignores* manifest keys it does not recognise, so a typo (`autoloadd`, `desciption`) would quietly do nothing at runtime. This schema is the only surface that can tell an author their key is unknown. If a plugin genuinely needs a new manifest field, add it here first — do not invent a key.\n\nIntentionally NOT accepted: `version`. No in-tree manifest declares one and no runtime code reads one. The operator-facing version comes from the git tag Composer recorded at install time (Composer\\InstalledVersions::getPrettyVersion()); a hand-edited manifest version could only drift from the release operators actually see. `dependencies` is likewise a composer.json concern (Composer `require`), and the old `file` entry-point override was removed when the loader became PSR-4-only.\n\nHuman-readable reference: docs.spora-ai.com/reference/plugin-schema. This file is validated against every real plugin manifest in the tree by the `check:plugin-schema` CI job, so it cannot silently drift from what plugins actually ship.",
     "type": "object",
     "required": ["slug", "class"],
     "additionalProperties": false,
     "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "Absolute URI of the schema this manifest validates against, so editors (VSCode json-language-service, JetBrains, ajv) and CI tooling can resolve the contract without a network round-trip. Every manifest in the spora-ai org points at the published copy: \"https://docs.spora-ai.com/schemas/plugin.schema.json\". No Spora runtime code reads this key — it exists purely for tooling, and is safe to omit.",
+            "examples": ["https://docs.spora-ai.com/schemas/plugin.schema.json"]
+        },
         "slug": {
             "type": "string",
-            "description": "Unique machine-readable identifier for this plugin. Used as the component key in schema_versions and as the required prefix for migration filenames. Must be stable across releases.",
+            "description": "Unique machine-readable identifier for this plugin. Used as the component key in schema_versions and as the required prefix for migration filenames. Must be stable across releases. The loader applies this same pattern at boot and throws PluginLoadFailedException on a violation, so a slug that validates here also boots.",
             "pattern": "^[a-z0-9][a-z0-9_-]*$",
             "examples": ["my-plugin", "acme_search"]
         },
         "class": {
             "type": "string",
-            "description": "Fully-qualified class name of the plugin entry point. Must implement Spora\\Plugins\\PluginInterface.",
+            "minLength": 1,
+            "description": "Fully-qualified class name of the plugin entry point. Must implement Spora\\Plugins\\PluginInterface. The loader instantiates it via PSR-4 after registering the manifest's `autoload` block, and throws PluginLoadFailedException at boot if the class is missing, unresolvable, or not a PluginInterface.",
             "examples": ["Acme\\MyPlugin\\Plugin"]
+        },
+        "name": {
+            "type": "string",
+            "description": "Package / human-readable name for the plugin. In practice every manifest that ships it sets it to the Composer package name from the plugin's composer.json — e.g. \"spora-ai/spora-plugin-typst\".\n\nNo runtime code reads it: PluginLoader keys plugins by `slug` and instantiates `class`, and PluginManager's inventory prefers composer.json#name (falling back to the directory basename for partial installs). Keep it in sync with composer.json — it is here for registry metadata, release tooling, and humans reading the file.",
+            "examples": ["spora-ai/spora-plugin-typst"]
         },
         "description": {
             "type": "string",
@@ -44,6 +55,29 @@
                 "primary"
             ],
             "examples": ["emerald", "amber"]
+        },
+        "autoload": {
+            "type": "object",
+            "description": "Autoloading hints for a plugin that is not — or not only — wired through its own composer.json. Both keys are optional. The loader registers whatever it finds here *after* composer.json's own autoloader is already registered, so these entries act as an override/extension rather than a replacement.\n\nPrefer declaring PSR-4 mappings in composer.json. The manifest block is the escape hatch for sibling-clone workflows and for pointing at a non-Composer source tree.",
+            "additionalProperties": false,
+            "properties": {
+                "psr-4": {
+                    "type": "object",
+                    "description": "PSR-4 namespace-prefix → path mapping, with paths relative to the plugin root. Every entry is handed to Composer's ClassLoader::addPsr4() before the entry-point class is resolved, so a wrong prefix here is what produces a \"declares class X but the class is not autoloadable\" PluginLoadFailedException at boot. Prefixes conventionally end in a backslash and paths conventionally end in a slash. Multiple entries are supported.",
+                    "additionalProperties": { "type": "string" },
+                    "examples": [{ "Spora\\Plugins\\Typst\\": "src/" }]
+                },
+                "files": {
+                    "type": "array",
+                    "description": "PHP files to require_once, relative to the plugin root, processed after the psr-4 mappings. This is how a plugin with its own Composer dependency tree loads it: [\"vendor/autoload.php\"]. Each path is require_once'd only if it exists on disk, so a missing file is skipped silently rather than raising.",
+                    "items": { "type": "string" },
+                    "examples": [["vendor/autoload.php"]]
+                }
+            }
+        },
+        "frontendEntry": {
+            "type": "string",
+            "description": "Path to a pre-built frontend bundle this plugin contributes, which lets a JSON-only plugin ship a UI without writing PHP. Read by AppsController::resolveFrontendEntry() as a fallback only: a plugin whose App class implements VueAppInterface has its PHP-declared entry win, and this key is consulted just for the apps that do not.\n\nNo manifest in the spora-ai org ships this key yet. It is declared here because the runtime reads it — a plugin that sets it must not be rejected as an unknown key."
         }
     }
 }

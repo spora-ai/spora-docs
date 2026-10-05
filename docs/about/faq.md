@@ -29,7 +29,7 @@ Yes. Use the [Classical server](/deploy/classical-server) path (nginx + PHP-FPM 
 
 **Q: Where do plugins come from?**
 
-Plugins ship as Composer packages of `type: "spora-plugin"`. The Spora org publishes a starter template ([spora-plugin-skeleton](https://github.com/spora-ai/spora-plugin-skeleton)) and ten production plugins (Tavily, Serper, Staan, Semantic Scholar, World News, Weather, Calendar, Email, MiniMax, Muse, Zernio). Anyone can author one — see [Author guide](/develop/plugins/author-guide).
+Plugins ship as Composer packages of `type: "spora-plugin"`. The Spora org publishes a starter template ([spora-plugin-skeleton](https://github.com/spora-ai/spora-plugin-skeleton)) and eighteen production plugins (Tavily, Serper, Staan, Semantic Scholar, World News, Weather, Calendar, Email, MiniMax, Muse, Zernio, Custom skills, Media archive, Memories, OpenAI Image, Team graph, Typst, Word) — [Develop → Plugins](/develop/plugins/) has the full inventory. Anyone can author one — see [Author guide](/develop/plugins/author-guide).
 
 **Q: How do I install a plugin?**
 

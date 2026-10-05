@@ -40,6 +40,6 @@ The deep-dive reference for Spora's internals. These pages were migrated from th
 - **[Code documentation](/reference/concepts/code-documentation)** — comment policy (delete / keep / add)
 - **[Testing](/reference/concepts/testing)** — Pest, Vitest, SonarQube coverage gate
 
-## A note on WIP sections
+## A note on subsystem maturity
 
-The **plugin system** is currently a work-in-progress (see [Architecture](/reference/concepts/architecture#plugin-system)). The hook methods are declared and surfaced by the manifest, but the explicit `PluginLoader → DI container` injection path is not yet fully wired up. Three open PRs are landing this; we keep the WIP callout visible on the page so readers know the limitations.
+Every page on this site describes shipping `spora-core` behaviour. Where a subsystem is genuinely partial — a hook that is declared but not yet called, a container key with no merge path — the page says so **inline, at the exact point of limitation**, with the `file:line` evidence, rather than in a page-level banner. If you find a claim here that the code contradicts, it is a docs bug: the page is wrong, not the code.

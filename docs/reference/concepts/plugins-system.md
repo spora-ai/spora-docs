@@ -1,11 +1,11 @@
 ---
 title: Plugin system
-description: Plugin manifest, auto-discovery, bundled deps, agent templates, contributing tools/drivers.
+description: Plugin manifest, auto-discovery, bundled deps, agent templates, contributing tools/apps/providers.
 ---
 
 # Spora Plugin System
 
-Plugins extend Spora with additional LLM drivers, tools, and agent templates. Each plugin is a self-contained directory deployed alongside the core application.
+Plugins extend Spora with additional tools, admin apps, agent templates, skills, and providers. Each plugin is a self-contained directory deployed alongside the core application.
 
 ## Directory layout
 
@@ -35,12 +35,15 @@ The full JSON Schema is in [`plugin.schema.json`](https://github.com/spora-ai/sp
 
 ### Optional fields
 
-| Field            | Type   | Description                                                                                                                                                                                                                                                                                                                        |
-| ---------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                                      |
-| `icon`           | string | Icon for the inventory UI. Three forms are accepted — bundled name, full `<svg>` string, or raw SVG path. Defaults to `"puzzle"` when omitted. Lets a plugin ship its own visual identity without coordinating with the Spora frontend. See [Bundled icons](#bundled-icons) for the curated palette and the three forms in detail. |
-| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                                                               |
-| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                                                                |
+| Field            | Type   | Description                                                                                                                                                                                                                                                                                  |
+| ---------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                |
+| `icon`           | string | Icon for the inventory UI. Two forms are accepted — a bundled name or a raw SVG path. Defaults to `"puzzle"` when omitted. See [Bundled icons](#bundled-icons) for the curated palette, or the [schema reference](/reference/plugin-schema#icon-field-—-two-forms) for both forms in detail. |
+| `accent`         | string | Tile accent colour for the plugin's app tile. One of `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` (default). Precedence: PHP `App::accent()` > this field > `"primary"`.                                                                                                           |
+| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                         |
+| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                          |
+
+> **Note:** the published schema's only top-level fields are `slug`, `class`, `description`, `icon`, and `accent`. The two `autoload.*` rows above describe what `PluginLoader` reads at runtime, not part of the schema — see the [schema reference](/reference/plugin-schema#top-level-fields) for the contract.
 
 ### Minimal example
 
@@ -53,7 +56,7 @@ The full JSON Schema is in [`plugin.schema.json`](https://github.com/spora-ai/sp
 
 ### Bundled icons
 
-The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors can reference any of these by name from the manifest's `icon` field without shipping their own SVG. For categories not covered below, fall back to a raw SVG path string (the `icon` field accepts anything starting with a path command letter).
+The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors can reference any of these by name from the manifest's `icon` field without shipping their own SVG. For categories not covered below, fall back to a raw SVG path string — the shipped renderer only draws a path that opens with a moveto (`M` or `m` followed by a coordinate); see the [schema reference](/reference/plugin-schema#icon-field-—-two-forms) for the command list the schema describes.
 
 | Category         | Names                                                                                                                                                                                                                                                                                                                 |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -64,9 +67,9 @@ The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors 
 | Tools & code     | `zap`, `code`                                                                                                                                                                                                                                                                                                         |
 | UI utility       | `bell`, `check`, `x`, `plus`, `chevron-right/down/left`, `arrow-right`, `menu`, `grid`, `user`, `logout`, `settings`, `sun`, `moon`, `warning`, `pencil`, `trash`, `star`, `clock`, `computer`, `tools`, `file`, `chat`, `agents`, `shield-check`, `user-plus`, `eye`, `lock`, `check-circle`, `info`, `error-circle` |
 
-### Three forms of plugin-supplied icons
+### Two forms of plugin-supplied icons
 
-The `icon` field in `plugin.json` accepts three forms. The frontend tries them in this order:
+The `icon` field in `plugin.json` accepts two forms. The frontend tries them in this order:
 
 1. **Bundled name** — any kebab-case identifier from the table above (or the wider UI palette). Smallest in JSON, no shipping required. Best for the common case.
 
@@ -74,15 +77,7 @@ The `icon` field in `plugin.json` accepts three forms. The frontend tries them i
    { "icon": "puzzle" }
    ```
 
-2. **Full `<svg>` string** — a complete `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">…</svg>` for multi-primitive icons (e.g. circle + path, rect + path). The host's outer `<svg>` tag is discarded and the host's `class`, `fill`, `stroke`, `viewBox`, `stroke-width` win. The inner children are sanitized to a tight allowlist (`path`, `circle`, `ellipse`, `polyline`, `polygon`, `rect`, `g` plus the attributes the template reads) before being rendered via `v-html` — any other tags or attributes are stripped. Use this when you need a lucide icon (or a hand-rolled one) that uses non-`<path>` primitives.
-
-   ```json
-   {
-     "icon": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/></svg>"
-   }
-   ```
-
-3. **Raw SVG path** — a single path string starting with a path command letter (`M`/`L`/`H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, uppercase or lowercase). Smaller than the full `<svg>` form, but limited to single-path icons.
+2. **Raw SVG path** — a single path string. The renderer recognises one that opens with a moveto — `M` or `m` followed by a coordinate — and a path opening with any other command silently falls through to the `puzzle` fallback, so always start at the top-left of the glyph. Smallest in JSON, but limited to single-path icons — compose multi-shape glyphs with subpaths via `M`.
 
    ```json
    {
@@ -90,11 +85,13 @@ The `icon` field in `plugin.json` accepts three forms. The frontend tries them i
    }
    ```
 
-If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend renders the bundled `puzzle` icon. If `icon` is set but matches none of the three forms (typo, non-SVG garbage, etc.), the frontend falls back to the bundled `puzzle` icon — silently, not an error. A whitespace-only `icon` value is treated the same as missing.
+If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend renders the bundled `puzzle` icon. If `icon` is set but matches neither form (typo, non-SVG garbage, etc.), the frontend falls back to the bundled `puzzle` icon — silently, not an error. A whitespace-only `icon` value is treated the same as missing.
 
-**Security note:** Plugin authors are operators with shell access to the Spora host — see § Security. The frontend trust boundary is the plugin manifest itself, not user input. The `<svg>` form is rendered via Vue's `v-html` only on the inner children of a trusted plugin's `<svg>` string, and only after DOMPurify has stripped everything outside the SVG-primitive allowlist. The host's outer `<svg>` tag is discarded and cannot be overridden.
+> **There is no inline `<svg>` form any more.** A complete `<svg>…</svg>` blob used to be a third accepted form, sanitised through DOMPurify's SVG profile and injected with `v-html`. It is not accepted today: historical mXSS bypasses in that profile are why the frontend dropped the `v-html` path entirely, so manifest strings are no longer rendered as markup at all. Ship a single `d` string. The [schema reference](/reference/plugin-schema#icon-field-—-two-forms) has the full reasoning, the bundled-name list, and the accepted path commands. The trust boundary is otherwise unchanged — plugin authors are operators with shell access; see [Security](#security).
 
 ### Full example
+
+Every field the schema accepts, and nothing else:
 
 ```json
 {
@@ -102,15 +99,11 @@ If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend ren
   "class": "Acme\\Search\\Plugin",
   "description": "Search the public web via the Acme API.",
   "icon": "M11 4a7 7 0 1 1-4.95 11.95l-2.43 2.43a1 1 0 0 1-1.42-1.42l2.43-2.43A7 7 0 0 1 11 4Zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
-  "autoload": {
-    "psr-4": {
-      "Acme\\Search\\": "src/",
-      "Acme\\Shared\\": "lib/"
-    },
-    "files": ["vendor/autoload.php"]
-  }
+  "accent": "sky"
 }
 ```
+
+Add the [`autoload` block](/reference/plugin-schema#autoload-block) if your plugin ships its own vendor tree or a non-Composer source layout — the loader honours it, the schema does not describe it.
 
 ## Entry-point class
 
@@ -148,36 +141,41 @@ The data hook surface after the 1.0 cut. Every hook is optional — `AbstractPlu
 | `apps()`                  | `class-string<AppInterface>[]`                  | Admin-UI side-panels contributed to the AppRegistry at container build time.                                                                                                                                                                                                                                                                        |
 | `speechToTextProviders()` | `class-string<SpeechToTextProviderInterface>[]` | Speech-to-text provider classes participating in `Spora\Speech\SpeechToTextRegistry` alongside core's OpenAI-compatible transcriber. Only needed for a wire shape OpenAI-multipart cannot express. See [Speech providers](/develop/plugins/author-guide/speech-providers).                                                                          |
 | `skillProviders()`        | `class-string<SkillProviderInterface>[]`        | Skill provider classes for skills that have **no directory** — user-authored, tenant-scoped, or synthesised. Ships [custom skills](/reference/concepts/skills#custom-skills); a static class list, read by the container at build time. See [Authoring a skill provider](/develop/plugins/author-guide/skills#shipping-a-provider-not-a-directory). |
+| `searchProviders()`       | `class-string<SearchProviderInterface>[]`       | Search provider classes contributing hits to the host ⌘K palette. `skillProviders()` makes a resource _readable_; this makes it _findable_. Most plugins need neither hook for skills — core's own `SkillSearchProvider` already searches everything in the skill registry.                                                                         |
 
-> **Moved to events in 1.0.** The hooks `register()`, `routes()`, and `boot()` no longer exist on the interface. They became PSR-14 events — see [Lifecycle Events](#lifecycle-events) below. The hooks `autoload()`, `drivers()`, and `recipePaths()` were removed entirely; their data lives in `plugin.json` (PSR-4 mappings) or has no current consumers.
+> **Moved to events in 1.0.** The hooks `register()`, `routes()`, and `boot()` no longer exist on the interface. They became PSR-14 events — see [Lifecycle Events](#lifecycle-events) below. The hooks `autoload()`, `drivers()`, and `recipePaths()` were removed entirely; their data lives in `plugin.json` (PSR-4 mappings) or has no current consumers. The manifest `autoload` block is still read by the loader (`autoload.psr-4` / `autoload.files`) even though the published [`plugin.schema.json`](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) does not list it — a strict JSON-Schema validator flags the block under its `additionalProperties: false`, but `PluginLoader` only enforces `slug` and `class`, so the block is honoured. `composer.json` remains the supported home for PSR-4 mappings; see [Plugin manifest schema](/reference/plugin-schema).
 
 ### Why `skillProviders()` is a data hook and not an event
 
-`speechToTextProviders()` and `skillProviders()` both contribute a **static list of class names**, and both are read the same way: the container asks `PluginLoader` for the merged class list once, during build, and resolves the classes itself. Neither is behaviour, so neither is a PSR-14 event.
+`speechToTextProviders()`, `skillProviders()`, and `searchProviders()` all contribute a **static list of class names**, and all are read the same way: the container asks `PluginLoader` for the merged class list once, during build, and resolves the classes itself. None is behaviour, so none is a PSR-14 event.
 
 The timing is what settles it. Subscriber wiring runs _after_ plugin discovery and _before_ the container is built, but a plugin that tried to register a provider from a listener would be registering into a registry the container is in the middle of constructing — a second owner, and one that has to be re-entrant on warm boots where the manifest cache short-circuits discovery. A list returned from a data hook has neither problem: `PluginLoader::skillProviderClasses()` is a pure read over the already-discovered plugins, so it is correct on cold and warm boots alike.
 
 `PluginLoader` explains the same reasoning at the accessor: a mutable registry populated from `boot()` "would arrive too late — the registry that would read it is built in the same pass — and would need a second owner." Core's own `FilesystemSkillProvider` is listed first in the static class list, so a plugin provider can never shadow a shipped skill by reusing its name; see [Custom skills](/reference/concepts/skills#custom-skills).
 
+`searchProviders()` merges the same way, but at search time rather than build time: the container concatenates core's `SkillSearchProvider` with `PluginLoader::searchProviderClasses()`, and `SearchProviderRegistry` resolves the union. A `SearchProviderInterface` is deliberately narrower than a skill provider — `search()` returns provenance-filtered summaries only, so there is no file read to police, and an implementation must stay inside the `SearchContext` it is handed (an empty context means return `[]`; widening it is a cross-tenant read).
+
 ## Lifecycle Events
 
 > **Why PSR-14?** Symfony Bundle, Laravel ServiceProvider, Shopware Plugin, and Magento Module all converged on the same shape: a thin interface for "what does this extension contribute" plus a publish/subscribe surface for "what does this extension do on boot." Spora adopts the same division — the hook table above is the data; the events below are the behaviour.
 
-Plugins opt in to lifecycle behaviour by implementing `Symfony\Contracts\EventDispatcher\EventSubscriberInterface` and returning the event → method map from `getSubscribedEvents()`. `PluginLoader` wires every subscriber on every boot (see the [Cache-warmth wrinkle](#cache-warmth-wrinkle) below) and `Kernel` dispatches the events at the right moment.
+Plugins opt in to lifecycle behaviour by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface` and returning the event → method map from `getSubscribedEvents()`. `PluginLoader` wires every subscriber on every boot (see the [Cache-warmth wrinkle](#cache-warmth-wrinkle) below) and `Kernel` dispatches the events at the right moment.
+
+> **Note:** import the `Symfony\Component\EventDispatcher` interface, not the `Symfony\Contracts` one — the `Contracts` package ships only `EventDispatcherInterface` and `Event`, so `Symfony\Contracts\EventDispatcher\EventSubscriberInterface` **does not exist** and a plugin that names it is silently never wired. Both loaders `instanceof`-check the `Component` variant, and so does every in-tree plugin. The `SporaExtensionInterface` docblock still names the `Contracts` one; ignore it.
 
 The three lifecycle events:
 
-| Event                    | Payload (`$event->…`)                           | When                                                                                                                            |
-| ------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `ContainerBuildingEvent` | `builder(): DI\ContainerBuilder`                | Once per process, after the App's autoload is registered, before the container is built. Mutate the builder to add DI bindings. |
-| `RoutesRegisteringEvent` | `routes(): MiddlewareRouteCollector`            | Per request, after core and App routes are registered, before the router is built. Add routes to the running collector.         |
-| `BootingEvent`           | `container(): Psr\Container\ContainerInterface` | Per request, after the container is built and the database has booted. Read services off the live container.                    |
+| Event                    | Payload (`$event->…`)                           | When                                                                                                                                                   |
+| ------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ContainerBuildingEvent` | `builder(): DI\ContainerBuilder`                | Once per process, after the App's autoload is registered, before the container is built. Mutate the builder to add DI bindings.                        |
+| `RoutesRegisteringEvent` | `routes(): MiddlewareRouteCollector`            | Per request, after core and App routes are registered, before the router is built. Add routes to the running collector.                                |
+| `BootingEvent`           | `container(): Psr\Container\ContainerInterface` | Once per process — on the first request handled by it, after the container is built and the database has booted. Read services off the live container. |
 
 `PluginLoader` dispatches `ContainerBuildingEvent` from `registerPlugins(ContainerBuilder)`, `RoutesRegisteringEvent` from `registerRoutes(MiddlewareRouteCollector)`, and `BootingEvent` from `bootExtensions(ContainerInterface)` (with a single null-tolerant guard for legacy callers). The `App` follows the same pattern via `AppLoader`.
 
 ### Worked example — `spora-plugin-memories`
 
-[`spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) is the canonical subscriber reference: it ships two migrations, one admin app, two LLM-callable tools, 14 REST routes, and the `memories-assistant` agent template. Its entry point subscribes to both `ContainerBuildingEvent` and `RoutesRegisteringEvent`:
+[`spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) is the canonical subscriber reference: it ships two migrations, one admin app, two LLM-callable tools, 14 REST routes, and the `memories/assistant` agent template. Its entry point subscribes to both `ContainerBuildingEvent` and `RoutesRegisteringEvent`:
 
 ```php
 namespace Spora\Plugins\Memories;
@@ -229,7 +227,7 @@ Listeners are called in the order returned by `getSubscribedEvents()`. Use the t
 
 ### Cache-warmth wrinkle
 
-`PluginLoader` writes a sha256 stamp to `storage/.plugins_stamp` after each successful boot. On a warm boot the loader re-instantiates plugins from a sidecar JSON and **skips re-running** the events' dispatch sites — except for `wireEventSubscribers()`, which always re-runs. The wrinkle: a plugin that subscribes to `ContainerBuildingEvent` must be wired to the dispatcher _after_ the cache check, otherwise listener wiring silently disappears on warm boots and DI bindings vanish. See the `PluginLoader::wireEventSubscribers()` docblock (`spora-core/app/Plugins/PluginLoader.php`) for the full rationale. The cost is a cheap reflection-based subscriber re-bind per plugin per request; the gain is correct DI bindings and route registration on every boot, warm or cold.
+`PluginLoader` writes a sha256 stamp to `storage/.plugins_stamp` after each successful boot. On a warm boot the loader re-instantiates plugins from a sidecar JSON copy of the manifests instead of re-parsing each `plugin.json` from disk — but it does **not** skip the events. `Kernel` calls `registerPlugins(ContainerBuilder)` unconditionally on every boot, so `ContainerBuildingEvent` fires on warm and cold boots alike, and `RoutesRegisteringEvent` is dispatched per request either way. The wrinkle is that `wireEventSubscribers()` has to run _outside_ the cache hit/miss branch: it is called on every boot, after `boot()` and before the first dispatch, so a plugin restored from the sidecar is still attached to the dispatcher. Wire it inside the cache check and listener wiring would silently disappear on warm boots, taking the DI bindings and routes with it. See the `PluginLoader::wireEventSubscribers()` docblock (`spora-core/app/Plugins/PluginLoader.php`) for the full rationale. The cost is a cheap reflection-based subscriber re-bind per plugin per process; the gain is correct DI bindings and route registration on every boot, warm or cold.
 
 ## Stability contract
 
@@ -237,7 +235,7 @@ Spora divides its PHP surface into two zones. Plugins should depend only on the 
 
 ### Plugin-stable (depend freely)
 
-- `Spora\Plugins\PluginInterface` and the data hooks on `Spora\Extensions\SporaExtensionInterface` (`getName`, `tools`, `apps`, `skillPaths`, `skillProviders`, `speechToTextProviders`, `agentTemplatePaths`, `schemaVersion`, `migrationsPath`).
+- `Spora\Plugins\PluginInterface` and the ten data hooks on `Spora\Extensions\SporaExtensionInterface` (`getName`, `tools`, `apps`, `skillPaths`, `skillProviders`, `searchProviders`, `speechToTextProviders`, `agentTemplatePaths`, `schemaVersion`, `migrationsPath`).
 - `Spora\Skills\SkillProviderInterface` plus its two wire types `SkillSummary` / `SkillDescriptor` and the `SkillProviderRegistry` — the seam a custom-skill plugin implements. The five members and the `MAX_FILE_BYTES` constant are frozen; see [Authoring a skill provider](/develop/plugins/author-guide/skills#the-interface-contract).
 - `Spora\Events\*` (the three lifecycle events) and the PSR-14 `Symfony\Component\EventDispatcher\EventSubscriberInterface` opt-in pattern documented in [Lifecycle Events](#lifecycle-events).
 - The orchestrator and task services: `Spora\Agents\AgentOrchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
@@ -299,7 +297,7 @@ Plugin tools are automatically prefixed with their `slug` when sent to the LLM, 
 
 Core tools use their plain `#[Tool(name:)]` value without any prefix.
 
-The Orchestrator derives the prefix automatically from the loaded plugins (via `PluginLoader::getPlugins()` in `app/Agents/Orchestrator.php:1177-1188`) — no changes to the plugin's `#[Tool]` attribute are needed.
+The prefix is derived automatically from the loaded plugins — `ToolDefinitionBuilder::qualifiedToolName()` walks `PluginLoader::getPlugins()` and prepends the slug of the first plugin whose `tools()` list contains the class (`app/Agents/ToolDefinitionBuilder.php:307-317`) — so no changes to the plugin's `#[Tool]` attribute are needed.
 
 ## Shipping third-party dependencies
 
@@ -352,7 +350,7 @@ The cache is invalidated automatically when any manifest's path, mtime, or conte
 
 Spora plugins are distributed as standalone PHP packages. The canonical way to install one is the `plugin:install` CLI command — it wraps `composer require` with the `spora-ai/installer` package so the plugin lands in the right place and its manifest is picked up on the next request. The `plugins/` directory is still supported as an escape hatch for plugin authors iterating on a sibling git checkout; see the options below.
 
-The canonical reference implementation is [`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) — it ships two migrations, an admin app, two LLM-callable tools, 14 REST routes, and the `memories-assistant` agent template. It is the canonical subscriber for the [lifecycle events](#lifecycle-events) above. Use it as a starting point when authoring your own plugin.
+The canonical reference implementation is [`spora-ai/spora-plugin-memories`](https://github.com/spora-ai/spora-plugin-memories) — it ships two migrations, an admin app, two LLM-callable tools, 14 REST routes, and the `memories/assistant` agent template. It is the canonical subscriber for the [lifecycle events](#lifecycle-events) above. Use it as a starting point when authoring your own plugin.
 
 ### Recommended — `bin/spora plugin:install`
 

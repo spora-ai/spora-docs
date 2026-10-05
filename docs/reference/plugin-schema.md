@@ -7,25 +7,27 @@ description: plugin.json — every field, validation rule, and example for shipp
 
 Every Spora plugin ships a `plugin.json` at the root of its package. The `PluginLoader` reads it at boot and rejects invalid manifests with `PluginLoadFailedException` before the rest of the application boots.
 
-The schema is defined in [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) (JSON Schema draft-07) in the framework repo and published at [`https://docs.spora-ai.com/schemas/plugin.schema.json`](https://docs.spora-ai.com/schemas/plugin.schema.json) for editor tooling. This page is the human-readable reference.
+The schema is defined in [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) (JSON Schema draft 2020-12) in the framework repo and published at [`https://docs.spora-ai.com/schemas/plugin.schema.json`](https://docs.spora-ai.com/schemas/plugin.schema.json) for editor tooling. This page is the human-readable reference. The JSON file is the contract: a CI job diffs the published copy against `spora-core@main`, so it cannot drift from what the loader actually enforces. Where this page and the schema disagree, the schema wins.
 
 For the **how to author a plugin** walkthrough, see [Develop → Plugins → Author guide](/develop/plugins/author-guide). For the **operator install flow**, see [Install API](/develop/plugins/install-api).
 
 ## Top-level fields
 
-| Field         | Type   | Required | Validation                              | Description                                                                                                                                                                                                                                                                             |
-| ------------- | ------ | -------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `slug`        | string | yes      | `^[a-z0-9][a-z0-9_-]*$`                 | Machine identifier. Stable across releases. Used as the `schema_versions` component key and as the migration filename prefix.                                                                                                                                                           |
-| `class`       | string | yes      | non-empty string, FQCN                  | Entry-point class. Must implement `Spora\Plugins\PluginInterface` and resolve via PSR-4 autoloading.                                                                                                                                                                                    |
-| `description` | string | no       | max 500 chars                           | Short human-readable description surfaced by the inventory UI.                                                                                                                                                                                                                          |
-| `icon`        | string | no       | one of three forms (see below)          | Icon shown next to the plugin in admin UIs. Defaults to `"puzzle"`.                                                                                                                                                                                                                     |
-| `autoload`    | object | no       | shape: `{ psr-4: {...}, files: [...] }` | PSR-4 namespace → path mappings + bootstrap files. **Note:** `autoload` in `plugin.json` is a re-declaration of what `composer.json` should already declare. The framework reads `composer.json`'s autoload first; the manifest's `autoload` is a fallback for sibling-clone workflows. |
+| Field         | Type   | Required | Validation                                             | Description                                                                                                                                                                                                               |
+| ------------- | ------ | -------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`        | string | yes      | `^[a-z0-9][a-z0-9_-]*$`                                | Machine identifier. Stable across releases. Used as the `schema_versions` component key and as the migration filename prefix.                                                                                             |
+| `class`       | string | yes      | non-empty string, FQCN                                 | Entry-point class. Must implement `Spora\Plugins\PluginInterface` and resolve via PSR-4 autoloading.                                                                                                                      |
+| `description` | string | no       | max 500 chars                                          | Short human-readable description surfaced by the inventory UI.                                                                                                                                                            |
+| `icon`        | string | no       | one of two forms (see below)                           | Icon shown next to the plugin in admin UIs. Defaults to `"puzzle"`.                                                                                                                                                       |
+| `accent`      | string | no       | `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` | Tile accent colour for the plugin's app tile; mirrors the enum in the host's `tileAccent()` map. Precedence: PHP `App::accent()` > this field > `"primary"`. Unknown or missing values fall back to `"primary"` silently. |
 
-`additionalProperties: false` — extra fields are rejected outright.
+Those five are the **only** top-level properties, and `additionalProperties: false` — extra fields are rejected outright.
 
-## `icon` field — three forms
+> **Note:** `autoload` is **not** one of them. The loader still reads an `autoload` block out of a manifest ([documented below](#autoload-block)), and five shipped plugins — `skeleton`, `staan`, `typst`, `word`, `zernio` — ship one, but the schema does not describe it, so a manifest carrying `autoload` does not validate. Declare PSR-4 mappings in `composer.json`; treat a manifest `autoload` block as loader behaviour, not as part of the contract.
 
-The framework accepts three forms in `icon` (in priority order):
+## `icon` field — two forms
+
+The schema accepts two forms in `icon`, resolved in this order: bundled name first, raw SVG path second.
 
 ### 1. Bundled name
 
@@ -37,19 +39,7 @@ A kebab-case identifier from the curated palette:
 
 Common bundled names: `puzzle` (default), `brain`, `lightbulb`, `compass`, `globe`, `sparkles`, `file-text`, `database`, `calendar`, `search`, `mail`, `music`, `zap`, `code`, plus a UI utility set (`bell`, `check`, `x`, `plus`, `chevron-*`, `arrow-right`, `menu`, `grid`, `user`, `logout`, `settings`, `sun`, `moon`, `warning`, `pencil`, `trash`, `star`, `clock`, `computer`, `tools`, `file`, `chat`, `agents`, `shield-check`, `user-plus`, `eye`, `lock`, `check-circle`, `info`, `error-circle`).
 
-### 2. Full `<svg>` string
-
-A complete SVG element for multi-primitive icons:
-
-```json
-{
-  "icon": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/></svg>"
-}
-```
-
-The host's outer `<svg>` tag is discarded; the host's class, fill, stroke, viewBox, stroke-width win. The inner children are sanitized to a tight allowlist (`path`, `circle`, `ellipse`, `polyline`, `polygon`, `rect`, `g`) via DOMPurify before being rendered with `v-html`. Other tags and attributes are stripped.
-
-### 3. Raw SVG path
+### 2. Raw SVG path
 
 A single path string starting with a path command letter (`M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A`, `Z`, lowercase or uppercase):
 
@@ -59,11 +49,15 @@ A single path string starting with a path command letter (`M`, `L`, `H`, `V`, `C
 }
 ```
 
-Limited to single-path icons. Smaller than the `<svg>` form.
+This is the smallest form in JSON, but it is limited to single-path icons — compose multi-shape glyphs with subpaths via `M`.
 
-If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set but doesn't match any of the three forms, the frontend falls back to the bundled `puzzle` icon.
+If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set but matches neither form — including an empty or whitespace-only value — the frontend falls back to the bundled `puzzle` icon, silently.
+
+> **There is no full-`<svg>` form.** A third form — a complete `<svg viewBox="0 0 24 24" …>…</svg>` blob — used to be documented here, and early plugin authors shipped it. It is gone. In the schema's own words: "Full `<svg>...</svg>` blobs are no longer accepted — the frontend's Icon component used to sanitise them through DOMPurify's SVG profile, but historical mXSS bypasses in that profile motivated dropping the `v-html` path entirely. Plugin authors should ship a single `d` string." The frontend no longer renders manifest markup at all, so there is nothing left to sanitise. A blob pasted into `icon` today matches neither form: no error, no warning, just the `puzzle` fallback. If your glyph needs primitives beyond a single path — a `circle`, a `rect`, a custom `stroke-width` — re-cut it as a path; one `d` string is the only shape the renderer still draws.
 
 ## `autoload` block
+
+> **Not in the schema.** `autoload` is loader behaviour that the published schema does not describe, so a manifest carrying this block does not validate against it. Five shipped plugins ship one anyway (`skeleton`, `staan`, `typst`, `word`, `zernio`). This section documents what the loader does when it finds one.
 
 ```json
 {
@@ -86,21 +80,19 @@ If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set bu
 
 ## Full example
 
+Every field the schema accepts, and nothing else:
+
 ```json
 {
   "slug": "acme-search",
   "class": "Acme\\Search\\AcmeSearchPlugin",
   "description": "Web search via the Acme API.",
   "icon": "globe",
-  "autoload": {
-    "psr-4": {
-      "Acme\\Search\\": "src/",
-      "Acme\\Shared\\": "lib/"
-    },
-    "files": ["vendor/autoload.php"]
-  }
+  "accent": "sky"
 }
 ```
+
+Add the [`autoload` block](#autoload-block) if your plugin ships its own vendor tree or a non-Composer source layout — the loader honours it, the schema does not describe it.
 
 ## What is NOT in the manifest
 
@@ -140,4 +132,4 @@ The cache is invalidated automatically when any manifest's path, mtime, or conte
 
 - [Develop → Plugins → Author guide](/develop/plugins/author-guide) — how to write a plugin
 - [Install API](/develop/plugins/install-api) — the operator install flow
-- [Plugin reference](/develop/plugins/reference/) — per-plugin reference for the 10 plugins in the Spora org
+- [Plugin reference](/develop/plugins/reference/) — per-plugin reference for the 19 plugins in the Spora org

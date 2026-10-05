@@ -227,18 +227,28 @@ These are not style preferences. Each one is load-bearing for a caller that cann
 
 ### Version floor
 
-Pin `spora-ai/spora-core` to the release that first ships `SkillProviderInterface` and guard at boot:
+Require a `spora-ai/spora-core` that ships `SkillProviderInterface` — and note that as of this writing no tagged release does, so the constraint belongs in `require-dev` or behind a `dev-main` alias rather than a version floor you can actually pin today. Either way, put the guard in your **constructor** — the one moment the loader calls your code directly:
 
 ```php
-public function boot(): void
+final class AcmePlugin extends AbstractPlugin
 {
-    if (!interface_exists(SkillProviderInterface::class)) {
-        throw new PluginLoadFailedException('skillProviders() needs a newer spora-core.');
+    public function __construct()
+    {
+        if (!interface_exists(SkillProviderInterface::class)) {
+            throw new PluginLoadFailedException(
+                'skillProviders() needs a spora-core that ships Spora\\Skills\\SkillProviderInterface. '
+                . 'Upgrade the host or disable this plugin.',
+            );
+        }
     }
 }
 ```
 
-This is not belt-and-braces. `PluginLoader::dispatchWithTolerance()` swallows listener exceptions, and an older core never knows the hook exists — so a provider class that `implements` a non-existent interface is simply never loaded. The result is the worst possible outcome: CRUD works, the admin panel lists the skills the user just wrote, and the agent can never see one. Fail loudly instead.
+This is not belt-and-braces. On a core that predates the provider seam, nothing warns you: the CRUD routes register, the admin panel lists the skills the user just wrote, and the agent can never see one. Fail loudly instead — but read the trade first.
+
+**The constructor is the only place a guard actually runs.** `PluginLoader` instantiates the entry point with a bare `new $fqcn()` and calls the ten data hooks, but it never calls a `boot()` method — that hook was removed in 1.0 and replaced by [`BootingEvent`](/develop/plugins/author-guide/foundations#lifecycle-is-events-not-hooks). The obvious-looking `public function boot(): void` guard would therefore never execute. The alternative, a `BootingEvent` listener, is worse: the dispatch runs inside `PluginLoader::dispatchWithTolerance()`, which catches `Throwable` and writes only to `error_log()`. Your exception disappears into the PHP error log, the boot carries on, and you are back to the silent failure. (`dispatchWithTolerance()` is also private — it is an implementation detail of the loader, not a contract to build against.)
+
+**What a throwing constructor costs you.** `PluginLoader::boot()` has no per-plugin tolerance around `new $fqcn()`. `Kernel` catches the `PluginLoadFailedException` and skips plugin boot, which means the discovery loop aborts: your plugin _and every plugin the loader had not yet reached_ stay unloaded for that boot, and the operator gets a single `warning` in the Spora log rather than a broken request. State that trade in the exception message so whoever hits it knows the blast radius. `spora-plugin-custom-skills` is the shipped example — read its constructor for the shape the framework expects.
 
 ## Validation surface
 

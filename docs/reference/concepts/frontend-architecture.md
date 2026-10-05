@@ -57,21 +57,21 @@ const { agents } = await api.get<{ agents: Agent[] }>('/agents')
 await api.post('/agents', { name: 'Researcher', prompt: '...' })
 ```
 
-`ApiError` carries `code` and `status` so UI code can branch on machine-readable failures:
+`ApiError` carries `code` and `status` so UI code can branch on machine-readable failures. There is no per-field error map on the class — the envelope is `{ error: { code, message } }`, so `VALIDATION_ERROR` (HTTP 422) arrives as a single human-readable `message` for the page to render inline:
 
 ```ts
 try {
   await api.post('/agents', payload)
 } catch (e) {
-  if (e instanceof ApiError && e.code === 'VALIDATION_FAILED') {
-    form.setErrors(e.fieldErrors)
+  if (e instanceof ApiError && e.code === 'VALIDATION_ERROR') {
+    formError.value = e.message
   } else {
     toast.error(e.message)
   }
 }
 ```
 
-For the full error envelope and the error code registry, see the [Error handling](/reference/concepts/error-handling) page.
+Forms that want per-field errors derive them client-side during local validation (as `AgentToolOverrideForm.vue` does with its own local `fieldErrors` ref) — they are not read off the `ApiError`. The full envelope, the complete error code registry, and the toast mapping are on the [Error handling](/reference/concepts/error-handling) page.
 
 ## Composables
 

@@ -116,7 +116,7 @@ final class App extends AbstractExtension implements EventSubscriberInterface
 4. **Routes** — `RouteDefinitions::register()` runs first (core routes), then `RoutesRegisteringEvent` (App and plugin routes appended). The router is built once.
 5. **Boot** — `Database->boot()` (schema install), then `BootingEvent`, then request dispatch.
 
-`AppLoader::load()` only instantiates the App; it dispatches nothing itself. `AppLoader::wireEventSubscribers()` attaches the App to the shared dispatcher on every boot, warm or cold, mirroring `PluginLoader::wireEventSubscribers()`.
+`AppLoader::load()` only instantiates the App; it dispatches nothing itself. `AppLoader::wireEventSubscribers()` attaches the App to the shared dispatcher on every process boot, warm or cold, and is idempotent — so a long-running worker cannot accumulate duplicate listeners. It mirrors `PluginLoader::wireEventSubscribers()`.
 
 ## Promoting an App to a Plugin
 

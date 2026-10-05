@@ -36,7 +36,7 @@ Skip [LLM drivers](/develop/plugins/author-guide/drivers), [Migrations](/develop
 
 ## Looking for an older link?
 
-This page used to be a single 564-line document. The chapter split happened in Phase 11 (July 2026). If you followed an old in-page anchor, the new URL is one of the chapters above:
+This page used to be a single 564-line document. The chapter split happened in Phase 11 (July 2026). If you followed an old in-page anchor, the content moved to one of the chapter URLs above — these are hand-maintained pointers, not configured redirects, so nothing rewrites an inbound link for you:
 
 - `#what-a-spora-plugin-is`, `#pluginjson-manifest`, `#entry-point-class` → [Foundations](/develop/plugins/author-guide/foundations)
 - `#adding-a-tool` → [Tools](/develop/plugins/author-guide/tools)

@@ -58,7 +58,7 @@ Settings are stored encrypted in `LLMDriverConfiguration.settings` (JSON blob) a
 - `autoload(): array<string, string>` — PSR-4 namespace → path mappings for the plugin's own classes.
 - `tools(): array<class-string<\Spora\Tools\ToolInterface>>` — tool FQCNs to register with the Tool Registry.
 - `drivers(): array<string, class-string<\Spora\Drivers\LLMDriverInterface>>` — provider name → driver class (keys match the `llm_provider` string stored on agents).
-- `recipePaths(): list<string>` — absolute paths to recipe directories or files.
+- `recipePaths(): list<string>` — **removed in 1.0**, not part of the interface. Agent templates ship through `agentTemplatePaths(): string[]`; see the [Plugin system](/reference/concepts/plugins-system#hooks) page for the current hook table.
 - `schemaVersion(): int` — DB schema version this plugin requires (default 0).
 - `migrationsPath(): ?string` — absolute path to the directory containing this plugin's Laravel Migration files (default null).
 - `register(ContainerBuilder $builder): void` — arbitrary DI bindings, middleware, or services.

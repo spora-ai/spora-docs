@@ -7,12 +7,14 @@ description: Directory tree of spora-core, where things live, and how the layers
 
 Spora follows a vanilla PHP MVC-style layout — no full-stack framework. The codebase ships inside the framework package (`spora-ai/spora-core`) and is consumed by the skeleton (`spora-ai/spora`).
 
-The source of truth for the tree is `spora-core/AGENTS.md` § "Project Structure". Reproduced here for the docs site.
+The tree below tracks `spora-core/AGENTS.md` § "Project Structure", with the agent-template directories called out. The framework's own `AGENTS.md` has not caught up to the Recipes → Agent Templates rename, so its version of the tree is stale on exactly those two rows.
 
 ## Top-level tree
 
 ```text
+/agent-templates   — Agent template definitions (JSON/YAML)
 /app               — PHP application code (MVC-style)
+  /AgentTemplates  — Agent template scanner, validator, importer, exporter
   /Agents          — Agent models and orchestration logic
   /Auth            — Authentication (AuthService, AuthController)
   /Build           — Build-time CLI commands (skips Kernel/DI boot; consumed by CI)
@@ -23,7 +25,6 @@ The source of truth for the tree is `spora-core/AGENTS.md` § "Project Structure
   /Models          — Eloquent models
   /OpenApi         — OpenAPI generator (RouteSpecCollector, RouteToOpenApi)
   /Plugins         — Plugin loader and hooks
-  /Recipes         — Recipe scanner
   /Services        — Business logic (ToolConfigService, NotificationService, etc.)
   /Tools           — Built-in tool implementations
 /bin/spora         — Runtime CLI entry point
@@ -33,39 +34,38 @@ The source of truth for the tree is `spora-core/AGENTS.md` § "Project Structure
 /frontend          — Vue 3 + Vite + Tailwind frontend
 /plugins           — Installed plugins (auto-discovered)
 /public            — Web root (PHP built-in server)
-/recipes           — Recipe definitions (YAML)
 /storage           — Runtime files (SQLite DB, logs)
 /tests             — Pest test suites
 ```
 
 ## What lives where
 
-| Directory             | Purpose                                                                               | Common edits                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `app/Agents`          | The Orchestrator, agent models, tick state machine                                    | `Orchestrator.php`, `Agent.php`, `TaskStateMachine.php`                         |
-| `app/Auth`            | Login, registration, session, password reset                                          | `AuthService.php`, `AuthController.php`                                         |
-| `app/Console`         | `bin/spora` commands — install, db:reset, plugin:_, worker:_, etc.                    | Adding a new command = new file here                                            |
-| `app/Build`           | `bin/spora-build` commands — build-time tools (no Kernel/DI/secret-key boot)          | Adding a new build command = new file here                                      |
-| `app/Core`            | The framework: kernel, router, DI container, base classes                             | `Kernel.php`, `Router.php`, `ContainerDefinitions.php`, `AbstractExtension.php` |
-| `app/Drivers`         | LLM driver implementations                                                            | `OpenAICompatibleDriver.php`, `AnthropicCompatibleDriver.php`                   |
-| `app/Http`            | HTTP controllers + middleware                                                         | `Controllers/`, `Middleware/`                                                   |
-| `app/Models`          | Eloquent models — User, Agent, Task, ToolCall, etc.                                   | Schema is auto-generated; don't edit manually                                   |
-| `app/OpenApi`         | OpenAPI 3.0 spec generator — `RouteSpecCollector`, `RouteToOpenApi`                   | Editing routes? The generator reads `RouteDefinitions` directly.                |
-| `app/Plugins`         | `PluginLoader` — reads `plugins/*/plugin.json` at boot                                | The framework's plugin machinery                                                |
-| `app/Recipes`         | Recipe scanner — picks up YAML files from `recipes/` and plugins                      | `RecipeScanner.php`                                                             |
-| `app/Services`        | Business logic that isn't a controller or model                                       | `ToolConfigService.php`, `NotificationService.php`                              |
-| `app/Tools`           | Built-in tool implementations (Calculator, Memory, Handover, ReadUrl, UserInfo, etc.) | Adding a new core tool = new file here                                          |
-| `app/Extensions`      | Base interfaces for App extensions and plugins                                        | `SporaExtensionInterface.php`, `AbstractExtension.php`                          |
-| `bin/spora`           | The runtime CLI entry point — Symfony Console application, boots Kernel/DI            | Add a new command → register in `bin/spora`                                     |
-| `bin/spora-build`     | The build-time CLI entry point — no Kernel/DI/secret-key boot                         | Add a new command → register in `bin/spora-build`                               |
-| `config.php`          | App configuration (env-first, with `config.php` fallbacks)                            | `db_*`, `app_*`, `mercure_*` keys                                               |
-| `database/migrations` | Laravel migrations (anonymous-class pattern)                                          | Add a new migration with the highest sequence number                            |
-| `frontend/`           | Vue 3 + Vite + Tailwind admin SPA                                                     | Modifying the UI? This is where you work                                        |
-| `plugins/`            | Composer-routed `spora-plugin` packages at runtime                                    | Operator-installed; rarely edited by hand                                       |
-| `public/`             | Web root — `public/index.php` is the entry point                                      | `index.php` is the only file you need                                           |
-| `recipes/`            | YAML recipe definitions — bundled with the operator install                           | Operator-authored; framework scans this on boot                                 |
-| `storage/`            | Runtime state (SQLite DB, secret key, logs)                                           | Mount as a volume in Docker; back up to off-host storage                        |
-| `tests/`              | Pest tests — mirrors the `app/` structure                                             | `Unit/`, `Feature/`, `Fixtures/`                                                |
+| Directory             | Purpose                                                                                                                | Common edits                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `agent-templates/`    | JSON/YAML agent template definitions — project-level overrides on top of the framework's bundled `core-assistant.json` | Operator-authored; scanned depth-0 by `AgentTemplateScanner`                    |
+| `app/AgentTemplates`  | Agent template scanning, validation, import, and export                                                                | `AgentTemplateScanner.php`, `AgentTemplateValidator.php`                        |
+| `app/Agents`          | The Orchestrator, agent models, tick state machine                                                                     | `Orchestrator.php`, `Agent.php`, `TaskStateMachine.php`                         |
+| `app/Auth`            | Login, registration, session, password reset                                                                           | `AuthService.php`, `AuthController.php`                                         |
+| `app/Console`         | `bin/spora` commands — install, db:reset, plugin:_, worker:_, etc.                                                     | Adding a new command = new file here                                            |
+| `app/Build`           | `bin/spora-build` commands — build-time tools (no Kernel/DI/secret-key boot)                                           | Adding a new build command = new file here                                      |
+| `app/Core`            | The framework: kernel, router, DI container, base classes                                                              | `Kernel.php`, `Router.php`, `ContainerDefinitions.php`, `AbstractExtension.php` |
+| `app/Drivers`         | LLM driver implementations                                                                                             | `OpenAICompatibleDriver.php`, `AnthropicCompatibleDriver.php`                   |
+| `app/Http`            | HTTP controllers + middleware                                                                                          | `Controllers/`, `Middleware/`                                                   |
+| `app/Models`          | Eloquent models — User, Agent, Task, ToolCall, etc.                                                                    | Schema is auto-generated; don't edit manually                                   |
+| `app/OpenApi`         | OpenAPI 3.0 spec generator — `RouteSpecCollector`, `RouteToOpenApi`                                                    | Editing routes? The generator reads `RouteDefinitions` directly.                |
+| `app/Plugins`         | `PluginLoader` — reads `plugins/*/plugin.json` at boot                                                                 | The framework's plugin machinery                                                |
+| `app/Services`        | Business logic that isn't a controller or model                                                                        | `ToolConfigService.php`, `NotificationService.php`                              |
+| `app/Tools`           | Built-in tool implementations (Calculator, Memory, Handover, ReadUrl, UserInfo, etc.)                                  | Adding a new core tool = new file here                                          |
+| `app/Extensions`      | Base interfaces for App extensions and plugins                                                                         | `SporaExtensionInterface.php`, `AbstractExtension.php`                          |
+| `bin/spora`           | The runtime CLI entry point — Symfony Console application, boots Kernel/DI                                             | Add a new command → register in `bin/spora`                                     |
+| `bin/spora-build`     | The build-time CLI entry point — no Kernel/DI/secret-key boot                                                          | Add a new command → register in `bin/spora-build`                               |
+| `config.php`          | App configuration (env-first, with `config.php` fallbacks)                                                             | `db_*`, `app_*`, `mercure_*` keys                                               |
+| `database/migrations` | Laravel migrations (anonymous-class pattern)                                                                           | Add a new migration with the highest sequence number                            |
+| `frontend/`           | Vue 3 + Vite + Tailwind admin SPA                                                                                      | Modifying the UI? This is where you work                                        |
+| `plugins/`            | Composer-routed `spora-plugin` packages at runtime                                                                     | Operator-installed; rarely edited by hand                                       |
+| `public/`             | Web root — `public/index.php` is the entry point                                                                       | `index.php` is the only file you need                                           |
+| `storage/`            | Runtime state (SQLite DB, secret key, logs)                                                                            | Mount as a volume in Docker; back up to off-host storage                        |
+| `tests/`              | Pest tests — mirrors the `app/` structure                                                                              | `Unit/`, `Feature/`, `Fixtures/`                                                |
 
 ## Conventions
 

@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: System overview — config priority, orchestrator loop, worker modes, plugin system, recipes, database.
+description: System overview — config priority, orchestrator loop, worker modes, plugin system, agent templates, database.
 ---
 
 # Spora: Architecture
@@ -128,11 +128,11 @@ Boot sequence (`app/Plugins/PluginLoader.php`):
 3. `require_once` bootstrap files from `autoload.files` (e.g. the plugin's own `vendor/autoload.php`)
 4. `require_once` the manifest's `file` (default `Plugin.php`)
 5. Instantiate the declared class
-6. `tools()`, `agentTemplatePaths()`, `skillPaths()`, `skillProviders()`, `speechToTextProviders()`, `searchProviders()`, `apps()`, `schemaVersion()`, `migrationsPath()` → register contributions
+6. `tools()`, `agentTemplatePaths()`, `skillPaths()`, `skillProviders()`, `speechToTextProviders()`, `searchProviders()`, `apps()`, `schemaVersion()`, `migrationsPath()` → register contributions. The historical `recipePaths()` hook is **gone** — it was removed from the interface in 1.0, is not a deprecated alias, and has no replacement; `agentTemplatePaths()` is the only template hook.
 
 Plugins can contribute: tools, agent templates, skills and skill providers, speech-to-text providers, search providers, UI apps, and database migrations. See `app/Plugins/PluginInterface.php` and the [Plugin system](/reference/concepts/plugins-system) page.
 
-> **Status:** wired. `PluginLoader` fully wires every contribution surface from a plugin's manifest entry point: tools (`tools()`), agent templates (`agentTemplatePaths()`), skills (`skillPaths()`), and database migrations (`migrationsPath()` + `schemaVersion()`). New tools, templates, and migrations contributed via plugins take effect automatically once the plugin is installed — no additional glue in `app/Plugins/PluginLoader.php` or `config.php` is required. Side effects are **not** data hooks: DI bindings, route registration, and per-request setup are PSR-14 events (`ContainerBuildingEvent`, `RoutesRegisteringEvent`, `BootingEvent`). The `autoload()`, `drivers()`, `recipePaths()`, `register()`, `routes()`, and `boot()` hooks were all removed in 1.0.
+> **Status:** wired. `PluginLoader` fully wires every contribution surface from a plugin's manifest entry point: tools (`tools()`), agent templates (`agentTemplatePaths()`), skills (`skillPaths()`), and database migrations (`migrationsPath()` + `schemaVersion()`). New tools, templates, and migrations contributed via plugins take effect automatically once the plugin is installed — no additional glue in `app/Plugins/PluginLoader.php` or `config.php` is required. Side effects are **not** data hooks: DI bindings, route registration, and per-request setup are PSR-14 events (`ContainerBuildingEvent`, `RoutesRegisteringEvent`, `BootingEvent`). The `autoload()`, `drivers()`, `recipePaths()`, `register()`, `routes()`, and `boot()` hooks were all removed in 1.0 — none of them is a deprecated alias, and `recipePaths()` in particular is not called; `agentTemplatePaths()` is the only template hook.
 
 **Plugin conflicts:** duplicate slugs or duplicate entry-point FQCNs are silently skipped — first-loaded wins. Plugin Composer dependencies are isolated by shipping a separate `vendor/` per plugin (declared in `autoload.files`); the host vendor tree is not affected.
 

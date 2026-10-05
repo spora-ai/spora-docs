@@ -236,12 +236,17 @@ See [Concepts → Architecture](/reference/concepts/architecture) for the full H
 
 ### Skills
 
-| Method | Path                    | Auth    | Purpose                                                           |
-| ------ | ----------------------- | ------- | ----------------------------------------------------------------- |
-| `GET`  | `/api/v1/skills`        | session | List discovered skills (powers the `allowed_skills` multi-select) |
-| `GET`  | `/api/v1/skills/{slug}` | session | One skill — full `files` listing + raw `SKILL.md` body            |
+| Method | Path                                 | Auth    | Purpose                                                           |
+| ------ | ------------------------------------ | ------- | ----------------------------------------------------------------- |
+| `GET`  | `/api/v1/skills`                     | session | List discovered skills (powers the `allowed_skills` multi-select) |
+| `GET`  | `/api/v1/skills/{slug}`              | session | One skill — full `files` listing + raw `SKILL.md` body            |
+| `GET`  | `/api/v1/skills/{slug}/files/{path}` | session | One sidecar's contents → `{"data": {"path", "content", "bytes"}}` |
 
-Skills are auto-discovered from three sources (project, framework, plugin). Both accept `?principal_id=N` to narrow the listing to one principal the caller can see; a name not visible to the caller is a `404`, never a `403`. See [Concepts → Skills](/reference/concepts/skills).
+Skills are auto-discovered from three sources (project, framework, plugin). All three accept `?principal_id=N` to narrow the lookup to one principal the caller can see; a name not visible to the caller is a `404`, never a `403`. See [Concepts → Skills](/reference/concepts/skills).
+
+`{path}` is an exact-match key from the skill's `files` listing. Both the raw-slash and the percent-encoded form reach the route, so `…/files/references/REFERENCE.md` and `…/files/references%2FREFERENCE.md` are equivalent.
+
+An unknown skill, a path the skill does not list, and a file over the 50 000-byte cap all answer the same `404 SKILL_FILE_NOT_FOUND` — deliberately, so the endpoint cannot be used to probe what exists in another tenant. Note that this differs from the plugin's own file route below, which answers `404 FILE_NOT_FOUND` and `413 FILE_TOO_LARGE` for the latter two; a viewer shared by both has to branch on the status code.
 
 ### Custom skills (`spora-plugin-custom-skills`)
 

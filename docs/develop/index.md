@@ -22,4 +22,4 @@ A Spora plugin is a Composer package that ships tools, drivers, and migrations t
 - **[Install API](/develop/plugins/install-api)** — `POST /api/v1/plugins` HTTP endpoints used by the Web UI (gated by `SPORA_PLUGIN_INSTALL_ENABLED`); CLI is always available
 - **[Plugin reference](/develop/plugins/reference/)** — per-plugin reference for the 12 plugins in the Spora org (Tavily, Serper, Staan, Semantic Scholar, World News, Weather, Calendar, Email, MiniMax, Muse, Zernio, Skeleton)
 
-> Recipes are scaffolded in the codebase but not yet shipped. See [Roadmap](/about/roadmap) for the open work items.
+> Agent templates are the shipped way to reuse an agent definition — the framework bundles one (`core/core-assistant`) and plugins contribute their own via `agentTemplatePaths()`. See [Managing agents → Agent templates](/start/end-users/managing-agents#agent-templates) for the operator flow and [Plugin author guide → Agent templates](/develop/plugins/author-guide/agent-templates) for authoring one.

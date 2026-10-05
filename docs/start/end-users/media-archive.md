@@ -59,16 +59,16 @@ The retention sweep itself runs server-side (`media:gc --temporary [--older-than
 
 ## Where the data comes from
 
-| Endpoint                                       | Used for                                                                                                                  |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/media?principal_id[]=…`           | The grid itself — paginated, filtered, scoped. Returns `{ data: { assets, page, perPage, total, lastPage } }`.            |
-| `GET /api/v1/principals/me`                    | The list of visible principals (typed: `user` vs `group`). Drives the chip row shape.                                     |
-| `GET /api/v1/groups`                           | Friendly group names keyed by `principal_id`. The chip row falls back to `Group #N` if this endpoint is unavailable.      |
-| `GET /api/v1/media/{id}`                       | Detail drawer payload.                                                                                                    |
-| `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                       |
-| `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, markdown_content, public sharing. Validators are in `MediaArchiveUpdateValidator`. |
-| `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                        |
-| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                      |
+| Endpoint                                       | Used for                                                                                                             |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/media?principal_id[]=…`           | The grid itself — paginated, filtered, scoped. Returns `{ data: { assets, page, perPage, total, lastPage } }`.       |
+| `GET /api/v1/principals/me`                    | The list of visible principals (typed: `user` vs `group`). Drives the chip row shape.                                |
+| `GET /api/v1/groups`                           | Friendly group names keyed by `principal_id`. The chip row falls back to `Group #N` if this endpoint is unavailable. |
+| `GET /api/v1/media/{id}`                       | Detail drawer payload.                                                                                               |
+| `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                  |
+| `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, public sharing. Validators are in `MediaArchiveUpdateValidator`.              |
+| `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                   |
+| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                 |
 
 ## Related
 

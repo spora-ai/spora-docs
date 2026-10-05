@@ -7,6 +7,20 @@
 // so editors (VSCode json-language-service, JetBrains, ajv) can fetch the
 // schema when validating $schema-referencing JSON files.
 //
+// EXCEPTION — plugin.schema.json is owned by this repo, not mirrored. Its
+// canonical URL (`$id`, and the `$schema` every plugin manifest points at) is
+// docs.spora-ai.com, and it is the only one of the two that editors actually
+// fetch. The copy in spora-core's repo root is stale: it was `additionalProperties:
+// false` over five keys while every shipped manifest carried `$schema`, `name`,
+// and sometimes `autoload`, so it rejected every real plugin. Mirroring cannot
+// fix that — `prebuild` runs this script, so mirroring would overwrite the
+// corrected file on every local build and in the `build` CI job.
+//
+// The corrected schema is guarded by `npm run check:plugin-schema`, which
+// validates it against the manifests in the tree. TO RE-MIRROR: land the same
+// fix in spora-core's plugin.schema.json, then re-add it to SCHEMAS above and
+// delete the entry from DOCS_OWNED_SCHEMAS.
+//
 // `spora-core` is checked out into `./spora-core` by CI (see
 // .github/workflows/ci-docs.yml); locally, the developer can use a sibling
 // checkout by setting SPORA_CORE_PATH (default: ../spora-core). The script
@@ -42,8 +56,12 @@ const checkOnly = process.argv.includes("--check");
 
 const SCHEMAS = [
   { source: "agent-template.schema.json", dest: "agent-template.schema.json" },
-  { source: "plugin.schema.json", dest: "plugin.schema.json" },
 ];
+
+// Published from this repo, NOT mirrored from spora-core — see the header note.
+// Listing the key here is what makes `sync:schemas --check` fail loudly if it
+// is ever re-added, instead of silently overwriting a corrected schema.
+const DOCS_OWNED_SCHEMAS = ["plugin.schema.json"];
 
 function copySchema({ source, dest }, coreDir) {
   const src = resolve(coreDir, source);
@@ -74,6 +92,16 @@ function resolveCoreDir() {
     if (existsSync(dir)) return dir;
   }
   return null;
+}
+
+// Stated on every run, in both modes. A schema that is silently not mirrored
+// reads as "covered" to anyone auditing this script later, so the exclusion is
+// printed rather than left to be inferred from the absence of a list entry.
+function reportDocsOwned() {
+  console.log(
+    `Not mirrored from spora-core (owned by this repo, guarded by \`npm run check:plugin-schema\`):\n` +
+      DOCS_OWNED_SCHEMAS.map((name) => `  - ${name}`).join("\n"),
+  );
 }
 
 function main() {
@@ -115,6 +143,7 @@ function main() {
       process.exit(1);
     }
     console.log("Public schemas are up to date.");
+    reportDocsOwned();
     return;
   }
 
@@ -125,6 +154,7 @@ function main() {
       console.log(`Wrote docs/.vuepress/public/schemas/${r.dest}.`);
     }
   }
+  reportDocsOwned();
 }
 
 try {

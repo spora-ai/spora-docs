@@ -17,6 +17,7 @@
     "gen:api:check": "node scripts/gen-api.mjs --check",
     "sync:schemas": "node scripts/sync-schemas.mjs",
     "sync:schemas:check": "node scripts/sync-schemas.mjs --check",
+    "check:plugin-schema": "node scripts/check-plugin-schema.mjs",
     "predev": "npm run gen:api && npm run sync:schemas",
     "prebuild": "npm run gen:api && npm run sync:schemas"
   },
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "ajv": "^8.20.0",
     "markdownlint-cli2": "^0.23.0",
     "prettier": "^3.9.0",
     "sass-embedded": "^1.100.0",

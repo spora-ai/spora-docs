@@ -148,8 +148,8 @@ their own utilities.
 - [Code documentation](/reference/concepts/code-documentation) — comment
   policy for the wrapper sites themselves.
 - [Media assets](/reference/concepts/media-assets) — where the wrapper
-  applies on the `media_assets` table (`filename`, `prompt`,
-  `markdown_content`, `tags`, `metadata`).
+  applies on the `media_assets` table (`filename`, `prompt`, `tags`,
+  `metadata`).
 - [Tools](/reference/concepts/tools) — every `ToolResult::content` flows
   through `ToolCallExecutor::executeAndRecordResult`, which wraps the
   result before persisting.

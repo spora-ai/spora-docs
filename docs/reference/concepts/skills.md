@@ -169,10 +169,10 @@ Deleting a custom skill also **scrubs its name from every `allowed_skills` array
 
 ## HTTP surface
 
-| Method | Path                    | Purpose                                                                                                               |
-| ------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/skills`        | List → `[{name, description, source, license, files_count, has_warnings}]`. Powers the `allowed_skills` multi-select. |
-| `GET`  | `/api/v1/skills/{slug}` | One skill, full `files` listing + raw `SKILL.md` body.                                                                |
+| Method | Path                                 | Purpose                                                                                                               |
+| ------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/skills`                     | List → `[{name, description, source, license, files_count, has_warnings}]`. Powers the `allowed_skills` multi-select. |
+| `GET`  | `/api/v1/skills/{slug}`              | One skill, full `files` listing + raw `SKILL.md` body.                                                                |
 | `GET`  | `/api/v1/skills/{slug}/files/{path}` | One sidecar's contents → `{path, content, bytes}`. `{path}` is an exact-match key from the `files` listing.           |
 
 `?principal_id=N` narrows the listing to one principal — the SPA already sends it and derives it per editor mode (agent / group / personal), so honouring it is what stops a group admin's personal skills appearing in the group's picker. An id the caller cannot see is discarded before it reaches a provider, so a hand-crafted `?principal_id=` cannot read another tenant's skills, bodies included. The same discarding applies to the file route, where an unknown skill, an unlisted path and an over-cap file are one indistinguishable `404 SKILL_FILE_NOT_FOUND` — unlike the plugin's own file route, which answers `413 FILE_TOO_LARGE`.

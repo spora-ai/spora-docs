@@ -236,11 +236,11 @@ See [Concepts → Architecture](/reference/concepts/architecture) for the full H
 
 ### Skills
 
-| Method | Path                    | Auth    | Purpose                                                           |
-| ------ | ----------------------- | ------- | ----------------------------------------------------------------- |
-| `GET`  | `/api/v1/skills`        | session | List discovered skills (powers the `allowed_skills` multi-select) |
-| `GET`  | `/api/v1/skills/{slug}` | session | One skill — full `files` listing + raw `SKILL.md` body            |
-| `GET`  | `/api/v1/skills/{slug}/files/{path}` | session | One sidecar's contents → `{"data": {"path", "content", "bytes"}}`  |
+| Method | Path                                 | Auth    | Purpose                                                           |
+| ------ | ------------------------------------ | ------- | ----------------------------------------------------------------- |
+| `GET`  | `/api/v1/skills`                     | session | List discovered skills (powers the `allowed_skills` multi-select) |
+| `GET`  | `/api/v1/skills/{slug}`              | session | One skill — full `files` listing + raw `SKILL.md` body            |
+| `GET`  | `/api/v1/skills/{slug}/files/{path}` | session | One sidecar's contents → `{"data": {"path", "content", "bytes"}}` |
 
 Skills are auto-discovered from three sources (project, framework, plugin). All three accept `?principal_id=N` to narrow the lookup to one principal the caller can see; a name not visible to the caller is a `404`, never a `403`. See [Concepts → Skills](/reference/concepts/skills).
 

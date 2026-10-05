@@ -106,6 +106,13 @@ jobs:
     # two guard different failure modes and have different fixes (re-run
     # `npm run sync:schemas` vs. the schema no longer describing reality), and
     # a red job should name which one broke.
+    #
+    # spora-components is checked out so the icon contract can be asserted
+    # against the resolver that actually implements it (Icon.vue's
+    # SVG_PATH_LEAD) rather than against a second copy of the path-command
+    # letters held in this repo's check — a hardcoded list would simply become
+    # the next thing to drift, which is the failure mode this job exists to
+    # prevent.
     name: Plugin manifest schema check
     runs-on: ubuntu-latest
     steps:
@@ -122,6 +129,13 @@ jobs:
           repository: spora-ai/spora-core
           ref: main
           path: spora-core
+
+      - name: Checkout spora-components
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: spora-ai/spora-components
+          ref: main
+          path: spora-components
 
       - name: Install
         run: npm ci --ignore-scripts

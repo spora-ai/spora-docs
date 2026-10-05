@@ -35,16 +35,16 @@ The full JSON Schema is in [`plugin.schema.json`](https://github.com/spora-ai/sp
 
 ### Optional fields
 
-| Field            | Type   | Description                                                                                                                                                                                                                                                                                                                        |
-| ---------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `$schema`        | string | URI of the manifest schema (`https://docs.spora-ai.com/schemas/plugin.schema.json`), so editors and CI resolve the contract without a network round-trip. Read by no runtime code; safe to omit.                                                                                                                                   |
-| `name`           | string | Package name — in practice the Composer package name from the plugin's `composer.json` (e.g. `spora-ai/spora-plugin-typst`). No runtime code reads it; `PluginLoader` keys on `slug` and `class`. Keep the two in sync.                                                                                                            |
-| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                                      |
-| `icon`           | string | Icon for the inventory UI. Three forms are accepted — bundled name, full `<svg>` string, or raw SVG path. Defaults to `"puzzle"` when omitted. Lets a plugin ship its own visual identity without coordinating with the Spora frontend. See [Bundled icons](#bundled-icons) for the curated palette and the three forms in detail. |
-| `accent`         | string | Tile accent colour: `violet`, `amber`, `emerald`, `sky`, `rose`, or `primary`. Precedence is PHP `App::accent()` > this field > `"primary"`; unknown or missing values fall back to `"primary"` silently.                                                                                                                          |
-| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                                                               |
-| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                                                                |
-| `frontendEntry`  | string | Path to a pre-built frontend bundle, so a JSON-only plugin can ship a UI without writing PHP. Read by `AppsController` as a fallback only — an App class implementing `VueAppInterface` takes precedence. No in-tree manifest ships this yet.                                                                                      |
+| Field            | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$schema`        | string | URI of the manifest schema (`https://docs.spora-ai.com/schemas/plugin.schema.json`), so editors and CI resolve the contract without a network round-trip. Read by no runtime code; safe to omit.                                                                                                                                                                                                                                  |
+| `name`           | string | Package name — in practice the Composer package name from the plugin's `composer.json` (e.g. `spora-ai/spora-plugin-typst`). No runtime code reads it; `PluginLoader` keys on `slug` and `class`. Keep the two in sync.                                                                                                                                                                                                           |
+| `description`    | string | Short human-readable description surfaced by the inventory UI. Max 500 chars.                                                                                                                                                                                                                                                                                                                                                     |
+| `icon`           | string | Icon for the inventory UI. Two forms are accepted — a bundled name, or a raw SVG path whose first command is a moveto (`M`/`m` followed by a digit). Full `<svg>` blobs are not accepted. Defaults to `"puzzle"` when omitted or unrecognised. Lets a plugin ship its own visual identity without coordinating with the Spora frontend. See [Bundled icons](#bundled-icons) and [Two forms](#two-forms-of-plugin-supplied-icons). |
+| `accent`         | string | Tile accent colour: `violet`, `amber`, `emerald`, `sky`, `rose`, or `primary`. Precedence is PHP `App::accent()` > this field > `"primary"`; unknown or missing values fall back to `"primary"` silently.                                                                                                                                                                                                                         |
+| `autoload.psr-4` | object | PSR-4 namespace → relative path mappings registered with the Composer classloader before the plugin is instantiated. Multiple entries are supported.                                                                                                                                                                                                                                                                              |
+| `autoload.files` | array  | PHP files to `require_once` before the plugin is instantiated, relative to the plugin directory. Use `["vendor/autoload.php"]` to load the plugin's own Composer dependency tree. Processed after `psr-4` mappings.                                                                                                                                                                                                               |
+| `frontendEntry`  | string | Path to a pre-built frontend bundle, so a JSON-only plugin can ship a UI without writing PHP. Read by `AppsController` as a fallback only — an App class implementing `VueAppInterface` takes precedence. No in-tree manifest ships this yet.                                                                                                                                                                                     |
 
 ### Minimal example
 
@@ -57,7 +57,7 @@ The full JSON Schema is in [`plugin.schema.json`](https://github.com/spora-ai/sp
 
 ### Bundled icons
 
-The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors can reference any of these by name from the manifest's `icon` field without shipping their own SVG. For categories not covered below, fall back to a raw SVG path string (the `icon` field accepts anything starting with a path command letter).
+The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors can reference any of these by name from the manifest's `icon` field without shipping their own SVG. For categories not covered below, fall back to a raw SVG path string — which must begin with a moveto (`M` or `m`) followed by a digit; see [Two forms of plugin-supplied icons](#two-forms-of-plugin-supplied-icons).
 
 | Category         | Names                                                                                                                                                                                                                                                                                                                 |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -68,9 +68,9 @@ The Spora frontend ships a curated palette of bundled SVG icons. Plugin authors 
 | Tools & code     | `zap`, `code`                                                                                                                                                                                                                                                                                                         |
 | UI utility       | `bell`, `check`, `x`, `plus`, `chevron-right/down/left`, `arrow-right`, `menu`, `grid`, `user`, `logout`, `settings`, `sun`, `moon`, `warning`, `pencil`, `trash`, `star`, `clock`, `computer`, `tools`, `file`, `chat`, `agents`, `shield-check`, `user-plus`, `eye`, `lock`, `check-circle`, `info`, `error-circle` |
 
-### Three forms of plugin-supplied icons
+### Two forms of plugin-supplied icons
 
-The `icon` field in `plugin.json` accepts three forms. The frontend tries them in this order:
+The `icon` field in `plugin.json` accepts two forms. The frontend tries them in this order:
 
 1. **Bundled name** — any kebab-case identifier from the table above (or the wider UI palette). Smallest in JSON, no shipping required. Best for the common case.
 
@@ -78,25 +78,25 @@ The `icon` field in `plugin.json` accepts three forms. The frontend tries them i
    { "icon": "puzzle" }
    ```
 
-2. **Full `<svg>` string** — a complete `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">…</svg>` for multi-primitive icons (e.g. circle + path, rect + path). The host's outer `<svg>` tag is discarded and the host's `class`, `fill`, `stroke`, `viewBox`, `stroke-width` win. The inner children are sanitized to a tight allowlist (`path`, `circle`, `ellipse`, `polyline`, `polygon`, `rect`, `g` plus the attributes the template reads) before being rendered via `v-html` — any other tags or attributes are stripped. Use this when you need a lucide icon (or a hand-rolled one) that uses non-`<path>` primitives.
+2. **Raw SVG path** — a single path string whose **first command must be a moveto**. The host's lead test is `/^(?:(?:M\s*\d)|(?:m\s*-?\d))/`: the value must start with `M` or `m`, then optional whitespace, then a digit. A leading minus is accepted after a lowercase `m` only, so `m-3 6` and `m -3 6` pass while `M-3 6` does not. Smallest of the two forms, but limited to single-path icons.
 
    ```json
    {
-     "icon": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/></svg>"
+     "icon": "M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474 1.68l1.683 1.682a2.414 2.414 0 0 1-3.414 0z"
    }
    ```
 
-3. **Raw SVG path** — a single path string starting with a path command letter (`M`/`L`/`H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, uppercase or lowercase). Smaller than the full `<svg>` form, but limited to single-path icons.
+Only `M`/`m` may lead, and that is not an arbitrary restriction. The SVG spec requires a path to begin with a moveto, so `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A` and `Z` are not valid first commands — a conforming renderer would reject them too. Separately, requiring a digit after the lead letter is what stops kebab-case names like `layout-template` and `log-out` from being read as path data and handed to the browser's SVG validator. Supplying one of those letters first falls back to `puzzle` rather than raising.
 
-   ```json
-   {
-     "icon": "M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"
-   }
-   ```
+The distinction that matters in practice: **the lead is restricted to `M`/`m`, but the rest of the path is not.** Every other command — `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A`, `Z` and their lowercase relative forms — is fine after that first moveto. Compose multi-shape glyphs as subpaths separated by further `M` commands.
 
-If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend renders the bundled `puzzle` icon. If `icon` is set but matches none of the three forms (typo, non-SVG garbage, etc.), the frontend falls back to the bundled `puzzle` icon — silently, not an error. A whitespace-only `icon` value is treated the same as missing.
+> **Leading-dot coordinates are a known gap.** `M.5`, `M-.5` and `m-.5` are legal SVG and are what several icon sets emit, but they do not satisfy the host's lead test and fall back to `puzzle`. Write `M0.5` or `M 0.5` for a positive leading dot, and `m-0.5` or `m -0.5` for a negative one.
 
-**Security note:** Plugin authors are operators with shell access to the Spora host — see § Security. The frontend trust boundary is the plugin manifest itself, not user input. The `<svg>` form is rendered via Vue's `v-html` only on the inner children of a trusted plugin's `<svg>` string, and only after DOMPurify has stripped everything outside the SVG-primitive allowlist. The host's outer `<svg>` tag is discarded and cannot be overridden.
+If `icon` is omitted, the backend defaults it to `"puzzle"` and the frontend renders the bundled `puzzle` icon. If `icon` is set but matches neither form (typo, non-SVG garbage, etc.), the frontend falls back to the bundled `puzzle` icon — silently, not an error, so a rejected value is indistinguishable from an omitted one. A whitespace-only `icon` value is treated the same as missing.
+
+**Security note:** Plugin authors are operators with shell access to the Spora host — see § Security. The frontend trust boundary is the plugin manifest itself, not user input. A raw path is handed to the SVG `d` attribute directly, with no markup parsing involved at all.
+
+**Full `<svg>` blobs are not accepted.** The host used to sanitise them through DOMPurify's SVG profile and render them via `v-html`, but historical mXSS bypasses in that profile motivated dropping the `v-html` path entirely. A `<svg>…</svg>` string no longer matches any accepted form and falls back to `puzzle`; ship a single `d` string instead.
 
 ### Full example
 

@@ -15,25 +15,25 @@ For the **how to author a plugin** walkthrough, see [Develop → Plugins → Aut
 
 ## Top-level fields
 
-| Field           | Type   | Required | Validation                              | Description                                                                                                                                                                                                                                                                             |
-| --------------- | ------ | -------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `slug`          | string | yes      | `^[a-z0-9][a-z0-9_-]*$`                 | Machine identifier. Stable across releases. Used as the `schema_versions` component key and as the migration filename prefix.                                                                                                                                                           |
-| `class`         | string | yes      | non-empty string, FQCN                  | Entry-point class. Must implement `Spora\Plugins\PluginInterface` and resolve via PSR-4 autoloading.                                                                                                                                                                                    |
-| `$schema`       | string | no       | absolute URI                            | URI of this schema, so editors and CI resolve the contract without a network round-trip. Every manifest in the spora-ai org points at the published copy. Read by no runtime code; safe to omit.                                                                                        |
-| `name`          | string | no       | —                                       | Package name — in practice the Composer package name from the plugin's `composer.json` (e.g. `spora-ai/spora-plugin-typst`). No runtime code reads it: `PluginLoader` keys on `slug` and `class`, and `PluginManager`'s inventory prefers `composer.json#name`. Keep the two in sync.   |
-| `description`   | string | no       | max 500 chars                           | Short human-readable description surfaced by the inventory UI.                                                                                                                                                                                                                          |
-| `icon`          | string | no       | one of three forms (see below)          | Icon shown next to the plugin in admin UIs. Defaults to `"puzzle"`.                                                                                                                                                                                                                     |
-| `accent`        | string | no       | one of six tokens                       | Tile accent colour for the app tile: `violet`, `amber`, `emerald`, `sky`, `rose`, or `primary`. Precedence is PHP `App::accent()` > this field > `"primary"`; unknown or missing values fall back to `"primary"` silently.                                                              |
-| `autoload`      | object | no       | shape: `{ psr-4: {...}, files: [...] }` | PSR-4 namespace → path mappings + bootstrap files. **Note:** `autoload` in `plugin.json` is a re-declaration of what `composer.json` should already declare. The framework reads `composer.json`'s autoload first; the manifest's `autoload` is a fallback for sibling-clone workflows. |
-| `frontendEntry` | string | no       | —                                       | Path to a pre-built frontend bundle, letting a JSON-only plugin ship a UI without writing PHP. Read by `AppsController` as a fallback only — a plugin whose App class implements `VueAppInterface` has its PHP-declared entry win. No in-tree manifest ships this yet.                  |
+| Field           | Type   | Required | Validation                                                | Description                                                                                                                                                                                                                                                                             |
+| --------------- | ------ | -------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`          | string | yes      | `^[a-z0-9][a-z0-9_-]*$`                                   | Machine identifier. Stable across releases. Used as the `schema_versions` component key and as the migration filename prefix.                                                                                                                                                           |
+| `class`         | string | yes      | non-empty string, FQCN                                    | Entry-point class. Must implement `Spora\Plugins\PluginInterface` and resolve via PSR-4 autoloading.                                                                                                                                                                                    |
+| `$schema`       | string | no       | absolute URI                                              | URI of this schema, so editors and CI resolve the contract without a network round-trip. Every manifest in the spora-ai org points at the published copy. Read by no runtime code; safe to omit.                                                                                        |
+| `name`          | string | no       | —                                                         | Package name — in practice the Composer package name from the plugin's `composer.json` (e.g. `spora-ai/spora-plugin-typst`). No runtime code reads it: `PluginLoader` keys on `slug` and `class`, and `PluginManager`'s inventory prefers `composer.json#name`. Keep the two in sync.   |
+| `description`   | string | no       | max 500 chars                                             | Short human-readable description surfaced by the inventory UI.                                                                                                                                                                                                                          |
+| `icon`          | string | no       | bundled name, or a raw path starting with `M`/`m` + digit | Icon shown next to the plugin in admin UIs. Defaults to `"puzzle"`, and falls back to it for any unrecognised value. Full `<svg>` blobs are not accepted.                                                                                                                               |
+| `accent`        | string | no       | one of six tokens                                         | Tile accent colour for the app tile: `violet`, `amber`, `emerald`, `sky`, `rose`, or `primary`. Precedence is PHP `App::accent()` > this field > `"primary"`; unknown or missing values fall back to `"primary"` silently.                                                              |
+| `autoload`      | object | no       | shape: `{ psr-4: {...}, files: [...] }`                   | PSR-4 namespace → path mappings + bootstrap files. **Note:** `autoload` in `plugin.json` is a re-declaration of what `composer.json` should already declare. The framework reads `composer.json`'s autoload first; the manifest's `autoload` is a fallback for sibling-clone workflows. |
+| `frontendEntry` | string | no       | —                                                         | Path to a pre-built frontend bundle, letting a JSON-only plugin ship a UI without writing PHP. Read by `AppsController` as a fallback only — a plugin whose App class implements `VueAppInterface` has its PHP-declared entry win. No in-tree manifest ships this yet.                  |
 
 `additionalProperties: false` — extra fields are rejected outright. This is deliberate: the loader **silently ignores** manifest keys it does not recognise, so this schema is the only surface that can tell you a key is a typo. A plugin that needs a genuinely new manifest field has to have it added to `plugin.schema.json` first — inventing a key in the manifest is a no-op at runtime.
 
 > **Not accepted: `version`.** No in-tree manifest declares one and no runtime code reads one. The operator-facing version comes from the git tag Composer recorded at install time, so a hand-edited manifest version could only ever drift from the release operators actually see. See [What is NOT in the manifest](#what-is-not-in-the-manifest).
 
-## `icon` field — three forms
+## `icon` field — two forms
 
-The framework accepts three forms in `icon` (in priority order):
+The framework accepts two forms in `icon`, tried in this order:
 
 ### 1. Bundled name
 
@@ -45,31 +45,25 @@ A kebab-case identifier from the curated palette:
 
 Common bundled names: `puzzle` (default), `brain`, `lightbulb`, `compass`, `globe`, `sparkles`, `file-text`, `database`, `calendar`, `search`, `mail`, `music`, `zap`, `code`, plus a UI utility set (`bell`, `check`, `x`, `plus`, `chevron-*`, `arrow-right`, `menu`, `grid`, `user`, `logout`, `settings`, `sun`, `moon`, `warning`, `pencil`, `trash`, `star`, `clock`, `computer`, `tools`, `file`, `chat`, `agents`, `shield-check`, `user-plus`, `eye`, `lock`, `check-circle`, `info`, `error-circle`).
 
-### 2. Full `<svg>` string
+### 2. Raw SVG path
 
-A complete SVG element for multi-primitive icons:
-
-```json
-{
-  "icon": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/></svg>"
-}
-```
-
-The host's outer `<svg>` tag is discarded; the host's class, fill, stroke, viewBox, stroke-width win. The inner children are sanitized to a tight allowlist (`path`, `circle`, `ellipse`, `polyline`, `polygon`, `rect`, `g`) via DOMPurify before being rendered with `v-html`. Other tags and attributes are stripped.
-
-### 3. Raw SVG path
-
-A single path string starting with a path command letter (`M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A`, `Z`, lowercase or uppercase):
+A single path string whose **first command must be a moveto**. The host's lead test is `/^(?:(?:M\s*\d)|(?:m\s*-?\d))/`, so the value must start with `M` or `m`, then optional whitespace, then a digit. A leading minus is accepted after a lowercase `m` only — `m-3 6` and `m -3 6` pass, `M-3 6` does not:
 
 ```json
 {
-  "icon": "M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"
+  "icon": "M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474 1.68l1.683 1.682a2.414 2.414 0 0 1-3.414 0z"
 }
 ```
 
-Limited to single-path icons. Smaller than the `<svg>` form.
+Only `M`/`m` may lead, and that is not an arbitrary restriction. The SVG spec requires a path to begin with a moveto, so `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A` and `Z` are not valid first commands — a conforming renderer would reject them too. Separately, requiring a digit after the lead letter is what stops kebab-case icon names like `layout-template` and `log-out` from being read as path data and handed to the browser's SVG validator. Supplying one of those letters as the first character silently falls back to `puzzle` rather than raising.
 
-If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set but doesn't match any of the three forms, the frontend falls back to the bundled `puzzle` icon.
+The distinction that matters in practice: **the lead is restricted to `M`/`m`, but the rest of the path is not.** Every other command — `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A`, `Z` and their lowercase relative forms — is fine after that first moveto. Compose multi-shape glyphs as subpaths separated by further `M` commands. Single path string only.
+
+> **Leading-dot coordinates are a known gap.** `M.5`, `M-.5` and `m-.5` are legal SVG and are what several icon sets emit, but they do not satisfy the host's lead test and fall back to `puzzle`. Write `M0.5` or `M 0.5` for a positive leading dot, and `m-0.5` or `m -0.5` for a negative one.
+
+Full `<svg>…</svg>` blobs are **not** accepted. The host used to sanitise them through DOMPurify's SVG profile and render via `v-html`, but historical mXSS bypasses in that profile motivated dropping the `v-html` path entirely. Ship a single `d` string.
+
+If `icon` is omitted, the backend defaults it to `"puzzle"`. If `icon` is set but matches neither form, the frontend falls back to the bundled `puzzle` icon — so a rejected value is indistinguishable from an omitted one.
 
 ## `autoload` block
 

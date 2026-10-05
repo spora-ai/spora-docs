@@ -27,9 +27,17 @@
 //      `additionalProperties: false` the loader silently ignores such a key at
 //      boot, so this is exactly the case where the schema would be lying.
 //   3. Reverse drift — a key the schema permits that *no* manifest uses and
+//   3. Reverse drift — a key the schema permits that *no* manifest uses and
 //      that is not listed in FORWARD_COMPAT_ALLOWANCE below. Without this the
 //      schema rots in the other direction by accumulating plausible fields
 //      nothing uses.
+//   4. Icon-contract drift — the schema's `icon` description is checked against
+//      the resolver that implements it (`SVG_PATH_LEAD` in
+//      spora-components/src/icons/Icon.vue), so a description that re-widens
+//      the accepted path commands fails here. The published schema previously
+//      claimed `M/L/H/V/C/S/Q/T/A/Z` were all valid leading commands; the
+//      resolver accepts only `M`/`m` followed by a digit. The accepted letters
+//      are read out of the resolver source, never duplicated in this file.
 //
 // Manifest discovery, in priority order:
 //
@@ -44,6 +52,12 @@
 // outright when zero manifests are found, so a discovery regression cannot
 // turn this into a green no-op. The job prints how many manifests it saw and
 // from where.
+//
+// The icon check reads spora-components (./spora-components in CI,
+// ../spora-components locally). If that checkout is absent the icon check is
+// reported as SKIPPED and named as skipped — never as passed. The alternative
+// would be hardcoding the accepted path-command letters here, which is the
+// drift this check is meant to catch.
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { dirname, resolve, relative, join } from 'node:path'
@@ -69,8 +83,17 @@ const FORWARD_COMPAT_ALLOWANCE = new Map([
 
 // Directories that cannot hold a real manifest (VCS metadata, dependency
 // trees, local worktrees). Skipped silently but counted, so the run still shows
-// that the walk was not trivial.
-const STRUCTURAL_IGNORES = new Set(['node_modules', 'vendor', '.git', '.worktrees', '.claude'])
+// that the walk was not trivial. `.worktrees` and `.wt` are both in use across
+// the org for `git worktree` checkouts: a worktree holds an in-progress manifest
+// that has no business gating the check, and a clean CI checkout has neither.
+const STRUCTURAL_IGNORES = new Set([
+  'node_modules',
+  'vendor',
+  '.git',
+  '.worktrees',
+  '.wt',
+  '.claude',
+])
 
 // Directories whose manifests are excluded on purpose, each listed in the run
 // output by name. `plugins_invalid_manifest` is the load-bearing one: spora-core
@@ -174,6 +197,136 @@ function displayPath(file) {
   if (rel === '') return file
   const depth = rel.split('/').filter((seg) => seg === '..').length
   return depth > 1 ? file : rel
+}
+
+// ---- icon contract, derived from the host resolver ----------------------
+//
+// spora-components/src/icons/Icon.vue decides whether an `icon` value is a raw
+// path. Its lead test is the only definition of "is this a path", so the schema
+// description is checked against that source rather than against a letter list
+// restated here.
+
+const ICON_LEAD_CONST = 'SVG_PATH_LEAD'
+// Command letters that may legally appear *after* the initial moveto. Used only
+// to recognise the description's "fine after the first M" sentence, which is
+// correct as written and must not trip the check.
+const PATH_COMMAND_LETTERS = 'MmLlHhVvCcSsQqTtAaZz'
+
+function findIconResolver() {
+  const candidates = [
+    resolve(ROOT, 'spora-components/src/icons/Icon.vue'),
+    resolve(ROOT, '..', 'spora-components/src/icons/Icon.vue'),
+  ]
+  for (const path of candidates) {
+    if (existsSync(path)) return path
+  }
+  return null
+}
+
+// Pull the `SVG_PATH_LEAD` regex literal out of the resolver source. Throws
+// rather than guessing if the constant is renamed or removed — a silent miss
+// here would leave the icon contract unverified while looking green.
+function readIconLeadTest(resolverPath) {
+  const source = readFileSync(resolverPath, 'utf8')
+  const line = source
+    .split('\n')
+    .find((l) => l.includes(`${ICON_LEAD_CONST} =`))
+  if (line === undefined) {
+    throw new Error(`${ICON_LEAD_CONST} not found in ${displayPath(resolverPath)}`)
+  }
+  const literal = line.match(/=\s*(\/(.*)\/[a-z]*)\s*$/)
+  if (literal === null) {
+    throw new Error(`could not parse a regex literal from: ${line.trim()}`)
+  }
+  return { source: literal[2], test: new RegExp(literal[2], 'u') }
+}
+
+// Every command letter the resolver accepts as a leading command, derived by
+// probing the extracted regex rather than by reading a list out of the source.
+// A letter counts as an accepted lead if `<letter>0` matches — the minimal
+// witness that the letter may lead a coordinate. Both cases are probed, because
+// the resolver distinguishes `M` from `m` (only lowercase accepts a minus).
+function deriveLeadingLetters(test) {
+  const accepted = []
+  for (const letter of PATH_COMMAND_LETTERS) {
+    if (test.test(`${letter}0`)) accepted.push(letter)
+  }
+  return accepted
+}
+
+// The bundled-name registry in the resolver, so an `examples` entry can be
+// recognised as a name rather than a path.
+function readIconRegistry(resolverPath) {
+  const source = readFileSync(resolverPath, 'utf8')
+  const names = new Set()
+  const block = source.match(/const icons:[^=]*=\s*\{([\s\S]*?)\n\}/u)
+  if (block === null) return names
+  for (const m of block[1].matchAll(/^\s{2,4}(?:'([a-z0-9-]+)'|([a-z][a-z0-9-]*)):\s*\[/gmu)) {
+    names.add(m[1] ?? m[2])
+  }
+  return names
+}
+
+// Three assertions, all resolvable without parsing prose:
+//
+//   1. The description quotes the resolver's regex verbatim. This is the
+//      anti-drift anchor: if `SVG_PATH_LEAD` ever changes, the description has
+//      to change with it or this fails.
+//   2. A `pattern` on `icon`, if one is ever added, must not accept a string
+//      the resolver rejects. There is deliberately no pattern today — one regex
+//      cannot express "bundled name OR raw path" — but a loose one added later
+//      would be a silent contract widening.
+//   3. Every `examples` entry is either a name in the resolver's registry or a
+//      string the resolver's lead test accepts.
+//
+// A prose-level "did you re-widen the letter list" check is deliberately NOT
+// attempted: distinguishing "L/H/C are invalid leads" from "L/H/C are valid
+// leads" needs negation-aware parsing, and a wrong version of that check
+// false-positives on correct text. The verbatim quote is the enforceable part.
+function checkIconContract(schema, leadTest, registry) {
+  const failures = []
+  const icon = schema.properties?.icon
+  if (icon === undefined) {
+    return ['schema has no `icon` property to check against the host resolver']
+  }
+  const description = icon.description ?? ''
+  const lead = leadTest.test
+  const accepted = deriveLeadingLetters(lead)
+  const rule = `${ICON_LEAD_CONST} = /${leadTest.source}/`
+
+  if (!description.includes(leadTest.source)) {
+    failures.push(
+      `icon description does not quote the resolver's actual lead test (${rule}). ` +
+        `Quote it so the published contract cannot drift from the implementation — ` +
+        `the resolver accepts only ${accepted.join('/')} followed by a digit.`,
+    )
+  }
+
+  if (typeof icon.pattern === 'string') {
+    const pattern = new RegExp(icon.pattern, 'u')
+    for (const letter of PATH_COMMAND_LETTERS) {
+      if (accepted.includes(letter)) continue
+      if (pattern.test(`${letter}1 1`)) {
+        failures.push(
+          `icon.pattern /${icon.pattern}/ accepts "${letter}1 1", which the resolver ` +
+            `rejects (${rule}) — it would silently fall back to "puzzle".`,
+        )
+      }
+    }
+  }
+
+  for (const example of icon.examples ?? []) {
+    if (typeof example !== 'string') continue
+    const trimmed = example.trim()
+    if (registry.has(trimmed) || lead.test(trimmed)) continue
+    failures.push(
+      `icon example ${JSON.stringify(example)} is neither a bundled name in the ` +
+        `resolver's registry nor a string its lead test accepts (${rule}). It would ` +
+        `render as the "puzzle" fallback.`,
+    )
+  }
+
+  return failures
 }
 
 function isPermitted(key, schema) {
@@ -328,7 +481,28 @@ function main() {
   const unusedPermitted = Object.keys(schema.properties ?? {}).filter(
     (key) => !sink.observed.has(key) && !FORWARD_COMPAT_ALLOWANCE.has(key),
   )
-  const failures = buildFailures({ ...sink, unusedPermitted })
+  const failures = [...buildFailures({ ...sink, unusedPermitted })]
+
+  // Icon contract. A missing resolver is reported as SKIPPED, never as passed —
+  // the alternative would be hardcoding the accepted letters here.
+  const resolverPath = findIconResolver()
+  if (resolverPath === null) {
+    console.log(
+      `  - icon contract: SKIPPED — spora-components not checked out ` +
+        `(looked for ./spora-components and ../spora-components). The \`icon\` ` +
+        `description is NOT verified against the host resolver on this run.`,
+    )
+  } else {
+    const leadTest = readIconLeadTest(resolverPath)
+    const registry = readIconRegistry(resolverPath)
+    const accepted = deriveLeadingLetters(leadTest.test)
+    console.log(
+      `  - icon contract: resolver at ${displayPath(resolverPath)}, ` +
+        `${registry.size} bundled names, leading commands ${accepted.join('/')} ` +
+        `(derived from ${ICON_LEAD_CONST})`,
+    )
+    failures.push(...checkIconContract(schema, leadTest, registry))
+  }
 
   if (failures.length > 0) {
     console.error(`\nplugin.schema.json does not match reality.\n`)

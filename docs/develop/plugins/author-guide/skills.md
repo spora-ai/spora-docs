@@ -71,14 +71,14 @@ metadata:
 ---
 ```
 
-| Field           | Required | Constraints                                                                                                              |
-| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `name`          | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, no leading/trailing hyphen, no `--`. Must equal the parent directory name. |
-| `description`   | Yes      | 1-1024 chars. What + when to use. Include trigger keywords.                                                              |
-| `license`       | No       | Informational.                                                                                                           |
-| `compatibility` | No       | ≤ 500 chars.                                                                                                             |
-| `metadata`      | No       | Free-form `map<string,string>`.                                                                                          |
-| `allowed-tools` | No       | Spec-experimental. Parsed but not enforced in MVP.                                                                       |
+| Field           | Required | Constraints                                                                                                                                                                                                                  |
+| --------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`          | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, no leading/trailing hyphen, no `--`. Must equal the parent directory name.                                                                                                     |
+| `description`   | Yes      | 1-1024 chars. What + when to use. Include trigger keywords.                                                                                                                                                                  |
+| `license`       | No       | Informational.                                                                                                                                                                                                               |
+| `compatibility` | No       | ≤ 500 chars.                                                                                                                                                                                                                 |
+| `metadata`      | No       | Free-form `map<string,string>`.                                                                                                                                                                                              |
+| `allowed-tools` | No       | Space-separated bare tool names (`allowed-tools: agent read_url`). Parsed, validated and surfaced as `required_tools`. A declaration, never a grant — see [The `allowed-tools` frontmatter](#the-allowed-tools-frontmatter). |
 
 ## SKILL.md body
 
@@ -206,7 +206,9 @@ interface SkillProviderInterface
 }
 ```
 
-**Two wire types, on purpose.** `SkillSummary` is the list shape (`name`, `description`, `license`, `source`, `slug`, `fileCount`, `hasWarnings`); `SkillDescriptor` is the detail shape (a `SkillSummary` plus `body`, `compatibility`, `allowedTools`, `metadata`, `files`, `warnings`). Neither carries `body` on the list path: the `allowed_skills` multi-select loads every visible skill at once, and a body on the list type is 50 KB per dropdown row. Never return a descriptor from `getSkills()`.
+**Two wire types, on purpose.** `SkillSummary` is the list shape (`name`, `description`, `license`, `source`, `slug`, `fileCount`, `hasWarnings`, `requiredTools`); `SkillDescriptor` is the detail shape (a `SkillSummary` plus `body`, `compatibility`, `allowedTools`, `requiredTools`, `metadata`, `files`, `warnings`). Neither carries `body` on the list path: the `allowed_skills` multi-select loads every visible skill at once, and a body on the list type is 50 KB per dropdown row. Never return a descriptor from `getSkills()`.
+
+`requiredTools` is the **parsed** `allowed-tools` list and defaults to `[]`, so a provider that never reads the field stays constructible. Populate it whenever the skill carries a declaration — `AllowedTools::names($raw)` does the parse — or the declaration is stored and echoed but never compared against anything. `allowedTools` keeps the raw string for spec compatibility.
 
 **`source()` is a label, not a lookup key.** It is a bucket for operators and the UI. Each skill's own `SkillSummary::source` is what wins in the response and what the SPA groups by — a single provider serving mixed content must not have its `source()` overwrite that.
 
@@ -267,7 +269,10 @@ public function validate(array $frontmatter, ?string $body = null, ?string $pare
 Two adjustments make it fit a provider:
 
 - Map your tool/route parameter `allowed_tools` to the **hyphenated** `allowed-tools` key first. `ALLOWED_TOP_KEYS` expects the spec form and raises `UNKNOWN_TOP_LEVEL_KEY` — a hard error — on the snake_case spelling.
+- Compose the frontmatter and run the validator over it before writing, then store the `allowed-tools` value verbatim. Do not trim or collapse its whitespace: core owns that grammar, and a provider that tidies a value core is entitled to reject has moved the boundary. The plugin is storage; core is judgement.
 - Strip `files` before validating. `SkillValidator` has no `files` concept and would reject it as an unknown top-level key. Your sidecar set is validated by your own caps.
+
+Let the **container** build the validator. Its optional `ToolConfigNameResolver` argument is what turns `ALLOWED_TOOLS_UNKNOWN_TOOL` on, so a provider that calls `new SkillValidator()` bare gets the syntax checks and silently never warns about a stale name. Bind the class in your container rather than constructing it.
 
 `$parentDirName` is the filesystem-only third argument: it is what raises `NAME_DIR_MISMATCH` when a `SKILL.md`'s `name` differs from its parent directory. A database row has no directory, so pass `null` — and enforce the equivalent invariant yourself. `spora-plugin-custom-skills` forces `name === slug` at write time for exactly this reason.
 
@@ -275,25 +280,26 @@ Enforce hard caps as **errors** on the write path. `BODY_SOFT_BYTE_LIMIT` emits 
 
 ### SkillValidator (frontmatter rules)
 
-| Code                      | Severity | When                                                     |
-| ------------------------- | -------- | -------------------------------------------------------- |
-| `EMPTY_FRONTMATTER`       | error    | SKILL.md has no YAML frontmatter block.                  |
-| `UNKNOWN_TOP_LEVEL_KEY`   | error    | Frontmatter contains a key not in the allowed list.      |
-| `NAME_REQUIRED`           | error    | `name` is missing.                                       |
-| `NAME_INVALID`            | error    | `name` is not a non-empty string.                        |
-| `NAME_CONSECUTIVE_HYPHEN` | error    | `name` contains `--`.                                    |
-| `NAME_PATTERN`            | error    | `name` doesn't match the slug pattern.                   |
-| `NAME_DIR_MISMATCH`       | error    | `name` doesn't equal the parent directory name.          |
-| `DESCRIPTION_REQUIRED`    | error    | `description` is missing.                                |
-| `DESCRIPTION_INVALID`     | error    | `description` is not a non-empty string.                 |
-| `DESCRIPTION_TOO_LONG`    | error    | `description` exceeds 1024 chars.                        |
-| `LICENSE_INVALID`         | error    | `license` is set but not a string.                       |
-| `COMPATIBILITY_INVALID`   | error    | `compatibility` is set but not a string.                 |
-| `COMPATIBILITY_TOO_LONG`  | error    | `compatibility` exceeds 500 chars.                       |
-| `METADATA_INVALID`        | error    | `metadata` is set but not an object.                     |
-| `METADATA_VALUE_INVALID`  | error    | `metadata` contains a non-string key or value.           |
-| `ALLOWED_TOOLS_INVALID`   | error    | `allowed-tools` is set but not a space-separated string. |
-| `SKILL_BODY_OVERSIZE`     | warning  | `SKILL.md` body exceeds 500 lines or 50 KB.              |
+| Code                         | Severity | When                                                                                              |
+| ---------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `EMPTY_FRONTMATTER`          | error    | SKILL.md has no YAML frontmatter block.                                                           |
+| `UNKNOWN_TOP_LEVEL_KEY`      | error    | Frontmatter contains a key not in the allowed list.                                               |
+| `NAME_REQUIRED`              | error    | `name` is missing.                                                                                |
+| `NAME_INVALID`               | error    | `name` is not a non-empty string.                                                                 |
+| `NAME_CONSECUTIVE_HYPHEN`    | error    | `name` contains `--`.                                                                             |
+| `NAME_PATTERN`               | error    | `name` doesn't match the slug pattern.                                                            |
+| `NAME_DIR_MISMATCH`          | error    | `name` doesn't equal the parent directory name.                                                   |
+| `DESCRIPTION_REQUIRED`       | error    | `description` is missing.                                                                         |
+| `DESCRIPTION_INVALID`        | error    | `description` is not a non-empty string.                                                          |
+| `DESCRIPTION_TOO_LONG`       | error    | `description` exceeds 1024 chars.                                                                 |
+| `LICENSE_INVALID`            | error    | `license` is set but not a string.                                                                |
+| `COMPATIBILITY_INVALID`      | error    | `compatibility` is set but not a string.                                                          |
+| `COMPATIBILITY_TOO_LONG`     | error    | `compatibility` exceeds 500 chars.                                                                |
+| `METADATA_INVALID`           | error    | `metadata` is set but not an object.                                                              |
+| `METADATA_VALUE_INVALID`     | error    | `metadata` contains a non-string key or value.                                                    |
+| `ALLOWED_TOOLS_INVALID`      | error    | `allowed-tools` is not a string, or an entry is not a legal tool name. `path` is `allowed-tools`. |
+| `ALLOWED_TOOLS_UNKNOWN_TOOL` | warning  | `allowed-tools` names a tool that is not installed on this instance. The message names the entry. |
+| `SKILL_BODY_OVERSIZE`        | warning  | `SKILL.md` body exceeds 500 lines or 50 KB.                                                       |
 
 ### SkillScanner (discovery rules)
 
@@ -303,7 +309,9 @@ Enforce hard caps as **errors** on the write path. `BODY_SOFT_BYTE_LIMIT` emits 
 | `SKILL_FRONTMATTER_MISSING` | error    | The frontmatter delimiter (`---`) is missing or malformed. |
 | `SKILL_NAME_CONFLICT`       | error    | Two scan roots supply the same `(source, slug)` pair.      |
 
-Errors block the skill from being used; warnings are advisory.
+These three are **not** the same as a `SkillValidator` error. A scanner code replaces the skill with an error-shaped entry — empty frontmatter, empty body, so nothing can read it. A `SkillValidator` error is merged into the skill's `warnings[]` list next to the warnings, the `severity` field is what tells them apart, and the skill still loads. Only `isValid()` draws the line, and that is the gate a **write path** should use — which is why a provider that stores skills should refuse an invalid one on save rather than discover it at scan time.
+
+`ALLOWED_TOOLS_UNKNOWN_TOOL` is a warning precisely so a partial install stays servable: a skill may legitimately name a tool the deployment does not have, and rejecting that would be worse than the typo it catches. A provider should not "fix" it by resolving names itself — core already has the resolver, and a plugin that reports it as an error breaks the partial install the warning exists to protect.
 
 ## Source priority
 
@@ -315,9 +323,41 @@ The scanner tags each skill with a `source` label:
 
 Two skills with the same `name` from DIFFERENT sources are distinct entries (the project can ship `git` and a plugin can ship its own `git` without collision). Two skills with the same `name` from the SAME source raise `SKILL_NAME_CONFLICT`.
 
-## The `allowed-tools` frontmatter (spec-experimental, MVP: ignored)
+## The `allowed-tools` frontmatter
 
-The agentskills.io spec defines an `allowed-tools` field — a space-separated list of pre-approved tools the skill may invoke. Spora parses and surfaces it on the skill summary, but does **not** enforce it in MVP. Enforcing context-dependent tool approval requires a new mechanism (per-skill activation records in the Task context) — tracked in the spora-workspace backlog (file lives outside this docs repo).
+A skill's `allowed-tools` field declares the tools it expects to use, so an operator can see the dependency without reading the body. Spora takes the **separator** from the agentskills.io spec — a space-separated string of bare tool names — and none of its **semantics**. The spec calls these tools "pre-approved to run"; Spora pre-approves nothing. A declared tool is granted nothing, and nothing refuses a call because a declared tool is absent. Approval stays with the operation's `requiresApprovalByDefault` and the per-agent override.
+
+### What is and is not a tool name
+
+An entry must match `/^[a-z][a-z0-9_]*$/` — the same pattern `#[Tool(name:)]` enforces, so a skill can never name a tool the framework would refuse to register.
+
+```yaml
+allowed-tools: agent read_url
+```
+
+| Written                 | Verdict                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| `Spora\Tools\MediaTool` | **error** — a class name, not a tool name.                                                          |
+| `agent, read_url`       | **error** — commas are not the separator; the spec's separator is a space.                          |
+| `Bash(git:*)`           | **error** — the spec's parenthesised scoped form. Spora takes the separator, not the scoped syntax. |
+| `<plugin-slug>:<name>`  | **error** — the plugin prefix is an LLM-wire convenience, and `:` is not in the pattern.            |
+| `<name>`                | correct — the bare `#[Tool(name:)]` value.                                                          |
+
+A plugin slug belongs in neither form, so `my-plugin_my_tool` is an error too.
+
+The same rule is worth applying to a `SKILL.md` **body**, which nothing validates: verify a tool name against the registry rather than assuming it, because a plausible-looking name that no tool answers to costs the agent a failed call. See [Tool reference style](#tool-reference-style).
+
+Entries are split on whitespace, so a YAML folded scalar (`>-`) is fine. The parsed list is de-duplicated in first-seen order and capped at 32 entries (`AllowedTools::MAX_ENTRIES`); a longer declaration is not an error, it just stops contributing names.
+
+### The two severities
+
+`ALLOWED_TOOLS_INVALID` for anything the grammar cannot read. `ALLOWED_TOOLS_UNKNOWN_TOOL` for a well-formed name that no installed tool answers to — most often because the plugin providing it is not installed on this instance. The second is a **warning**, and the skill still works; the declaration is simply stale on this deployment. Name resolution is skipped once an entry is malformed, so one bad name yields the error and no warning on top of it.
+
+### Keeping the field a declaration
+
+The value is storage; the grammar is core's to judge. Compose the frontmatter, run `SkillValidator` over it, and store the string verbatim.
+
+If your plugin writes skills, put the parsed list on the wire too: populate the summary's and descriptor's `requiredTools` from `AllowedTools::names($raw)` so the declaration is comparable against the installed tool set rather than stored and echoed. The reference implementation is [`spora-plugin-custom-skills`](https://github.com/spora-ai/spora-plugin-custom-skills), which keeps the column in its writable set and on the resource, lets the container build the validator, and refuses a malformed value with core's own `ALLOWED_TOOLS_INVALID` before it can reach storage.
 
 ## Chat-UI affordance
 

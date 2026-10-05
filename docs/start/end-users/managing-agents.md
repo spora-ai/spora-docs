@@ -147,7 +147,7 @@ An **agent template** is a file — JSON or YAML — that bundles an agent's ide
 **Agents → New** opens a dialog that asks how you want to start. Three cards:
 
 - **Blank agent** — start from a name and an optional system prompt. Tools are added in the next step.
-- **From template** — browse the gallery, grouped by the template's `source` value. Each card shows the template's `id`, version, and how many tools it enables.
+- **From template** — browse the gallery, grouped by where the template came from: a **Core** group for the framework's bundled template, plus one group per contributing plugin. Each card shows the template's `id`, version, and how many tools it enables.
 - **Upload template** — import a `.json` file someone exported from another Spora instance. The file is read in your browser, then sent to your own Spora instance for a dry-run validation pass before anything is written.
 
 If you also control a group, the **Pick an owner** step runs after you choose a card — the same owner decision as the **Step 0 — Owner** step above.
@@ -221,9 +221,9 @@ Delete only when:
 
 Plugins can ship their own agent templates. When a plugin is installed, every directory it returns from `agentTemplatePaths()` is scanned and its templates join the **From template** gallery — installing a plugin is what adds curated starter agents to your picker.
 
-> **Known upstream defect:** the gallery does **not** group by plugin, and the bundled template is not grouped under **Core**, even though the UI is written as if it did. The group heading is the template's raw `source` value, and the backend derives `source` from the **name of the directory** the file lives in — not from the plugin slug. It only resolves to `core` when the filename without its extension is literally `core`, which the bundled `core-assistant.json` is not. Every hook today returns a directory named `agent-templates`, so on a real install the bundled template and every plugin template land in one single group headed `agent-templates`. Worth filing upstream.
+Templates are grouped by the `source` label their scan root declares: the framework's bundled template sits under **Core**, and each installed plugin gets a group named after its own slug. Project-level and App-contributed templates appear under `project` and `app` where those exist.
 
-The same defect is why id-namespacing does not work as intended. A scanned file's `id` has to be prefixed with its resolved `source` — the directory basename, not the plugin slug — so the rule the code actually enforces today is `agent-templates/<name>`. A plugin shipping `agent-templates/assistant.json` with the id `memories/assistant` gets a `NAMESPACE_MISMATCH` warning, and so does the bundled `core/core-assistant`. The check is skipped for the sources `core` and `uploaded`, and uploaded files never reach it at all because the import endpoint builds the template straight from the raw payload. `NAMESPACE_MISMATCH` is a warning, not a rejection: the template still appears in the gallery and still imports. The intended `<plugin-slug>/<name>` form is a documented-but-unimplemented convention.
+That same label does the namespacing. A scanned template's `id` has to start with its own source — `memories/assistant` for a template the memories plugin ships, `core/core-assistant` for the bundled one — and one that doesn't raises a `NAMESPACE_MISMATCH` warning. It is a warning, not a rejection: the template still appears in the gallery and still imports. The `core` and `uploaded` sources are exempt. A few shipped plugin templates declare a bare id and do warn today — `typst-expert`, `image-agent`, and `media-agent` want to be `typst/typst-expert`, `openai-image/image-agent`, and `minimax/media-agent` — but that is a rename in the plugin's own repo, not a constraint on you.
 
 Nothing is installed on your behalf. If a template lists a plugin you don't have, you get a `PLUGIN_MISSING` warning — reported on the post-import toast rather than the Warnings step — and the import proceeds with the rest. Install the plugin from **Plugins**, then re-import if you want its tools.
 

@@ -57,18 +57,77 @@ your-plugin/
 
 ### Frontmatter
 
-| Field           | Required | Constraints                                                                                                              |
-| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `name`          | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, no leading/trailing hyphen, no `--`. Must match the parent directory name. |
-| `description`   | Yes      | 1-1024 chars. Surface what the skill does AND when to use it; include trigger keywords.                                  |
-| `license`       | No       | Short string (license name or filename). Informational.                                                                  |
-| `compatibility` | No       | ≤ 500 chars. Env requirements.                                                                                           |
-| `metadata`      | No       | Free-form `map<string,string>`.                                                                                          |
-| `allowed-tools` | No       | (Spec-experimental) Parsed but not enforced. Tracked in the spora-workspace backlog.                                     |
+| Field           | Required | Constraints                                                                                                                                                               |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`          | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, no leading/trailing hyphen, no `--`. Must match the parent directory name.                                                  |
+| `description`   | Yes      | 1-1024 chars. Surface what the skill does AND when to use it; include trigger keywords.                                                                                   |
+| `license`       | No       | Short string (license name or filename). Informational.                                                                                                                   |
+| `compatibility` | No       | ≤ 500 chars. Env requirements.                                                                                                                                            |
+| `metadata`      | No       | Free-form `map<string,string>`.                                                                                                                                           |
+| `allowed-tools` | No       | Spec-experimental. A space-separated string of bare tool names — a declaration, never a grant. See [Declaring the tools a skill uses](#declaring-the-tools-a-skill-uses). |
 
 ### Body
 
 Markdown, no format restrictions. Spec recommends step-by-step instructions, examples, and edge cases. Keep `SKILL.md` under 500 lines / 50 KB — Spora emits a soft `SKILL_BODY_OVERSIZE` warning above that, but never hard-rejects. Move long content to `references/` sidecar files.
+
+## Declaring the tools a skill uses
+
+`allowed-tools` names the tools a skill expects to use, so an operator can see the dependency without reading the body. It is **a declaration, not a grant**.
+
+### No pre-approval
+
+The [agentskills.io specification](https://agentskills.io/specification) defines `allowed-tools` as _"A space-separated string of tools that are pre-approved to run"_, marks it experimental, and adds _"Support for this field may vary between agent implementations."_ Spora takes the separator from the spec and **implements no pre-approval**: a declared tool is granted nothing, and nothing refuses a call because a declared tool is absent.
+
+So the spec's wording sets up an expectation Spora does not meet, in both directions:
+
+- Declaring a tool **does not** spare the operator an approval prompt. Approval is decided by the operation's `requiresApprovalByDefault` and the per-agent override on the agent's **Tools** tab, as for any other tool — see [Approval and tool permissions](/start/end-users/managing-agents#approval-and-tool-permissions).
+- Omitting a tool **does not** prevent the agent from calling it. Nothing reads the field to gate dispatch.
+
+Read the field as documentation that happens to be machine-checkable.
+
+### The grammar
+
+A space-separated string of **bare tool names**, each matching `/^[a-z][a-z0-9_]*$/` — the same pattern `#[Tool(name:)]` enforces, so a skill can never name a tool the framework would refuse to register. See [Tool naming](/reference/concepts/tools#tool-naming).
+
+```yaml
+allowed-tools: agent read_url
+```
+
+Two tools. Three things that read plausibly and are all **errors**:
+
+| Written                 | Why it is rejected                                                                             |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `Spora\Tools\MediaTool` | A class name. The name space is the tool name, not the class that declares it.                 |
+| `agent, read_url`       | Commas are not the separator — the spec's separator is a space, so `agent,` is not a name.     |
+| `Bash(git:*)`           | The spec's parenthesised scoped form. Spora takes the spec's separator, not its scoped syntax. |
+
+A **plugin** tool is declared by its bare name, without the plugin prefix. The LLM sees such a tool as `<plugin-slug>:<name>` — see [Core vs plugin namespacing](/reference/concepts/tools#core-vs-plugin-namespacing) — but `allowed-tools` takes the bare name, because `:` is not in the pattern.
+
+Entries are split on whitespace, so a YAML folded scalar (`>-`) is fine. The parsed list is de-duplicated in first-seen order and capped at 32 entries; a longer declaration is not an error, it simply stops contributing names.
+
+### Validation
+
+Two severities, both carrying `path: 'allowed-tools'` and both naming the offending entry in the message.
+
+| Code                         | Severity | When                                                                                                    |
+| ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| `ALLOWED_TOOLS_INVALID`      | error    | The value is not a string, or an entry is not a legal tool name — a comma, a class name, a scoped form. |
+| `ALLOWED_TOOLS_UNKNOWN_TOOL` | warning  | The value is well-formed but names a tool that is **not installed on this instance**.                   |
+
+`ALLOWED_TOOLS_UNKNOWN_TOOL` is a warning, not an error, and it does **not** invalidate the skill. `SkillValidator::isValid()` checks errors only, so a stale declaration loads, the agent reads the skill, and `required_tools` reports the name as written. The usual cause is not a typo but a partial install: the plugin that provides the tool is simply not present here. Name resolution is skipped entirely when an entry is already malformed, so one bad name produces the error and no warning on top of it.
+
+For a **shipped** skill, both severities surface on the skill's `warnings[]` list and the scanner keeps the skill either way — `has_warnings` is the only wire signal, and the `severity` field is what separates a finding from a note. For a **custom skill** the error is a real gate: the plugin's write path runs core's validator and refuses the save with `422 SKILL_INVALID`, so a malformed declaration cannot reach the column at all. See [Custom skills](#custom-skills).
+
+### On the wire
+
+`required_tools` is the parsed list — the comparable form, which a consumer can put next to the tool names on [`GET /api/v1/tools`](/reference/concepts/tools#api-v1-tools-response-shape). It rides on both skill shapes:
+
+| Route                         | Carries                                                    |
+| ----------------------------- | ---------------------------------------------------------- |
+| `GET` `/api/v1/skills`        | `required_tools` and `slug`                                |
+| `GET` `/api/v1/skills/{slug}` | `required_tools`, alongside the raw `allowed_tools` string |
+
+The raw string stays on the detail route for spec compatibility with what the `SKILL.md` actually says. The two are one value in two forms: `allowed-tools: agent read_url` on disk is `allowed_tools: "agent read_url"` and `required_tools: ["agent", "read_url"]` on the wire.
 
 ## The Skill tool
 
@@ -169,11 +228,11 @@ Deleting a custom skill also **scrubs its name from every `allowed_skills` array
 
 ## HTTP surface
 
-| Method | Path                                 | Purpose                                                                                                               |
-| ------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/skills`                     | List → `[{name, description, source, license, files_count, has_warnings}]`. Powers the `allowed_skills` multi-select. |
-| `GET`  | `/api/v1/skills/{slug}`              | One skill, full `files` listing + raw `SKILL.md` body.                                                                |
-| `GET`  | `/api/v1/skills/{slug}/files/{path}` | One sidecar's contents → `{path, content, bytes}`. `{path}` is an exact-match key from the `files` listing.           |
+| Method | Path                                 | Purpose                                                                                                                                     |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/skills`                     | List → `[{name, slug, description, source, license, files_count, has_warnings, required_tools}]`. Powers the `allowed_skills` multi-select. |
+| `GET`  | `/api/v1/skills/{slug}`              | One skill, full `files` listing + raw `SKILL.md` body. Carries the raw `allowed_tools` string and the parsed `required_tools` list.         |
+| `GET`  | `/api/v1/skills/{slug}/files/{path}` | One sidecar's contents → `{path, content, bytes}`. `{path}` is an exact-match key from the `files` listing.                                 |
 
 `?principal_id=N` narrows the listing to one principal — the SPA already sends it and derives it per editor mode (agent / group / personal), so honouring it is what stops a group admin's personal skills appearing in the group's picker. An id the caller cannot see is discarded before it reaches a provider, so a hand-crafted `?principal_id=` cannot read another tenant's skills, bodies included. The same discarding applies to the file route, where an unknown skill, an unlisted path and an over-cap file are one indistinguishable `404 SKILL_FILE_NOT_FOUND` — unlike the plugin's own file route, which answers `413 FILE_TOO_LARGE`.
 
@@ -193,4 +252,4 @@ The framework ships a `time-arithmetic` skill at `<spora-core>/skills/time-arith
 - [agentskills.io specification](https://agentskills.io/specification) (the open format Spora follows)
 - [Agent templates](/reference/concepts/agent-templates) (complementary mechanism for Agent identity)
 - **Chat-UI rendering**: when the Agent calls `skill(action: "read", …)` on `SKILL.md`, the chat UI renders a compact `Loaded skill: <slug>` badge in place of the standard tool-call card. `skill(action: "read", …)` of any sidecar file and `skill(action: "files", …)` keep the standard tool-call card. The badge is driven by `tool_name` + `action` + `filename` matching in `TaskChatMessageList.vue`; no backend change.
-- **Future work**: enforcement of the spec-experimental `allowed-tools` field is tracked in the spora-workspace backlog (file lives outside this docs repo).
+- **Future work**: the spec's pre-approval semantics for `allowed-tools` are not implemented, by design rather than by omission — see [Declaring the tools a skill uses](#declaring-the-tools-a-skill-uses).

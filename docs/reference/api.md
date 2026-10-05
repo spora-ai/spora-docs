@@ -266,9 +266,11 @@ Base path `/api/v1/custom-skills`. Every route sits behind `[AuthMiddleware, Csr
 | `POST`   | `/api/v1/custom-skills/{name}/restore`      | `200 {"data": {"skill": …}}`                       | `404` · `409 NO_PREVIOUS_VERSION`                                   |
 | `GET`    | `/api/v1/custom-skills/{name}/allowlist`    | `{"data": {"agents": [{id, name, scope}]}}`        | `404 SKILL_NOT_FOUND`                                               |
 
-`CustomSkillResource` is the shape every route returns: `id`, `principal_id`, `name`, `slug`, `description`, `license`, `compatibility`, `allowed_tools`, `metadata`, `body`, `body_bytes`, `provenance` (`human` \| `agent`), `created_by_user_id`, `updated_by_user_id`, `created_at`, `updated_at`, `files[]` (`SKILL.md` first, always), `has_previous`, and `warnings[]` with `warning_count`. `name === slug` is enforced at write time; a name change on `PUT` is a `422`.
+`CustomSkillResource` is the shape every route returns: `id`, `principal_id`, `name`, `slug`, `description`, `license`, `compatibility`, `allowed_tools`, `metadata`, `body`, `body_bytes`, `provenance` (`human` \| `agent`), `created_by_user_id`, `updated_by_user_id`, `created_at`, `updated_at`, `files[]` (`SKILL.md` first, always), `has_previous`, `previous_at`, `previous_by`, and `warnings[]` with `warning_count`. `name === slug` is enforced at write time; a name change on `PUT` is a `422`.
 
 `POST` / `PUT` bodies take `{name, description, body, license?, compatibility?, allowed_tools?, metadata?, files?}`, where `files` is a `{path: content}` map that **fully replaces** the sidecar set. The response's `warnings[]` are `SkillValidator` entries verbatim.
+
+`allowed_tools` is the skill's declared tool list, carried under the snake_case spelling `license` and `compatibility` also use — the hyphenated `allowed-tools` is the frontmatter's, and the composer owns that rename. Core's `SkillValidator` judges the value on the way in, so a non-string or a malformed entry is a `422` and never reaches the column. The declaration is descriptive and pre-approves nothing; see [Concepts → Skills](/reference/concepts/skills#declaring-the-tools-a-skill-uses). It is deliberately absent from `previous_snapshot`, so a rollback restores content and leaves the declaration as the author last wrote it.
 
 `{path}` matches the rest of the path, percent-encoded by the client (`examples%2Finvoice.md`).
 

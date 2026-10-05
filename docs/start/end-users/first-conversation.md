@@ -164,6 +164,6 @@ See [Troubleshooting](/start/end-users/troubleshooting) for more.
 
 ## What's next
 
-- **[Managing agents](/start/end-users/managing-agents)** — configure tools, write good system prompts, manage recipes
+- **[Managing agents](/start/end-users/managing-agents)** — configure tools, write good system prompts, start from an agent template
 - **[Troubleshooting](/start/end-users/troubleshooting)** — common issues
 - [Operators → Operations](/start/operators/operations) — plugin management, updates, logs (for the operator running the install)

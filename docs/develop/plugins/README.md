@@ -18,7 +18,7 @@ For the local-development workflow (Composer path repos, the 3-terminal HMR walk
 
 If you want to write a plugin — either for your own Spora install or to publish on Packagist — start with the **[Plugin author guide](/develop/plugins/author-guide)**. It walks you through the manifest, the entry-point class, tools, drivers, migrations, admin UI, local development, the `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, and SemVer versioning.
 
-> Recipes are scaffolded in the codebase but not yet shipped — see [Roadmap](/about/roadmap).
+> Plugins can also ship **Agent templates** — a `.json` / `.yaml` file that bundles a system prompt, tool activations, and auto-approve defaults into a one-click Agent. Declare them under `agent-templates/` and return the directory from `agentTemplatePaths()`; see [Agent templates](/develop/plugins/author-guide/agent-templates).
 
 ## Operator: install, update, uninstall
 

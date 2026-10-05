@@ -1,11 +1,11 @@
 ---
 title: Customization
-description: How to extend a Spora install with custom tools, agents, recipes, and theming.
+description: How to extend a Spora install with custom tools, agents, agent templates, and theming.
 ---
 
 ## Customization
 
-How to extend a Spora install with custom tools, agents, and recipes.
+How to extend a Spora install with custom tools, agents, and agent templates.
 
 ## Custom tools
 
@@ -69,9 +69,21 @@ $agent = new Agent([
 $agent->save();
 ```
 
-## Custom recipes
+## Custom agent templates
 
-Recipes are YAML files in `recipes/`. Schema: see the [Architecture overview](/reference/concepts/architecture). Drop a new YAML file in, then refresh the recipe list (admin UI or CLI).
+Agent templates are the shipped way to share an agent's setup. Each one is a JSON or YAML file holding a name, system prompt, max steps, tool activations, and per-operation auto-approve defaults.
+
+Drop your own files into `agent-templates/` at the project root. The framework also reads its own bundled `spora-core/agent-templates/` (currently `core-assistant.json`) and any directory a plugin returns from `agentTemplatePaths()`. Each directory is read one level deep and its `.json`, `.yaml`, and `.yml` files are validated; a file that fails to parse is listed with its warnings rather than silently skipped.
+
+> **Note:** there is no CLI command to refresh templates. The scanner runs when the admin UI loads the template gallery in the **Create agent** dialog.
+
+Templates never carry secrets. Settings declared as `#[ToolSetting(type: 'password')]` are rejected at validation, and the optional `tools[].settings` block only appears on an export you opt into with `?include_settings=1`. Recipients still fill in API keys in **Settings → Tools** after importing.
+
+Every scanned file's `id` is checked against a required namespace prefix, and a mismatch raises a `NAMESPACE_MISMATCH` warning (the template still loads). The prefix is the `source` label the scan root declares, and there are four: `project` for your own `agent-templates/` at the project root, `core` for the framework's bundled directory, the contributing plugin's manifest slug for anything a plugin ships, and `app` for anything the project App contributes. So a plugin template wants `<plugin-slug>/<name>` and a project-level one wants `project/<name>`; the bundled `core/core-assistant` is exempt, as is the `uploaded` source. Uploads bypass the check entirely: the import endpoint builds the template straight from the raw payload, so a bare slug is fine there.
+
+- [Concepts → Agent templates](/reference/concepts/agent-templates) — discovery order, the HTTP surface, and importer semantics.
+- [Agent template schema](/reference/agent-template-schema) — every field, with examples.
+- [Plugin author guide → Agent templates](/develop/plugins/author-guide/agent-templates) — shipping templates from a plugin.
 
 ## Custom mail templates
 

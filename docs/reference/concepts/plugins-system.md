@@ -1,11 +1,11 @@
 ---
 title: Plugin system
-description: Plugin manifest, auto-discovery, bundled deps, recipes, contributing tools/drivers.
+description: Plugin manifest, auto-discovery, bundled deps, agent templates, contributing tools/drivers.
 ---
 
 # Spora Plugin System
 
-Plugins extend Spora with additional LLM drivers, tools, and recipes. Each plugin is a self-contained directory deployed alongside the core application.
+Plugins extend Spora with additional LLM drivers, tools, and agent templates. Each plugin is a self-contained directory deployed alongside the core application.
 
 ## Directory layout
 

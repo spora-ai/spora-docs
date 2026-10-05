@@ -117,5 +117,5 @@ For Docker setups: `docker compose logs -f spora`.
 ## What's next
 
 - [First conversation](/start/end-users/first-conversation) — sign in and chat
-- [Managing agents](/start/end-users/managing-agents) — configure tools and recipes
+- [Managing agents](/start/end-users/managing-agents) — configure tools and create an agent from a template
 - [Operators → Operations](/start/operators/operations) — the operator side of fixing these issues

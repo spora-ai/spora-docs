@@ -48,7 +48,7 @@ All hooks are inherited from [`SporaExtensionInterface`](https://github.com/spor
 | `autoload()`                       | Discovery                            | `[]`       | Additional PSR-4 mappings for the App's own classes |
 | `tools()`                          | Container build                      | `[]`       | Tool class FQCNs contributed to the Tool Registry   |
 | `drivers()`                        | Container build                      | `[]`       | LLM drivers contributed (`provider => FQCN`)        |
-| `recipePaths()`                    | Container build                      | `[]`       | Absolute paths to recipe directories                |
+| `agentTemplatePaths()`             | Container build                      | `[]`       | Absolute paths to agent template files              |
 | `schemaVersion()`                  | Schema install                       | `0`        | Bump when adding migrations                         |
 | `migrationsPath()`                 | Schema install                       | `null`     | Absolute path to migration directory                |
 | `apps()`                           | Container build                      | `[]`       | UI side-panels (`Spora\Apps\AppInterface` FQCNs)    |

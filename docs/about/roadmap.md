@@ -35,17 +35,13 @@ Bulk clear all notifications; e-mail alerts for scheduled run completions. Both 
 
 Fix broken Agent sidebar on small screens; optimize Settings Menu for mobile viewports. Responsive sidebar implemented in AgentLayout.vue, AppsLayout.vue, and SettingsSidebar.vue.
 
-### Recipe system (not yet implemented end-to-end)
+### Richer templating for scheduled-run prompts
 
-The recipe scaffolding exists in the backend (`agents.recipe_id` column, `RecipeScanner`, `RecipeController`, `GET /api/v1/recipes`, `PluginInterface::recipePaths()`), but the system is **not shipped and not usable** as of this release:
+Scheduled-run prompts support `{{var}}` and `{{var:default}}` substitution, but the engine is a single regex pass — `preg_replace_callback('/\{\{(\w+)(?::([^}]*))?\}\}/', …)` in `ScheduledRunService::substituteVariables()` (`app/Services/ScheduledRunService.php:542`) — not a real template language. There are no sections (`{{#list}}`), no inverted sections (`{{^list}}`), no iteration, and no filters; an unmatched placeholder is either left as-is or replaced by the run template's `default_value` for that key.
 
-- `recipes/` is empty — no recipes are bundled with Spora.
-- No frontend integration: `recipe_id` exists in `frontend/src/types/agent.ts` but is not consumed by any page or store.
-- No plugin ships a recipe either.
+A fixed set of built-ins resolves before the run's own variables, so a template can reference `current_date` (alias `date`), `current_time` (alias `time`), `current_datetime` (alias `datetime`), `day_of_week`, `day_of_month`, `month`, `year`, `agent_name`, and `user_name` without declaring them (`app/Services/ScheduledRunService.php:559`).
 
-To finish: (1) author at least one bundled recipe (e.g. `general_assistant.yaml`) so the scanner has something to return, (2) wire the `recipe_id` field into the agent create/edit UI, (3) add a recipe picker to the agent run flow so `agents.recipe_id` actually drives the system prompt, (4) document the recipe YAML schema, available variables, `{{var}}` templating in prompts, and how recipes differ from agent templates.
-
-Note: the current variable substitution is a simple `{{var}}` regex (`app/Services/ScheduledRunService.php:416`, `app/Console/Commands/WorkerRunCommand.php:384`), not full Mustache (no `{{#section}}`/`{{^inverted}}`).
+To finish: (1) decide whether to adopt a full templating engine (or grow the hand-rolled substituter) and backfill the existing `{{var}}` syntax, (2) support lists and per-item rendering so one template can drive a multi-step run, and (3) publish the complete placeholder list in one place — it is currently split between the three private methods above and a partial mention in the [API reference](/reference/api).
 
 ## Low
 

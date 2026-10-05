@@ -92,7 +92,8 @@ function searchRoots() {
   // Sibling plugin repos — the manifests that actually ship. Sorted so the
   // output order is stable between runs.
   const sibling = resolve(ROOT, '..')
-  for (const entry of existsSync(sibling) ? readdirSync(sibling).sort() : []) {
+  const entries = existsSync(sibling) ? readdirSync(sibling) : []
+  for (const entry of entries.sort((a, b) => a.localeCompare(b))) {
     if (!entry.startsWith('spora-plugin-') || entry.includes('worktree')) continue
     const dir = resolve(sibling, entry)
     try {
@@ -104,23 +105,35 @@ function searchRoots() {
   return { roots, source: 'auto-discovery' }
 }
 
+// An unreadable directory (permissions, or a symlink that dangles) is skipped
+// rather than aborting the whole run.
+function readDirSafe(dir) {
+  try {
+    return readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return []
+  }
+}
+
 function countManifests(dir) {
   let total = 0
   const stack = [dir]
   while (stack.length > 0) {
     const current = stack.pop()
-    let entries
-    try {
-      entries = readdirSync(current, { withFileTypes: true })
-    } catch {
-      continue
-    }
-    for (const entry of entries) {
+    for (const entry of readDirSafe(current)) {
       if (entry.isDirectory()) stack.push(join(current, entry.name))
       else if (entry.name === 'plugin.json') total += 1
     }
   }
   return total
+}
+
+// Classify one directory entry. Returns the action for walkManifests to take,
+// so the walk loop itself stays a flat iteration with no branching logic.
+function classifyDir(name) {
+  if (STRUCTURAL_IGNORES.has(name)) return { kind: 'structural' }
+  if (DECLARED_EXCLUSIONS.has(name)) return { kind: 'excluded' }
+  return { kind: 'descend' }
 }
 
 function walkManifests(root) {
@@ -130,43 +143,37 @@ function walkManifests(root) {
   const stack = [root]
   while (stack.length > 0) {
     const dir = stack.pop()
-    let entries
-    try {
-      entries = readdirSync(dir, { withFileTypes: true })
-    } catch {
-      continue
-    }
-    for (const entry of entries) {
+    for (const entry of readDirSafe(dir)) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
-        if (STRUCTURAL_IGNORES.has(entry.name)) {
-          structuralSkips += 1
-          continue
-        }
-        if (DECLARED_EXCLUSIONS.has(entry.name)) {
+        const { kind } = classifyDir(entry.name)
+        if (kind === 'descend') stack.push(full)
+        else if (kind === 'structural') structuralSkips += 1
+        else {
           // Quantified, not just named — the reader should see what the
           // exclusion costs in coverage, not have to go count it.
           excluded.push({
             dir: displayPath(full),
             reason: `${countManifests(full)} manifest(s) omitted — ${entry.name} commits deliberately invalid manifests for PluginLoader's boot-time rejection tests`,
           })
-          continue
         }
-        stack.push(full)
         continue
       }
-      if (entry.name !== 'plugin.json') continue
-      found.push(full)
+      if (entry.name === 'plugin.json') found.push(full)
     }
   }
   return { found, excluded, structuralSkips }
 }
 
-// Paths outside this checkout (an explicit SPORA_PLUGIN_SCHEMA_DIRS pointing
-// elsewhere) render as an unreadable ../../.. chain, so fall back to absolute.
+// Prefer a path relative to this checkout. A single leading `..` is a sibling
+// repo (../spora-core/...) and stays readable; a deeper escape is an unrelated
+// tree (an explicit SPORA_PLUGIN_SCHEMA_DIRS), where the ../.. chain is noise
+// and the absolute path is clearer.
 function displayPath(file) {
   const rel = relative(ROOT, file)
-  return rel === '' || rel.startsWith('..') ? file : rel
+  if (rel === '') return file
+  const depth = rel.split('/').filter((seg) => seg === '..').length
+  return depth > 1 ? file : rel
 }
 
 function isPermitted(key, schema) {
@@ -177,22 +184,14 @@ function isPermitted(key, schema) {
   return schema.additionalProperties !== false
 }
 
-function main() {
-  if (!existsSync(SCHEMA_PATH)) {
-    console.error(`Missing schema at ${relative(ROOT, SCHEMA_PATH)}.`)
-    process.exit(1)
-  }
-
-  const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8'))
-  const { roots, source } = searchRoots()
-
+function collectManifests(roots) {
   const manifests = []
   const excluded = []
   const present = []
   let structuralSkips = 0
   for (const root of roots) {
     if (!existsSync(root)) {
-      console.log(`Search root absent, skipped: ${relative(ROOT, root) || root}`)
+      console.log(`Search root absent, skipped: ${displayPath(root)}`)
       continue
     }
     present.push(root)
@@ -201,12 +200,15 @@ function main() {
     for (const entry of walk.excluded) excluded.push(entry)
     structuralSkips += walk.structuralSkips
   }
+  return { manifests, excluded, present, structuralSkips }
+}
 
+function reportDiscovery({ manifests, excluded, present, structuralSkips }, source) {
   console.log(`plugin.schema.json validated against real manifests (${source}).`)
   const withManifests = present.filter((root) => manifests.some((m) => m.root === root))
   for (const root of withManifests) {
     const count = manifests.filter((m) => m.root === root).length
-    console.log(`  - ${relative(ROOT, root) || root}: ${count} manifest(s)`)
+    console.log(`  - ${displayPath(root)}: ${count} manifest(s)`)
   }
   const empty = present.length - withManifests.length
   if (empty > 0) {
@@ -218,78 +220,70 @@ function main() {
   if (structuralSkips > 0) {
     console.log(`  - skipped ${structuralSkips} dependency/VCS directories`)
   }
+}
 
-  // A check that passes on zero manifests looks like coverage and is not.
-  // Fail loudly instead, naming the roots that were searched.
-  if (manifests.length === 0) {
-    console.error(
-      `\nNo plugin.json manifests found — refusing to pass vacuously.\n` +
-        `Searched:\n` +
-        roots.map((r) => `  - ${r}`).join('\n') +
-        `\nSet SPORA_PLUGIN_SCHEMA_DIRS to the checkouts holding the manifests, or run ` +
-        `from a docs checkout that sits beside spora-core / spora-plugin-*.`,
-    )
-    process.exit(1)
-  }
-
-  const ajv = new Ajv2020({ allErrors: true, strict: false })
-  const validate = ajv.compile(schema)
-
-  const invalid = []
-  const unknownKeys = []
-  const observed = new Set()
-
-  for (const { file, root } of manifests) {
-    const rel = displayPath(file)
-    let doc
-    try {
-      doc = JSON.parse(readFileSync(file, 'utf8'))
-    } catch (err) {
-      invalid.push({ file: rel, detail: `unparseable JSON: ${err.message}` })
-      continue
-    }
-
-    // Keys are collected even when ajv validation failed: an
-    // `additionalProperties` error does not name the offending key, and the
-    // whole point of this check is that the failure log says which key to go
-    // look at. Skipping collection on failure would hide exactly that.
-    if (!validate(doc)) {
-      for (const err of validate.errors ?? []) {
-        const at = err.instancePath === '' ? '(root)' : err.instancePath
-        // ajv reports the key for additionalProperties errors in params, not in
-        // the message — surface it or the report is unactionable.
-        // Only additionalProperty needs appending — ajv's own message already
-        // names the property for required/missingProperty.
-        const key = err.params?.additionalProperty
-        invalid.push({
-          file: rel,
-          detail: `${at} ${err.message}${key === undefined ? '' : ` "${key}"`}`,
-        })
-      }
-    }
-
-    for (const key of Object.keys(doc)) {
-      observed.add(key)
-      if (!isPermitted(key, schema)) {
-        unknownKeys.push({ file: rel, key })
-      }
-    }
-  }
-
-  const permitted = Object.keys(schema.properties ?? {})
-  const unusedPermitted = permitted.filter(
-    (key) => !observed.has(key) && !FORWARD_COMPAT_ALLOWANCE.has(key),
+// A check that passes on zero manifests looks like coverage and is not. Fail
+// loudly instead, naming the roots that were searched.
+function requireManifests(manifests, roots) {
+  if (manifests.length > 0) return
+  console.error(
+    `\nNo plugin.json manifests found — refusing to pass vacuously.\n` +
+      `Searched:\n` +
+      roots.map((r) => `  - ${r}`).join('\n') +
+      `\nSet SPORA_PLUGIN_SCHEMA_DIRS to the checkouts holding the manifests, or run ` +
+      `from a docs checkout that sits beside spora-core / spora-plugin-*.`,
   )
+  process.exit(1)
+}
 
+function readManifest(file) {
+  try {
+    return { doc: JSON.parse(readFileSync(file, 'utf8')) }
+  } catch (err) {
+    return { parseError: err.message }
+  }
+}
+
+// Only additionalProperty needs appending — ajv's own message already names the
+// property for required/missingProperty. Without it an `additionalProperties`
+// error reads "must NOT have additional properties" and never says which key.
+function formatAjvError(err) {
+  const at = err.instancePath === '' ? '(root)' : err.instancePath
+  const key = err.params?.additionalProperty
+  return key === undefined ? `${at} ${err.message}` : `${at} ${err.message} "${key}"`
+}
+
+function inspectManifest(file, schema, validate, sink) {
+  const { doc, parseError } = readManifest(file)
+  if (parseError !== undefined) {
+    sink.invalid.push({ file, detail: `unparseable JSON: ${parseError}` })
+    return
+  }
+
+  // Keys are collected even when ajv validation failed: an
+  // `additionalProperties` error does not name the offending key, and the whole
+  // point of this check is that the failure log says which key to go look at.
+  // Skipping collection on failure would hide exactly that.
+  if (!validate(doc)) {
+    for (const err of validate.errors ?? []) {
+      sink.invalid.push({ file, detail: formatAjvError(err) })
+    }
+  }
+
+  for (const key of Object.keys(doc)) {
+    sink.observed.add(key)
+    if (!isPermitted(key, schema)) sink.unknownKeys.push({ file, key })
+  }
+}
+
+function buildFailures({ invalid, unknownKeys, unusedPermitted }) {
   const failures = []
-
   if (invalid.length > 0) {
     failures.push(
       `Manifests that do not validate against the published schema:\n` +
         invalid.map((f) => `  - ${f.file}: ${f.detail}`).join('\n'),
     )
   }
-
   if (unknownKeys.length > 0) {
     failures.push(
       `Schema rejects keys that real manifests ship. The PluginLoader silently ` +
@@ -300,7 +294,6 @@ function main() {
         `description, or (if it should never have shipped) fix the manifests.`,
     )
   }
-
   if (unusedPermitted.length > 0) {
     failures.push(
       `Schema permits keys no manifest uses and that are not a documented ` +
@@ -309,6 +302,33 @@ function main() {
         unusedPermitted.map((key) => `  - "${key}"`).join('\n'),
     )
   }
+  return failures
+}
+
+function main() {
+  if (!existsSync(SCHEMA_PATH)) {
+    console.error(`Missing schema at ${displayPath(SCHEMA_PATH)}.`)
+    process.exit(1)
+  }
+
+  const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8'))
+  const { roots, source } = searchRoots()
+  const discovery = collectManifests(roots)
+  reportDiscovery(discovery, source)
+  requireManifests(discovery.manifests, roots)
+
+  const ajv = new Ajv2020({ allErrors: true, strict: false })
+  const validate = ajv.compile(schema)
+
+  const sink = { invalid: [], unknownKeys: [], observed: new Set() }
+  for (const { file } of discovery.manifests) {
+    inspectManifest(displayPath(file), schema, validate, sink)
+  }
+
+  const unusedPermitted = Object.keys(schema.properties ?? {}).filter(
+    (key) => !sink.observed.has(key) && !FORWARD_COMPAT_ALLOWANCE.has(key),
+  )
+  const failures = buildFailures({ ...sink, unusedPermitted })
 
   if (failures.length > 0) {
     console.error(`\nplugin.schema.json does not match reality.\n`)
@@ -316,14 +336,12 @@ function main() {
     process.exit(1)
   }
 
-  const allowanceNote = [...FORWARD_COMPAT_ALLOWANCE.keys()]
-    .filter((key) => !observed.has(key))
-    .map((key) => `${key} (allowed: ${FORWARD_COMPAT_ALLOWANCE.get(key)})`)
-  console.log(
-    `\n${manifests.length} manifest(s) validate. Keys in use: ` +
-      `${[...observed].sort().join(', ')}.`,
-  )
-  for (const note of allowanceNote) console.log(`Permitted but unused: ${note}`)
+  const inUse = [...sink.observed].sort((a, b) => a.localeCompare(b))
+  console.log(`\n${discovery.manifests.length} manifest(s) validate. Keys in use: ${inUse.join(', ')}.`)
+  for (const key of FORWARD_COMPAT_ALLOWANCE.keys()) {
+    if (sink.observed.has(key)) continue
+    console.log(`Permitted but unused: ${key} (allowed: ${FORWARD_COMPAT_ALLOWANCE.get(key)})`)
+  }
   console.log('plugin.schema.json matches the manifests in the tree.')
 }
 

@@ -7,7 +7,7 @@ description: Principal-scoped custom skills. Author skills by hand or ask the ag
 
 Lets a person — or an agent — author skills that no release shipped, and hands them to the same reader every shipped skill uses. A custom skill appears in the same `allowed_skills` multi-select as a filesystem one, and the agent reads it with the same `skill` call. What the plugin adds is the **write** side, which core deliberately has no opinion about, plus the admin panel to do it by hand.
 
-This is the only implementer of the `skillProviders()` hook in the org, which makes it the production instance of the contract the author guide states in the abstract — the guide's worked example is a stub, this is the shipped one.
+This is the only implementer of the `skillProviders()` hook in the org, and the only `searchProviders()` one that covers skills — which makes it the production instance of both contracts the author guide states in the abstract: the guide's worked examples are stubs, this is the shipped one.
 
 ## Installation
 
@@ -136,6 +136,33 @@ The concrete reasons the author guide lays out are all visible in this plugin's 
 - **Precedence is first-provider-wins across providers,** with core's filesystem provider first — so installing this plugin can **never** shadow a shipped skill. A write that collides with a shipped name is rejected up front with `SKILL_NAME_RESERVED` rather than creating a row the model could never resolve.
 
 The full contract, the four rules the registry depends on, and the version-floor guard are in [Author guide → Shipping a provider, not a directory](/develop/plugins/author-guide/skills#shipping-a-provider-not-a-directory). The reader side is [Concepts → Skills](/reference/concepts/skills) — the on-disk format, the `allowed_skills` allowlist, and the read/write split.
+
+## The palette search provider
+
+This plugin is also the only implementer of `searchProviders()` that covers skills, so ⌘K finds both shipped and custom ones — and every one of those hits opens on a page this plugin actually has.
+
+```php
+/** @return list<class-string<\Spora\Search\SearchProviderInterface>> */
+public function searchProviders(): array
+{
+    return [CustomSkillSearchProvider::class];
+}
+```
+
+It reads through core's `SkillProviderRegistry` rather than querying skills itself, so shipped and custom skills appear in one list with no work from the other providers. `type()` is `skill`, and the href **branches on ownership**, never `null`:
+
+| Hit                                 | Opens on                             | Why                                                                                                                      |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| A skill this plugin owns            | `/apps/custom-skills/skill/{name}`   | The desk — principal-scoped and writable, which is what a custom skill is.                                               |
+| A shipped or another plugin's skill | `/apps/custom-skills/library/{name}` | The catalogue viewer — read-only, so the desk would render it under a scope bar announcing a principal it does not have. |
+
+The path segment carries the kind rather than collapsing both onto one route. `/apps/custom-skills/skill/:name` and `/apps/custom-skills/library/:name` are the host-side names of the panel's own `Desk` and `Viewer` pages; the host router registers no child route, so the frontend package parses the prefix itself. That keeps browser back/forward, a hard refresh and a pasted link all landing on the right skill — and the legacy `?skill=x` form still resolves to the desk, because every href core ever emitted named a custom skill.
+
+Ranking is four tiers, first match wins, so name matches outrank description matches: exact name, name prefix, name substring, description substring. Hits cap at 20. `subLabel` is the description and `badge` reads `1 warning` when the skill carries one.
+
+> **Why core does not do this.** Core used to ship `Spora\Search\Providers\SkillSearchProvider` and has deleted it. Its `hrefFor()` built the URL from the skill's own `source` and returned `null` when no Vue app was registered under that source — true for every shipped `filesystem` skill — so the whole core catalogue rendered as unopenable rows, and core has no skills page to open one in. A hit needs a destination, and only the plugin owning the content has one.
+
+See [Concepts → Plugin system → Palette search](/reference/concepts/plugins-system#palette-search) for the endpoint, the registry, and the `type()` namespace rule, and [Author guide → Worked example: a palette search provider](/develop/plugins/author-guide/foundations#worked-example-a-palette-search-provider) for the authoring shape.
 
 ## The Custom Skills admin panel
 

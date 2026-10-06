@@ -171,7 +171,10 @@ The tool never lets a failure escape — a single API or configuration fault can
 
 The plugin ships `staan-search`, which teaches the agent when `enriched_search` is worth the extra latency, that enriched results are reranked, that snippets are not quotations, and that only URLs the tool returned may be cited. Attach it through the Skill tool's `allowed_skills` picker.
 
-The `#[Tool(recommendsSkills:)]` attribute is not declared in v1: it exists only in spora-core's unreleased branch, so declaring it would fatal on boot against a released core. The skill is still discovered through `StaanPlugin::skillPaths()`.
+`#[Tool(recommendsSkills:)]` **is available as of spora-core v0.29.0** (core PR #269) — this plugin declares it, so the operator UI offers `staan-search` as a one-click affordance on the agent's Tools tab. Two things it is worth being precise about:
+
+- It controls the **agent-tools UI affordance** only. Skill _discovery_ is a separate path: the skill is found through `StaanPlugin::skillPaths()` and still has to be attached through the Skill tool's `allowed_skills` picker. `recommendsSkills` does not put a skill in any allowlist.
+- The attribute is strict-mode validated — a slug that does not resolve on disk fails `GET /api/v1/tools` with `500 TOOLS_RECOMMENDS_SKILLS_MISSING` rather than being silently dropped. If you rename or remove the skill directory, update the attribute in the same commit.
 
 ## Staan account
 

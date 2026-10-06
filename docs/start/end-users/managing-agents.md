@@ -144,7 +144,7 @@ Each tool tile in the picker shows an icon determined by the tool's `#[Tool]` at
 
 An amber warning sits above the tool list on this tab, headed **"1 tool this agent's skills call isn't ready"** — or **"N tools this agent's skills call aren't ready"** when several are. It appears only when an enabled skill lists a tool in its `required_tools` that is **not yet ready to run**, and it disappears as you fix the rows, so its count tells you whether you're looking at a small nudge or a genuinely incomplete toolset.
 
-Each row is one tool, with the skill that wants it attributed on the row itself (**"Declared by <skill name>"**). Two skills can declare the same tool, and when they do both names are listed — the row is shared, not duplicated. The row's subtitle is the state:
+Each row is one tool, with the skill that wants it attributed on the row itself (**"Declared by `<skill name>`"**). Two skills can declare the same tool, and when they do both names are listed — the row is shared, not duplicated. The row's subtitle is the state:
 
 | Row state                               | What it means                                                                                                                                                                          | What to do                                                                                                                          |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |

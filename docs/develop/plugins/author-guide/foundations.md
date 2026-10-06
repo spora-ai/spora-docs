@@ -155,6 +155,8 @@ final class AcmeSearchPlugin extends AbstractPlugin
 
 ### Worked example: a palette search provider
 
+> **Requires spora-core ≥ v0.30.0.** `SearchProviderInterface`, `SearchProviderRegistry`, `SearchController`, and `GET /api/v1/search` all ship in v0.30.0; nothing in this chapter existed at v0.29.0. A plugin that declares `searchProviders()` against a released v0.29.0 core fatals at class-load, so hold this hook until you are on v0.30.0.
+
 Two methods and one hook, and only two shipped implementations to copy: [`spora-plugin-custom-skills`](https://github.com/spora-ai/spora-plugin-custom-skills) ships `CustomSkillSearchProvider` (`type()` = `skill`) and [`spora-plugin-media-archive`](https://github.com/spora-ai/spora-plugin-media-archive) ships `MediaAssetSearchProvider` (`type()` = `media-archive`). Core ships **no** implementation — the interface is the whole surface.
 
 Reach for it when your plugin owns content the ⌘K palette should find by name, and only then. `skillProviders()` makes something _readable_ to an agent; `searchProviders()` makes it _findable_ to a person. A plugin with neither a searchable resource nor an app to open is adding nothing.

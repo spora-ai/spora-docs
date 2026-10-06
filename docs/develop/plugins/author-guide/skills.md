@@ -171,6 +171,8 @@ The `SpellingRulebook` — a plugin that ships a `spelling/SKILL.md` any user of
 
 ## Shipping a provider, not a directory
 
+> **Requires spora-core ≥ v0.30.0.** `skillProviders()` and `SkillProviderRegistry` were added after v0.29.0; `skillPaths()` is the hook that has always existed. A plugin declaring `skillProviders()` against a released v0.29.0 core fatals at class-load. Everything in this section — and the `Directory or provider?` comparison above — is about the current core only.
+
 `skillProviders()` is a **data hook** on `SporaExtensionInterface`, mirroring `speechToTextProviders()`. It returns class names; the container resolves them and builds one `SkillProviderRegistry` in a fixed order — core's `FilesystemSkillProvider` first, then your plugin's. See [Plugin system → Why `skillProviders()` is a data hook](/reference/concepts/plugins-system#why-skillproviders-is-a-data-hook-and-not-an-event) for why this is not a PSR-14 event.
 
 ```php

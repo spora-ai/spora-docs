@@ -140,6 +140,22 @@ Each tool has operator-configurable settings (API keys, hostnames). Configure th
 
 Each tool tile in the picker shows an icon determined by the tool's `#[Tool]` attribute (or the owning plugin's `plugin.json` icon, or the default puzzle icon) — see the [`icon` field](/reference/api#agent-resource) on the Agent resource for the resolution chain.
 
+#### Tools your skills expect but can't use
+
+An amber warning sits above the tool list on this tab, headed **"1 tool this agent's skills call isn't ready"** — or **"N tools this agent's skills call aren't ready"** when several are. It appears only when an enabled skill lists a tool in its `required_tools` that is **not yet ready to run**, and it disappears as you fix the rows, so its count tells you whether you're looking at a small nudge or a genuinely incomplete toolset.
+
+Each row is one tool, with the skill that wants it attributed on the row itself (**"Declared by <skill name>"**). Two skills can declare the same tool, and when they do both names are listed — the row is shared, not duplicated. The row's subtitle is the state:
+
+| Row state                               | What it means                                                                                                                                                                          | What to do                                                                                                                          |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Not on this agent**                   | The tool exists and is registered, but is not in this agent's allowlist.                                                                                                               | Flip the toggle on the row, or scroll down to the tool list and enable it there.                                                    |
+| **On, but its settings are not set up** | The tool is already enabled, but the settings cascade leaves a required setting unset — an API key, a hostname. The tool still cannot run, and toggling it again would change nothing. | Hit **Set up** on the row. It opens the configuration modal and enables the tool for you once you save, so there's no second click. |
+| **Plugin not installed**                | No plugin provides this tool on this instance, so there is nothing to enable. The toggle is greyed out.                                                                                | Install the plugin that provides it, or turn the declaring skill off if you don't need it.                                          |
+
+Two things the warning deliberately does **not** say. A skill declaring a tool is a _declaration_, not a grant — Spora pre-approves nothing and refuses no call on a skill's behalf, so an agent with gaps in this list is not broken, and nothing is blocked. And "Plugin not installed" describes a missing plugin, not a mistake you made.
+
+Because the block is computed live from the agent's enabled skills and the current tool registry, rows appear and vanish as you switch skills on and off and as you toggle tools — no reload needed.
+
 ## Agent templates
 
 An **agent template** is a file — JSON or YAML — that bundles an agent's identity (name, description, system prompt, max steps, follow-up behaviour) with the tools it starts out with. Templates are how a working agent definition gets shared, and how plugins ship curated starter agents.
@@ -321,6 +337,8 @@ To jump around without scrolling, press **⌘K** (or **Ctrl-K** on non-Mac platf
 - **My Agents** — agents you own directly.
 - **Agents by group** — every other agent, grouped by its owning group.
 - **Recent chats** — your last 20 conversations, searchable on `user_prompt` and `final_response`.
+
+> **Status:** the server-backed palette section requires **spora-core ≥ v0.30.0** (the `GET /api/v1/search` endpoint) and **spora-frontend ≥ v0.25.0** (the palette's caller). On an earlier pair, ⌘K still works and still shows the five client-side sections below — there is simply no endpoint to query and no plugin section to render.
 
 Those five stay on your machine — the palette filters data the page already loaded. Anything a **plugin** makes searchable arrives over the network: as you type, the palette calls `GET /api/v1/search`, which asks every registered search provider what it has for your query, and renders one extra section per kind of thing that comes back. Installed plugins decide what those sections contain — skills under a **Skill** section if `spora-plugin-custom-skills` is installed, archived media under **Media-archive** if `spora-plugin-media-archive` is — and with no plugin installed there are none. Each provider is scoped to your own principals, so only content you are already allowed to see comes back. That is a contract every provider agrees to rather than something the host re-checks, so what you see depends on the plugin behaving. A row the host has no page for is still listed, but it is skipped as you arrow through the results and does nothing on `↵` — that is how a provider says "I found it, but there is nowhere to open it".
 

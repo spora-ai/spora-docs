@@ -185,7 +185,7 @@ Deliberately narrower than `SkillProviderInterface`: `search()` returns provenan
 
 1. **Stay inside the `SearchContext`.** Iterate `$context->principalIds()` and nothing else, and return `[]` when it is empty. Scope that is built from the context is structural: there is no branch in your code a later edit can widen. `spora-plugin-media-archive` is the cautionary example — its own controller has a `canEdit()` gate that reads `user_id` and lets admins through unconditionally. Copying that into a search provider would be precisely the cross-tenant read the interface forbids; it reuses core's `applyPrincipalIdScope()` predicate shape instead (`principal_id IN (…) OR (principal_id IS NULL AND agent_id IN (…))`).
 2. **Fail soft.** A provider that throws contributes nothing and is logged by the registry rather than dropped in silence — ⌘K is a global affordance, so one broken plugin must not take the whole palette down.
-3. **`type()` is a global namespace, not per-plugin.** The registry de-duplicates on `type::id`, first provider wins; core is first, so installing a plugin cannot change an existing result. Two providers with the same `type` **and** the same `id` means the second one's hit is silently dropped; a colliding `type` with disjoint ids merges two sections. Use the plugin slug and check what is already shipped — `skill` and `media-archive` are taken.
+3. **`type()` is a global namespace, not per-plugin.** The registry de-duplicates on `type::id`, first provider wins. Two providers with the same `type` **and** the same `id` means the second one's hit is silently dropped; a colliding `type` with disjoint ids merges two sections. Core contributes no search provider, so the order is plugin load order — unlike `skillProviders()`, where core's `FilesystemSkillProvider` really does come first. Use the plugin slug and check what is already shipped: `skill` and `media-archive` are taken.
 
 ### A minimal provider
 
@@ -259,7 +259,7 @@ final class AcmeSearchPlugin extends AbstractPlugin
 }
 ```
 
-Registration is all the wiring most providers need: `SearchProviderRegistry` resolves each merged class straight from the container, and PHP-DI autowires anything whose constructor arguments it can satisfy — including the no-argument provider, which is what `MediaAssetSearchProvider` is. A provider that needs something the container cannot autowire declares the definition from a `ContainerBuildingEvent` subscriber, as [Lifecycle is events, not hooks](#lifecycle-is-events-not-hooks) describes.
+Registration is all the wiring most providers need: `SearchProviderRegistry` resolves each merged class straight from the container, and PHP-DI autowires anything whose constructor arguments it can satisfy. `AcmeDocumentQuery` is yours, so it has no autowirable definition until you bind it from a `ContainerBuildingEvent` subscriber — as [Lifecycle is events, not hooks](#lifecycle-is-events-not-hooks) describes. A provider that needs nothing, like `MediaAssetSearchProvider`, needs no binding at all.
 
 **Enumerate a skill catalogue instead of reimplementing one.** If your searchable content is skills, do not query the `skills` tables yourself — core's `SkillProviderRegistry` already enumerates every visible skill, shipped and custom, through every registered provider. `CustomSkillSearchProvider` takes `SkillProviderRegistry` in its constructor and calls `getSkills($principalId)` once per visible principal. That is how a plugin-owned provider can cover skills core ships.
 

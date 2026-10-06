@@ -45,6 +45,7 @@ declare(strict_types=1);
 
 namespace App\Tools;
 
+use Spora\Services\PrincipalContext;
 use Spora\Tools\AbstractTool;
 use Spora\Tools\Attributes\Tool;
 use Spora\Tools\Attributes\ToolParameter;
@@ -64,7 +65,7 @@ final class WebSearchTool extends AbstractTool
     )]
     private string $query = '';
 
-    public function execute(array $arguments, int $agentId, ?int $userId = null, ?int $taskId = null): ToolResult
+    public function execute(array $arguments, int $agentId, ?int $taskId = null, ?PrincipalContext $context = null): ToolResult
     {
         $query = (string) ($arguments['query'] ?? $this->query);
 
@@ -87,6 +88,8 @@ After creation, the scaffolder prints:
 Don't forget to register the tool in app/App.php:
   public function tools(): array { return [Tools\WebSearchTool::class]; }
 ```
+
+> **Note:** the generator shipped a four-parameter `execute()` with the legacy `?int $userId` in the third slot, which fatals at class-load against the current `ToolInterface` — the interface change and the `make:tool` template were corrected in the same release. Tools scaffolded by an older `spora-maker` still carry the dead parameter; delete it (or let the fixer do it) rather than adjusting it, because keeping four parameters on the old signature is the same fatal in the other direction.
 
 For the full `#[Tool]` / `#[ToolOperation]` / `#[ToolParameter]` / `#[ToolSetting]` attribute surface that the generated class composes with, see [Concepts → Tool system](/reference/concepts/tools). For how `app/App.php` discovers and wires the tool, see [Concepts → App extensions](/reference/concepts/app-extension).
 

@@ -57,6 +57,44 @@ The migration runs the column swap **outside any transaction** so SQLite's `PRAG
 
 Migrations 0068 (`create_group_pictures_table`) and 0069 (`backfill_default_group_pictures`) are also forward-only.
 
+## Upgrading — migration 0091 (`drop_markdown_content_from_media_assets`)
+
+Spora-core PR #288 ships migration `0091_drop_markdown_content_from_media_assets`. It **drops the `media_assets.markdown_content` column**, retiring the second of two parallel storage contracts for the same fact — a derivative row joined through `media_derivatives` replaces it, carrying producer attribution the column never had and reusing the existing endpoints, the "Convert to" dropdown, and the OpenAPI surface. Ordering matters: 0091 must run after 0080, which places `transcript` with `->after('markdown_content')`; dropping the column first would leave 0080's `after()` pointing at a column that no longer exists.
+
+### This migration deletes data
+
+**There is no backfill, by deliberate operator decision.** Every previously-extracted document body stored in `media_assets.markdown_content` is lost when the column is dropped. The reasoning is that a backfill would instead run the PDF parser over every historical document on the first deploy after the upgrade — unbounded time and CPU on a live archive, with a failure mode (a corrupt or scanned PDF) that has no partial-success story. The dropped values are recoverable one row at a time, on demand, instead.
+
+**Take a full database backup before running the upgrade.** SQLite: copy `storage/database.sqlite`. MySQL/MariaDB: `mysqldump` (or your managed snapshot).
+
+What is _not_ lost: the **original document bytes are untouched**. Only the extracted text is gone — every uploaded PDF still exists as-is in `media_assets`, so nothing needs to be re-uploaded.
+
+### Recovering the text after the upgrade
+
+Recovery is one derivative request per row, on demand, rather than one bulk pass:
+
+```http
+POST /api/v1/media/{id}/derivatives
+Content-Type: application/json
+
+{ "format": "md" }
+```
+
+The endpoint is idempotent per `(parent, format, producer)` — a second call returns the same derivative id instead of re-rendering. `GET /api/v1/media/{id}/derivatives/options` lists the formats a given asset can actually be converted into, with an `available` flag, so you can check before you post.
+
+Two limits worth knowing before you plan a bulk run:
+
+- **PDFs only.** The `md` producer is core's `PdfToMarkdownProducer`, and it claims `application/pdf` sources. A non-PDF asset that had text in the column has no producer, so that call returns **409 Conflict**.
+- **A PDF with no text layer yields no derivative either way.** Scanned documents have no OCR layer; the parser returns an empty string and the row is declined rather than persisted empty. If you have such documents, archive a `.md` (or `.txt`) alongside the PDF at upload time from now on — that is the supported path, and the asset's own bytes remain the pointer of record.
+
+### Fresh installs and new rows are unaffected
+
+The pipeline mints the `md` derivative at ingest and again at attach time through `MediaDerivativeService::ensureTextDerivative()` — a get-or-create that is idempotent on re-ingest and a blind retry, and that returns `null` rather than throwing when no producer claims the source or the parser fails. So a clean install never has anything in the dropped column, and every row created after the upgrade has its text as a derivative row already.
+
+### Rollback is safe
+
+0091's `down()` re-adds `markdown_content` as a nullable column (null is exactly the pre-converter state for images and unsupported types), and 0080's own `down()` never re-adds `markdown_content` — so a full rollback does not fight this migration. The column comes back empty; re-run the `create_derivative(format: "md")` calls to refill it.
+
 ## Troubleshooting
 
 ### `public/dist/index.html is missing` after `php bin/spora spora:install`

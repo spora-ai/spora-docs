@@ -13,7 +13,7 @@ Spora serves three kinds of readers. Pick the track that matches what you're her
 | Are setting up a local dev environment | [Developers guide →](/start/developers/) |
 | Are using the admin UI to chat         | [End user guide →](/start/end-users/)    |
 
-**Looking for the architecture deep-dive?** See [Concepts](/concepts/) — system architecture, schema, agent loop, error handling, plugin system, worker deployment, and contributor docs.
+**Looking for the architecture deep-dive?** See [Concepts](/reference/concepts/) — system architecture, schema, agent loop, error handling, plugin system, worker deployment, and contributor docs.
 
 Or jump straight to the [Deployment guide](/deploy/) if you know where you want to run Spora.
 

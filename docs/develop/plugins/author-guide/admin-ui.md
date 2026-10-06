@@ -15,7 +15,7 @@ A frontend bundle is overkill for plugins that only need server-side behaviour (
 - The plugin exposes **multi-step configuration** that doesn't fit a single settings key.
 - You want **previews** of generated artefacts (images, audio, …).
 
-If you only need a settings page with a few inputs, the operator-facing [Plugin settings](/develop/plugins/install-api#plugin-settings) surface is enough.
+If you only need a settings form with a few inputs and no list, previews, or multi-step config, declare `#[ToolSetting]` attributes on your tools instead — [Architecture: settings live on the tool](/reference/concepts/tools#architecture-settings-live-on-the-tool) — and skip the second package entirely.
 
 ## The two-package pattern
 

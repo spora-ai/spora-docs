@@ -150,7 +150,7 @@ The web server's Caddy config (`docker/frankenphp.conf`):
 
 The worker drains the queued tasks when `SPORA_WORKER_RUNTIME_MODE=server` (the value shipped in `spora/.env.example`, per [env-vars §Worker runtime mode](/start/operators/env-vars#worker-runtime-mode)).
 
-> **Multi-container is the canonical "Full Deployment" runtime configuration.** With the bundled Mercure hub, this is the [Full Deployment](/reference/concepts/deployment-modes#full-deployment--spora-ai-spora--mercure) mode (server + Mercure SSE) — UI updates are sub-second, scheduled runs dispatch unattended, every browser tab is up-to-date the moment a tick lands. See [Deployment modes](/reference/concepts/deployment-modes) for the full overview.
+> **Multi-container is the canonical "Full Deployment" runtime configuration.** With the bundled Mercure hub, this is the [Full Deployment](/reference/concepts/deployment-modes#full-deployment-—-spora-ai-spora-mercure) mode (server + Mercure SSE) — UI updates are sub-second, scheduled runs dispatch unattended, every browser tab is up-to-date the moment a tick lands. See [Deployment modes](/reference/concepts/deployment-modes) for the full overview.
 
 ## Volumes
 

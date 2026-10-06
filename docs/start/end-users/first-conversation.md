@@ -23,7 +23,7 @@ If no agents exist, go to **Agents → New** and create one. The minimum:
 
 - **Name** — what the agent is (e.g. "Research Assistant")
 - **System prompt** — instructions for the LLM (e.g. "You are a helpful research assistant. Be concise. Cite sources.")
-- **LLM config** — which model to use. The seeded agent points at a placeholder LLM; you need to configure one. See [Managing agents → LLM config](/start/end-users/managing-agents#llm-config).
+- **LLM config** — which model to use. The seeded agent points at a placeholder LLM; you need to configure one. See [Managing agents → Tab 3 — LLM config](/start/end-users/managing-agents#tab-3-—-llm-config).
 - **Tools** — leave empty for now. The agent will reply without using any tools.
 
 ## Step 3 — Send a message

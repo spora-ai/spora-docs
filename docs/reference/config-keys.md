@@ -143,7 +143,7 @@ The following have no `config.php` mapping — FrankenPHP / Caddy reads them dir
 | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SERVER_NAME` | —       | Caddy listens on this address and auto-issues Let's Encrypt when it's a public domain. Set `localhost:80` for development, your public domain for production. |
 
-See [Environment variables → SERVER_NAME](/start/operators/env-vars#server_name) and the [Docker deploy guides](/deploy/docker/multi-container) for context.
+See [Environment variables → SERVER_NAME](/start/operators/env-vars#server-name) and the [Docker deploy guides](/deploy/docker/multi-container) for context.
 
 ## Editing `config.php` after install
 

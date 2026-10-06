@@ -140,18 +140,142 @@ final class AcmeSearchPlugin extends AbstractPlugin
 
 `Spora\Extensions\SporaExtensionInterface` declares **exactly ten** methods, and that is the complete data-hook surface. `Spora\Plugins\PluginInterface` re-exports it, so the table below is the whole contract. `AbstractPlugin` supplies a default for all ten: nine of them are the empty value their return type allows — `[]` for the seven list hooks, `0` for `schemaVersion()`, `null` for `migrationsPath()` — and `getName()` returns the short class name with a trailing `Plugin` stripped (`SkeletonPlugin` → `Skeleton`) rather than a no-op. You only override what you actually use, and in practice that is `getName()` and `tools()`.
 
-| Hook                      | Returns                                         | Default | Purpose                                                                                                                                                                           |
-| ------------------------- | ----------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getName()`               | `string`                                        | —       | Human-facing name shown in admin UIs.                                                                                                                                             |
-| `tools()`                 | `class-string<ToolInterface>[]`                 | `[]`    | Tools contributed to the tool registry. See [Tools](/develop/plugins/author-guide/tools).                                                                                         |
-| `agentTemplatePaths()`    | `string[]`                                      | `[]`    | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates).                                        |
-| `skillPaths()`            | `string[]`                                      | `[]`    | Absolute paths to skill directories; each immediate subdirectory is a skill root containing a `SKILL.md`. See [Skills](/develop/plugins/author-guide/skills).                     |
-| `schemaVersion()`         | `int`                                           | `0`     | Bump every time a new migration file is added. `0` if the plugin has no schema. See [Migrations](/develop/plugins/author-guide/migrations).                                       |
-| `migrationsPath()`        | `?string`                                       | `null`  | Absolute path to the plugin's migrations directory, or `null` if it has no schema.                                                                                                |
-| `apps()`                  | `class-string<AppInterface>[]`                  | `[]`    | UI side-panels contributed to the App registry. See [Admin UI](/develop/plugins/author-guide/admin-ui).                                                                           |
-| `speechToTextProviders()` | `class-string<SpeechToTextProviderInterface>[]` | `[]`    | Speech-to-text provider classes. See [Speech providers](/develop/plugins/author-guide/speech-providers).                                                                          |
-| `skillProviders()`        | `class-string<SkillProviderInterface>[]`        | `[]`    | Skill providers for skills with **no directory** — user-authored, tenant-scoped, or synthesised. A shipped skill is a directory plus `skillPaths()`.                              |
-| `searchProviders()`       | `class-string<SearchProviderInterface>[]`       | `[]`    | Sources of ⌘K palette hits. Makes a resource **findable**, where `skillProviders()` makes it **readable**. Core's own provider already searches everything in the skill registry. |
+| Hook                      | Returns                                         | Default | Purpose                                                                                                                                                                                                                                   |
+| ------------------------- | ----------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getName()`               | `string`                                        | —       | Human-facing name shown in admin UIs.                                                                                                                                                                                                     |
+| `tools()`                 | `class-string<ToolInterface>[]`                 | `[]`    | Tools contributed to the tool registry. See [Tools](/develop/plugins/author-guide/tools).                                                                                                                                                 |
+| `agentTemplatePaths()`    | `string[]`                                      | `[]`    | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates).                                                                                                |
+| `skillPaths()`            | `string[]`                                      | `[]`    | Absolute paths to skill directories; each immediate subdirectory is a skill root containing a `SKILL.md`. See [Skills](/develop/plugins/author-guide/skills).                                                                             |
+| `schemaVersion()`         | `int`                                           | `0`     | Bump every time a new migration file is added. `0` if the plugin has no schema. See [Migrations](/develop/plugins/author-guide/migrations).                                                                                               |
+| `migrationsPath()`        | `?string`                                       | `null`  | Absolute path to the plugin's migrations directory, or `null` if it has no schema.                                                                                                                                                        |
+| `apps()`                  | `class-string<AppInterface>[]`                  | `[]`    | UI side-panels contributed to the App registry. See [Admin UI](/develop/plugins/author-guide/admin-ui).                                                                                                                                   |
+| `speechToTextProviders()` | `class-string<SpeechToTextProviderInterface>[]` | `[]`    | Speech-to-text provider classes. See [Speech providers](/develop/plugins/author-guide/speech-providers).                                                                                                                                  |
+| `skillProviders()`        | `class-string<SkillProviderInterface>[]`        | `[]`    | Skill providers for skills with **no directory** — user-authored, tenant-scoped, or synthesised. A shipped skill is a directory plus `skillPaths()`.                                                                                      |
+| `searchProviders()`       | `class-string<SearchProviderInterface>[]`       | `[]`    | Sources of ⌘K palette hits. Makes a resource **findable**, where `skillProviders()` makes it **readable**. Core ships no provider of its own. See [Worked example: a palette search provider](#worked-example-a-palette-search-provider). |
+
+### Worked example: a palette search provider
+
+Two methods and one hook, and only two shipped implementations to copy: [`spora-plugin-custom-skills`](https://github.com/spora-ai/spora-plugin-custom-skills) ships `CustomSkillSearchProvider` (`type()` = `skill`) and [`spora-plugin-media-archive`](https://github.com/spora-ai/spora-plugin-media-archive) ships `MediaAssetSearchProvider` (`type()` = `media-archive`). Core ships **no** implementation — the interface is the whole surface.
+
+Reach for it when your plugin owns content the ⌘K palette should find by name, and only then. `skillProviders()` makes something _readable_ to an agent; `searchProviders()` makes it _findable_ to a person. A plugin with neither a searchable resource nor an app to open is adding nothing.
+
+### The interface contract
+
+```php
+namespace Spora\Search;
+
+interface SearchProviderInterface
+{
+    /** Palette section bucket, e.g. `skill` or a plugin slug. */
+    public function type(): string;
+
+    /** @return list<SearchHit> Hits for a query, most relevant first. */
+    public function search(string $query, SearchContext $context): array;
+}
+```
+
+Deliberately narrower than `SkillProviderInterface`: `search()` returns provenance-filtered summaries, so there is no unknown-vs-invisible distinction to make and no file read to police.
+
+`SearchHit` is a small value object — `type`, `id`, `label`, and three nullable fields. Two of them carry rules:
+
+- **`$id` is stable within `$type`** and is half of what the palette de-duplicates on.
+- **`$href` is nullable by design, not an oversight.** The host has no page for every searchable thing, so a provider that cannot name a destination returns `null` and says so rather than inventing a 404. The palette renders such a hit as an inert row and skips it during arrow-key selection. If your plugin ships an app (see [Admin UI](/develop/plugins/author-guide/admin-ui)), return the path to it — `/apps/{slug}/…`, `rawurlencode`d — because a hit you cannot open is a row that does nothing.
+
+### The three rules the registry depends on
+
+1. **Stay inside the `SearchContext`.** Iterate `$context->principalIds()` and nothing else, and return `[]` when it is empty. Scope that is built from the context is structural: there is no branch in your code a later edit can widen. `spora-plugin-media-archive` is the cautionary example — its own controller has a `canEdit()` gate that reads `user_id` and lets admins through unconditionally. Copying that into a search provider would be precisely the cross-tenant read the interface forbids; it reuses core's `applyPrincipalIdScope()` predicate shape instead (`principal_id IN (…) OR (principal_id IS NULL AND agent_id IN (…))`).
+2. **Fail soft.** A provider that throws contributes nothing and is logged by the registry rather than dropped in silence — ⌘K is a global affordance, so one broken plugin must not take the whole palette down.
+3. **`type()` is a global namespace, not per-plugin.** The registry de-duplicates on `type::id`, first provider wins; core is first, so installing a plugin cannot change an existing result. Two providers with the same `type` **and** the same `id` means the second one's hit is silently dropped; a colliding `type` with disjoint ids merges two sections. Use the plugin slug and check what is already shipped — `skill` and `media-archive` are taken.
+
+### A minimal provider
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace Spora\Plugins\AcmeSearch;
+
+use Spora\Search\SearchContext;
+use Spora\Search\SearchHit;
+use Spora\Search\SearchProviderInterface;
+
+final class AcmeDocumentSearchProvider implements SearchProviderInterface
+{
+    /** The cap is a UX bound, not a security one — scope is already applied. */
+    private const MAX_HITS = 20;
+
+    public function __construct(private AcmeDocumentQuery $documents)
+    {
+    }
+
+    public function type(): string
+    {
+        return 'acme-search';
+    }
+
+    /**
+     * @return list<SearchHit>
+     */
+    public function search(string $query, SearchContext $context): array
+    {
+        $principalIds = $context->principalIds();
+        if ($principalIds === []) {
+            return [];
+        }
+
+        $hits = [];
+        foreach ($this->documents->matching($query, $principalIds, self::MAX_HITS) as $doc) {
+            $hits[] = new SearchHit(
+                type: $this->type(),
+                id: (string) $doc->id,
+                label: $doc->title,
+                subLabel: $doc->summary,
+                href: '/apps/acme-search/document/' . rawurlencode((string) $doc->id),
+            );
+        }
+
+        return $hits;
+    }
+}
+```
+
+Then register it beside `skillProviders()` on the entry point — the two hooks are independent, and a plugin may implement either, both, or neither:
+
+```php
+final class AcmeSearchPlugin extends AbstractPlugin
+{
+    /** @return list<class-string<\Spora\Skills\SkillProviderInterface>> */
+    public function skillProviders(): array
+    {
+        return [AcmeTenantSkillProvider::class];
+    }
+
+    /** @return list<class-string<\Spora\Search\SearchProviderInterface>> */
+    public function searchProviders(): array
+    {
+        return [AcmeDocumentSearchProvider::class];
+    }
+}
+```
+
+Registration is all the wiring most providers need: `SearchProviderRegistry` resolves each merged class straight from the container, and PHP-DI autowires anything whose constructor arguments it can satisfy — including the no-argument provider, which is what `MediaAssetSearchProvider` is. A provider that needs something the container cannot autowire declares the definition from a `ContainerBuildingEvent` subscriber, as [Lifecycle is events, not hooks](#lifecycle-is-events-not-hooks) describes.
+
+**Enumerate a skill catalogue instead of reimplementing one.** If your searchable content is skills, do not query the `skills` tables yourself — core's `SkillProviderRegistry` already enumerates every visible skill, shipped and custom, through every registered provider. `CustomSkillSearchProvider` takes `SkillProviderRegistry` in its constructor and calls `getSkills($principalId)` once per visible principal. That is how a plugin-owned provider can cover skills core ships.
+
+### What the consumer does with it
+
+`GET /api/v1/search` resolves the caller's visible principals once, hands them to every provider as a `SearchContext`, and returns the hits flattened. `CommandPalette.vue` debounces the query, calls the endpoint, groups the hits into **one section per distinct `type`**, and appends those sections after its existing client-side ones. Providers are not asked to name a section: the palette title-cases `type` into the header.
+
+The local sections — actions, groups, my agents, agents by group, recent chats — stay client-side and read the Pinia stores. A provider for each of those would have to ship in `spora-core` first, so a plugin cannot supply them and should not try.
+
+### Testing
+
+1. **Empty context returns `[]`** before any query runs. That is the cross-tenant test.
+2. **A foreign principal yields nothing.** Seed a row owned by a principal outside the context and assert it is absent.
+3. **Ranking** — assert the tier order, not just membership: a name-prefix match must outrank a description-only match, because prose is weak evidence.
+4. **`href`** — assert both branches when they differ (own content vs foreign), and that a name containing a space or a `/` comes back `rawurlencode`d.
+5. **A throwing provider** — assert the registry logs and continues rather than taking the palette down.
 
 ### Lifecycle is events, not hooks
 

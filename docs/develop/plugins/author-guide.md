@@ -23,16 +23,16 @@ Skip [Migrations](/develop/plugins/author-guide/migrations), [Skills](/develop/p
 
 ## Chapter index
 
-| Chapter                                                            | What it covers                                                                                                        |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| [Foundations](/develop/plugins/author-guide/foundations)           | The package shape, the `plugin.json` manifest, the entry-point class, and the ten hooks on `SporaExtensionInterface`. |
-| [Tools](/develop/plugins/author-guide/tools)                       | Adding a tool — the canonical callable surface. The `#[Tool]` / `#[ToolParameter]` attribute surface.                 |
-| [Migrations](/develop/plugins/author-guide/migrations)             | Schema versions, filename prefixes, the `up()` / `down()` convention.                                                 |
-| [Admin UI](/develop/plugins/author-guide/admin-ui)                 | The two-package Vue IIFE pattern, the `apps()` hook, the auto-require convention, publishing sequencing.              |
-| [Agent templates](/develop/plugins/author-guide/agent-templates)   | Ship curated Agent templates with your plugin. Operator gallery, auto-install policy, warning codes.                  |
-| [Skills](/develop/plugins/author-guide/skills)                     | Ship skills with your plugin — a directory via `skillPaths()`, or a provider via `skillProviders()`.                  |
-| [Speech providers](/develop/plugins/author-guide/speech-providers) | Contribute a `SpeechToTextProviderInterface` — only when the vendor's wire shape is not OpenAI-multipart.             |
-| [Distribution](/develop/plugins/author-guide/distribution)         | The `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, SemVer, the release checklist.                      |
+| Chapter                                                            | What it covers                                                                                                                                     |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Foundations](/develop/plugins/author-guide/foundations)           | The package shape, the `plugin.json` manifest, the entry-point class, the ten hooks on `SporaExtensionInterface`, and a worked ⌘K search provider. |
+| [Tools](/develop/plugins/author-guide/tools)                       | Adding a tool — the canonical callable surface. The `#[Tool]` / `#[ToolParameter]` attribute surface.                                              |
+| [Migrations](/develop/plugins/author-guide/migrations)             | Schema versions, filename prefixes, the `up()` / `down()` convention.                                                                              |
+| [Admin UI](/develop/plugins/author-guide/admin-ui)                 | The two-package Vue IIFE pattern, the `apps()` hook, the auto-require convention, publishing sequencing.                                           |
+| [Agent templates](/develop/plugins/author-guide/agent-templates)   | Ship curated Agent templates with your plugin. Operator gallery, auto-install policy, warning codes.                                               |
+| [Skills](/develop/plugins/author-guide/skills)                     | Ship skills with your plugin — a directory via `skillPaths()`, or a provider via `skillProviders()`.                                               |
+| [Speech providers](/develop/plugins/author-guide/speech-providers) | Contribute a `SpeechToTextProviderInterface` — only when the vendor's wire shape is not OpenAI-multipart.                                          |
+| [Distribution](/develop/plugins/author-guide/distribution)         | The `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, SemVer, the release checklist.                                                   |
 
 ## Looking for an older link?
 

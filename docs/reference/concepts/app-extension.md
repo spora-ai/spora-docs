@@ -42,22 +42,22 @@ The hook surface is identical for both. Promoting an App to a Plugin is a mechan
 
 All ten hooks are declared on [`SporaExtensionInterface`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/SporaExtensionInterface.php) — and on nothing else. `Spora\Extensions\AppInterface` and `Spora\Plugins\PluginInterface` are pure markers that extend it, so an App and a plugin share one contract. [`AbstractExtension`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/AbstractExtension.php) provides an empty default for every hook except `getName()`.
 
-| Hook                      | Returns                                                           | Purpose                                                                                     |
-| ------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `getName()`               | `string`                                                          | Human-readable name shown in the UI and logs.                                               |
-| `tools()`                 | `array<class-string<\Spora\Tools\ToolInterface>>`                 | Tool FQCNs registered with the Tool Registry.                                               |
-| `agentTemplatePaths()`    | `string[]`                                                        | Absolute paths to agent-template files (`.json`/`.yaml`/`.yml`); the scanner reads depth-0. |
-| `skillPaths()`            | `string[]`                                                        | Absolute paths to dirs whose immediate subdirs are `SKILL.md` roots.                        |
-| `schemaVersion()`         | `int`                                                             | Bump when adding migrations. Default `0`.                                                   |
-| `migrationsPath()`        | `?string`                                                         | Absolute path to the migration dir, or `null`.                                              |
-| `apps()`                  | `array<class-string<\Spora\Apps\AppInterface>>`                   | Admin-UI side-panels.                                                                       |
-| `speechToTextProviders()` | `list<class-string<\Spora\Speech\SpeechToTextProviderInterface>>` | STT providers beyond OpenAI-multipart.                                                      |
-| `skillProviders()`        | `list<class-string<\Spora\Skills\SkillProviderInterface>>`        | Skills with **no directory** (user-authored, tenant-scoped).                                |
-| `searchProviders()`       | `list<class-string<\Spora\Search\SearchProviderInterface>>`       | ⌘K palette search hits — makes a resource _findable_ (vs `skillProviders` = _readable_).    |
+| Hook                      | Returns                                                           | Purpose                                                                                                   |
+| ------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `getName()`               | `string`                                                          | Human-readable name shown in the UI and logs.                                                             |
+| `tools()`                 | `array<class-string<\Spora\Tools\ToolInterface>>`                 | Tool FQCNs registered with the Tool Registry.                                                             |
+| `agentTemplatePaths()`    | `string[]`                                                        | Absolute paths to agent-template files (`.json`/`.yaml`/`.yml`); the scanner reads depth-0.               |
+| `skillPaths()`            | `string[]`                                                        | Absolute paths to dirs whose immediate subdirs are `SKILL.md` roots.                                      |
+| `schemaVersion()`         | `int`                                                             | Bump when adding migrations. Default `0`.                                                                 |
+| `migrationsPath()`        | `?string`                                                         | Absolute path to the migration dir, or `null`.                                                            |
+| `apps()`                  | `array<class-string<\Spora\Apps\AppInterface>>`                   | Admin-UI side-panels.                                                                                     |
+| `speechToTextProviders()` | `list<class-string<\Spora\Speech\SpeechToTextProviderInterface>>` | STT providers beyond OpenAI-multipart.                                                                    |
+| `skillProviders()`        | `list<class-string<\Spora\Skills\SkillProviderInterface>>`        | Skills with **no directory** (user-authored, tenant-scoped).                                              |
+| `searchProviders()`       | `list<class-string<\Spora\Search\SearchProviderInterface>>`       | ⌘K palette search hits — makes a resource _findable_ (vs `skillProviders` = _readable_). Core ships none. |
 
 > **Removed in 1.0.** Six hooks that older docs still teach no longer exist. `autoload()`, `drivers()`, and `recipePaths()` had no callers: PSR-4 data moved to `composer.json` / `plugin.json`, and LLM providers are _configured_ rather than contributed. `register()`, `routes()`, and `boot()` became PSR-14 events — see [Lifecycle events](#lifecycle-events) below.
 >
-> **Note:** `skillProviders()` and `searchProviders()` are data hooks, not lifecycle hooks. The container reads both once at build time and resolves the classes itself; nothing wires subscribers before the container is built, so a listener could not register a provider in time.
+> **Note:** `skillProviders()` and `searchProviders()` are data hooks, not lifecycle hooks. Both lists are merged by a PHP-DI factory over the loader accessors and the classes are resolved from the container when the matching registry is first built — resolve time, not request time and not search time. Nothing wires subscribers before the container is built, so a listener could not register a provider in time. See [Plugin system → Why `skillProviders()` is a data hook](/reference/concepts/plugins-system#why-skillproviders-is-a-data-hook-and-not-an-event).
 
 ### Lifecycle ordering
 
@@ -66,7 +66,7 @@ All ten hooks are declared on [`SporaExtensionInterface`](https://github.com/spo
 1. **Discovery** — `AppLoader::load()` requires `app/App.php` and instantiates the class that implements `SporaExtensionInterface`. It does not dispatch any event; `PluginLoader::boot()` scans `plugins/*/plugin.json` in the same pass and registers each manifest's PSR-4 mapping before instantiating the entry-point class.
 2. **Subscriber wiring** — `AppLoader::wireEventSubscribers()` runs before `PluginLoader::wireEventSubscribers()`, so App listeners are registered ahead of plugin listeners for the same event. Both are idempotent, so a long-running worker cannot accumulate duplicate listeners.
 3. **`ContainerBuildingEvent`** — `PluginLoader::registerPlugins()` dispatches it with the live `DI\ContainerBuilder`, before `$builder->build()`.
-4. **Container build** — PHP-DI compiles the merged definitions. The data hooks above are read by the container factories as the corresponding services are resolved: `tools()` and `apps()` into the tool / App registries, `speechToTextProviders()`, `skillProviders()`, and `searchProviders()` into their merged class lists, `agentTemplatePaths()` and `skillPaths()` into the scanners.
+4. **Container build** — PHP-DI compiles the merged definitions. The data hooks above are read by the container factories as the corresponding services are resolved: `tools()` and `apps()` into the tool / App registries, `speechToTextProviders()`, `skillProviders()`, and `searchProviders()` into their merged class lists, `agentTemplatePaths()` and `skillPaths()` into the scanners. Each of those three provider lists is concatenated **once**, in a factory, when its registry is first resolved — the same treatment, and `searchProviders()` in particular is not re-merged per request or per keystroke.
 
 **Per request**, in `Kernel::handle()`:
 

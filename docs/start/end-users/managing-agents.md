@@ -314,7 +314,7 @@ Subscriptions are mutable per user — toggling a row takes effect on the next s
 
 The left sidebar pins the bucket that owns your active agent at the top — either your personal **My Agents** section or the group the agent belongs to — and collapses every other bucket into a single **Other agents (N)** panel that you expand on demand. Agents without a `principal` (legacy fixtures) live in an **Unfiled** bucket inside that panel rather than getting their own pinned section.
 
-To jump around without scrolling, press **⌘K** (or **Ctrl-K** on non-Mac platforms). A global command palette opens with five sections:
+To jump around without scrolling, press **⌘K** (or **Ctrl-K** on non-Mac platforms). A global command palette opens with five sections read from your own data:
 
 - **Actions** — quick links like "Create new agent" / "Create new group", shown on an empty query and whenever the search needle matches an action label or its description.
 - **Groups** — every group you can see.
@@ -322,6 +322,8 @@ To jump around without scrolling, press **⌘K** (or **Ctrl-K** on non-Mac platf
 - **Agents by group** — every other agent, grouped by its owning group.
 - **Recent chats** — your last 20 conversations, searchable on `user_prompt` and `final_response`.
 
-Navigation: `↑` / `↓` move, `↵` activates, `Esc` or a backdrop click closes. The palette is wired to the existing Pinia stores and triggers no extra backend calls; if you open it before the dashboard data is loaded, it kicks off the same `ensureLoaded()` fetch the dashboard uses.
+Those five stay on your machine — the palette filters data the page already loaded. Anything a **plugin** makes searchable arrives over the network: as you type, the palette calls `GET /api/v1/search`, which asks every registered search provider what it has for your query, and renders one extra section per kind of thing that comes back. Installed plugins decide what those sections contain — skills under a **Skill** section if `spora-plugin-custom-skills` is installed, archived media under **Media-archive** if `spora-plugin-media-archive` is — and with no plugin installed there are none. Only content you are already allowed to see comes back; a provider cannot widen that. A row the host has no page for is still listed, but it is skipped as you arrow through the results and does nothing on `↵` — that is how a provider says "I found it, but there is nowhere to open it".
+
+Navigation: `↑` / `↓` move, `↵` activates, `Esc` or a backdrop click closes. If you open it before the dashboard data is loaded, it kicks off the same `ensureLoaded()` fetch the dashboard uses.
 
 The ⌘K button is also exposed as a discoverable search icon in the navbar (between the client-worker indicator and the Groups link) so mouse-first users don't have to memorise the shortcut.

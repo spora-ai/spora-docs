@@ -51,7 +51,7 @@ Other endpoints are not currently rate-limited.
 
 ## Plugin Risks
 
-Plugins are not sandboxed — they run as ordinary PHP code with full access to the application, the database, the file system, and any decrypted credentials. The plugin trust model and lifecycle are documented in the [Plugin system](/develop/plugins/concepts) page under the Security section.
+Plugins are not sandboxed — they run as ordinary PHP code with full access to the application, the database, the file system, and any decrypted credentials. The plugin trust model and lifecycle are documented on the [Plugin system](/reference/concepts/plugins-system) page under [Security](/reference/concepts/plugins-system#security).
 
 ## Trusted Proxies & `X-Forwarded-*` Headers
 
@@ -73,7 +73,7 @@ Do not run Spora behind a reverse proxy that does **not** rewrite `Host` to the 
 
 ## Tool → user_id Trust Boundary
 
-Tools never receive a session-derived user id. `Orchestrator::safeExecute()` (in `app/Agents/Orchestrator.php`) reads the calling Agent's row and passes its `user_id` into `ToolInterface::execute()`. Tools therefore see **the owner of the agent that issued the call**, not "whoever is signed in" — a structural guarantee that no client code can bypass.
+Tools never receive a session-derived user id. `Orchestrator::safeExecute()` (in `app/Agents/Orchestrator.php`) reads the calling Agent's row, resolves it into a `PrincipalContext`, and passes that into `ToolInterface::execute()` — where ownership is read as `$context->ownerUserId`. Tools therefore see **the owner of the agent that issued the call**, not "whoever is signed in" — a structural guarantee that no client code can bypass.
 
 This matters most for:
 

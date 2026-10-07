@@ -34,7 +34,7 @@ The Spora org is split across several repos. Most contributions land in one or t
 
 ## Before you start
 
-- **Read the existing docs** — the [Operators guide](/start/operators/), [Concepts](/concepts/), and [Developers guide](/start/developers/) likely cover what you're trying to change
+- **Read the existing docs** — the [Operators guide](/start/operators/), [Concepts](/reference/concepts/), and [Developers guide](/start/developers/) likely cover what you're trying to change
 - **Check the issue tracker** — your bug may already be filed, your feature may already be discussed
 - **Check the roadmap** — [Roadmap](/about/roadmap) shows what's already planned
 

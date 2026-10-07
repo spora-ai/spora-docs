@@ -55,6 +55,8 @@ All ten hooks are declared on [`SporaExtensionInterface`](https://github.com/spo
 | `skillProviders()`        | `list<class-string<\Spora\Skills\SkillProviderInterface>>`        | Skills with **no directory** (user-authored, tenant-scoped).                                              |
 | `searchProviders()`       | `list<class-string<\Spora\Search\SearchProviderInterface>>`       | ⌘K palette search hits — makes a resource _findable_ (vs `skillProviders` = _readable_). Core ships none. |
 
+> **Status — the bottom two rows require spora-core ≥ v0.30.0.** `skillProviders()` and `searchProviders()` were both added after v0.29.0. They are listed here because they exist on the current interface, but an App declaring either against a released v0.29.0 core fatals at class-load.
+>
 > **Removed in 1.0.** Six hooks that older docs still teach no longer exist. `autoload()`, `drivers()`, and `recipePaths()` had no callers: PSR-4 data moved to `composer.json` / `plugin.json`, and LLM providers are _configured_ rather than contributed. `register()`, `routes()`, and `boot()` became PSR-14 events — see [Lifecycle events](#lifecycle-events) below.
 >
 > **Note:** `skillProviders()` and `searchProviders()` are data hooks, not lifecycle hooks. Both lists are merged by a PHP-DI factory over the loader accessors and the classes are resolved from the container when the matching registry is first built — resolve time, not request time and not search time. Nothing wires subscribers before the container is built, so a listener could not register a provider in time. See [Plugin system → Why `skillProviders()` is a data hook](/reference/concepts/plugins-system#why-skillproviders-is-a-data-hook-and-not-an-event).

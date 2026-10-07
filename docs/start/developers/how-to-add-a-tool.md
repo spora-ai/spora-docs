@@ -20,6 +20,7 @@ declare(strict_types=1);
 
 namespace App\Tools;
 
+use Spora\Services\PrincipalContext;
 use Spora\Tools\AbstractTool;
 use Spora\Tools\Attributes\Tool;
 use Spora\Tools\Attributes\ToolParameter;
@@ -39,7 +40,7 @@ final class HelloTool extends AbstractTool
     )]
     private string $name = '';
 
-    public function execute(array $arguments, int $agentId, ?int $userId = null, ?int $taskId = null): ToolResult
+    public function execute(array $arguments, int $agentId, ?int $taskId = null, ?PrincipalContext $context = null): ToolResult
     {
         $name = (string) ($arguments['name'] ?? $this->name);
         return ToolResult::ok(sprintf('Hello, %s!', $name));
@@ -57,7 +58,8 @@ What this class does:
 
 - `#[Tool(name, description)]` — declares the tool's identity to the LLM. The `name` is what the LLM uses to call the tool (must match `/^[a-z][a-z0-9_]*$/`).
 - `#[ToolParameter(...)]` — declares a single parameter. The LLM sees this as a property of the tool's JSON schema.
-- `execute(...)` — the actual work. Returns a `ToolResult::ok(...)` on success or `ToolResult::fail(...)` on a graceful failure. **Never throws** — a single API failure cannot kill the agent loop. The `$userId` argument is sourced by the Orchestrator from the calling Agent's row — it's the agent's owner, not "whoever is signed in" — so the tool can trust it as the per-task user context without checking the session (see [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop)).
+- `execute(...)` — the actual work. Returns a `ToolResult::ok(...)` on success or `ToolResult::fail(...)` on a graceful failure. **Never throws** — a single API failure cannot kill the agent loop. The four parameters must match `ToolInterface::execute()` exactly: `array $arguments, int $agentId, ?int $taskId = null, ?PrincipalContext $context = null`. A mismatch is fatal at **class-load**, not at call time, in both directions — five against the current four-parameter interface and four against the old five-parameter interface are the same fatal.
+- **Ownership comes from `$context->ownerUserId`, not from a session.** `Orchestrator::safeExecute()` reads the calling Agent's row and resolves ownership from it, so the tool can trust `$context->ownerUserId` as the per-task user context without checking the session (see [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop)). The legacy `?int $userId` third parameter was removed in spora-core PR #288; there is no raw user id left in the signature.
 - `describeAction(...)` — the human-readable summary shown in the approval UI when the agent calls this tool.
 
 For the full attribute surface (`#[ToolSetting]`, `#[ToolOperation]`, `InputToolInterface` vs `OutputToolInterface`, etc.), see [Concepts → Tool system](/reference/concepts/tools).
@@ -172,7 +174,7 @@ final class HelloTool extends AbstractTool
 
 The operator sees `default_greeting` in the admin UI's Tools → Hello page. The setting is encrypted at rest and merged into the tool's effective settings via `ToolConfigService::getEffectiveSettings()`.
 
-For the full settings key convention, see [Concepts → Tool system → Setting cascade](/reference/concepts/tools#setting-cascade-schema-defaults--global--user--agent).
+For the full settings key convention, see [Concepts → Tool system → Setting cascade](/reference/concepts/tools#setting-cascade-schema-defaults-→-global-→-user-→-agent).
 
 ## Step 6 — Distribute as a plugin (optional)
 

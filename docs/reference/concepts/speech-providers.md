@@ -84,7 +84,7 @@ Every tier (except tier 4, which returns null when nothing resolved) reads from 
 | `is_default`     | boolean            | Only meaningful when `is_global = true`. Multiple rows can be global; at most one is the default. The `POST /api/v1/speech/provider-configs/{id}/set-default` endpoint demotes the previous default inside a `lockForUpdate` transaction.              |
 | `principal_id`   | FK → principals.id | Set when the row is principal-scoped (user or group). The `scope` field on the wire response is derived from the principal's type.                                                                                                                     |
 
-The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech#post-apiv1speechprovider-configs). Schema-level validation (required keys, regex) walks the provider's `#[ToolSetting]` attributes via [`SpeechProviderConfigValidator::assertSettingsAgainstSchema()`](https://github.com/spora-ai/spora-core/blob/main/app/Services/SpeechProviderConfigValidator.php), so adding a new field to the attribute list automatically widens the dynamic form the SPA renders.
+The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech#post-api-v1-speech-provider-configs-—-create-a-speech-provider-configuration). Schema-level validation (required keys, regex) walks the provider's `#[ToolSetting]` attributes via [`SpeechProviderConfigValidator::assertSettingsAgainstSchema()`](https://github.com/spora-ai/spora-core/blob/main/app/Services/SpeechProviderConfigValidator.php), so adding a new field to the attribute list automatically widens the dynamic form the SPA renders.
 
 ## Reading the capability endpoint
 

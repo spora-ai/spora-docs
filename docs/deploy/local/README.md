@@ -9,7 +9,7 @@ Run Spora on your laptop. No Docker, no VPS, no shared host. The skeleton's `com
 
 Two paths for the LLM:
 
-1. **Hosted LLM** (Anthropic Claude, OpenAI GPT) — point an [LLM driver config](/start/operators/security#llm-driver-config) at the hosted endpoint
+1. **Hosted LLM** (Anthropic Claude, OpenAI GPT) — point an [LLM driver config](/reference/concepts/drivers#llmdriverconfiguration-model) at the hosted endpoint. Keys are stored encrypted at rest — see [Credential Encryption](/start/operators/security#credential-encryption).
 2. **Local LLM via Ollama or LM Studio** — for offline use, privacy, or to avoid per-token costs
 
 This page covers the local LLM path. The PHP server path is the same as the standard operator install.

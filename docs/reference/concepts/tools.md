@@ -29,7 +29,7 @@ use Spora\Tools\ValueObjects\ToolResult;
 #[ToolParameter(name: 'query', type: 'string', description: 'The search query.', required: true)]
 final class MyWebSearchTool extends AbstractTool
 {
-    public function execute(array $arguments, int $agentId, ?int $userId = null): ToolResult
+    public function execute(array $arguments, int $agentId, ?int $taskId = null, ?PrincipalContext $context = null): ToolResult
     {
         $query = trim((string) ($arguments['query'] ?? ''));
         // ...
@@ -45,9 +45,11 @@ final class MyWebSearchTool extends AbstractTool
 
 That's it — no hand-written `getParametersSchema()`. The `ToolParameterSchemaBuilder` reads the `#[ToolOperation]` and `#[ToolParameter]` attributes via reflection and produces the JSON Schema sent to the LLM.
 
-### Where `$userId` comes from
+### Where ownership comes from
 
-The `$userId` passed into `execute()` is **sourced by the Orchestrator from the calling Agent's row** (`Orchestrator::safeExecute()` at `app/Agents/Orchestrator.php`), not from the session. The dispatcher cannot thread a session-derived user id into a tool — the call site no longer accepts one. Tools therefore never need to trust the user_id argument as "whoever is signed in"; it's "the owner of the agent that issued this call". When the Orchestrator boots without `AgentServiceInterface` (a unit-test harness), `$userId` is `null` and the tool's own `getAgentByAgentId()` fallback applies. See [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop) for the structural guarantee.
+The `$context` passed into `execute()` is **sourced by the Orchestrator from the calling Agent's row** (`PrincipalResolver::resolveForToolExecute($agentId)` at `app/Agents/Orchestrator.php:533`), not from the session. The dispatcher cannot thread a session-derived user id into a tool — the call site does not accept one. Tools therefore never need to treat ownership as "whoever is signed in": `$context->ownerUserId` is "the owner of the agent that issued this call". When the Orchestrator boots without a resolvable agent row, `PrincipalContext::isResolvable()` is `false` and `ownerUserId` is `0`; the tool's own `getAgentByAgentId()` fallback applies. See [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop) for the structural guarantee.
+
+There is no raw `?int $userId` parameter any more — it was removed in spora-core PR #288, and getting the arity wrong is fatal at **class-load** in both directions, so core and every installed plugin move together.
 
 ### The auto-synthesized `action` discriminator
 
@@ -241,7 +243,22 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
         }
       ]
     }
-  ]
+  ],
+  "skills": {
+    "allowed": ["time-arithmetic"],
+    "visible": [
+      {
+        "name": "time-arithmetic",
+        "description": "Answer questions about dates, times and durations.",
+        "active": true
+      },
+      {
+        "name": "agent-creation",
+        "description": "Create and configure a sub-agent end to end.",
+        "active": false
+      }
+    ]
+  }
 }
 ```
 
@@ -254,13 +271,53 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
 - `ready_to_enable` is `true` when no required settings are missing. A tool with `enabled: false, ready_to_enable: false` needs configuration before the operator can enable it; the agent cannot enable it on its own.
 - `missing_required` lists only the required setting **keys**; no effective values are exposed to avoid leaking credentials.
 - `operations[]` carries per-operation `enabled` / `requires_approval` state, resolved against the effective override (or the operation's `enabledByDefault` / `requiresApprovalByDefault` when no override exists).
+- `skills.allowed` is the agent's **own** `allowed_skills` list — the names it may load right now.
+- `skills.visible` is every skill the **executing principal** can see, each `{name, description, active}`. `active` is `true` when that name is in `skills.allowed`. The two lists are deliberately separate: folding them together would put names in the same array whether or not the agent holds them, and the model would read array membership as the answer to "may I load this?".
+
+> **Note:** `skills.visible` is the **legal name set** for a `settings.allowed_skills` write. `configure_tools` refuses any skill name not present in it — the whole call, not just the offending entry, because a list that quietly shrank reads to the model as the whole list landing. Read `skills.visible` first, then name from it. The check fails closed: a provider that scopes by principal sees nothing and every name is refused.
+
+### `configure_tools` — the `tools[]` entry shape
+
+```json
+{
+  "agent_id": 42,
+  "tools": [
+    {
+      "tool_class": "Spora\\Tools\\SkillTool",
+      "enabled": true,
+      "settings": { "allowed_skills": ["time-arithmetic", "agent-creation"] },
+      "operations": [{ "name": "list", "enabled": true, "auto_approve": false }]
+    }
+  ]
+}
+```
+
+`settings` is optional; so are `enabled` and `operations`. Omit a key and it changes nothing. The three semantics that are easy to get wrong:
+
+- **A `settings` write replaces the value at that key wholesale — it does not merge and it does not append.** Sending `allowed_skills: ["time-arithmetic"]` over an existing `["time-arithmetic", "agent-creation"]` leaves you with exactly `["time-arithmetic"]`. Always send the complete list you want to end up with. (Other keys on the same tool are untouched — it is per-key replacement, not a whole-object overwrite.)
+- **A `settings` write lands at the AGENT level, and that breaks inheritance.** The value is written to `agent_tool_overrides`, which is the last-wins layer of the cascade, so the agent stops inheriting whatever the group or user scope holds for that key. To go back to inheriting, send `null` or `""` for the key — an empty value drops the agent-level row entirely and the cascade resumes from the layer below.
+- **`allowed_skills` is `string[]` of skill names; `allowed_target_agents` is `int[]` of agent ids.** The shape follows the setting's `resolveAs`: `SkillTool::allowed_skills` declares `resolveAs: 'skill'` and stores names, while `SubAgentTool::allowed_target_agents` uses the default `resolveAs: 'agent'` and stores integer ids. Send a string where an id is expected (or vice versa) and the entry is refused — read `skills.visible[].name` for the first and `GET /api/v1/agents` for the second.
+
+Two flags on a tool entry behave differently from the same flag on an operation:
+
+- **`enabled` on a tool entry is tri-state.** `true` enables, `false` disables, and **omitting the key leaves enablement alone** — so a settings-only or operations-only entry cannot grant a tool as a side effect. A blank string is read as _absent_, not as `false`.
+- **`enabled` on an operation is not tri-state.** Naming an operation turns it **on**; `[{name: "now"}]` is `{name: "now", enabled: true}`. To switch one off you must send `enabled: false` explicitly — omitting it on an operation row is not "leave alone", it is "turn on".
+
+Refusals are whole-call and happen before any write, so a rejected payload cannot have landed anything:
+
+| Refused                                     | Why                                                                                                                                                                                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An unknown `settings` key                   | Dropped silently, a misspelling like `allowed_sklls` would leave the model believing a list landed — and it would then read a skill it still cannot.                                                                                     |
+| A `type: 'password'` setting                | A credential is the one thing a tool call must not be able to write: the value would land in the call's own recorded arguments, so the agent could read back the key it just set. Credentials stay operator-only, in the settings panel. |
+| An operation name the tool does not declare | A dead override row is invisible in the manifest and reads as "nothing landed". The refusal names the available operations.                                                                                                              |
+| A skill name outside `skills.visible`       | Refuses the whole call — see the note above.                                                                                                                                                                                             |
 
 ### Slim two-phase agent creation
 
 The LLM-facing agent creation flow is **two-phase** — `create_agent` does NOT accept a `tools[]` block. The flow is:
 
 1. **`create_agent`** — slim skeletal record (`name`, `description`, `system_prompt`, `max_steps`, `allow_followup`, `retry_after_minutes`, `max_retries`). Capture the returned `agent_id`.
-2. **`configure_tools(agent_id: <id>, tools: [...])`** — apply the toolset. Each entry is `{ tool_class, enabled, operations: [{name, enabled?, auto_approve?}] }`.
+2. **`configure_tools(agent_id: <id>, tools: [...])`** — apply the toolset. Each entry is `{ tool_class, enabled?, settings?, operations: [{name, enabled?, auto_approve?}] }` — see [the `tools[]` entry shape](#configure_tools--the-tools-entry-shape) for the `settings` and `enabled` semantics.
 3. **`read_agent(agent_id: <id>)`** — verify the toolset is exactly what was wanted.
 
 The full agent-template shape (`id` / `version` / nested `agent{}` / `tools[]` / `required_plugins[]`) is reserved for the operator-upload endpoint at `POST /api/v1/agent-templates/import` (see [Agent template schema](/reference/agent-template-schema)). `create_agent` rejects the nested-object shape with a literal "send X instead" example; see `skills/agent-creation/SKILL.md` for the full protocol.
@@ -311,7 +368,7 @@ The 500 affects only the list endpoint — per-tool settings (`/api/v1/tools/{to
 The agent-facing `get_available_tools` does **not** expose enable/disable operations. There is no `enable_tool` or `disable_tool` the LLM can call. To activate a tool:
 
 - For sub-agents, call `create_agent` (slim) and then `configure_tools(agent_id: <id>, tools: [...])` — see [Slim two-phase agent creation](#slim-two-phase-agent-creation).
-- For the calling agent itself, the operator must enable the tool through the agent settings UI or the `POST /api/v1/agents/{id}/tools/{toolId}/enable` endpoint. The `{toolId}` path segment is the tool's `#[Tool(name:)]` value (e.g. `tavily_search` or `calculator`) — see [Route definitions](/reference/api#tool-routes) for the canonical mapping.
+- For the calling agent itself, the operator must enable the tool through the agent settings UI or the `POST /api/v1/agents/{id}/tools/{toolId}/enable` endpoint. The `{toolId}` path segment is the tool's `#[Tool(name:)]` value (e.g. `tavily_search` or `calculator`) — see [Route definitions](/reference/api/agents#post-api-v1-agents-id-tools-toolid-enable-—-enabletool-agenttool) for the canonical mapping.
 
 This split keeps tool activation on the calling agent under explicit operator control while still letting the agent self-compose a sub-agent when it needs capabilities beyond its current set.
 
@@ -375,9 +432,9 @@ final class MySearchTool extends AbstractTool
         private readonly HttpClientInterface $httpClient,
     ) {}
 
-    public function execute(array $arguments, int $agentId, ?int $userId = null): ToolResult
+    public function execute(array $arguments, int $agentId, ?int $taskId = null, ?PrincipalContext $context = null): ToolResult
     {
-        $settings = $this->configService->getEffectiveSettings(static::class, $agentId, $userId);
+        $settings = $this->configService->getEffectiveSettings(static::class, $agentId, null, $context);
         $apiKey   = $settings['api_key'] ?? '';
         // ...
     }
@@ -578,6 +635,6 @@ Any operation can still be narrowed per agent from the dashboard, including by p
 
 The `derivatives[]` enrichment on `get_media` and the `create_derivative` op both read through `MediaAssetSerializer::derivativeRowsFor()` so the operator dashboard and the LLM see the same row shape. See [`MediaDerivativeController`](https://github.com/spora-ai/spora-core/blob/main/app/Http/MediaDerivativeController.php) for the underlying REST surface that operators use directly.
 
-Text extraction from a binary document is an `md` derivative, not a column on the asset. A PDF or docx gets one minted at ingest, and again at attach time for any task that references it, so by the time an agent sees the attachment the `md` row usually exists. The rule the attachment path follows is: **a text-ish source within the 512 KB inline budget is its own text; anything else gets an `md` derivative, and if it still doesn't fit, the LLM is told where to read it** — the metadata-only fallback block names `get_source` rather than reporting "no extractable text". `get_source` reads the `md` derivative for binary mimes and does nothing else; `create_derivative` is how the LLM mints one when it is missing. See [Media assets → Derivatives](/reference/concepts/media-assets#derivatives) for the `MediaDerivativeService` contract, the producer's field-inheritance rules, and why `list_derivatives` rather than `search` is the discovery path for an `md` render.
+Text extraction from a binary document is an `md` derivative, not a column on the asset. A PDF or docx gets one minted at ingest, and again at attach time for any task that references it, so by the time an agent sees the attachment the `md` row usually exists. The rule the attachment path follows is: **a text-ish source within the 512 KB inline budget is its own text; anything else gets an `md` derivative, and if it still doesn't fit, the LLM is told where to read it** — the metadata-only fallback block names `get_source` rather than reporting "no extractable text". `get_source` reads the `md` derivative for binary mimes and does nothing else; `create_derivative` is how the LLM mints one when it is missing. See [Media assets → 6. Derivatives](/reference/concepts/media-assets#_6-derivatives) for the `MediaDerivativeService` contract, the producer's field-inheritance rules, and why `list_derivatives` rather than `search` is the discovery path for an `md` render.
 
 Admin users bypass `scope` and see every asset.

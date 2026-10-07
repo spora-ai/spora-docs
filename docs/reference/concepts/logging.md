@@ -88,7 +88,7 @@ final class MyTool extends AbstractTool
         private readonly ?LoggerInterface  $logger = null,  // nullable — always optional
     ) {}
 
-    public function execute(array $arguments, int $agentId, ?int $userId = null): ToolResult
+    public function execute(array $arguments, int $agentId, ?int $taskId = null, ?PrincipalContext $context = null): ToolResult
     {
         try {
             // ... do work ...
@@ -105,9 +105,9 @@ final class MyTool extends AbstractTool
 }
 ```
 
-`$userId` is sourced by the Orchestrator from the calling Agent's row, so it's the agent's owner — not "whoever is signed in". It is also the only `user_id` the tool will ever see (Worker mode, scheduled runs, and sub-agent hops inherit the same trust boundary). See [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop).
+Ownership is not a tool parameter you can log around — it arrives as `$context->ownerUserId`, resolved by the Orchestrator from the calling Agent's row, so it's the agent's owner and not "whoever is signed in". It is also the only user id the tool will ever see (Worker mode, scheduled runs, and sub-agent hops inherit the same trust boundary). Never log the `PrincipalContext` itself — log `$context?->ownerUserId` if you need the id in the record. See [Concepts → Architecture → Orchestrator Loop](/reference/concepts/architecture#orchestrator-loop).
 
-The Orchestrator's `safeExecute()` will also log the `ToolResult(false, ...)` at `ERROR` level, so you get two complementary log entries: one with the tool's internal context (from the tool itself) and one with the orchestration context (`tool`, `agent_id`, `task_id`, `user_id`).
+The Orchestrator's `safeExecute()` will also log the `ToolResult(false, ...)` at `ERROR` level, so you get two complementary log entries: one with the tool's internal context (from the tool itself) and one with the orchestration context (`tool`, `agent_id`, `task_id`). Note that `Tool dispatch` at `DEBUG` deliberately does **not** carry the resolved user id — the four context keys at `app/Agents/Orchestrator.php:536-541` are `tool`, `agent_id`, `task_id`, `arguments`, and the `arguments` blob may contain PII.
 
 **Never log `$arguments` at `WARNING` or above.** If you need argument context for debugging, log at `DEBUG`:
 

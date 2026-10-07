@@ -118,6 +118,8 @@ A skill that is the same for everyone on the instance should ship as a **directo
 Registration is one hook, returning class names. The container resolves them and builds one `SkillProviderRegistry` in a fixed order, core's `FilesystemSkillProvider` first:
 
 ```php
+// Requires spora-core ≥ v0.30.0. `skillProviders()` did not exist at v0.29.0,
+// where this plugin fatals at class-load.
 /** @return list<class-string<SkillProviderInterface>> */
 public function skillProviders(): array
 {
@@ -142,6 +144,8 @@ The full contract, the four rules the registry depends on, and the version-floor
 This plugin is also the only implementer of `searchProviders()` that covers skills, so ⌘K finds both shipped and custom ones — and every one of those hits opens on a page this plugin actually has.
 
 ```php
+// Requires spora-core ≥ v0.30.0. `searchProviders()` did not exist at v0.29.0,
+// where this plugin fatals at class-load.
 /** @return list<class-string<\Spora\Search\SearchProviderInterface>> */
 public function searchProviders(): array
 {
@@ -160,7 +164,7 @@ The path segment carries the kind rather than collapsing both onto one route. `/
 
 Ranking is four tiers, first match wins, so name matches outrank description matches: exact name, name prefix, name substring, description substring. Hits cap at 20. `subLabel` is the description and `badge` reads `1 warning` when the skill carries one.
 
-> **Why core does not do this.** Core used to ship `Spora\Search\Providers\SkillSearchProvider` and has deleted it. Its `hrefFor()` built the URL from the skill's own `source` and returned `null` when no Vue app was registered under that source — true for every shipped `filesystem` skill — so the whole core catalogue rendered as unopenable rows, and core has no skills page to open one in. A hit needs a destination, and only the plugin owning the content has one.
+> **Why core does not do this.** Core shipped `Spora\Search\Providers\SkillSearchProvider` and deletes it in v0.30.0 — on a released v0.29.0 core it is still there. Its `hrefFor()` built the URL from the skill's own `source` and returned `null` when no Vue app was registered under that source — true for every shipped `filesystem` skill — so the whole core catalogue rendered as unopenable rows, and core has no skills page to open one in. A hit needs a destination, and only the plugin owning the content has one.
 
 See [Concepts → Plugin system → Palette search](/reference/concepts/plugins-system#palette-search) for the endpoint, the registry, and the `type()` namespace rule, and [Author guide → Worked example: a palette search provider](/develop/plugins/author-guide/foundations#worked-example-a-palette-search-provider) for the authoring shape.
 

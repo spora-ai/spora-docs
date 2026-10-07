@@ -41,11 +41,16 @@ final class App extends \Spora\Extensions\AbstractExtension
 }
 ```
 
-**Status:** the App extension surface is **in progress** — three open PRs are landing it. The skeleton's `composer.json` currently pins the latest stable; the shipped `app/App.php` is a dormant stub — it does nothing until the framework upgrade ships. The `phpstan.neon`, `composer lint`, `composer analyse` scripts are wired up locally, so when you upgrade, the scaffold is ready to use.
+**Status:** the App extension surface **ships and is wired**. `AppLoader` discovers `app/App.php` by reflection at `<BASE_PATH>/app/App.php` — no manifest, no slug, no `composer require` — and the container consumes its `apps()` and `tools()` hooks alongside the plugin ones (`ContainerDefinitions.php:842-843` for apps, `InstalledToolClasses` for tools). The `phpstan.neon`, `composer lint`, and `composer analyse` scripts are wired up.
+
+Two practical notes:
+
+- **The skeleton does not ship the file.** `spora-plugin-skeleton` has no `app/` directory at all, so create `app/App.php` yourself — `php bin/spora make:app`, or by hand (see the snippet above).
+- **`AppLoader` is a silent no-op when the file is absent.** No `app/App.php` means no warning and no error; Spora runs exactly as it always has. The only case that throws is a file that declares a class which does not implement `SporaExtensionInterface` (`InvalidAppClassException`) — a developer error, not a missing file.
 
 When to migrate App → Plugin: when you need to ship the same code to multiple Spora installs. Renaming `App.php` → `Plugin.php` plus a `plugin.json` is the entire migration.
 
-Full reference: see the [Plugin authoring → App extension](/develop/plugins/app-extension) page (migrated from `spora-core/docs/08_app_extension.md`).
+Full reference: see the [App extensions](/reference/concepts/app-extension) page.
 
 ### 3. In-app (for one-off tools)
 

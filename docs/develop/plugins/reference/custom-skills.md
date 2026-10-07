@@ -155,12 +155,14 @@ public function searchProviders(): array
 
 It reads through core's `SkillProviderRegistry` rather than querying skills itself, so shipped and custom skills appear in one list with no work from the other providers. `type()` is `skill`, and the href **branches on ownership**, never `null`:
 
-| Hit                                 | Opens on                             | Why                                                                                                                      |
-| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| A skill this plugin owns            | `/apps/custom-skills/skill/{name}`   | The desk — principal-scoped and writable, which is what a custom skill is.                                               |
-| A shipped or another plugin's skill | `/apps/custom-skills/library/{name}` | The catalogue viewer — read-only, so the desk would render it under a scope bar announcing a principal it does not have. |
+| Hit                                 | Opens on                                             | Why                                                                                                                      |
+| ----------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| A skill this plugin owns            | `/apps/custom-skills/p/{principalId}/skill/{name}`   | The desk — principal-scoped and writable, which is what a custom skill is.                                               |
+| A shipped or another plugin's skill | `/apps/custom-skills/p/{principalId}/library/{name}` | The catalogue viewer — read-only, so the desk would render it under a scope bar announcing a principal it does not have. |
 
-The path segment carries the kind rather than collapsing both onto one route. `/apps/custom-skills/skill/:name` and `/apps/custom-skills/library/:name` are the host-side names of the panel's own `Desk` and `Viewer` pages; the host router registers no child route, so the frontend package parses the prefix itself. That keeps browser back/forward, a hard refresh and a pasted link all landing on the right skill — and the legacy `?skill=x` form still resolves to the desk, because every href core ever emitted named a custom skill.
+The path segment carries the kind rather than collapsing both onto one route, and **`{principalId}` is on both**. A custom skill belongs to exactly one principal (`unique(principal_id, name)`), so a href naming only a skill cannot say whose it is — and the panel resolves a principal-less URL to the _caller's own_ rather than refusing. That silent default is what made a group's skill arrive as an unopenable "No skill named … on this principal": the hit was real and the link looked fine, but the read behind it went to the wrong scope. On the `library` branch the id is not an owner — a shipped skill belongs to no principal — but the _acting_ scope, because that is what **Duplicate** writes a copy onto.
+
+`/apps/custom-skills/p/:principalId/skill/:name` and `…/library/:name` are the host-side names of the panel's own `Desk` and `Viewer` pages; the host router registers no child route, so the frontend package parses the prefix itself. That keeps browser back/forward, a hard refresh and a pasted link all landing on the right skill — and both legacy shapes still resolve, `/skill/:name` and `?skill=x`, because links made under the old ones are still links people hold.
 
 Ranking is four tiers, first match wins, so name matches outrank description matches: exact name, name prefix, name substring, description substring. Hits cap at 20. `subLabel` is the description and `badge` reads `1 warning` when the skill carries one.
 
@@ -170,21 +172,34 @@ See [Concepts → Plugin system → Palette search](/reference/concepts/plugins-
 
 ## The Custom Skills admin panel
 
-`/apps/custom-skills` is a two-pane desk. Five routes, one subject each:
+`/apps/custom-skills` is a page-per-destination panel. Five routes, one subject each, and **every one carries the acting principal**:
 
-| Route            | Page                                                                     |
-| ---------------- | ------------------------------------------------------------------------ |
-| `/`              | Home — what this principal owns                                          |
-| `/new`           | Create — a name, then the desk                                           |
-| `/skills/:name`  | Desk — write, with full CRUD and one-step restore                        |
-| `/library`       | Catalogue — every shipped skill, read-only, with _Duplicate_ to fork one |
-| `/library/:name` | Viewer — read a shipped skill                                            |
+| Route                           | Page                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| `/`                             | Home — what this principal owns (the bare root means the default)        |
+| `/p/:principalId`               | Home, scoped                                                             |
+| `/p/:principalId/new`           | Create — a name, then the desk                                           |
+| `/p/:principalId/skill/:name`   | Desk — write, with full CRUD and one-step restore                        |
+| `/p/:principalId/library`       | Catalogue — every shipped skill, read-only, with _Duplicate_ to fork one |
+| `/p/:principalId/library/:name` | Viewer — read a shipped skill                                            |
 
 Shipped skills are **not** re-exposed by the plugin; they come from the host's `GET /api/v1/skills`. A shipped skill is a global read-only resource and a custom one is principal-scoped and writable, so they get separate URLs rather than one route with a `?view=` flag.
 
 Affordances worth naming: inline `ValidationResult` errors, a warnings banner, a "last edited by agent" line, one-step **restore** of the previous version, _Duplicate_ from any shipped card, a sticky bar that always shows the acting principal, and a delete confirmation that **names the agents** whose allowlists will be scrubbed.
 
-The principal deliberately does not live in the URL — it sits in the panel's own store, and changing scope navigates home. A URL reading `/skills/invoice-drafting` says nothing about whose skill it is, which is the worst ambiguity to leave open mid-edit.
+### The URL is the source of truth
+
+**The host URL is authoritative and the panel's local router is a mirror of it** — a local path is the host path minus `/apps/custom-skills`, so both directions are a prefix strip and a prefix append rather than a table of kinds. A host navigation replaces the local route; a local navigation pushes a host path. Without the second direction the address bar never moves while browsing, so nothing in the panel is linkable, bookmarkable or reloadable — the same reason `spora-plugin-media-archive` pushes real host paths and follows them back.
+
+The principal is in the path because it has to be in the URL _and_ because a skill belongs to exactly one principal. It rides on the library routes too: a shipped skill has no owner, but the acting principal is what _Duplicate_ writes the copy onto, so a viewer link that dropped it would fork onto whichever principal the next reload defaulted to.
+
+Three consequences worth knowing:
+
+- **The scope bar navigates; it does not write the store.** One writer for the principal, or the path and the store disagree — which is the state that made the panel read the wrong principal in the first place.
+- **A `p/{id}` the caller cannot act as is never selected.** `GET /principals/me` is the gate: the panel falls back to the caller's own principal, rewrites the URL to say so, and explains why. A shared link to a group you have since left is a real case, since URLs outlive membership. Nothing leaks — the API refuses it too.
+- **A desk waits for the principals before its first read.** A child page's `onMounted` runs before the layout's, so reading first would send no `?principal_id=` at all and the contract would resolve it to the caller's own principal — which is how a group's skill came back as "No skill named … on this principal".
+
+Two spellings exist for each destination: the scoped one above, and the unscoped `/`, `/new`, `/skill/:name`, `/library[/:name]`. The unscoped pair exists because `/apps/custom-skills` — what the apps dropdown links to — means "my own skills", and because hrefs emitted before the principal moved into the path are still links people hold. The layout rewrites an unscoped path to its scoped form as soon as the principal is known, so the unscoped spellings are transient rather than a second way of being somewhere.
 
 ## Caps
 

@@ -172,7 +172,7 @@ See [Concepts → Plugin system → Palette search](/reference/concepts/plugins-
 
 ## The Custom Skills admin panel
 
-`/apps/custom-skills` is a page-per-destination panel. Five routes, one subject each, and **every one carries the acting principal**:
+`/apps/custom-skills` is a page-per-destination panel. Six routes, one subject each, and **every one carries the acting principal**:
 
 | Route                           | Page                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------ |

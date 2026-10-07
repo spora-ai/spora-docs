@@ -176,7 +176,7 @@ See [Concepts → Plugin system → Palette search](/reference/concepts/plugins-
 
 ## The Custom Skills admin panel
 
-`/apps/custom-skills` is a page-per-destination panel: **five destinations, two spellings each** — ten route records in all. Every _scoped_ spelling carries the acting principal; the four unscoped ones carry none and are rewritten on arrival. The table lists the scoped half:
+`/apps/custom-skills` is a page-per-destination panel: **five destinations, two spellings each** — ten route records in all. Every _scoped_ spelling carries the acting principal; the five unscoped ones carry none and are rewritten on arrival. The table lists the scoped half:
 
 | Route                           | Page                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------ |
@@ -202,7 +202,7 @@ Three consequences worth knowing:
 - **A `p/{id}` the caller cannot act as is never selected.** `GET /principals/me` is the gate: the panel falls back to `defaultPrincipalId()` — the caller's user-principal, or the first visible principal when they have none — rewrites the URL to say so, and explains why. A shared link to a group you have since left is a real case, since URLs outlive membership. Nothing leaks — the API refuses it too.
 - **A desk waits for the principals before its first read.** A child page's `onMounted` runs before the layout's, so reading first would send no `?principal_id=` at all and the contract would resolve it to the caller's own principal — which is how a group's skill came back as "No skill named … on this principal".
 
-Two spellings exist for each destination: the scoped one above, and the unscoped `/`, `/new`, `/skill/:name`, `/library[/:name]`. The unscoped spellings exist because `/apps/custom-skills` — what the apps dropdown links to — means "my own skills", and because hrefs emitted before the principal moved into the path are still links people hold. The layout rewrites an unscoped path to its scoped form as soon as the principal is known, so they are transient rather than a second way of being somewhere. If the principal list cannot be read there is nothing to name, and the unscoped path is left alone rather than rewritten to a principal nobody resolved.
+Two spellings exist for each destination: the scoped one above, and the five unscoped records `/`, `/new`, `/skill/:name`, `/library` and `/library/:name`. The unscoped spellings exist because `/apps/custom-skills` — what the apps dropdown links to — means "my own skills", and because hrefs emitted before the principal moved into the path are still links people hold. The layout rewrites an unscoped path to its scoped form as soon as the principal is known, so they are transient rather than a second way of being somewhere. If the principal list cannot be read there is nothing to name, and the unscoped path is left alone rather than rewritten to a principal nobody resolved.
 
 ## Caps
 

@@ -160,7 +160,11 @@ It reads through core's `SkillProviderRegistry` rather than querying skills itse
 | A skill this plugin owns            | `/apps/custom-skills/p/{principalId}/skill/{name}`   | The desk — principal-scoped and writable, which is what a custom skill is.                                               |
 | A shipped or another plugin's skill | `/apps/custom-skills/p/{principalId}/library/{name}` | The catalogue viewer — read-only, so the desk would render it under a scope bar announcing a principal it does not have. |
 
-The path segment carries the kind rather than collapsing both onto one route, and **`{principalId}` is on both**. A custom skill belongs to exactly one principal (`unique(principal_id, name)`), so a href naming only a skill cannot say whose it is — and the panel resolves a principal-less URL to the _caller's own_ rather than refusing. That silent default is what made a group's skill arrive as an unopenable "No skill named … on this principal": the hit was real and the link looked fine, but the read behind it went to the wrong scope. On the `library` branch the id is not an owner — a shipped skill belongs to no principal — but the _acting_ scope, because that is what **Duplicate** writes a copy onto.
+The path segment carries the kind rather than collapsing both onto one route, and **`{principalId}` is on both** — but it means something different on each.
+
+On the **own-skill** branch it is the owner: the id is the principal whose `getSkills()` produced the summary. This is the half that matters, because a href naming only a skill cannot say whose it is. The index is `unique(principal_id, name)`, which _permits_ the same name under two principals, so `invoice-drafting` is genuinely ambiguous without the id. The panel resolves a principal-less URL to the _caller's own_ rather than refusing, and that silent default is what made a group's skill arrive as an unopenable "No skill named … on this principal": the hit was real and the link looked fine, but the read behind it went to the wrong scope.
+
+On the **library** branch it is neither an owner — a shipped skill belongs to no principal — nor whichever principal the panel happens to be showing. Shipped providers ignore the principal and the loop folds them on `source::name`, so the surviving id is whichever visible principal came _first_ in `SearchContext`, and `PrincipalResolver::visiblePrincipalIds()` puts the caller's own user-principal there. Following a library link therefore _selects_ that principal. It is a stable and sensible scope to hand a copy to, but it is a decision this provider makes — not a reading of the panel's current state.
 
 `/apps/custom-skills/p/:principalId/skill/:name` and `…/library/:name` are the host-side names of the panel's own `Desk` and `Viewer` pages; the host router registers no child route, so the frontend package parses the prefix itself. That keeps browser back/forward, a hard refresh and a pasted link all landing on the right skill — and both legacy shapes still resolve, `/skill/:name` and `?skill=x`, because links made under the old ones are still links people hold.
 
@@ -172,12 +176,11 @@ See [Concepts → Plugin system → Palette search](/reference/concepts/plugins-
 
 ## The Custom Skills admin panel
 
-`/apps/custom-skills` is a page-per-destination panel. Six routes, one subject each, and **every one carries the acting principal**:
+`/apps/custom-skills` is a page-per-destination panel: **five destinations, two spellings each** — ten route records in all. Every _scoped_ spelling carries the acting principal; the four unscoped ones carry none and are rewritten on arrival. The table lists the scoped half:
 
 | Route                           | Page                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------ |
-| `/`                             | Home — what this principal owns (the bare root means the default)        |
-| `/p/:principalId`               | Home, scoped                                                             |
+| `/p/:principalId`               | Home — what this principal owns                                          |
 | `/p/:principalId/new`           | Create — a name, then the desk                                           |
 | `/p/:principalId/skill/:name`   | Desk — write, with full CRUD and one-step restore                        |
 | `/p/:principalId/library`       | Catalogue — every shipped skill, read-only, with _Duplicate_ to fork one |
@@ -191,15 +194,15 @@ Affordances worth naming: inline `ValidationResult` errors, a warnings banner, a
 
 **The host URL is authoritative and the panel's local router is a mirror of it** — a local path is the host path minus `/apps/custom-skills`, so both directions are a prefix strip and a prefix append rather than a table of kinds. A host navigation replaces the local route; a local navigation pushes a host path. Without the second direction the address bar never moves while browsing, so nothing in the panel is linkable, bookmarkable or reloadable — the same reason `spora-plugin-media-archive` pushes real host paths and follows them back.
 
-The principal is in the path because it has to be in the URL _and_ because a skill belongs to exactly one principal. It rides on the library routes too: a shipped skill has no owner, but the acting principal is what _Duplicate_ writes the copy onto, so a viewer link that dropped it would fork onto whichever principal the next reload defaulted to.
+The principal is in the path because a skill belongs to exactly one principal and the URL has to say which. It rides on the library routes too, where the skill itself has no owner — there the id is the scope a **Duplicate** would write the copy onto. For palette hits that is concretely the caller's own user-principal; see the href section above for why.
 
 Three consequences worth knowing:
 
 - **The scope bar navigates; it does not write the store.** One writer for the principal, or the path and the store disagree — which is the state that made the panel read the wrong principal in the first place.
-- **A `p/{id}` the caller cannot act as is never selected.** `GET /principals/me` is the gate: the panel falls back to the caller's own principal, rewrites the URL to say so, and explains why. A shared link to a group you have since left is a real case, since URLs outlive membership. Nothing leaks — the API refuses it too.
+- **A `p/{id}` the caller cannot act as is never selected.** `GET /principals/me` is the gate: the panel falls back to `defaultPrincipalId()` — the caller's user-principal, or the first visible principal when they have none — rewrites the URL to say so, and explains why. A shared link to a group you have since left is a real case, since URLs outlive membership. Nothing leaks — the API refuses it too.
 - **A desk waits for the principals before its first read.** A child page's `onMounted` runs before the layout's, so reading first would send no `?principal_id=` at all and the contract would resolve it to the caller's own principal — which is how a group's skill came back as "No skill named … on this principal".
 
-Two spellings exist for each destination: the scoped one above, and the unscoped `/`, `/new`, `/skill/:name`, `/library[/:name]`. The unscoped pair exists because `/apps/custom-skills` — what the apps dropdown links to — means "my own skills", and because hrefs emitted before the principal moved into the path are still links people hold. The layout rewrites an unscoped path to its scoped form as soon as the principal is known, so the unscoped spellings are transient rather than a second way of being somewhere.
+Two spellings exist for each destination: the scoped one above, and the unscoped `/`, `/new`, `/skill/:name`, `/library[/:name]`. The unscoped spellings exist because `/apps/custom-skills` — what the apps dropdown links to — means "my own skills", and because hrefs emitted before the principal moved into the path are still links people hold. The layout rewrites an unscoped path to its scoped form as soon as the principal is known, so they are transient rather than a second way of being somewhere. If the principal list cannot be read there is nothing to name, and the unscoped path is left alone rather than rewritten to a principal nobody resolved.
 
 ## Caps
 

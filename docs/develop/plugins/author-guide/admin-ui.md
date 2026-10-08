@@ -61,6 +61,8 @@ final class FooApp implements VueAppInterface
 
 The host SPA fetches `entry()` via `/plugins/foo/main.js` at runtime and mounts the bundle's exported `mount(target, hostContext)` into the app slot. See [`spora-frontend/src/apps/registry.ts`](https://github.com/spora-ai/spora-frontend/blob/main/src/apps/registry.ts) for the full mount contract.
 
+`mount()` may be sync or async — the registry awaits a thenable return. Returning a `Promise` is the recommended shape when the app has to settle a route before it renders, because when `mount()` runs the address bar may already hold a deep link: mounting first and navigating after puts a frame of the home page in front of the operator and lets any layout-level URL normalisation run against a route that has not settled. Await `router.isReady()` before `app.mount()` in that case. `unmount()` may be called at any time afterwards, including before an async `mount()` has resolved.
+
 ## Tile accent (`accent`)
 
 `accent()` declares the colour token the host SPA applies to your app's tile in the navbar drawer. The frontend keeps a small palette of named tokens — `violet`, `amber`, `emerald`, `sky`, `rose`, `primary` — each backed by a Tailwind gradient pair. Pick the closest match; if a genuinely new colour is needed, add it to **both** `spora-frontend/src/components/navbar/GlobalSheetApps.vue`'s `tileAccent()` map and the `accent` enum in `spora-core/plugin.schema.json` in the same change so the SPA doesn't ship an unstyled accent.

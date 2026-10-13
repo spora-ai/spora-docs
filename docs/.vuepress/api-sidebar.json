@@ -61,10 +61,6 @@
       "link": "/reference/api/agent-templates"
     },
     {
-      "text": "Admin",
-      "link": "/reference/api/admin"
-    },
-    {
       "text": "Mail-config",
       "link": "/reference/api/mail-config"
     },

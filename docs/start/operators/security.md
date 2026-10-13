@@ -19,6 +19,71 @@ See `app/Core/ContainerDefinitions.php:237-267` for the resolution chain.
 
 **Protect this key** — anyone with access can decrypt all stored credentials.
 
+## The runtime settings store
+
+Spora keeps two independent sets of secrets, encrypted with the same master key:
+
+| Store                         | Holds                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| `tool_configurations`         | Per-tool credentials — the `api_key` on a search tool, the `base_url` on `ReadUrlTool` |
+| `settings` (migration `0092`) | Runtime configuration an admin edits — `SPORA_MAIL_PASSWORD`, `SPORA_MERCURE_JWT_KEY`  |
+
+Both use the same key. Losing `SPORA_SECRET_KEY` / `secret.key` makes **every row in both stores**
+undecryptable at once, not just one.
+
+A shared settings group — one credential for every tool of a plugin — lives in
+`tool_configurations` under the group's class rather than under each tool's.
+
+### A secret never leaves the server in the clear
+
+`GlobalSettingsController` substitutes the literal `'***'` for the value of any setting declared
+`secret`, on **every** read, for **every** caller including a global admin. There is no endpoint that
+returns a secret's real value, and the admin UI renders `'***'` as a locked field with a **Change**
+button rather than a populated input.
+
+Tool settings get the same treatment, and the mask is keyed off the schema that encrypted the value
+— the plugin's shared group as well as the tool's own declarations.
+
+### The three states of a secret field
+
+Because the server cannot echo the value back, `PATCH /api/v1/admin/settings` distinguishes
+"untouched" from "cleared":
+
+| Submitted | Meaning                                                                                |
+| --------- | -------------------------------------------------------------------------------------- |
+| omitted   | untouched                                                                              |
+| `'***'`   | untouched, explicitly — the key is not written and is not listed in `updated`          |
+| `''`      | **clear it** — the stored row is deleted and the setting falls back to the file layers |
+
+The last row is load-bearing. `encrypt('')` emits a bare nonce+MAC (40 bytes) and `decrypt()`
+rejects anything shorter than nonce+MAC+1, so storing the empty string would produce a row that
+reads as undecryptable _forever_ — after which every read of that key throws. "No credential" and
+"clear the credential" mean the same thing to an operator, so both take the same path.
+
+### When a stored value cannot be decrypted
+
+The application still boots: the overlay skips an unreadable row, so the value from
+`config.php` / `.env` stands — and the registry default when neither sets it. A site that cannot
+start cannot show the admin the error explaining why. **Settings → Admin → General** names every
+affected key and says plainly that it is running on its default.
+
+## Recovering a lost or rotated secret key
+
+This is the one recovery that cannot go through the UI, and deliberately so. A row encrypted with a
+key nobody held makes the page that reads it fail — and a button in that page could destroy every
+configured credential in one mis-click.
+
+```bash
+php bin/spora settings:reset           # lists every row, then prompts
+php bin/spora settings:reset --force   # non-interactive; skips the prompt
+```
+
+It deletes **every** row in the `settings` table, including rows whose key the registry no longer
+declares — which is precisely the row that would otherwise survive a reset. Nothing is archived. The
+resolution order is unchanged; only the database layer is dropped, so every setting falls back to
+`config.php` / `.env` / its declared default and the instance boots. Re-enter each credential
+afterwards at **Settings → Admin → General**.
+
 ## API Authentication
 
 Session-based authentication via `delight-im/auth` (`Delight\Auth\Auth`). The session is PHP's native session, started by Symfony's `Request`; the cookie name follows PHP defaults and is not set explicitly by Spora.

@@ -87,6 +87,24 @@ php bin/spora spora:install
 php bin/spora db:seed
 ```
 
+### Unreadable stored settings
+
+`db:reset` is the wrong tool for this one — it destroys every agent, plugin and task row to fix a
+single credential. When a stored value cannot be decrypted (usually a rotated or replaced
+`SPORA_SECRET_KEY`), delete just the settings rows:
+
+```bash
+php bin/spora settings:reset           # list every row, then confirm
+php bin/spora settings:reset --force   # non-interactive
+```
+
+The resolution order is unchanged — only the database layer is dropped — so every setting falls
+back to `config.php` / `.env` / its declared default and the instance boots. Nothing is archived.
+
+If the app boots at all, you do not need this: **Settings → Admin → Global settings** shows which
+stored values could not be decrypted, and re-entering one fixes that key alone. Reach for the CLI
+when the app will not load far enough to show you the problem.
+
 ## Repairing the bootstrap admin
 
 If the seeded admin ends up in a broken state (e.g. `verified=0` after an upgrade from an older spora-core release), run `db:repair-admin` instead of `db:reset` — it promotes the existing row in place without losing agents, plugins, or task history.

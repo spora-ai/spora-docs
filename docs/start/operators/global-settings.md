@@ -1,18 +1,29 @@
 ---
 title: Global settings
-description: Settings → Admin → Global settings — the runtime configuration registry, what each layer means, and when a file is still the right answer.
+description: Settings → Runtime settings — the runtime configuration registry, what each layer means, and when a file is still the right answer.
 ---
 
 # Global settings
 
-**Settings → Admin → Global settings** is where an admin changes Spora's runtime configuration
+**Settings → Runtime settings** is where an admin changes Spora's runtime configuration
 without editing a file on the server. Every field on it is declared by
 `app/Settings/SettingsRegistry.php` — one definition per key carrying its type, default,
 description, validation rule, UI section, and whether it is read before the database opens or is a
 stored secret. **A key that is not declared there is not a setting**, which is why the page cannot
 drift from what the application reads.
 
-Sections: General, Access, Timeouts, Worker, Plugins, Media, Mail, Database, Security.
+It is five tabs, grouped by what an operator is doing rather than by what the code calls things:
+
+| Tab                      | Registry sections behind it            |
+| ------------------------ | -------------------------------------- |
+| **General**              | General, Access                        |
+| **Mail & Realtime**      | Mail, Realtime                         |
+| **Worker & Performance** | Worker, Timeouts                       |
+| **Media & Plugins**      | Media, Plugins                         |
+| **System**               | every section, file-only settings only |
+
+**System** is the odd one out: it is read-only throughout, because everything on it is read before
+the database opens. The other four are where the editing happens.
 
 ## Four layers, last wins
 
@@ -25,10 +36,11 @@ shared cPanel account with no shell is exactly the case it was built for. It als
 which surprises people: **a value you save here overrides one you set in `.env` months ago and
 forgot about.** The page tells you when that has happened.
 
-The exception is the `bootOnly` family — the `SPORA_DB_*` keys, `SPORA_KEY_PATH`, `SPORA_LOG_PATH`,
-`SPORA_APP_ENV`, `SPORA_APP_URL`, `SPORA_APP_PREFIX`, `SPORA_SQLITE_BUSY_TIMEOUT`. Those are read
-before the database can be opened, so they are file-only, permanently. They render disabled with the
-reason shown.
+The exception is the `bootOnly` family: the `SPORA_DB_*` keys, `SPORA_KEY_PATH`, `SPORA_LOG_PATH`,
+`SPORA_LOG_LEVEL`, `SPORA_SQLITE_BUSY_TIMEOUT`, `SPORA_APP_ENV`, `SPORA_APP_URL`, `SPORA_APP_PREFIX`,
+`SPORA_MAX_WORKERS`, and `SPORA_WORKER_RUNTIME_MODE`. Those are read before the database can be
+opened, so they are file-only, permanently. All sixteen are listed on the **System** tab, which has no
+editing, and each one says why it is read where it is.
 
 ## What the page tells you
 
@@ -36,8 +48,6 @@ Under each field, one of three lines:
 
 - **Where the value comes from** — the built-in default, your `.env`, your `config.php`, or the
   database — plus the key name, so you can see what a save here would shadow.
-- **Takes effect after the workers restart** — for the handful of settings read once before the
-  worker loop starts.
 - **Could not be decrypted; running on the default** — the stored row exists but will not decrypt.
   Most often a rotated secret key. Re-enter the value here to store a readable one.
 
@@ -46,10 +56,10 @@ Under each field, one of three lines:
 Save sends only the fields you changed, and the whole batch is validated before anything is written —
 so a refused form leaves nothing half-saved and tells you exactly which field the server rejected.
 
-**Reset to default** appears on a value that lives in the database; it deletes the row so the
-`.env` / `config.php` value takes effect again. The reset response does not say which layer the value
-fell back to, and a reset can expose a value this page never showed you, so the page re-reads
-afterwards rather than guessing.
+**Clear** appears on a value that lives in the database; it deletes the row so the
+`.env` / `config.php` value takes effect again. A confirmation says so before it happens, naming
+the setting. The response does not say which layer the value fell back to, and a clear can expose a
+value this page never showed you, so the page re-reads afterwards rather than guessing.
 
 ## Secrets
 
@@ -84,7 +94,11 @@ key](/start/operators/security#recovering-a-lost-or-rotated-secret-key).
 
 ## What you can't change here
 
-Boot-time settings, and anything the worker reads only at startup without a restart hook.
+The `bootOnly` family — they are read before the database opens, so the page that would write them
+cannot run. They appear on the **System** tab with editing off.
+
+Nothing else is excluded. A value you save on one of the four editable tabs is applied to the next
+request, and to a worker the next time it starts.
 
 ## What's next
 

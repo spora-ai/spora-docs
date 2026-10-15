@@ -101,7 +101,7 @@ php bin/spora settings:reset --force   # non-interactive
 The resolution order is unchanged — only the database layer is dropped — so every setting falls
 back to `config.php` / `.env` / its declared default and the instance boots. Nothing is archived.
 
-If the app boots at all, you do not need this: **Settings → Admin → Global settings** shows which
+If the app boots at all, you do not need this: **Settings → Runtime settings** shows which
 stored values could not be decrypted, and re-entering one fixes that key alone. Reach for the CLI
 when the app will not load far enough to show you the problem.
 

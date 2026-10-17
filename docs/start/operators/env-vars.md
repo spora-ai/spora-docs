@@ -9,8 +9,8 @@ This is the **canonical reference** for every `SPORA_*` environment variable Spo
 
 **Resolution priority:** built-in defaults → `config.php` (gitignored) → `.env` / OS environment →
 the `settings` table. `SPORA_*` env vars beat `config.php` but **not** the database: for every
-setting that is not read before the database opens, a value an admin saved at **Settings → Admin →
-General** overrides the environment.
+setting that is not read before the database opens, a value an admin saved at **Settings →
+Runtime settings** overrides the environment.
 
 The exception is the `bootOnly` family — `SPORA_DB_*`, `SPORA_KEY_PATH`, `SPORA_LOG_PATH`,
 `SPORA_APP_ENV`, `SPORA_APP_URL`, `SPORA_APP_PREFIX`, `SPORA_SQLITE_BUSY_TIMEOUT` — which is read
@@ -110,7 +110,7 @@ Note: `storage/php.log` is **not** produced by Spora's logger. In local dev it i
 | `SPORA_NOTIFICATIONS_EMAIL_ENABLED` | `true`  | `notifications_email_enabled` | Send an email when a scheduled run completes. Requires the `SPORA_MAIL_*` block to be configured.                                                                                                                                                                                                                                                                    |
 | `SPORA_PLUGIN_INSTALL_ENABLED`      | `false` | `plugin_install_enabled`      | Enable the Web UI for plugin install/uninstall (`POST`/`DELETE`/`PATCH /api/v1/plugins`). When off, the routes return `403 FEATURE_DISABLED`. CLI commands (`php bin/spora plugin:install`, `plugin:uninstall`, `plugin:update`) are **not** gated — they're always available as the operator recovery path. See [Plugin install API](/develop/plugins/install-api). |
 
-Mail transport has three ways to be set: these env vars (read by `app/Services/SystemMailer.php:183-190` and `app/Http/MailConfigController.php:22-29`), the same keys in `config.php` (nested under `mail`, or flat as `SPORA_MAIL_*`), and **Settings → Admin → General → Mail**, which stores them encrypted in the database and wins over both. `SPORA_MAIL_PASSWORD` is write-only — the server never returns its value, not even to an admin. These are **not** in the default `.env.example`; they are only in `docker/.env.local.example`. The full set is `SPORA_MAIL_DRIVER` / `SPORA_MAIL_HOST` / `SPORA_MAIL_PORT` / `SPORA_MAIL_USERNAME` / `SPORA_MAIL_PASSWORD` / `SPORA_MAIL_ENCRYPTION` / `SPORA_MAIL_FROM` / `SPORA_MAIL_FROM_NAME`.
+Mail transport has three ways to be set: these env vars (read by `app/Services/SystemMailer.php:183-190` and `app/Http/MailConfigController.php:22-29`), the same keys in `config.php` (nested under `mail`, or flat as `SPORA_MAIL_*`), and **Settings → Runtime settings → Mail & Realtime**, which stores them encrypted in the database and wins over both. `SPORA_MAIL_PASSWORD` is write-only — the server never returns its value, not even to an admin. These are **not** in the default `.env.example`; they are only in `docker/.env.local.example`. The full set is `SPORA_MAIL_DRIVER` / `SPORA_MAIL_HOST` / `SPORA_MAIL_PORT` / `SPORA_MAIL_USERNAME` / `SPORA_MAIL_PASSWORD` / `SPORA_MAIL_ENCRYPTION` / `SPORA_MAIL_FROM` / `SPORA_MAIL_FROM_NAME`.
 
 For SMTP, use a bare hostname in `SPORA_MAIL_HOST`. Pair port `587` with `SPORA_MAIL_ENCRYPTION=tls` for STARTTLS, or port `465` with `SPORA_MAIL_ENCRYPTION=ssl` for implicit TLS/SMTPS. Using `ssl` on port `587` causes OpenSSL `wrong version number` errors because that port expects an SMTP greeting before the TLS upgrade.
 

@@ -64,7 +64,7 @@ reads as undecryptable _forever_ — after which every read of that key throws. 
 
 The application still boots: the overlay skips an unreadable row, so the value from
 `config.php` / `.env` stands — and the registry default when neither sets it. A site that cannot
-start cannot show the admin the error explaining why. **Settings → Admin → General** names every
+start cannot show the admin the error explaining why. **Settings → Runtime settings** names every
 affected key and says plainly that it is running on its default.
 
 ## Recovering a lost or rotated secret key
@@ -82,7 +82,7 @@ It deletes **every** row in the `settings` table, including rows whose key the r
 declares — which is precisely the row that would otherwise survive a reset. Nothing is archived. The
 resolution order is unchanged; only the database layer is dropped, so every setting falls back to
 `config.php` / `.env` / its declared default and the instance boots. Re-enter each credential
-afterwards at **Settings → Admin → General**.
+afterwards at **Settings → Runtime settings**.
 
 ## API Authentication
 

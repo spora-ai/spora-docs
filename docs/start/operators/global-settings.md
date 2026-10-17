@@ -7,7 +7,7 @@ description: Settings → Runtime settings — the runtime configuration registr
 
 **Settings → Runtime settings** is where an admin changes Spora's runtime configuration
 without editing a file on the server. Every field on it is declared by
-`app/Settings/SettingsRegistry.php` — one definition per key carrying its type, default,
+`app/Settings/SettingDeclarations.php` — one definition per key carrying its type, default,
 description, validation rule, UI section, and whether it is read before the database opens or is a
 stored secret. **A key that is not declared there is not a setting**, which is why the page cannot
 drift from what the application reads.

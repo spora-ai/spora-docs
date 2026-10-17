@@ -6,7 +6,7 @@ description: config.php reference — every key, its env-var equivalent, default
 # Config keys
 
 `config.php` is one of four layers of runtime configuration. **The database wins** — a value an
-admin saved at **Settings → Admin → General** overrides both this file and the environment. Env
+admin saved at **Settings → Runtime settings** overrides both this file and the environment. Env
 vars beat `config.php`, which beats the built-in defaults.
 
 On a shared host `config.php` is often the only file an operator can edit. That used to mean it
@@ -17,16 +17,16 @@ For the canonical env-var list (the source of truth), see [Environment variables
 ## Resolution priority
 
 ```text
-built-in default  (app/Settings/SettingsRegistry.php)
+built-in default  (app/Settings/SettingDeclarations.php)
   < config.php   (nested legacy keys, or flat SPORA_*)
     < .env / OS environment
-      < the `settings` table   (Settings → Admin → General)
+      < the `settings` table   (Settings → Runtime settings)
 ```
 
 Last wins. A key present in `config.php` in both shapes resolves to the **flat** `SPORA_*` one,
 so rewriting a file never breaks a deploy.
 
-If `SPORA_DB_HOST` is set in `.env`, it wins. If `config.php` has `'db_host' => '127.0.0.1'` but no env var, the config wins. The registry default in `app/Settings/SettingsRegistry.php` is the last resort.
+If `SPORA_DB_HOST` is set in `.env`, it wins. If `config.php` has `'db_host' => '127.0.0.1'` but no env var, the config wins. The registry default in `app/Settings/SettingDeclarations.php` is the last resort.
 
 ## System mail (SMTP)
 
@@ -141,7 +141,7 @@ return [
 ];
 ```
 
-Anything not set falls back to the built-in default from `app/Settings/SettingsRegistry.php`. Anything set via `SPORA_*` env vars wins over the file, and anything an admin saved in the database wins over both.
+Anything not set falls back to the built-in default from `app/Settings/SettingDeclarations.php`. Anything set via `SPORA_*` env vars wins over the file, and anything an admin saved in the database wins over both.
 
 ## Docker-only variables
 

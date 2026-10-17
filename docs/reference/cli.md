@@ -73,7 +73,7 @@ Three things to know before you run it:
   declared setting to address it by, and it is exactly the row that would otherwise survive — so the
   command takes all of them.
 - **It does not archive.** The values are gone, not moved. Re-enter each credential afterwards at
-  **Settings → Admin → General**.
+  **Settings → Runtime settings**.
 - **It is a CLI on purpose.** Recovery has to work when the app will not boot, and a button in the
   settings page could destroy every configured credential in one mis-click with nothing on screen
   saying which values disappeared. Here the rows are printed before the prompt.

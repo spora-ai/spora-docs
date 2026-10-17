@@ -42,6 +42,7 @@ php bin/spora-build help <cmd> # Help for a specific build-time command
 | `tool:settings:migrate`           | One-shot tool settings migration (used when the settings schema changes).                                                                                                                                                                                                                         | `app/Console/Commands/ToolSettingsMigrationCommand.php`   |
 | `mail:templates:sync`             | Reconcile stored mail templates with YAML defaults. Use `--check` for a read-only drift check or `--force` to overwrite without prompting.                                                                                                                                                        | `app/Console/Commands/MailTemplatesSyncCommand.php`       |
 | `spora:openapi`                   | Generate the OpenAPI 3.0 spec from `RouteDefinitions`. With `--check`, exits non-zero if the reference spec on disk is stale. Dev-only — gated on the `zircote/swagger-php` dep.                                                                                                                  | `app/Console/Commands/OpenApiGenerateCommand.php`         |
+| `settings:reset`                  | Delete every row of the `settings` table, returning each setting to `config.php` / `.env` / its declared default. The recovery path for a lost or rotated `SPORA_SECRET_KEY`. Prompts unless `--force` is given. Nothing is archived.                                                             | `app/Console/Commands/SettingsResetCommand.php`           |
 | `spora:audit-operation-overrides` | Read-only report of rows in `agent_tool_operation_overrides` and `agent_tools` whose `tool_class` no longer resolves. Exits non-zero when orphans are found, so it can gate a future migration. No options.                                                                                       | `app/Console/Commands/AuditOperationOverridesCommand.php` |
 
 The `spora:` prefix is convention for the framework-level commands (`spora:install`, `spora:setup`, `spora:openapi`). Plugin commands are unprefixed (`plugin:install`, `plugin:list`). Older docs sometimes use the prefixed form for plugin commands; both work in current versions.
@@ -55,6 +56,27 @@ php bin/spora mail:templates:sync --check  # dry run; exits 1 on drift
 php bin/spora mail:templates:sync          # prompt before overwriting each drifted row
 php bin/spora mail:templates:sync --force  # overwrite without prompting
 ```
+
+### Recovering an unreadable stored setting
+
+```bash
+php bin/spora settings:reset           # list every stored row, then confirm
+php bin/spora settings:reset --force   # skip the prompt (non-interactive runs)
+```
+
+Deletes every row in the `settings` table. Each setting then resolves from `config.php` / `.env` /
+its registry default again — the resolution order is unchanged, only the database layer is dropped.
+
+Three things to know before you run it:
+
+- **It is not scoped.** There is no key filter. A row left behind by an uninstalled plugin has no
+  declared setting to address it by, and it is exactly the row that would otherwise survive — so the
+  command takes all of them.
+- **It does not archive.** The values are gone, not moved. Re-enter each credential afterwards at
+  **Settings → Runtime settings**.
+- **It is a CLI on purpose.** Recovery has to work when the app will not boot, and a button in the
+  settings page could destroy every configured credential in one mis-click with nothing on screen
+  saying which values disappeared. Here the rows are printed before the prompt.
 
 ### Auditing orphaned tool rows
 
@@ -84,6 +106,7 @@ The build-time entry points **do not require a configured app**: no `storage/sec
 | Option                  | Applies to          | Purpose                                                   |
 | ----------------------- | ------------------- | --------------------------------------------------------- |
 | `--force`               | `db:reset`          | Skip the interactive confirm prompt                       |
+| `--force` / `-f`        | `settings:reset`    | Skip the interactive confirm prompt                       |
 | `--path=<dir>`          | `plugin:install`    | Install from a local path repo (Composer path repository) |
 | `--constraint=<semver>` | `plugin:install`    | Pin to a semver constraint instead of `^x.y`              |
 | `--once`                | `worker:run`        | Process one batch and exit (cron mode)                    |

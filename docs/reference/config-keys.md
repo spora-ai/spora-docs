@@ -5,20 +5,28 @@ description: config.php reference — every key, its env-var equivalent, default
 
 # Config keys
 
-`config.php` is the file-based fallback for runtime configuration. **Env vars take priority** — `SPORA_*` env vars are read first, then `config.php`, then built-in defaults. On a shared host, the operator typically edits `config.php`; on Docker / VPS, env vars are the canonical source.
+`config.php` is one of four layers of runtime configuration. **The database wins** — a value an
+admin saved at **Settings → Runtime settings** overrides both this file and the environment. Env
+vars beat `config.php`, which beats the built-in defaults.
+
+On a shared host `config.php` is often the only file an operator can edit. That used to mean it
+was also the only place to configure the instance, and it no longer is.
 
 For the canonical env-var list (the source of truth), see [Environment variables](/start/operators/env-vars). This page covers the `config.php` keys that map to those env vars.
 
 ## Resolution priority
 
 ```text
-OS environment variable (SPORA_FOO)
-  → .env file (loaded by vlucas/phpdotenv)
-    → config.php (the 'foo' key, if present)
-      → built-in default (in ContainerDefinitions)
+built-in default  (app/Settings/SettingDeclarations.php)
+  < config.php   (nested legacy keys, or flat SPORA_*)
+    < .env / OS environment
+      < the `settings` table   (Settings → Runtime settings)
 ```
 
-If `SPORA_DB_HOST` is set in `.env`, it wins. If `config.php` has `'db_host' => '127.0.0.1'` but no env var, the config wins. The default in `ContainerDefinitions.php` is the last resort.
+Last wins. A key present in `config.php` in both shapes resolves to the **flat** `SPORA_*` one,
+so rewriting a file never breaks a deploy.
+
+If `SPORA_DB_HOST` is set in `.env`, it wins. If `config.php` has `'db_host' => '127.0.0.1'` but no env var, the config wins. The registry default in `app/Settings/SettingDeclarations.php` is the last resort.
 
 ## System mail (SMTP)
 
@@ -93,7 +101,7 @@ SPORA_MAIL_FROM_NAME=Spora
 | `mercure_jwt_key`             | `SPORA_MERCURE_JWT_KEY`             | —                                     | HS256 shared secret for Mercure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `log_level`                   | `SPORA_LOG_LEVEL`                   | `warning`                             | `debug`, `info`, `warning`, `error`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `log_path`                    | `SPORA_LOG_PATH`                    | `storage/spora.log`                   | Log file path. `stdout` for supervisor / container logging.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `notifications_email_enabled` | `SPORA_NOTIFICATIONS_EMAIL_ENABLED` | `false`                               | Send email when scheduled run completes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `notifications_email_enabled` | `SPORA_NOTIFICATIONS_EMAIL_ENABLED` | `true`                                | Send email when scheduled run completes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `plugin_install_enabled`      | `SPORA_PLUGIN_INSTALL_ENABLED`      | `false`                               | Enable Web UI for plugin install / uninstall / update.                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `composer_binary`             | `SPORA_COMPOSER_BINARY`             | `composer`                            | Path to the `composer` executable used by the plugin manager. Absolute paths ending in `.phar` are auto-prefixed with `php`.                                                                                                                                                                                                                                                                                                                                                                              |
 | `plugin_catalog_enabled`      | `SPORA_PLUGIN_CATALOG_ENABLED`      | `true`                                | Show the Browse tab in `/apps/plugins` and enable `GET /api/v1/plugins/catalog`.                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -133,7 +141,7 @@ return [
 ];
 ```
 
-Anything not set falls back to the built-in default from `app/Core/ContainerDefinitions.php`. Anything set via `SPORA_*` env vars wins over the file.
+Anything not set falls back to the built-in default from `app/Settings/SettingDeclarations.php`. Anything set via `SPORA_*` env vars wins over the file, and anything an admin saved in the database wins over both.
 
 ## Docker-only variables
 

@@ -388,7 +388,40 @@ Single-tool plugins don't need to set `#[Tool(icon: ...)]` — their `plugin.jso
 
 Settings keys are the **bare field name** (e.g. `api_key`, `http_timeout`, `host`), scoped to the declaring tool class via its `#[ToolSetting]` attribute. The key is what the UI displays and what tool code reads via `ToolConfigService::getEffectiveSettings(toolClass, ...)`.
 
-There is no shared key namespace — keys are looked up per tool class through reflection on the `#[ToolSetting]` attributes on that class. Two different tool classes may declare the same key name (e.g. `api_key`) without colliding; each resolves to its own setting on its own tool.
+Within the tool-settings cascade there is no shared key _namespace_ — keys are looked up per tool class through reflection on the `#[ToolSetting]` attributes on that class. Two different tool classes may declare the same key name (e.g. `api_key`) without colliding; each resolves to its own setting on its own tool.
+
+Worth naming the other namespace so nobody conflates them: Spora's runtime configuration (`SPORA_*` keys, the `settings` table, the `SettingsRegistry`) is separate and is never scoped by tool class. `SPORA_TOOL_HTTP_TIMEOUT` and a tool's own `http_timeout` are related by fallback, not by name.
+
+## Shared settings groups
+
+A **shared group** is a class carrying ordinary `#[ToolSetting]` attributes plus one class-level attribute, `#[SharedSettings]`, which declares `group`, `label`, `description`, `icon`, `order` and `plugin`. It exists so N tools needing the same credentials declare the key once and the operator fills it in once, instead of N times.
+
+**Discovery** mirrors `tools()` / `apps()` / `skillPaths()`: an optional `settingsClasses(): list<class-string>` on the extension interface, fanned out by `PluginLoader::settingsClasses()`. There is no `plugin.json` change — the manifest schema is `additionalProperties: false`, so adding a key there would be a breaking change for every existing plugin.
+
+**Which tools consume a group is declared forward, on the tool** (`ConsumesSharedSettings`), because a reverse index would go stale the first time someone adds a tool.
+
+**Ordering is load-bearing.** The shared layer is applied to the _unmerged_ schema defaults, before the tool's own global row:
+
+```text
+schema defaults < shared group < tool global < principal/group < agent override
+```
+
+**A cleared value falls through to the shared one.** When an operator clears a tool's own key to
+inherit the shared value, `''` is stored; the default-fill uses `!isset()`, and `''` _is_ set, so an
+explicit branch treats a cleared secret as absent for this layer.
+
+**The shared layer stops at execute time.** It does not reach `ToolStatus` or anything else
+answering "is this tool configured?" — those keep resolving without it, so a shared group never
+silently changes a tool's status chip.
+
+**Groups are addressed as `group:<slug>`** on `/api/v1/tools/{id}/settings`, and that route requires
+group-owner or group-admin — not a global admin.
+
+## `SPORA_TOOL_HTTP_TIMEOUT`
+
+The default for a tool's `http_timeout`, applied by `HttpTimeoutResolver` when the tool declares
+none of its own. It is a registry setting, so it can be changed in the admin UI without touching
+`.env`; a tool's own `#[ToolSetting]` still overrides it per tool.
 
 **Examples:**
 

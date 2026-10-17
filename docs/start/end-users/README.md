@@ -22,7 +22,7 @@ The admin UI is a single-page Vue 3 application. Once you log in, everything hap
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Agents**      | Create and edit agent definitions. Each agent has a system prompt, an LLM config, and a tool allowlist. Agents are the things the user chats with. The **New agent** dialog also lets you start from an agent template — browse the bundled and plugin-supplied ones, or upload a template `.json` someone shared with you — and any agent can be exported back to a template. |
 | **Tools**       | Configure operator-level settings for each tool (API keys, hostnames, model names). Encrypted at rest.                                                                                                                                                                                                                                                                         |
-| **Plugins**     | Install / uninstall / update Composer-based plugins. Requires `SPORA_PLUGIN_INSTALL_ENABLED=true`.                                                                                                                                                                                                                                                                             |
+| **Plugins**     | Install / uninstall / update Composer-based plugins. Gated by **Allow plugin installation** under **General settings → Plugins** (was `SPORA_PLUGIN_INSTALL_ENABLED`; the database now wins over the env var).                                                                                                                                                                 |
 | **LLM drivers** | Add / edit LLM configs. Supports Anthropic, OpenAI, custom OpenAI-compatible endpoints (Ollama, LM Studio, vLLM, etc.).                                                                                                                                                                                                                                                        |
 | **Users**       | Admin-only: add or disable user accounts, reset passwords.                                                                                                                                                                                                                                                                                                                     |
 | **Settings**    | Site-wide config, mail transport, Mercure, plugin install flag.                                                                                                                                                                                                                                                                                                                |
@@ -32,11 +32,33 @@ The admin UI is a single-page Vue 3 application. Once you log in, everything hap
 Some things still require the CLI:
 
 - **Database resets** — `php bin/spora db:reset --force` (irreversible; gated)
+- **Clearing unreadable stored settings** — `php bin/spora settings:reset` (a lost secret key leaves every stored credential undecryptable, and this is the only way out when the page that would explain it will not load)
 - **Worker daemon control** — `php bin/spora worker:run --daemon` (long-lived process)
 - **Migrations** — `php bin/spora spora:install` (run automatically by the entrypoint, but you may want to trigger it manually)
 - **Plugin install from a local path** — `php bin/spora plugin:install vendor/pkg --path=...` (the Web UI only supports Packagist installs)
 
 For the full CLI reference, see [Operators → Operations](/start/operators/operations).
+
+## Settings → Runtime settings
+
+Five tabs — General, Mail & Realtime, Worker & Performance, Media & Plugins, and System. What makes
+it worth using rather than editing `.env` is that every field names **where its current value
+actually comes from** — the built-in default, your `.env`, your `config.php`, or the database — so
+you can see what a save here would override. Once a value is stored the source reads **Database** and
+a **Clear** link appears beside it; clearing deletes the row, and the page re-reads afterwards rather
+than guessing which layer the value fell back to.
+
+**What you cannot change here.** Settings read before the database is open — the `SPORA_DB_*`
+family, the secret-key and log paths, `SPORA_LOG_LEVEL`, the SQLite busy timeout, the app environment,
+URL and prefix, `SPORA_MAX_WORKERS` and `SPORA_WORKER_RUNTIME_MODE` — are listed on the **System**
+tab, which has no editing, and each says why it is read where it is. They are file-only,
+permanently.
+
+**Secrets** never show their value, not even to an admin. They render as a locked row with a
+**Change** button; **Cancel** restores it untouched. Submitting an empty value is how you _clear_ a
+credential.
+
+**Validation** comes back with the server's own message rather than a generic failure.
 
 ## What's next
 

@@ -100,11 +100,21 @@ Additional auth endpoints (registration, password change, email verification, et
 
 **CSRF-exempt endpoints** — the following auth endpoints are exempt from the CSRF check, because they authorize via in-URL credentials (selector/token) or run before a session is established: `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/email/confirm`, `/auth/verification/resend`, `/auth/verify/{selector}`. `/api/health` and `/api/v1/config` are also unauthenticated.
 
+`/auth/verify/{selector}` is also state-agnostic: the endpoint authorizes via selector+token and works whether or not the caller is logged in. The bundled admin UI calls it for both initial signup verification (`kind: signup`) and email-change confirmation (`kind: change`); see [API reference → Verify endpoint response](/reference/api#verify-endpoint-response-api-v1-auth-verify-selector).
+
 ### The Agent API
 
-The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is off unless the **Agent API** setting is enabled. See the [Agent API](/reference/agent-api).
+The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is not mounted at all unless the **Agent API** setting is enabled and the instance runs a server-side worker.
 
-`/auth/verify/{selector}` is also state-agnostic: the endpoint authorizes via selector+token and works whether or not the caller is logged in. The bundled admin UI calls it for both initial signup verification (`kind: signup`) and email-change confirmation (`kind: change`); see [API reference → Verify endpoint response](/reference/api#verify-endpoint-response-api-v1-auth-verify-selector).
+Four properties of it are worth stating here rather than only in the integration guide.
+
+**Secret storage.** A key is `spk_<id>_<secret>`. Only a SHA-256 hex digest of the secret is stored (`agent_api_keys.secret_hash`); the plaintext is returned exactly once, by the mint endpoint, and no endpoint can return it again. SHA-256 rather than bcrypt/argon is deliberate — the input is 32 bytes of CSPRNG output, so there is no dictionary to attack and no slow-KDF benefit to buy with request-path latency. A lost key is replaced, not recovered. The `id` half is 16 bytes of CSPRNG and is the row's primary key, so verification is one indexed lookup rather than a scan, and key ids cannot be walked.
+
+**Callback signing.** `callback_url` deliveries carry `X-Spora-Signature: hex(hmac_sha256(timestamp + "." + rawBody, key_digest))`. The HMAC is keyed on the **stored digest**, not the plaintext secret, so a receiver holding only the secret it was issued can verify while Spora never holds that secret again. Rotating a key rotates its signing key with it. Receivers must enforce a freshness window — the 5-minute window in the integration guide is a receiver-side requirement, not something Spora enforces.
+
+**Outbound URL safety.** A caller-supplied `callback_url` is a URL the server will POST to, so it is screened before the chat is queued: https only, at most 2048 characters, no loopback or link-local host, and every address the hostname resolves to — v4 and v6 — must sit outside RFC1918, loopback, link-local, unique-local and carrier-grade-NAT ranges. The screen runs once, on the URL as supplied, and redirects are never followed, so a `3xx` is treated as a failed delivery. The resolve-then-fetch sequence still has a DNS-rebinding window: the guard raises the cost of a pivot rather than making it impossible. Treat a callback URL as a credential and do not accept one from an untrusted caller.
+
+**Rate limiting.** Per key, not per IP — see [below](#rate-limiting).
 
 ## Rate Limiting
 
@@ -115,6 +125,13 @@ Spora's rate limiter is a simple in-memory IP-based sliding window (`Spora\Servi
 | Authentication (`/api/v1/auth/login`, `/api/v1/auth/register`) | 5 req / 60 s | `AuthController::RATE_LIMIT_*` (`app/Http/AuthController.php:26-27`) |
 | Password reset (`/api/v1/auth/forgot-password`)                | 5 req / 60 s | same constants                                                       |
 | Verification resend (`/api/v1/auth/verification/resend`)       | 5 req / 60 s | same constants                                                       |
+
+The [Agent API](/reference/agent-api#errors-and-rate-limits) is limited separately, and per
+**key** rather than per IP: `SPORA_AGENT_API_RATE_LIMIT_MAX` requests per minute (default 60)
+against `Spora\Services\DbRateLimiter`, a database-backed rolling window keyed on the key id. A
+shared NAT therefore does not throttle an integrator, and one integration cannot exhaust another's
+budget. The counter is only consulted **after** the secret verifies, so a wrong secret can never
+return `429` — otherwise `429`-vs-`401` would reveal whether a key id exists.
 
 Other endpoints are not currently rate-limited.
 

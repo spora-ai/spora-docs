@@ -41,6 +41,7 @@ This page is the canonical TOC for the Spora reference material. The user-facing
 | Security (encryption, auth, rate limiting, plugin risk) | [/start/operators/security](/start/operators/security)                           |
 | REST API reference                                      | [/reference/api](/reference/api) — source of record: `spora-core/docs/04_api.md` |
 | Plugin install API (`/api/v1/plugins/*`)                | [/develop/plugins/install-api](/develop/plugins/install-api)                     |
+| Agent API (`/api/v1/agent-api/*`)                       | [/reference/agent-api](/reference/agent-api) — bearer-key API for external tools |
 
 ## Frontend
 

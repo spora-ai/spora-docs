@@ -233,6 +233,7 @@ export default defineUserConfig({
           items: [apiSidebar.overview, ...apiSidebar.items],
         },
         { text: 'CLI', link: '/reference/cli' },
+        { text: 'Agent API', link: '/reference/agent-api' },
         { text: 'Config keys', link: '/reference/config-keys' },
         { text: 'Plugin schema', link: '/reference/plugin-schema' },
         {

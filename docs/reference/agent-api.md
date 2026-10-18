@@ -39,6 +39,29 @@ Keys survive disabling and re-enabling the feature — the toggle takes the API 
 not revoke anything. Changing to client-worker mode also takes the whole surface offline (`404`)
 until you switch back; the key itself is untouched either way.
 
+## Revoke a key
+
+The trash button beside a row revokes that key. From that moment every request carrying it answers
+`401`, and the row disappears.
+
+```bash
+curl -X DELETE "$HOST/api/v1/agents/$AGENT_ID/api-keys/$KEY_ID" \
+  -H "X-CSRF-Token: $CSRF" -b cookies.txt
+```
+
+```json
+{ "data": { "revoked": true, "key_id": "9f2c…" } }
+```
+
+`200` with a body rather than `204 No Content`, so there is something to log and the dev proxy
+has a response it can forward. Revocation is idempotent: the same body comes back whether or not
+the key existed, which is what stops the endpoint being a probe for which key ids are real. It is
+also scoped to the agent in the path, so one agent's key id cannot revoke another's.
+
+> **Who can mint and revoke.** These admin endpoints require the _manage_ role on the agent's
+> principal — the same role that edits the agent itself. A group member who can see the agent but
+> not manage it gets a `403`, not a hidden button.
+
 ## Authentication
 
 Send the key as a bearer token. This is the only credential the API accepts — a session cookie is

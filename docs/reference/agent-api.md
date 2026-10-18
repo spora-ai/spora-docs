@@ -27,9 +27,10 @@ per-agent rather than per-user: the key is the authorisation.
 
 ## Create an API key
 
-Open the agent in the admin UI and go to its **API keys** tab, then **New key**. Name it after
-the integration it belongs to — one key per integration, so revoking one does not take the others
-down.
+Open the agent in the admin UI and go to **Settings**, then jump to the **API keys** section
+(the pill bar at the top of the page, or link straight to
+`/agents/<id>/settings#api-keys`). Then **New key**. Name it after the integration it belongs
+to — one key per integration, so revoking one does not take the others down.
 
 > **The key is shown once.** Spora stores a SHA-256 digest and cannot reproduce the secret, so a
 > lost key must be replaced rather than recovered.

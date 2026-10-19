@@ -51,6 +51,15 @@ Under each field, one of three lines:
 - **Could not be decrypted; running on the default** — the stored row exists but will not decrypt.
   Most often a rotated secret key. Re-enter the value here to store a readable one.
 
+## Feature flags
+
+Some toggles gate a whole capability rather than a value, and are worth calling out:
+
+- **Agent API** mounts a per-agent HTTP surface for external tools. It requires a server-side
+  worker — in client-worker mode every endpoint answers `404`. Unlike the file-only settings
+  above, a save here takes effect on the next request without restarting the worker or the web
+  server. See the [Agent API](/reference/agent-api).
+
 ## Saving, and resetting
 
 Save sends only the fields you changed, and the whole batch is validated before anything is written —

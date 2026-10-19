@@ -23,9 +23,19 @@ Each invocation:
 2. Claims the oldest `QUEUED` task (`lockForUpdate`)
 3. Sets it to `RUNNING`
 4. Processes it to completion (or `PENDING_APPROVAL`)
-5. Exits
+5. Sweeps due [Agent API](/reference/agent-api) callbacks
+6. Exits
 
 Backlog (further due scheduled runs and queued tasks) is picked up by the next cron fire, one entry per minute.
+
+::: warning The worker is also the Agent API's webhook delivery path
+A chat started with a `callback_url` gets an outbox row that the worker settles, so callback
+latency in this mode is bounded by your cron interval, not by the API request — that returns
+`202` immediately. `--reap-only` skips both the queue and this sweep
+(`app/Console/Commands/WorkerRunCommand.php`), so it never delivers a callback. A worker that is
+_configured_ but not _alive_ leaves chats `QUEUED` and callbacks undelivered with no error
+anywhere; see [Agent API → Operational notes](/reference/agent-api#operational-notes).
+:::
 
 **Timezone:** The worker pins `UTC` internally before polling, so the host's `TZ` environment variable or `date.timezone` PHP ini setting has no effect on schedule timing. Deployers on shared hosting do not need to configure their system clock — every `due_at <= $now` comparison happens against UTC. All timestamp columns on `scheduled_runs` and `scheduled_runs_next` are stored in UTC.
 
@@ -37,7 +47,7 @@ Backlog (further due scheduled runs and queued tasks) is picked up by the next c
 php bin/spora worker:run --daemon
 ```
 
-The daemon polls both the QUEUED task queue and the `scheduled_runs_next` table every iteration. It runs until `SIGTERM` or `SIGINT`.
+The daemon polls both the QUEUED task queue and the `scheduled_runs_next` table every iteration, and sweeps due [Agent API](/reference/agent-api) callbacks alongside them. It runs until `SIGTERM` or `SIGINT`.
 
 Options (defined at `app/Console/Commands/WorkerRunCommand.php:61-68`):
 
@@ -155,9 +165,17 @@ SELECT COUNT(*) FROM tasks WHERE status = 'QUEUED' AND created_at < datetime('no
 
 -- Tasks stuck in RUNNING (worker may be dead or stuck on LLM)
 SELECT COUNT(*) FROM tasks WHERE status = 'RUNNING' AND updated_at < datetime('now', '-10 minutes');
+
+-- Agent API callbacks owed but never delivered (sweep not running)
+SELECT COUNT(*) FROM agent_api_callbacks
+WHERE delivered_at IS NULL
+  AND next_attempt_at IS NOT NULL
+  AND next_attempt_at < datetime('now', '-10 minutes');
 ```
 
-Alert when either count is non-zero for more than 2 consecutive minutes.
+Alert when any count is non-zero for more than 2 consecutive minutes. A non-zero callback count
+with an empty queue is the signature of a worker that is running but whose Agent API sweep is
+failing — check `storage/spora.log` for `Agent API callback sweep failed`.
 
 > **MySQL / MariaDB:** replace `datetime('now', '-N minutes')` with `NOW() - INTERVAL N MINUTE` (e.g. `NOW() - INTERVAL 5 MINUTE`).
 

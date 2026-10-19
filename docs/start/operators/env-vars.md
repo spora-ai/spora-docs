@@ -114,6 +114,17 @@ Mail transport has three ways to be set: these env vars (read by `app/Services/S
 
 For SMTP, use a bare hostname in `SPORA_MAIL_HOST`. Pair port `587` with `SPORA_MAIL_ENCRYPTION=tls` for STARTTLS, or port `465` with `SPORA_MAIL_ENCRYPTION=ssl` for implicit TLS/SMTPS. Using `ssl` on port `587` causes OpenSSL `wrong version number` errors because that port expects an SMTP greeting before the TLS upgrade.
 
+## Agent API
+
+| Variable                         | Default | Config key | Description                                                                                                                                                                                                                                                                                 |
+| -------------------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_AGENT_API`                | `false` | —          | Mounts the per-agent `/api/v1/agent-api/*` surface for external tools. Requires a server-side worker — in client-worker mode every endpoint answers `404`, whatever this is set to. Keys are managed in the agent's **Settings → API keys** section. See [Agent API](/reference/agent-api). |
+| `SPORA_AGENT_API_RATE_LIMIT_MAX` | `60`    | —          | Requests per minute a single Agent API key may make. Exceeding it answers `429` with a `Retry-After` header.                                                                                                                                                                                |
+
+Neither has a `config.php` key of its own; the only spelling `config.php` accepts is the flat
+`'SPORA_AGENT_API' => true`. Both are plain (non-`bootOnly`) settings, so once either has been saved
+in Global Settings the stored value wins over `.env` — set it in one place, not both.
+
 ## Plugins
 
 | Variable                       | Default    | Config key               | Description                                                                                                                                                                                                   |

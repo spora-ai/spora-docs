@@ -340,10 +340,11 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 32 routes
+- [Agents](/reference/api/agents) — 35 routes
 - [Groups](/reference/api/groups) — 22 routes
 - [Tasks](/reference/api/tasks) — 13 routes
 - [Auth](/reference/api/auth) — 12 routes
+- [Agent-api](/reference/api/agent-api) — 11 routes
 - [Speech](/reference/api/speech) — 10 routes
 - [Users](/reference/api/users) — 10 routes
 - [Me](/reference/api/me) — 9 routes
@@ -371,10 +372,11 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Security schemes
 
-| Scheme       | Where  | Key            | Description                                                                                  |
-| ------------ | ------ | -------------- | -------------------------------------------------------------------------------------------- |
-| `cookieAuth` | cookie | `PHPSESSID`    | Session cookie issued by `delight-im/auth`. Required by `AuthMiddleware`.                    |
-| `csrfToken`  | header | `X-CSRF-Token` | CSRF token issued alongside the session. Required by `CsrfMiddleware` on every write method. |
+| Scheme       | Where  | Key              | Description                                                                                                                                          |
+| ------------ | ------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cookieAuth` | cookie | `PHPSESSID`      | Session cookie issued by `delight-im/auth`. Required by `AuthMiddleware`.                                                                            |
+| `csrfToken`  | header | `X-CSRF-Token`   | CSRF token issued alongside the session. Required by `CsrfMiddleware` on every write method.                                                         |
+| `bearerAuth` | http   | `(scheme-level)` | Agent API key (`spk_<id>_<secret>`), scoped to one agent. Required by `AgentApiKeyMiddleware`; no session or CSRF token is accepted on that surface. |
 
 ### Endpoints
 
@@ -384,12 +386,26 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/admin/settings`                                    | `cookieAuth`               | Every declared setting, its current value and where that value came from | Admin            |
 | `PATCH`  | `/api/v1/admin/settings`                                    | `cookieAuth` + `csrfToken` | Upsert settings                                                          | Admin            |
 | `DELETE` | `/api/v1/admin/settings/{group}/{key}`                      | `cookieAuth` + `csrfToken` | Reset one setting to its declared default                                | Admin            |
+| `GET`    | `/api/v1/agent-api/chats`                                   | `bearerAuth`               | List this agent's chats                                                  | Agent-api        |
+| `POST`   | `/api/v1/agent-api/chats`                                   | `bearerAuth`               | Start a chat with this agent                                             | Agent-api        |
+| `POST`   | `/api/v1/agent-api/chats/{chatId}/answer`                   | `bearerAuth`               | Answer the agent's question                                              | Agent-api        |
+| `POST`   | `/api/v1/agent-api/chats/{chatId}/approve`                  | `bearerAuth`               | Approve pending tool calls                                               | Agent-api        |
+| `GET`    | `/api/v1/agent-api/chats/{chatId}/messages`                 | `bearerAuth`               | User messages and answers only                                           | Agent-api        |
+| `POST`   | `/api/v1/agent-api/chats/{chatId}/messages`                 | `bearerAuth`               | Continue a chat                                                          | Agent-api        |
+| `POST`   | `/api/v1/agent-api/chats/{chatId}/reject`                   | `bearerAuth`               | Reject pending tool calls                                                | Agent-api        |
+| `GET`    | `/api/v1/agent-api/chats/{chatId}/status`                   | `bearerAuth`               | Status and final answer                                                  | Agent-api        |
+| `GET`    | `/api/v1/agent-api/chats/{chatId}/transcript`               | `bearerAuth`               | Everything the admin UI shows                                            | Agent-api        |
+| `POST`   | `/api/v1/agent-api/media`                                   | `bearerAuth`               | Upload a file for this agent                                             | Agent-api        |
+| `GET`    | `/api/v1/agent-api/media/{mediaId}`                         | `bearerAuth`               | Fetch a media asset this agent produced                                  | Agent-api        |
 | `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth`               | Index AgentTemplate                                                      | Agent-templates  |
 | `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                                                       | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/import`                            | `cookieAuth` + `csrfToken` | Import AgentTemplate                                                     | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/validate`                          | `cookieAuth` + `csrfToken` | ValidatePayload AgentTemplate                                            | Agent-templates  |
 | `GET`    | `/api/v1/agents`                                            | `cookieAuth`               | Index Agent                                                              | Agents           |
 | `POST`   | `/api/v1/agents`                                            | `cookieAuth` + `csrfToken` | Store Agent                                                              | Agents           |
+| `GET`    | `/api/v1/agents/{agentId}/api-keys`                         | `cookieAuth`               | List an agent's API keys                                                 | Agents           |
+| `POST`   | `/api/v1/agents/{agentId}/api-keys`                         | `cookieAuth` + `csrfToken` | Mint an API key                                                          | Agents           |
+| `DELETE` | `/api/v1/agents/{agentId}/api-keys/{keyId}`                 | `cookieAuth` + `csrfToken` | Revoke an API key                                                        | Agents           |
 | `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                                                               | Agents           |
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                                                             | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                                                            | Agents           |

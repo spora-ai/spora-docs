@@ -21,6 +21,10 @@
       "link": "/reference/api/auth"
     },
     {
+      "text": "Agent-api",
+      "link": "/reference/api/agent-api"
+    },
+    {
       "text": "Speech",
       "link": "/reference/api/speech"
     },

@@ -110,19 +110,20 @@ Note: `storage/php.log` is **not** produced by Spora's logger. In local dev it i
 | `SPORA_NOTIFICATIONS_EMAIL_ENABLED` | `true`  | `notifications_email_enabled` | Send an email when a scheduled run completes. Requires the `SPORA_MAIL_*` block to be configured.                                                                                                                                                                                                                                                                    |
 | `SPORA_PLUGIN_INSTALL_ENABLED`      | `false` | `plugin_install_enabled`      | Enable the Web UI for plugin install/uninstall (`POST`/`DELETE`/`PATCH /api/v1/plugins`). When off, the routes return `403 FEATURE_DISABLED`. CLI commands (`php bin/spora plugin:install`, `plugin:uninstall`, `plugin:update`) are **not** gated — they're always available as the operator recovery path. See [Plugin install API](/develop/plugins/install-api). |
 
-## Agent API
-
-| Variable                         | Default | Config key          | Description                                                                                                                                                                                                                                                                                 |
-| -------------------------------- | ------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SPORA_AGENT_API`                | `false` | `agent_api_enabled` | Mounts the per-agent `/api/v1/agent-api/*` surface for external tools. Requires a server-side worker — in client-worker mode every endpoint answers `404`, whatever this is set to. Keys are managed in the agent's **Settings → API keys** section. See [Agent API](/reference/agent-api). |
-| `SPORA_AGENT_API_RATE_LIMIT_MAX` | `60`    | —                   | Requests per minute a single Agent API key may make. Exceeding it answers `429` with a `Retry-After` header.                                                                                                                                                                                |
-
-Both are plain (non-`bootOnly`) settings, so once either has been saved in Global Settings the
-stored value wins over `.env` — set it in one place, not both.
-
 Mail transport has three ways to be set: these env vars (read by `app/Services/SystemMailer.php:183-190` and `app/Http/MailConfigController.php:22-29`), the same keys in `config.php` (nested under `mail`, or flat as `SPORA_MAIL_*`), and **Settings → Runtime settings → Mail & Realtime**, which stores them encrypted in the database and wins over both. `SPORA_MAIL_PASSWORD` is write-only — the server never returns its value, not even to an admin. These are **not** in the default `.env.example`; they are only in `docker/.env.local.example`. The full set is `SPORA_MAIL_DRIVER` / `SPORA_MAIL_HOST` / `SPORA_MAIL_PORT` / `SPORA_MAIL_USERNAME` / `SPORA_MAIL_PASSWORD` / `SPORA_MAIL_ENCRYPTION` / `SPORA_MAIL_FROM` / `SPORA_MAIL_FROM_NAME`.
 
 For SMTP, use a bare hostname in `SPORA_MAIL_HOST`. Pair port `587` with `SPORA_MAIL_ENCRYPTION=tls` for STARTTLS, or port `465` with `SPORA_MAIL_ENCRYPTION=ssl` for implicit TLS/SMTPS. Using `ssl` on port `587` causes OpenSSL `wrong version number` errors because that port expects an SMTP greeting before the TLS upgrade.
+
+## Agent API
+
+| Variable                         | Default | Config key | Description                                                                                                                                                                                                                                                                                 |
+| -------------------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_AGENT_API`                | `false` | —          | Mounts the per-agent `/api/v1/agent-api/*` surface for external tools. Requires a server-side worker — in client-worker mode every endpoint answers `404`, whatever this is set to. Keys are managed in the agent's **Settings → API keys** section. See [Agent API](/reference/agent-api). |
+| `SPORA_AGENT_API_RATE_LIMIT_MAX` | `60`    | —          | Requests per minute a single Agent API key may make. Exceeding it answers `429` with a `Retry-After` header.                                                                                                                                                                                |
+
+Neither has a `config.php` key of its own; the only spelling `config.php` accepts is the flat
+`'SPORA_AGENT_API' => true`. Both are plain (non-`bootOnly`) settings, so once either has been saved
+in Global Settings the stored value wins over `.env` — set it in one place, not both.
 
 ## Plugins
 

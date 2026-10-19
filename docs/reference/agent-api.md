@@ -39,6 +39,12 @@ Keys survive disabling and re-enabling the feature — the toggle takes the API 
 not revoke anything. Changing to client-worker mode also takes the whole surface offline (`404`)
 until you switch back; the key itself is untouched either way.
 
+The key-management endpoints stay mounted either way. `GET`/`POST /api/v1/agents/{id}/api-keys`
+and `DELETE /api/v1/agents/{id}/api-keys/{keyId}` are registered _before_ the feature gate, so a
+key minted before you flipped the toggle can always be revoked. In the UI the section stays on the
+Settings page for the same reason — only its nav pill is hidden. Deep-link to
+`/agents/<id>/settings#api-keys` to reach it.
+
 ## Revoke a key
 
 The trash button beside a row revokes that key. From that moment every request carrying it answers
@@ -94,8 +100,9 @@ purpose, so a caller cannot tell a bad id from a bad secret. Requests are rate l
 | `POST` | `/api/v1/agent-api/media`                 | Upload a file for this agent           |
 | `GET`  | `/api/v1/agent-api/media/{mediaId}`       | Read a media asset this agent produced |
 
-The per-endpoint reference, including the full error list for each, is in the
-[API reference](/reference/api/agent-api).
+The per-endpoint reference, including the full status-code list for each, is in the
+[API reference](/reference/api/agent-api). That page is generated from the OpenAPI spec, so it
+gains this surface once the API is present in `spora-core@main`.
 
 ## Start a chat
 
@@ -131,6 +138,17 @@ curl -X POST https://spora.example.com/api/v1/agent-api/chats \
 ```
 
 From there, either poll `/status` or supply a `callback_url` and be told.
+
+`text` may also be sent as `prompt`. `max_steps` caps the steps this chat may take, and
+`additional_steps` does the same for a follow-up; both are clamped to 1–100, and omitting either
+falls back to the agent's configured limit.
+
+`GET /chats` lists this agent's chats newest-first and is **always paginated** — 25 per page by
+default, 100 maximum — with `?page=` and `?per_page=`. The response carries no total and no
+next-page link, so page until a page comes back short. `?since=<ISO-8601>` narrows to chats
+updated after that instant; a value that is not a parseable date is a `422`, because SQLite and
+MySQL disagree about what an unparseable date means and the difference should not be yours to
+discover.
 
 ::: warning `callback_url` is screened before the chat is queued
 It must be an absolute `https` URL of at most 2048 characters, and every address the hostname
@@ -205,7 +223,9 @@ The human side of the chat, without the tool turns, with attachments resolved to
 }
 ```
 
-Both endpoints, and `/transcript`, accept `?since_sequence=N`.
+`/messages` and `/transcript` accept `?since_sequence=N` to return only history after that
+sequence. `/status` takes no query parameters — it always returns the whole projection, so
+paging with `since_sequence` against it is silently ignored rather than refused.
 
 ### `/transcript` — everything
 
@@ -365,6 +385,9 @@ pair you have already processed and ignore repeats.
 - **Delivery is at-least-once, not exactly-once.** A delivery that succeeds but whose response is
   lost will be retried, so deduplicate on `(X-Spora-Key-Id, status)` before acting on a delivery.
 - **Delivery never blocks the agent**, and a receiver that is down cannot take the worker with it.
+  What it can do is slow the worker: delivery runs on the same loop as task progression, in
+  batches of 25 with each POST capped at 5 s (10 s hard ceiling), so a receiver that times out
+  adds up to a few minutes per sweep and queued chats wait behind it.
 
 ## Files and media
 
@@ -381,6 +404,11 @@ curl -X POST https://spora.example.com/api/v1/agent-api/media \
 Then pass the returned `data.id` as `media_ids` when starting the chat. Inline `data_url` files
 work too, for small attachments — 16 MiB each, at most 8 per request. Spora sniffs the bytes
 rather than trusting a declared MIME type, and the agent's own accept-list applies either way.
+
+Note the asymmetry between the two paths: `POST /media` answers `415` when the agent does not
+accept the type, but on `POST /chats` an inline file that is over 16 MiB, past the eighth, or
+outside the accept-list is **dropped silently** and the chat is still queued. If an attachment
+matters, confirm it came back in `/messages`.
 
 **Reading**, when an answer references an image the agent produced: the attachments in a
 `/messages` payload already carry an absolute `url`, so you rarely need to build one.
@@ -402,16 +430,16 @@ so a key cannot probe for media.
 Standard Spora envelopes: `{ "data": … }` on success, `{ "error": { "code": "…", "message": "…" } }`
 otherwise. The [error-handling reference](/reference/concepts/error-handling) is canonical.
 
-| Status | Meaning                                                               |
-| ------ | --------------------------------------------------------------------- |
-| `400`  | The body was not JSON, or the media upload had no `file` part.        |
-| `401`  | The key is missing, malformed, unknown, revoked, or wrong.            |
-| `404`  | No such chat or media on this agent — or the API is not mounted here. |
-| `409`  | The chat is not in a state that allows the action.                    |
-| `415`  | The uploaded file's type is not in the agent's accept-list.           |
-| `422`  | The request body was not usable — see the endpoint reference.         |
-| `429`  | Rate limited. Retry after the interval in the `Retry-After` header.   |
-| `500`  | The upload could not be read off disk.                                |
+| Status | Meaning                                                                                                                                      |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | The body was not JSON, or the media upload had no `file` part.                                                                               |
+| `401`  | The key is missing, malformed, unknown, revoked, or wrong.                                                                                   |
+| `404`  | No such chat or media on this agent — or the API is not mounted here.                                                                        |
+| `409`  | The chat is not in a state that allows the action.                                                                                           |
+| `415`  | `POST /media` only — the uploaded file's type is not in the agent's accept-list. Inline files on `POST /chats` are dropped silently instead. |
+| `422`  | The request body was not usable — see the endpoint reference.                                                                                |
+| `429`  | Rate limited. Retry after the interval in the `Retry-After` header.                                                                          |
+| `500`  | The upload could not be read off disk.                                                                                                       |
 
 The limit is per key and operator-tunable in Global Settings as **Agent API rate limit**
 (`SPORA_AGENT_API_RATE_LIMIT_MAX`, 60 requests per minute by default).
@@ -461,7 +489,7 @@ through it. When a chat settles _blocked_ the loop exits and the answer is empty
 
 ## What's next
 
-- [API reference](/reference/api/agent-api) — every endpoint with its full error list
+- [API reference](/reference/api/agent-api) — every endpoint with its status codes
 - [Error handling](/reference/concepts/error-handling) — the canonical error-code registry
 - [Deployment modes](/reference/concepts/deployment-modes) — which runtime owns task progression
 - [Worker deployment](/reference/concepts/worker-deployment) — daemon and cron setups

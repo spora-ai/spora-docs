@@ -245,6 +245,21 @@ Nothing is installed on your behalf. If a template lists a plugin you don't have
 
 Authors: see [Develop → Plugin author guide → Agent templates](/develop/plugins/author-guide/agent-templates) for the `agentTemplatePaths()` hook, the schema, and the full warning table.
 
+## The agent's Settings page
+
+The agent's **Settings** tab (`/agents/<id>/settings`) is one long page of sections — Identity,
+LLM, Speech, Picture, Notes, Owner, API keys, Danger Zone — with a sticky pill bar across the
+top. Pills jump to a section and follow you as you scroll, so the highlighted one is always the
+section you are actually looking at. Each section is individually linkable:
+`/agents/<id>/settings#notes` opens straight to Notes.
+
+The **API keys** section holds the credentials external tools use to drive this agent over the
+[Agent API](/reference/agent-api). Its pill is hidden while the **Agent API** setting is off in
+[Global Settings](/start/operators/global-settings), but the section itself stays on the page —
+you can always list and revoke keys you already minted, whether or not the API is currently
+mounted. When the endpoints are unavailable the section says why (the setting is off, or the
+instance runs in client-worker mode) rather than failing silently.
+
 ## Approval and tool permissions
 
 Whether a tool call requires human approval is **per-operation and per-agent**, not a single global default. The tool author sets the operation's default via the `#[ToolOperation(requiresApprovalByDefault:)]` attribute; the operator can override that per-agent via the `agent_tool_operation_overrides.default_requires_approval` column (a nullable three-state — `1` = always require, `0` = never require, `null` = use the operation's class default). Read-only / generative operations typically default to `false` (no approval); side-effecting operations (send email, write file, call external API) typically default to `true` (require approval).

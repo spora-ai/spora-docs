@@ -104,7 +104,7 @@ Additional auth endpoints (registration, password change, email verification, et
 
 ### The Agent API
 
-The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is not mounted at all unless the **Agent API** setting is enabled and the instance runs a server-side worker.
+The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is not mounted at all unless the **Agent API** setting is enabled and the instance runs a server-side worker. The key-management endpoints under `/api/v1/agents/{id}/api-keys` are the deliberate exception: they stay mounted either way, so a key minted before the toggle was flipped remains revocable.
 
 Four properties of it are worth stating here rather than only in the integration guide.
 
@@ -133,7 +133,7 @@ shared NAT therefore does not throttle an integrator, and one integration cannot
 budget. The counter is only consulted **after** the secret verifies, so a wrong secret can never
 return `429` — otherwise `429`-vs-`401` would reveal whether a key id exists.
 
-Other endpoints are not currently rate-limited.
+All other endpoints are not currently rate-limited. Only the Agent API has a separate, non-IP-keyed limit.
 
 ## Plugin Risks
 

@@ -83,6 +83,25 @@ SMTP and IMAP are protocols, not a SaaS — you point the plugin at any host. A 
 
 Always use an **app password / app-specific password** when the provider supports MFA — raw account passwords are rejected by every major provider once MFA is enrolled, and storing a raw password in Spora config defeats the encryption-at-rest guarantees in `ToolConfigService`. Never commit config files containing real passwords; rotate any credential that does end up in git history.
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `EmailPlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{
+  "Email": "E-Mail",
+  "Save an email draft to the Drafts folder": "E-Mail-Entwurf im Entwurfsordner speichern"
+}
+```
+
+Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions, the plugin description, and the approval prompt. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+
+The approval prompt is translated at serialization time, so a call recorded under one interface language still reads correctly under another.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

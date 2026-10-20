@@ -51,6 +51,20 @@ All four operations are `enabledByDefault` and do not require human approval (`r
 
 Both metric and imperial units are supported natively by the upstream API — toggle between them with `units`.
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `WeatherPlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{ "Weather API": "Wetter-API", "Metric or Imperial units": "Metrische oder Imperial-Einheiten" }
+```
+
+Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions, and the plugin description. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

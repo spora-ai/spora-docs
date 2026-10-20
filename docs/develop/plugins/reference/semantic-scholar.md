@@ -75,6 +75,25 @@ Example agent invocation:
 - **API reference** — <https://api.semanticscholar.org/api-docs/>
 - **API License Agreement** — <https://www.semanticscholar.org/product/api/license>
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `SemanticScholarPlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{
+  "Semantic Scholar": "Semantic-Scholar",
+  "Semantic Scholar academic paper search for Spora agents.": "Akademische Papersuche über Semantic Scholar für Spora-Agenten."
+}
+```
+
+`"Semantic Scholar"` is a product name, and German orthography hyphenates a foreign proper name made of several words — so the value is `"Semantic-Scholar"`. The hyphen is the translation, not a rewording: inside a sentence the name keeps its original spelling, as the second entry shows.
+
+Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions, and the plugin description. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

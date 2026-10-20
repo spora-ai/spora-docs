@@ -40,7 +40,7 @@ The hook surface is identical for both. Promoting an App to a Plugin is a mechan
 
 ## Hooks
 
-All ten hooks are declared on [`SporaExtensionInterface`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/SporaExtensionInterface.php) — and on nothing else. `Spora\Extensions\AppInterface` and `Spora\Plugins\PluginInterface` are pure markers that extend it, so an App and a plugin share one contract. [`AbstractExtension`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/AbstractExtension.php) provides an empty default for every hook except `getName()`.
+All eleven hooks are declared on [`SporaExtensionInterface`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/SporaExtensionInterface.php). `Spora\Extensions\AppInterface` is a pure marker that extends it; `Spora\Plugins\PluginInterface` re-exports it and adds `translationsPaths()` of its own — plugin-shaped rather than extension-shaped, because an App extends the host and the host has no catalogue to ship. [`AbstractExtension`](https://github.com/spora-ai/spora-core/blob/main/app/Extensions/AbstractExtension.php) provides an empty default for every hook except `getName()`.
 
 | Hook                      | Returns                                                           | Purpose                                                                                                   |
 | ------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -53,9 +53,10 @@ All ten hooks are declared on [`SporaExtensionInterface`](https://github.com/spo
 | `apps()`                  | `array<class-string<\Spora\Apps\AppInterface>>`                   | Admin-UI side-panels.                                                                                     |
 | `speechToTextProviders()` | `list<class-string<\Spora\Speech\SpeechToTextProviderInterface>>` | STT providers beyond OpenAI-multipart.                                                                    |
 | `skillProviders()`        | `list<class-string<\Spora\Skills\SkillProviderInterface>>`        | Skills with **no directory** (user-authored, tenant-scoped).                                              |
+| `settingsClasses()`       | `list<class-string>`                                              | Shared settings group classes — one group replaces the credential repeated on each of the App's tools.    |
 | `searchProviders()`       | `list<class-string<\Spora\Search\SearchProviderInterface>>`       | ⌘K palette search hits — makes a resource _findable_ (vs `skillProviders` = _readable_). Core ships none. |
 
-> **Status — the bottom two rows require spora-core ≥ v0.30.0.** `skillProviders()` and `searchProviders()` were both added after v0.29.0. They are listed here because they exist on the current interface, but an App declaring either against a released v0.29.0 core fatals at class-load.
+> **Status — the last three rows need a recent core.** `skillProviders()` and `searchProviders()` were both added after v0.29.0, and `settingsClasses()` after v0.30.0. They are listed here because they exist on the current interface, but an App declaring one against a released core that predates it fatals at class-load — the interface declares the method and that release's `AbstractExtension` does not implement it.
 >
 > **Removed in 1.0.** Six hooks that older docs still teach no longer exist. `autoload()`, `drivers()`, and `recipePaths()` had no callers: PSR-4 data moved to `composer.json` / `plugin.json`, and LLM providers are _configured_ rather than contributed. `register()`, `routes()`, and `boot()` became PSR-14 events — see [Lifecycle events](#lifecycle-events) below.
 >

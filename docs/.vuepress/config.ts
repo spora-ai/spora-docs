@@ -167,6 +167,7 @@ export default defineUserConfig({
                 { text: 'Admin UI', link: '/develop/plugins/author-guide/admin-ui' },
                 { text: 'Agent templates', link: '/develop/plugins/author-guide/agent-templates' },
                 { text: 'Skills', link: '/develop/plugins/author-guide/skills' },
+                { text: 'Translations', link: '/develop/plugins/author-guide/translations' },
                 { text: 'Distribution', link: '/develop/plugins/author-guide/distribution' },
                 {
                   text: 'Speech providers',

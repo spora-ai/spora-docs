@@ -289,6 +289,49 @@ Cap errors (all `422`): `SKILL_LIMIT_REACHED` (25 skills per principal) · `TOO_
 
 Deliberately **not** endpoints: pre-shipped skills come from the host's `GET /api/v1/skills` (the frontend must not re-fetch them from this plugin); there is no draft/publish pair (`provenance` + `has_previous` are the whole lifecycle); and there is no cross-principal publishing — a skill belongs to exactly one principal.
 
+### Locale
+
+| Method | Path                              | Auth    | Purpose                                                                     |
+| ------ | --------------------------------- | ------- | --------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/user-preferences/locale` | session | The caller's language, the one it resolves to, and every language available |
+| `PUT`  | `/api/v1/user-preferences/locale` | + CSRF  | Set the caller's language, or clear it back to "auto"                       |
+
+A request renders in the first locale of this chain that has a catalogue:
+
+```text
+users.locale  →  SPORA_DEFAULT_LANG  →  en
+```
+
+`Accept-Language` is never consulted. The instance owner sets one default in the admin UI, and a browser header overriding it would make the rendered language depend on the machine rather than on the install.
+
+`GET` returns:
+
+```json
+{
+  "data": {
+    "locale": "de",
+    "resolved": "de",
+    "available": ["de", "en"]
+  }
+}
+```
+
+- `locale` — the caller's stored value, or `null` for "auto".
+- `resolved` — the first link of the chain above that has a catalogue.
+- `available` — every locale with a catalogue in core or in an installed plugin. The language picker's whole option list; adding a language is a file, not a release.
+
+`PUT` takes `{ "locale": "de" }`, or `{ "locale": null }` to clear the choice and restore "auto":
+
+```json
+{ "data": { "locale": "de", "resolved": "de" } }
+```
+
+It writes `users.locale` (migration 0096), **not** `principal_preferences`: the language belongs to the person, who acts as a user-principal _and_ any number of group principals — on a principal-scoped column the language would change with the active principal.
+
+Errors: `400 INVALID_JSON` (the body is not valid JSON) · `401 UNAUTHENTICATED` · `404 NOT_FOUND` (the session's user row is gone) · `422 VALIDATION_ERROR` (a locale nobody has a catalogue for).
+
+`GET /api/v1/config` carries `default_lang` (`SPORA_DEFAULT_LANG`). A pre-login visitor has no preference to fetch, so this is the only thing telling the SPA which language the instance is in — without it the first paint would be English on a German instance.
+
 ## Envelope
 
 Success:

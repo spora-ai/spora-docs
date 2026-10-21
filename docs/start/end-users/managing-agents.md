@@ -129,7 +129,7 @@ The tool allowlist. Every tool in the system is listed; check the ones you want 
 
 Above the list sits a toolbar with a search input (matches display name, internal name, description, and operation name), a four-way status segmented filter — **All / Enabled / Needs setup / Off** — and a category multi-select. The **Needs setup** bucket groups two shapes: tools that are already enabled but missing required settings (amber "Missing config" pill), and tools where the cascade (global → user → group) has no defaults — these show a single **Set up & enable** button that opens the configuration modal and auto-enables the tool once you save (no second click needed). When filters narrow the list, empty category groups drop out of the view; the footer reads `Showing N of M`.
 
-Each row leads with the tool's display name — the label the interface translates — and puts the technical name beside it in monospace (`weather_api`). The display name is operator copy; the technical name is the one the model knows, so use it when you ask the LLM for a tool.
+Each row leads with the tool's display name — the label the interface translates — and puts the technical name beside it in monospace (`weather_api`); hovering it explains that this is the name the LLM calls the tool by. The display name is operator copy; the technical name is the one the model knows, so use it when you ask the LLM for a tool.
 
 For a new agent, **start with no tools**. Add tools one at a time to see how each changes the agent's behaviour. Common starting set:
 

@@ -11,6 +11,7 @@ The deep-dive reference for Spora's internals. These pages were migrated from th
 
 - **[Architecture](/reference/concepts/architecture)** — config priority, orchestrator loop, worker modes, plugin system, database
 - **[Database schema](/reference/concepts/schema)** — tables, columns, version model, migration conventions
+- **[Principals and groups](/reference/concepts/principals)** — who can see which principal, the group's read/write rules, and the existence-hiding that goes with them
 - **[PHP interfaces](/reference/concepts/interfaces)** — `ToolInterface`, `OrchestratorInterface`, `LLMDriverConfigInterface`, `PluginInterface`
 
 ### Tools, drivers, plugins

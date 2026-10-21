@@ -444,6 +444,8 @@ otherwise. The [error-handling reference](/reference/concepts/error-handling) is
 The limit is per key and operator-tunable in Global Settings as **Agent API rate limit**
 (`SPORA_AGENT_API_RATE_LIMIT_MAX`, 60 requests per minute by default).
 
+The counter is consulted **after** the secret verifies, and that ordering is deliberate. If the limiter ran first, a wrong secret against a real key id would eventually answer `429` while an unknown id always answered `401` — and the difference would tell the caller whether the id exists. Counting only verified requests keeps a `401` a `401`.
+
 ## End to end
 
 ```bash
@@ -486,6 +488,13 @@ through it. When a chat settles _blocked_ the loop exits and the answer is empty
   [worker deployment guide](/reference/concepts/worker-deployment).
 - **Storage precedence.** `SPORA_AGENT_API=1` in `.env` seeds the setting, but once it has been
   saved in Global Settings the stored value wins. Set it in one place.
+- **`GET /api/v1/config` carries `agent_api_enabled`** — the flag the admin SPA reads to decide
+  whether to point the nav pill at the API-keys section. The section itself renders either way, so
+  keys stay revocable when the feature is off; the flag governs only where the nav points.
+- **The API is not a worker.** `POST /chats` answers `202` and returns immediately — it queues the
+  chat and a worker runs it. Nothing in the HTTP request path drives the agent loop, which is why
+  a server-side worker is required; in client-worker mode the API answers `404` on every endpoint.
+  See [deployment modes](/reference/concepts/deployment-modes) for the three configurations.
 
 ## What's next
 

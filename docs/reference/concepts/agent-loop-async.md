@@ -76,6 +76,77 @@ stateDiagram-v2
 
 The third operation, `handover`, never reaches `AWAITING_SUB_AGENTS`: the target's task is created and left to the worker in the background, and it is deliberately kept out of `data.spawned_sub_task_ids`, so it cannot hold the parent's resume gate open. The source chat keeps running and ends on the agent's own closing message.
 
+## Parked work and operator input
+
+`AWAITING_INPUT` is the fourth quiescent state, the parallel to `PENDING_APPROVAL`: the task is waiting on the operator to answer a question the model asked, not to approve a tool call. It is in `TaskLifecyclePolicy::QUIESCENT_STATUSES`, and `ToolCallDisposition::AwaitingInput` is the parallel to `AwaitingApproval`.
+
+An `ask_user_question` batch is persisted on `tasks.pending_state` under the `pending_questions` key, beside the existing `pending_tool_calls` that back `PENDING_APPROVAL`:
+
+```jsonc
+{
+  "tool_call_id": "call_01HX...",
+  "questions": [
+    {
+      "question": "Which database backend should we use?",
+      "header": "DB backend",
+      "options": [
+        { "label": "SQLite", "description": "Zero-config, single file", "preview": null },
+        { "label": "MySQL", "description": "Shared hosting friendly", "preview": null },
+      ],
+      "multiple": false,
+      "allowFreeText": true,
+    },
+  ],
+  "created_at": "2026-09-19T10:30:00+00:00",
+}
+```
+
+Several batches may coexist when the model invokes `ask_user_question` across separate turns. The Mercure intermediate-state event publishes `pending_questions` whenever the task is in `AWAITING_INPUT`, so the chat UI renders the picker without a follow-up fetch.
+
+`POST /api/v1/tasks/{taskId}/answer` submits the operator's answers. The batch is answered atomically: the request must carry exactly one answer per question in the batch, keyed by `header`.
+
+```jsonc
+{
+  "tool_call_id": "call_01HX...", // must match a pending batch
+  "answers": [
+    // exactly one entry per question
+    {
+      "header": "DB backend", // must match question.header
+      "selections": ["SQLite"], // list of selected option labels
+      "free_text": null, // only when allowFreeText is true
+    },
+  ],
+}
+```
+
+On success the answer is appended as a single `role:tool` history row carrying every formatted answer — one row per batch, mirroring the orchestrator's batched-tool-call pattern. The task flips to `QUEUED` when no batches remain pending, and stays `AWAITING_INPUT` while any other batch is still open. A `404` means the task is not the caller's; a `422` means the body was malformed, the `tool_call_id` matches no pending batch, the answer count differs from the question count, a `header` or `selections` label is unknown, or `free_text` was sent for a question that does not allow it.
+
+## Task data keys
+
+Two working sets ride on the `tasks.data` JSON column rather than on their own tables, and both are visible to the operator without an extra API because the column is already serialised into the `TaskDetail` payload and onto Mercure events.
+
+`tasks.data.todos` holds the `todo` tool's working list:
+
+```jsonc
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "t_01HX...",
+      "content": "Migrate notes table to new schema",
+      "activeForm": "Migrating notes table to new schema",
+      "status": "in_progress", // pending | in_progress | completed
+      "order": 0,
+    },
+  ],
+  "updated_at": "2026-09-19T10:30:00+00:00",
+}
+```
+
+`MessageHistoryBuilder::compactHistory()` trims `task_history` rows when the context window fills, but it never touches `tasks.data` — so the todo list survives compaction.
+
+`tasks.pending_state.pending_questions` holds the parked question batches described above.
+
 ## Worker CLI
 
 Server mode only. The CLI commands below are the operator's tools for `worker_runtime_mode: server`. In `client` mode the same commands exit with a docs-link error — see [Client-worker mode](/deploy/shared-host/client-worker-mode) for the browser-driven equivalent.

@@ -254,6 +254,7 @@ export default defineUserConfig({
             { text: 'Logging', link: '/reference/concepts/logging' },
             { text: 'Media assets', link: '/reference/concepts/media-assets' },
             { text: 'Plugin system', link: '/reference/concepts/plugins-system' },
+            { text: 'Principals & groups', link: '/reference/concepts/principals' },
             { text: 'Schema', link: '/reference/concepts/schema' },
             { text: 'Skills', link: '/reference/concepts/skills' },
             { text: 'Speech providers', link: '/reference/concepts/speech-providers' },

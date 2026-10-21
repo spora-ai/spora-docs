@@ -60,7 +60,7 @@ stateDiagram-v2
     RUNNING --> ABORTED : max_steps (data.max_steps_reached)
     RUNNING --> FAILED : exception
 
-    RUNNING --> AWAITING_SUB_AGENTS : sub_agent tool (SubAgentTool) spawns child
+    RUNNING --> AWAITING_SUB_AGENTS : sub_agent / sub_agent_continue op spawns child
     AWAITING_SUB_AGENTS --> RUNNING : every child TERMINAL (resume on next tick)
     RUNNING --> ABORTED : POST /tasks/{id}/abort (quiescent — resumable)
     AWAITING_SUB_AGENTS --> ABORTED : POST /tasks/{id}/abort-sub-agent (child abort cascades to ancestors)
@@ -72,7 +72,9 @@ stateDiagram-v2
 
 `ABORTED`, `PENDING_APPROVAL`, and `AWAITING_SUB_AGENTS` together form the **quiescent** set: in every case the worker is not driving the task — the conversation is waiting on the operator (`PENDING_APPROVAL` tool call), on sub-agent children (`AWAITING_SUB_AGENTS`), or on the operator's next instruction after an explicit halt (`ABORTED`). The chat detail poller skips the entire set so the browser does not waste cycles fetching a task that is not making progress on its own. The poller re-arms the moment an action moves the task out — approve/reject from the approval bar, sub-agent child reaching a terminal state, or `POST /api/v1/tasks/{taskId}/continue` resuming an ABORTED task.
 
-`AWAITING_SUB_AGENTS` is the suspended-while-sub-agent-children-run state set by the `SubAgentTool` `sub_agent` op. Each spawn creates a regular `Task` with `parent_task_id` and bumps `data.sub_agent_expected_count` after the child tick. The first spawn also sets `data.sub_agent_batch_open` to `true` — a per-batch cross-process lock that prevents the per-child resume hook from racing the batch-boundary hook in worker mode. The resume gate compares the live child count from `data.spawned_sub_task_ids` against `sub_agent_expected_count` and only re-enters the loop when every sibling has reached a terminal state; the boundary hook then clears `sub_agent_batch_open` along with the other batch book-keeping. The next worker pickup (server daemon's `task:run` or browser's `/tick`) drains it via `TickPhaseRunner::maybeResumeParentFromBatchBoundary`. See [Tool system → Handover](/reference/concepts/tools#sub-agent-tool) for the LLM-facing contract.
+`AWAITING_SUB_AGENTS` is the suspended-while-sub-agent-children-run state set by the `SubAgentTool` `sub_agent` op — and by `sub_agent_continue`, which waits on an existing child the same way. Each spawn creates a regular `Task` with `parent_task_id` and bumps `data.sub_agent_expected_count` after the child tick. The first spawn also sets `data.sub_agent_batch_open` to `true` — a per-batch cross-process lock that prevents the per-child resume hook from racing the batch-boundary hook in worker mode. The resume gate compares the live child count from `data.spawned_sub_task_ids` against `sub_agent_expected_count` and only re-enters the loop when every sibling has reached a terminal state; the boundary hook then clears `sub_agent_batch_open` along with the other batch book-keeping. The next worker pickup (server daemon's `task:run` or browser's `/tick`) drains it via `TickPhaseRunner::maybeResumeParentFromBatchBoundary`. See [Tool system → Sub-Agent tool](/reference/concepts/tools#sub-agent-tool) for the LLM-facing contract.
+
+The third operation, `handover`, never reaches `AWAITING_SUB_AGENTS`: the target's task is created and left to the worker in the background, and it is deliberately kept out of `data.spawned_sub_task_ids`, so it cannot hold the parent's resume gate open. The source chat keeps running and ends on the agent's own closing message.
 
 ## Worker CLI
 

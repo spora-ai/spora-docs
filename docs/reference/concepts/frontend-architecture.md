@@ -124,7 +124,7 @@ The `useTaskStore` exposes a reactive sub-task cache for the `SubAgentTool` `sub
 
 ### `TaskDetail.data`
 
-The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to deep-link the "Handed off to …" final-response pill to the target agent via `data.handover.{target_agent_id, target_agent_name}` (the backend also writes `target_task_id` for lineage, but the chat UI no longer consumes it), and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
+The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to render the delegation breadcrumb via `data.handover.{target_agent_id, target_agent_name, target_task_id}` (the task id is the link's destination; the breadcrumb falls back to the agent page when it is absent), and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
 
 ## The `apps/` directory — extending the frontend
 
@@ -187,6 +187,6 @@ The global guard reads `meta.requiresAdmin` / `meta.requiresAuth` and short-circ
 - **`src/api/client.ts`** — every HTTP call in the app routes through this module.
 - **`src/composables/useAdminAuth.ts`** — the canonical admin-gate pattern.
 - **`src/composables/useFeatureEnabled.ts`** — runtime feature flags from `/api/v1/config`.
-- **`src/components/agent/TaskChat/SubAgentToolCall.vue`** — the row widget rendered when the Orchestrator records a `sub_agent` op (one row per spawned child, live status from `subTaskCache`).
+- **`src/components/agent/TaskChat/SubAgentToolCall.vue`** — the row widget rendered when a sub-agent op reports the spawned child ids — `sub_agent` and `sub_agent_continue` both do (one row per spawned child, live status from `subTaskCache`).
 - **`src/apps/plugins/`** — the template for adding a new top-level app.
 - **`src/stores/auth.ts`** — session, login, CSRF token.

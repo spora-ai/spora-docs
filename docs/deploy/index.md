@@ -24,7 +24,7 @@ For the runtime-mode decision (server daemon vs browser worker, with or without 
 
 Regardless of scenario, Spora needs:
 
-- **PHP 8.4+** (the codebase uses `readonly` properties, enums, and `^8.4.1` in `composer.json`; PHP 8.3 or earlier will not work. The Docker base image currently ships PHP 8.5.)
+- **PHP 8.4+** (the codebase uses `readonly` properties, enums, and `^8.4.1` in `composer.json`; PHP 8.3 or earlier will not work. The Docker base image currently ships PHP 8.5.12.)
 - **`pdo_mysql` PHP extension** (even for SQLite — the platform check at install time requires it)
 - **Composer** (only for non-Docker installs; the Docker image bundles the deps)
 - **A persistent `storage/` directory** for SQLite DB + secret key + logs

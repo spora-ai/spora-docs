@@ -30,7 +30,7 @@ The shipped `docker/Dockerfile` (in the template, two-stage, ~70 lines, heavily 
 The base images are pinned:
 
 - `composer:2.8` (deps-builder stage)
-- `dunglas/frankenphp:1-php8.5-bookworm` (runtime stage)
+- `dunglas/frankenphp:1.13.1-php8.5.12-bookworm` (runtime stage)
 
 Spora's `composer.json` declares `"php": "^8.4.1"`; downgrading the runtime to PHP 8.3 will fail the platform check.
 

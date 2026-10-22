@@ -355,11 +355,11 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
 - [Plugins](/reference/api/plugins) — 5 routes
 - [Agent-templates](/reference/api/agent-templates) — 4 routes
+- [User-preferences](/reference/api/user-preferences) — 4 routes
 - [Admin](/reference/api/admin) — 3 routes
 - [Mail-config](/reference/api/mail-config) — 3 routes
 - [Skills](/reference/api/skills) — 3 routes
 - [Sse](/reference/api/sse) — 3 routes
-- [User-preferences](/reference/api/user-preferences) — 2 routes
 - [Apps](/reference/api/apps) — 1 route
 - [Assets](/reference/api/assets) — 1 route
 - [Config](/reference/api/config) — 1 route
@@ -560,6 +560,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `DELETE` | `/api/v1/tools/{toolId}/user-settings`                      | `cookieAuth` + `csrfToken` | DeleteUserSettings Tool                                                  | Tools            |
 | `GET`    | `/api/v1/user-preferences/llm`                              | `cookieAuth`               | Show UserPreference                                                      | User-preferences |
 | `PUT`    | `/api/v1/user-preferences/llm`                              | `cookieAuth` + `csrfToken` | Update UserPreference                                                    | User-preferences |
+| `GET`    | `/api/v1/user-preferences/locale`                           | `cookieAuth`               | Show UserLocale                                                          | User-preferences |
+| `PUT`    | `/api/v1/user-preferences/locale`                           | `cookieAuth` + `csrfToken` | Update UserLocale                                                        | User-preferences |
 | `GET`    | `/api/v1/users`                                             | `cookieAuth`               | Index User                                                               | Users            |
 | `POST`   | `/api/v1/users`                                             | `cookieAuth` + `csrfToken` | Store User                                                               | Users            |
 | `GET`    | `/api/v1/users/{id}`                                        | `cookieAuth`               | Show User                                                                | Users            |

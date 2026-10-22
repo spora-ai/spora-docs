@@ -3,38 +3,28 @@
 // Mirror the public Spora JSON Schemas into docs/.vuepress/public/schemas/.
 //
 // `spora-core` is the source of truth for the schema files. The docs site
-// serves them via GitHub Pages at https://docs.spora-ai.com/schemas/*.schema.json
-// so editors (VSCode json-language-service, JetBrains, ajv) can fetch the
-// schema when validating $schema-referencing JSON files.
+// serves them at https://docs.spora-ai.com/schemas/*.schema.json so editors
+// (VSCode json-language-service, JetBrains, ajv) can fetch the schema when
+// validating $schema-referencing JSON files.
 //
 // EXCEPTION — plugin.schema.json is owned by this repo, not mirrored. Its
 // canonical URL (`$id`, and the `$schema` every plugin manifest points at) is
-// docs.spora-ai.com, and it is the only one of the two that editors actually
-// fetch. The copy in spora-core's repo root is stale: it was `additionalProperties:
-// false` over five keys while every shipped manifest carried `$schema`, `name`,
-// and sometimes `autoload`, so it rejected every real plugin. Mirroring cannot
-// fix that — `prebuild` runs this script, so mirroring would overwrite the
+// docs.spora-ai.com, and it is the only one of the two editors actually fetch.
+// The copy in spora-core's repo root is stale: still `additionalProperties:
+// false`, and permitting neither `$schema`, `name` nor `autoload`, which every
+// shipped manifest carries — so it rejects every real plugin. Mirroring cannot
+// fix that: `prebuild` runs this script, so mirroring would overwrite the
 // corrected file on every local build and in the `build` CI job.
 //
 // The corrected schema is guarded by `npm run check:plugin-schema`, which
 // validates it against the manifests in the tree. TO RE-MIRROR: land the same
-// fix in spora-core's plugin.schema.json, then re-add it to SCHEMAS above and
+// fix in spora-core's plugin.schema.json, then re-add it to SCHEMAS below and
 // delete the entry from DOCS_OWNED_SCHEMAS.
 //
-// `spora-core` is checked out into `./spora-core` by CI (see
-// .github/workflows/ci-docs.yml); locally, the developer can use a sibling
-// checkout by setting SPORA_CORE_PATH (default: ../spora-core). The script
-// silently no-ops in environments where spora-core is absent, which lets
-// `npm run build` complete on a fresh docs clone without a sibling repo
-// (the schemas just won't be regenerated in that case — they'll pick up
-// whatever was last committed to docs/.vuepress/public/schemas/).
-//
-// Two modes:
-//   - default     : copy each schema file from spora-core to the public dir,
-//                   creating it if missing.
-//   - --check     : exit non-zero if any public schema is missing, stale, or
-//                   differs from the source. Wired into CI as a separate
-//                   `lint-schemas` job in ci-docs.yml.
+// CI checks spora-core out into `./spora-core` (see .github/workflows/
+// ci-docs.yml). The script skips when spora-core is absent, so `npm run build`
+// completes on a fresh docs clone — the schemas then keep whatever was last
+// committed.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -59,8 +49,8 @@ const SCHEMAS = [
 ];
 
 // Published from this repo, NOT mirrored from spora-core — see the header note.
-// Listing the key here is what makes `sync:schemas --check` fail loudly if it
-// is ever re-added, instead of silently overwriting a corrected schema.
+// Printed on every run so the exclusion stays visible; the list is not itself
+// an enforcement point.
 const DOCS_OWNED_SCHEMAS = ["plugin.schema.json"];
 
 function copySchema({ source, dest }, coreDir) {
@@ -96,7 +86,7 @@ function resolveCoreDir() {
 
 // Stated on every run, in both modes. A schema that is silently not mirrored
 // reads as "covered" to anyone auditing this script later, so the exclusion is
-// printed rather than left to be inferred from the absence of a list entry.
+// printed.
 function reportDocsOwned() {
   console.log(
     `Not mirrored from spora-core (owned by this repo, guarded by \`npm run check:plugin-schema\`):\n` +
@@ -108,9 +98,9 @@ function main() {
   const coreDir = resolveCoreDir();
   if (coreDir === null) {
     if (checkOnly) {
-      // In --check mode we want a hard fail if spora-core is missing, so CI
-      // catches accidental env-config regressions. In default mode we silently
-      // skip — devs without a sibling checkout still get a working site.
+      // A missing spora-core is a hard fail in --check mode, so CI catches
+      // env-config regressions, but a silent skip in default mode — devs without
+      // a sibling checkout still get a working site.
       console.error(
         `spora-core checkout not found. Searched:\n` +
           CANDIDATE_CORE_DIRS.map((d) => `  - ${d}`).join("\n"),

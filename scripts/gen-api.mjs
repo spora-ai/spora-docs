@@ -2,18 +2,17 @@
 
 // Generates the spora-docs API reference from `docs/.vuepress/openapi.json`.
 // Writes:
-//   - docs/reference/api.md         — overview + summary table + per-tag link list
-//                                     (the hand-written frontmatter, intro, Envelope,
-//                                     Auth stack, Health endpoint, Versioning, What's
-//                                     next sections are preserved verbatim).
+//   - docs/reference/api.md         — overview + summary table + per-tag link list.
+//                                     Everything outside the API:GENERATED markers
+//                                     is hand-written and preserved verbatim.
 //   - docs/reference/api/{slug}.md  — one file per tag, each holding the per-endpoint
 //                                     detail (path params, query params, responses).
 //
-// `gen:api:check` validates all generated files in one pass; any drift fails.
+// `gen:api:check` validates the committed artifacts only — api.md and
+// api-sidebar.json.
 //
 // Tag → slug: lowercased tag, with hyphens preserved (Agent-templates →
-// agent-templates). Untagged endpoints (only /api/health today) land on the
-// "health" page. New tags appear in a new file on next regen.
+// agent-templates). Untagged endpoints land on the "health" page.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve, basename } from 'node:path'
@@ -64,8 +63,8 @@ function renderParamTable(params) {
 
 /**
  * Flatten the spec into one record per (path, method). Tag is the first tag
- * declared on the operation; "" if none. Routes are sorted by path so the
- * summary table and per-tag pages both read in stable order.
+ * declared on the operation; "" if none. Sorted by path, so the summary table
+ * and the per-tag pages both read in a stable order.
  */
 function collectEndpoints(spec) {
   const paths = Object.keys(spec.paths ?? {}).sort((a, b) => a.localeCompare(b))
@@ -146,8 +145,7 @@ function renderEndpointDetail({ path, method, op }) {
 }
 
 /**
- * Group endpoints by tag and render each group's per-endpoint detail.
- * Returns a Map<slug, { displayTag, body: string }>.
+ * One rendered page per tag. Returns a Map<slug, body: string>.
  */
 function renderPerTagPages(endpoints) {
   const groups = new Map()
@@ -181,8 +179,8 @@ function renderOverviewBody(spec, endpoints, schemes) {
     '',
   ]
 
-  // Group endpoints by tag for the link list, sorted by route count desc
-  // so the largest surfaces come first.
+  // Group endpoints by tag for the link list, sorted by route count desc so the
+  // largest surfaces come first.
   const byTag = new Map()
   for (const ep of endpoints) {
     const slug = tagSlug(ep.tag)
@@ -226,7 +224,6 @@ async function main() {
   const overview = renderOverviewBody(spec, endpoints, schemes)
   const perTag = renderPerTagPages(endpoints)
 
-  // Build the api.md content by splicing the generated body between markers.
   const target = readFileSync(TARGET, 'utf8')
   const start = target.indexOf(MARKER_START)
   const end = target.indexOf(MARKER_END)
@@ -243,7 +240,6 @@ async function main() {
     '\n\n' +
     target.slice(end)
 
-  // Build the per-tag files.
   const tagFiles = new Map()
   for (const [slug, body] of perTag) {
     tagFiles.set(`${API_DIR}/${slug}.md`, await format(body))
@@ -266,11 +262,10 @@ async function main() {
   const sidebarBody = JSON.stringify(sidebarManifest, null, 2) + '\n'
 
   if (checkOnly) {
-    // Per-tag files under docs/reference/api/ are gitignored and regenerated
-    // on every `npm run gen:api` (called by predev/prebuild hooks and by the
-    // build CI job). The drift check therefore only validates the committed
-    // artifacts: api.md shell + api-sidebar.json manifest. If a per-tag page
-    // renders incorrectly, the build job fails — that's the safety net.
+    // The per-tag pages are gitignored and regenerated on every `npm run gen:api`
+    // (called by predev/prebuild hooks and by the build CI job), so they cannot
+    // be drift-checked. A per-tag page with a dead link fails the build instead
+    // — that is the safety net for them.
     const drift = []
     if (newApiMd !== target) {
       drift.push('docs/reference/api.md')

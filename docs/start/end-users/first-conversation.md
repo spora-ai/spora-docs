@@ -107,20 +107,24 @@ When the agent loop exhausts its `max_steps` allowance without reaching a termin
 
 ### Sub-agents and handovers
 
-The `sub_agent` tool (LLM-facing name) ships two operations on the `op` discriminator. The LLM fills `op` plus the shared `target_agent_id` + `prompt` parameters and picks one of:
+The `sub_agent` tool (LLM-facing name) ships three operations on the `op` discriminator. The LLM fills `op`, the operation's own parameters (`target_agent_id` for `sub_agent` and `handover`, `task_id` for the continuation) and a `prompt`, and picks one of:
 
-- `op: 'handover'` — transfer + close. The source chat ends with a green final-response pill followed by an **Open &lt;Agent&gt; →** link deep-linking to the target agent's page.
-- `op: 'sub_agent'` — spawn a child task and wait. The chat inserts a **sub-agent row widget** under the assistant turn listing every spawned child task with its live status:
+- `op: 'sub_agent'` — spawn a child task and wait for its answer. The chat inserts a **sub-agent row widget** under the assistant turn listing every spawned child task with its live status:
 
   - **Running** (blue, pulsing dot) — the child task is still being executed.
   - **Awaiting approval** (amber row + ⚠ icon) — the child task is waiting on a tool-call decision. Click **Review approvals →** on the row to jump straight to the child chat's approvals section (`#approvals`).
   - **Queued / Done / Failed / Cancelled** — terminal-style indicators, no pulse.
 
+- `op: 'sub_agent_continue'` — send a follow-up to a child this chat already started and wait for the new answer. The child keeps its earlier conversation, so the follow-up does not have to repeat the original brief; the widget shows the same child row as a spawn.
+- `op: 'handover'` — delegate to another agent, which continues **in the background**. The source chat stays open and ends with the agent's own closing message; you get no answer back from the target agent, whose task runs as a separate chat.
+
+Only `sub_agent` is enabled out of the box — `sub_agent_continue` and `handover` are opt-in per agent.
+
 A summary line appears above the row list when at least one child needs approval: `Sub-agents (N): X needs approval · Y running · Z done` — click the line to jump to the first awaiting child.
 
 The parent chat header shows a violet sub-agent count badge (`3 sub-agents · 1 needs approval · 1 running · 1 completed`) when the parent has spawned sub-agents; clicking it smooth-scrolls to the first awaiting child. The badge hides once every spawned child reaches a terminal state. While the parent is waiting, its status pill turns violet (`AWAITING_SUB_AGENTS`) on the dashboard.
 
-Both `op` values are **intra-principal**: the LLM can only delegate to agents that share the source agent's `principal_id` (user-principal OR group-principal). A user-principal agent can only target other user-principal agents on its owner; a group-principal agent can only target other group-principal agents in the same group. The picker in the settings UI is principal-scoped, so the model only ever sees options it can actually call. See [Concepts → Tools → Setting render scope](/reference/concepts/tools#setting-render-scope) for the matrix and the operator-side controls that gate it.
+All three `op` values are **intra-principal**: the LLM can only delegate to agents that share the source agent's `principal_id` (user-principal OR group-principal). A user-principal agent can only target other user-principal agents on its owner; a group-principal agent can only target other group-principal agents in the same group. The picker in the settings UI is principal-scoped, so the model only ever sees options it can actually call. See [Concepts → Tools → Setting render scope](/reference/concepts/tools#setting-render-scope) for the matrix and the operator-side controls that gate it.
 
 For the underlying lifecycle (`AWAITING_SUB_AGENTS` → resume gates, worker-mode pickup, `data.spawned_sub_task_ids` and `data.sub_agent_expected_count` accounting), see [Concepts → Agent loop and async mode](/reference/concepts/agent-loop-async).
 

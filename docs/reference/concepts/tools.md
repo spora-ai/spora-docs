@@ -600,14 +600,37 @@ The remaining tools (`Calculator`, `CurrentTime`, `AgentMemory`, `GlobalMemory`,
 
 ### Sub-Agent tool
 
-The `sub_agent` tool (`app/Tools/SubAgentTool.php`) is a single tool that declares two `#[ToolOperation]` entries on the `op` discriminator — `handover` (transfer + close) and `sub_agent` (spawn child + wait). Both ops share a single `target_agent_id: int` parameter and the `allowed_target_agents` multi-select on the agent's **Tools** tab (`/agents/:id/tools`).
+The `sub_agent` tool (`app/Tools/SubAgentTool.php`) is a single tool that declares three `#[ToolOperation]` entries on the `op` discriminator. `sub_agent` and `sub_agent_continue` run a child task and **wait** for its answer; `handover` delegates to another agent and does not.
 
-| Operation   | Requires approval | Side-effect on source task                                                                                                                                                                                                                                                                                                                                                              |
-| ----------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `handover`  | yes               | Source task closes; a new task starts on the target agent. The closed source `final_response` becomes "Handed off to …" and `data.handover.{target_task_id, target_agent_id, target_agent_name}` records the lineage breadcrumb.                                                                                                                                                        |
-| `sub_agent` | yes               | Source task flips to `AWAITING_SUB_AGENTS`; a child `Task` with `parent_task_id` is created on the target agent. After every spawned child reaches a terminal state the parent's next tick resumes with each child's output appended as a `role:'tool'` history row. The parent's `result_data.spawned_sub_task_ids: list<int>` is always plural — same shape for one or many children. |
+| Operation            | Enabled by default | Requires approval by default | Source chat | Waits for the answer |
+| -------------------- | ------------------ | ---------------------------- | ----------- | -------------------- |
+| `sub_agent`          | yes                | no                           | stays open  | yes                  |
+| `sub_agent_continue` | no                 | no                           | stays open  | yes                  |
+| `handover`           | no                 | no                           | stays open  | no                   |
 
-The LLM-facing schema declares `op` as the discriminator (enum: `handover | sub_agent`); single-op agents may omit `op` — `OperationSchemaFilter` strips the discriminator from `required[]` when only one op is allowed (back-compat path for agents created before the second op shipped).
+Only `sub_agent` is on out of the box. The other two are opt-in per agent — an operator flips the operation's toggle on the agent's **Tools** tab (`/agents/:id/tools`) before the model can pick them. None of the three asks for approval by default; the per-agent override on the same tab puts one back behind the operator.
+
+**`sub_agent`** — spawn a child task on the target agent and wait for it. The source task flips to `AWAITING_SUB_AGENTS`; a child `Task` with `parent_task_id` is created on the target agent. After every spawned child reaches a terminal state the parent's next tick resumes with each child's output appended as a `role:'tool'` history row. The parent's `result_data.spawned_sub_task_ids: list<int>` is always plural — same shape for one or many children.
+
+The child sees **only** the `prompt`. It has no access to the source history, so the prompt has to carry the goal, the facts, the decisions already taken and anything to preserve verbatim — a self-contained brief, or a delegation that starts from zero.
+
+**`sub_agent_continue`** — send a follow-up to a child this conversation already started, and wait for the new answer. It takes `task_id` — the number from the earlier `sub_agent` result (_"Sub-agent task #777"_, the same number as in that result's `/tasks/777` link) — plus a `prompt`. A "chat id" in Spora is a task id, and `/tasks/{id}` is that task's URL.
+
+The continuation prompt does **not** have to be self-contained: the child kept its earlier conversation, so _"change the heading to X"_ is a valid follow-up where the same words in a `sub_agent` prompt would have lost everything the child needed. Only tasks started by the same conversation may be continued — a task id this conversation never saw is refused. The child's agent is still checked against the same `allowed_target_agents` allowlist, so a continuation cannot reach an agent the operator did not pre-approve.
+
+**`handover`** — delegate to another agent, which continues **in the background**. The target's task starts as a new, unrelated task and runs in parallel; the source chat **stays open** and ends on the agent's own closing message, and no answer comes back from the target. `data.handover.{target_task_id, target_agent_id, target_agent_name}` records the delegation for the breadcrumb the chat renders.
+
+The operation keeps the name `handover` even though nothing is handed over any more: `agent_tool_operation_overrides` rows name the operation, and renaming it would silently drop every operator's deliberate enable. Read the name as _background delegation_.
+
+The LLM-facing schema declares `op` as the discriminator (enum: `sub_agent | sub_agent_continue | handover`); an agent with only one operation enabled may omit `op` — `OperationSchemaFilter` strips the discriminator from `required[]` when only one op is allowed.
+
+The tool result is what tells the model what it holds — `sub_agent` answers:
+
+```text
+Sub-agent task #777 starts on agent #5. [Task #777](/tasks/777).
+```
+
+The number in that line is the one a later `sub_agent_continue` names.
 
 `allowed_target_agents` declares `scope: 'principal'`, so the picker is hidden at the admin operator-defaults page where no principal context exists. The same picker renders under **Settings → Tools → Sub-Agent** (per-user overrides), **Groups → {name} → Tools → Sub-Agent** (per-group overrides), and the agent's **Tools** tab (per-agent override). Existing global rows continue to cascade down; the runtime LLM-side filter in `ToolConfigSchemaInspector::fetchAgentNameMap()` restricts the LLM-visible list to the source agent's principal, so stale foreign ids in a pre-existing global degrade to `"#id"` placeholders. See [Setting render scope](#setting-render-scope) for the full matrix.
 

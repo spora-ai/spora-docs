@@ -94,6 +94,25 @@ Debug logging: every call emits `debug` / `info` / `warning` PSR-3 entries to th
 - **API documentation**: <https://developers.meta.com/docs>
 - **Models**: `muse-image-1.0`, `muse-voice-transcribe-1.0`. Older model ids Meta ships against the same endpoints can be set via the per-capability `model` setting.
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `MusePlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{
+  "Muse Image": "Muse-Bild",
+  "Comma-separated list of terms to bias recognition toward (product names, jargon). e.g. Spora, Muse, Sporadise": "Kommagetrennte Liste von Begriffen, auf die die Erkennung ausgerichtet wird (Produktnamen, Fachbegriffe). z. B. Spora, Muse, Sporadise"
+}
+```
+
+Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions (three on the image tool, six on the speech provider), and the plugin description. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+
+The `mode` option values (`PUSH_TO_TALK` / `ENDPOINTING` / `DIARIZATION`) and the 25 `language_bias` endonyms are matched on by the provider, so their labels stay English; the option's _description_ is translated.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

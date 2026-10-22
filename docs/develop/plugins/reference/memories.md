@@ -199,6 +199,24 @@ public static function getSubscribedEvents(): array
 
 The v2 split registers two narrow interfaces — `MemoryQueryInterface` and `MemoryCommandInterface` — so the read and write sides stay separately injectable, and each controller depends only on the side it calls.
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `MemoriesPlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{
+  "Memories": "Erinnerungen",
+  "Agent Memory": "Agentengedächtnis",
+  "Global Memory": "Globales Gedächtnis"
+}
+```
+
+Only operator-facing copy is translated — the two tool display names, the admin app's display name and description, and the plugin description. The plugin declares no settings, so the catalogue holds nothing else. The `#[Tool].description` and `#[ToolOperation].description` values go into the LLM function definition and stay English, in the operator's view too: a German tool description degrades the model's tool selection.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

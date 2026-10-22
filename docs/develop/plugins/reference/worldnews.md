@@ -63,6 +63,23 @@ Returns top trending news for a specific country/language combination. The upstr
 - API documentation: <https://worldnewsapi.com/docs/>
 - Dashboard: <https://console.worldnewsapi.com/>
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `WorldNewsPlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{
+  "World News Search": "Weltnachrichten-Suche",
+  "API key for worldnewsapi.com": "API-Schlüssel für worldnewsapi.com"
+}
+```
+
+Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions, and the plugin description. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

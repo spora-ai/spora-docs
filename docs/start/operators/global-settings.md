@@ -60,6 +60,19 @@ Some toggles gate a whole capability rather than a value, and are worth calling 
   above, a save here takes effect on the next request without restarting the worker or the web
   server. See the [Agent API](/reference/agent-api).
 
+## Language
+
+The **General** tab carries the instance's default language (`SPORA_DEFAULT_LANG`,
+`en` or `de`). It is the language the instance renders in for people who have not
+chosen one of their own — a user picks their own language under **My Account →
+Language**, and that choice wins. `Accept-Language` is never consulted: a browser
+header overriding the instance default would make the rendered language depend on
+the machine rather than on the install, and the same user would see two languages
+on two machines.
+
+It is a plain setting, not a file-only one, so a value saved here overrides one
+set in `.env` or `config.php` — the same four-layer chain as every other field.
+
 ## Saving, and resetting
 
 Save sends only the fields you changed, and the whole batch is validated before anything is written —

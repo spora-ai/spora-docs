@@ -86,6 +86,44 @@ Every tier (except tier 4, which returns null when nothing resolved) reads from 
 
 The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech#post-api-v1-speech-provider-configs-—-create-a-speech-provider-configuration). Schema-level validation (required keys, regex) walks the provider's `#[ToolSetting]` attributes via [`SpeechProviderConfigValidator::assertSettingsAgainstSchema()`](https://github.com/spora-ai/spora-core/blob/main/app/Services/SpeechProviderConfigValidator.php), so adding a new field to the attribute list automatically widens the dynamic form the SPA renders.
 
+## Configuring a provider
+
+`POST /api/v1/speech/provider-configs` carries a `scope` that decides who the row belongs to, and a `group_id` that names the group when it does:
+
+| `scope`  | The row is stored for | Who may write it                                                                             |
+| -------- | --------------------- | -------------------------------------------------------------------------------------------- |
+| `global` | everyone              | A global admin.                                                                              |
+| `user`   | the calling principal | The caller. No extra permission needed.                                                      |
+| `group`  | the named group       | An `owner` or `admin` of that group, or a global admin. `group_id` is required and positive. |
+
+Supplying `group_id` without `scope: 'group'`, or `scope: 'group'` without a `group_id`, is a `422 SPEECH_PROVIDER_CONFIG_INVALID` — the two cannot drift apart. A caller who is not a global admin and not an admin of the named group gets `403 SPEECH_PROVIDER_CONFIG_FORBIDDEN`; a `provider_class` that is not a registered provider gets `404 SPEECH_PROVIDER_CONFIG_NOT_FOUND`.
+
+Reading a group's configuration is narrower than writing it. Other members of the group can read it — the capability endpoint's `configured: true` still shows, because the group cascade has at least one valid key — but a member who is not an admin cannot edit it. A user who is not a member of the group does not see the config at all: the list is membership-gated so that a non-member cannot tell whether the group has an STT config.
+
+### The two OpenAI-compatible vendors
+
+Both Mistral Voxtral and OpenAI Whisper speak the same multipart wire shape (`POST {base_url}/audio/transcriptions` with `file`, `model`, an optional `language`, Bearer auth, and a JSON response carrying `text`), so Spora serves them through one provider class, `OpenAiCompatibleTranscriber`. Only three fields differ:
+
+| Field                  | Mistral Voxtral                            | OpenAI Whisper                    |
+| ---------------------- | ------------------------------------------ | --------------------------------- |
+| Base URL               | `https://api.mistral.ai/v1`                | `https://api.openai.com/v1`       |
+| Model                  | `voxtral-mini-latest`                      | `whisper-1`                       |
+| Language hint (BCP-47) | blank for auto-detect, or `en-US`          | blank for auto-detect, or `en-US` |
+| HTTP timeout (seconds) | `60`                                       | `60`                              |
+| API key                | your Mistral key from `console.mistral.ai` | your OpenAI key                   |
+
+Everything else — the display name, the encrypted `api_key`, the shared-superset MIME list — is the same. Pick a display name that tells two configurations apart when you run more than one (`Mistral Voxtral (prod)` beside `Mistral Voxtral (staging)`).
+
+Meta Muse is the third option, but it arrives differently: `spora-plugin-muse` ships a bespoke provider that handles Meta's own multipart shape and its ffmpeg-based preprocessing, so it appears as a second card on the provider picker once the plugin is installed, with no migration to run. A provider the plugin declares through `#[ToolSetting]` is picked up live by the schema endpoint, so a new field on the plugin's side widens the form without a core change.
+
+### Sending `api_key: "***"`
+
+`settings.api_key` comes back masked as `"***"` on every read — the operator never sees the stored key. Sending `"***"` back keeps the existing value rather than overwriting it with three literal asterisks. That is the convention `ToolController` uses for tool API keys, and it is what makes the form safe to submit without re-typing the secret. To rotate a key, submit the new one.
+
+### Display names and collisions
+
+Two configurations can carry the same `display_name` — one global, one user-scoped. The capability endpoint resolves to one of them: the user-scoped row wins and the global row becomes invisible to that caller. The uniqueness enforcement is a known follow-up, so the naming convention is the mitigation: suffix configurations that are meant to coexist (`(prod)`, `(staging)`).
+
 ## Reading the capability endpoint
 
 `GET /api/v1/speech/capability` returns one row per registered provider, plus the resolved-class / source / config-id triple the cascade produced. The SPA reads this to decide whether to render the recording button at all and which `preferred_audio_mimes[]` to feed the MIME picker:
@@ -122,6 +160,11 @@ The CRUD surface is in [`/api/v1/speech/provider-configs`](/reference/api/speech
 | `effective_source`      | Which cascade tier produced the answer. See the table below.                                                                                                                                                                                                             |
 | `effective_config_id`   | The configuration row that backed the choice. `null` when no FK config exists at any tier (cascade returned `[null, null, null]`).                                                                                                                                       |
 | `preferred_audio_mimes` | The MIMEs the SPA should offer the browser in order. Provider-declared via [`#[AcceptedAudioMime]`](https://github.com/spora-ai/spora-core/blob/main/app/Speech/Attributes/AcceptedAudioMime.php); falls back to the common-superset default when the provider opts out. |
+
+Two more fields exist for the settings screens rather than for the caller:
+
+- `has_global_default` — true when the operator has a global settings row for this provider class.
+- `config_id` — the id of that global settings row, or `null` when there is none. It is a thin lookup against `tool_configurations.id` for `OpenAiCompatibleTranscriber` rows; a class-level provider (Muse) keeps `config_id: null` because it never writes to that table. The SPA deep-links a capability row into the provider's edit form by this id.
 
 ### `effective_source` values
 

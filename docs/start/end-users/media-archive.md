@@ -55,7 +55,7 @@ The grid hides temp rows by default — they crowd out the permanent grid with a
 
 Keep-file auth: global admin OR the asset's `user_id == currentUserId`. Non-owners receive 403; missing rows 404.
 
-The retention sweep itself runs server-side (`media:gc --temporary [--older-than-hours N]`, default 24 h). Per-agent retention is governed by `agents.voice_message_retention_count` (default 5; 0 disables auto-purge — operators must then run the GC manually or hit `/keep` per row). See the Media API reference for the full lifecycle: `POST /api/v1/media` (temp opt-in via `is_temporary`), `GET /api/v1/media?include_temporary=true`, `POST /api/v1/media/{id}/keep`, and the `media:gc` CLI.
+The retention sweep itself runs server-side (`media:gc --temporary [--older-than-hours N]`, default 24 h). Per-agent retention is governed by `agents.voice_message_retention_count` (default 5; 0 disables auto-purge — operators must then run the GC manually or hit `/keep` per row). The ceiling is a per-(user, agent) count of temp rows, and it is what the upload controller enforces: when a multipart upload sets `is_temporary` _and_ names an `agent_id`, `MediaArchiveService::enforceTempRetention()` trims that pair's temp set back under the agent's ceiling. The value is a `0`–`100` integer, range-checked server-side and answered with a `422` when it is not. See the Media API reference for the full lifecycle: `POST /api/v1/media` (temp opt-in via `is_temporary`), `GET /api/v1/media?include_temporary=true`, `POST /api/v1/media/{id}/keep`, and the `media:gc` CLI.
 
 ## Where the data comes from
 

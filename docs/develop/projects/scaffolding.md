@@ -234,7 +234,7 @@ final class App extends AbstractExtension
 > - `drivers()` and `recipePaths()` had no callers and are simply gone.
 > - `register()`, `routes()`, and `boot()` became PSR-14 events — `ContainerBuildingEvent` (payload `builder()`), `RoutesRegisteringEvent` (payload `routes()`), and `BootingEvent` (payload `container()`) respectively. An App takes part by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface`, exactly as the `make:controller` snippet above does.
 
-The full ten-hook table and the three lifecycle events are in [Concepts → App extensions](/reference/concepts/app-extension); the same contract from the plugin side is in [Foundations → Available hooks](/develop/plugins/author-guide/foundations#available-hooks).
+The full hook table and the three lifecycle events are in [Concepts → App extensions](/reference/concepts/app-extension); the same contract from the plugin side is in [Foundations → Available hooks](/develop/plugins/author-guide/foundations#available-hooks).
 
 ## Adding a new `make:*` command
 

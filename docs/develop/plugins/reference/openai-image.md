@@ -7,7 +7,7 @@ description: OpenAI-compatible image generation for Spora agents — one tool, t
 
 Image generation for [Spora](https://github.com/spora-ai/spora) agents against any **OpenAI-compatible** image API. The plugin ships one tool with two operations: single-image generation, and a multi-image / variations operation that takes either a prompt or a source image.
 
-This is the **vendor-neutral** option. The same trick that lets Spora's Anthropic-compatible LLM driver talk to any provider that speaks that shape — swap the `base_url`, keep the key — applies to image generation here. Point `base_url` at OpenAI's `https://api.openai.com/v1`, or at a self-hosted gateway, a regional endpoint, or another vendor that implements `/v1/images/generations` and `/v1/images/variations` over the same contract. If you find yourself choosing between a vendor-locked image plugin and this one, the deciding question is whether your provider is OpenAI-shaped. If it is, you do not need a second plugin.
+This is the **vendor-neutral** option. The same trick that lets Spora's Anthropic-compatible LLM driver talk to any provider that speaks that shape — swap the `base_url`, keep the key — applies to image generation here. Point `base_url` at OpenAI's `https://api.openai.com/v1`, or at a self-hosted gateway, a regional endpoint, or another vendor that implements `/v1/images/generations` and `/v1/images/edits` over the same contract. If you find yourself choosing between a vendor-locked image plugin and this one, the deciding question is whether your provider is OpenAI-shaped. If it is, you do not need a second plugin.
 
 There is no admin panel — settings live under Settings → Tools like any other tool.
 
@@ -28,7 +28,7 @@ Settings → Tools → OpenAI Image. Cascade: agent → principal → global, so
 | Setting                | Required | Default                     | Notes                                                                                                                                                                                                                                                                 |
 | ---------------------- | -------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `api_key`              | yes      | —                           | API key for the configured provider. Encrypted at rest by Spora's `ToolConfigService`, masked in the UI, never logged. A missing key fails the call immediately with `OpenAI-compatible image API key is not configured for this agent.` — the plugin does not retry. |
-| `base_url`             | no       | `https://api.openai.com/v1` | API base URL. `/images/generations` and `/images/variations` are appended automatically, so give the versioned base (`.../v1`), not the full endpoint. Trailing slashes are trimmed.                                                                                  |
+| `base_url`             | no       | `https://api.openai.com/v1` | API base URL. `/images/generations` and `/images/edits` are appended automatically, so give the versioned base (`.../v1`), not the full endpoint. Trailing slashes are trimmed.                                                                                       |
 | `model`                | no       | `gpt-image-2`               | Image model identifier supported by the configured provider.                                                                                                                                                                                                          |
 | `http_timeout_seconds` | no       | `600`                       | Per-request timeout. The default is generous enough for `generate_variations(n: 8)` at high quality on a slow link. Lower it for fast failure on single-image drafts; raise it if the upstream still hits an idle timeout.                                            |
 
@@ -39,30 +39,30 @@ The plugin sends `Authorization: Bearer <api_key>` on every request. There is no
 Change `base_url` and, if the provider names models differently, `model`. Nothing else is provider-specific. Two shapes to know about:
 
 - Any provider that returns `data[].b64_json` on `/v1/images/generations` works as-is. The plugin only ever reads that field — if the provider returns a hosted `url` instead of base64, the tool reports `Image API returned no base64 image data.`
-- `/v1/images/variations` only has to accept a multipart `image` file plus `n` and `size`. Anything beyond those three fields is dropped, so a provider that implements only the generations half still works for `generate`.
+- `/v1/images/edits` has to accept a multipart `image` file, a `model` and a `prompt`; `n`, `size`, `quality` and `background` are optional. Providers that never implemented it answer 404, and the plugin then retries on the retired `/v1/images/variations`, which took only the image file, `n` and `size`.
 
 ## Per-tool parameters
 
 The tool exposes **two** operations on the auto-synthesised `action` discriminator. `generate` is auto-approved; `generate_variations` requires approval by default because it can produce up to eight billable images per call.
 
-| Operation             | Approval by default | Upstream endpoint                                                                                                   | Purpose                                                                              |
-| --------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `generate`            | no                  | `POST {base_url}/images/generations`                                                                                | One image from a text prompt. Always exactly one.                                    |
-| `generate_variations` | yes                 | `POST {base_url}/images/generations` (prompt-based) or `POST {base_url}/images/variations` (image-based, multipart) | `n` independent samples from one prompt, or semantic variations of a supplied image. |
+| Operation             | Approval by default | Upstream endpoint                                                                                              | Purpose                                                                              |
+| --------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `generate`            | no                  | `POST {base_url}/images/generations`                                                                           | One image from a text prompt. Always exactly one.                                    |
+| `generate_variations` | yes                 | `POST {base_url}/images/generations` (prompt-based) or `POST {base_url}/images/edits` (image-based, multipart) | `n` independent samples from one prompt, or semantic variations of a supplied image. |
 
 | Parameter     | Type    | Required        | Default | Notes                                                                                                                                                                                                                     |
 | ------------- | ------- | --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prompt`      | string  | for `generate`¹ | —       | The text prompt. Max 32 000 chars.                                                                                                                                                                                        |
+| `prompt`      | string  | for `generate`¹ | —       | The text prompt. Max 32 000 chars. On image-based variations it describes the change to make to the supplied image.                                                                                                       |
 | `input_image` | string  | no              | —       | Source image for image-based variations. Accepts an http(s) URL, a `data:` URI, a 36-char Media Archive UUID, or an opaque `/api/v1/assets/<uuid>.<ext>` URL. Max 4 096 chars. Only meaningful for `generate_variations`. |
 | `n`           | integer | no              | `3`     | Number of variation images. Clamped to 1–8. Only applied by `generate_variations`; the upstream API charges per image produced.                                                                                           |
 | `size`        | string  | no              | `auto`  | `auto` \| `1024x1024` \| `1536x1024` \| `1024x1536`.                                                                                                                                                                      |
-| `quality`     | string  | no              | `auto`  | `auto` \| `low` \| `medium` \| `high`.                                                                                                                                                                                    |
-| `background`  | string  | no              | `auto`  | `auto` \| `opaque` \| `transparent`.                                                                                                                                                                                      |
+| `quality`     | string  | no              | `auto`  | `auto` \| `low` \| `medium` \| `high`. Honoured on image-based variations too, unless the provider serves only the retired `/v1/images/variations` endpoint.                                                              |
+| `background`  | string  | no              | `auto`  | `auto` \| `opaque` \| `transparent`. Honoured on image-based variations too, unless the provider serves only the retired `/v1/images/variations` endpoint.                                                                |
 | `filename`    | string  | no              | auto    | Human-readable archive filename stem, no extension — `.png` is appended. A `-1`, `-2`, … suffix is added per image when more than one comes back. Max 120 chars.                                                          |
 
 ¹ `prompt` is required for `generate` and required for `generate_variations` _unless_ `input_image` is supplied. The tool returns `generate_variations requires either 'prompt' or 'input_image'.` when both are empty, and `Prompt cannot be empty.` for a blank `generate` prompt.
 
-Fields set to `auto` are omitted from the outbound body entirely rather than sent as the literal string, so the provider picks its own default. `size` **is** forwarded on image-based variations — the multipart body carries `image`, `n` and `size`. Only `quality` and `background` are dropped there, because `/v1/images/variations` does not accept them; the tool's own parameter descriptions say so, and say nothing of the sort about `size`.
+Fields set to `auto` are omitted from the outbound body entirely rather than sent as the literal string, so the provider picks its own default. On image-based variations the multipart body carries `image`, `model`, `prompt`, `n`, `size`, `quality` and `background` — `/v1/images/edits` reads the prompt as the change to make to the source image, and a call that named only an image gets a neutral "create a variation" prompt instead. The retired `/v1/images/variations` fallback takes only `image`, `n` and `size`, so a provider that still serves only that endpoint ignores `quality` and `background`; the tool's own parameter descriptions say so.
 
 ### Resolving `input_image`
 
@@ -122,9 +122,12 @@ Failures come back as `ToolResult::fail` with the upstream's `error.message` emb
 ```text
 Image generation failed: Image API returned HTTP 429: Rate limit reached for …
 Image generation failed: Image API request failed: … — try a smaller size or lower quality, or ask the operator to raise http_timeout_seconds (current: 600s).
+Image generation failed: Image API returned HTTP 404 on /images/edits.
 Image generation failed: Image API returned no images.
 Image generation failed: Image API returned no base64 image data.
 ```
+
+The status line names the endpoint that answered it when the upstream sends no error message of its own — a 404 with an empty body is otherwise unreadable, and it is the usual answer from a provider that does not serve the endpoint, or from a `base_url` that points at the wrong place.
 
 A missing or unreadable Media Archive asset in `input_image` fails before any upstream call is made. Nothing here throws out of the tool — a single API failure cannot kill the agent loop.
 

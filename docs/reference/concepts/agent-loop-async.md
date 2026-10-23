@@ -140,6 +140,18 @@ A compaction appends one `role=summary` row at the end of the history, carrying 
 
 Appending rather than inserting is what keeps every existing row's sequence stable — `task_history` carries a unique index on `(task_id, sequence)`, so an inserted row would have to shift every row after it, and the SPA's `since_sequence` cursor is built on those sequences staying put. It also puts the summary above the SPA's cursor, so the next poll delivers it.
 
+### What the summariser sees
+
+The summary request carries the conversation, with two bounds on it.
+
+**The output budget.** The summary is a model turn, and a reasoning model spends its output budget on thinking before it writes anything. The old cap of 1024 tokens left a reasoning model with nothing to write the summary with: it returned `finish_reason: length`, an empty message, and the compaction wrote that empty message in place of the summarized turns — the worst outcome a compaction can have, since the model loses the context of sixty turns and gets nothing in its place. The agent's own output budget is the ceiling now.
+
+**The tool results.** Tool results are the bulk of a long conversation — one research turn can carry tens of thousands of tokens of search output. Handed over in full, the model thinks for tens of thousands of tokens, exhausts its budget before writing anything, and takes two minutes doing it. The summariser sees the head of each result instead: the tool's name and query are at the front, and that is where the signal is.
+
+The summariser also gets a neutral system prompt rather than the agent's persona. It is not the agent, and the persona's report is the opposite of what a compaction needs.
+
+If the model still returns nothing, the compaction fails: the compactor raises `CompactionFailedException`, the endpoint answers `500 COMPACTION_FAILED`, and **the history is left unchanged**. A compaction that produces no summary must not replace the turns it was meant to summarize.
+
 ### Two ways to trigger one
 
 **Automatically**, when the provider reports a context-window error. `ContextWindowRecovery` compacts the history and re-ticks.
@@ -159,13 +171,15 @@ POST /api/v1/tasks/42/compact
 }
 ```
 
-It replaces everything but the last five rows with a summary. `compacted` is `false` when the history was too short to summarize, which leaves the task untouched. A `409` means the task is not in a state that can be compacted — a running task is mid-turn, and the tick writes rows as it goes, so a compaction would race it. A `404` means the task is not the caller's.
+It replaces everything but the last five rows with a summary. `compacted` is `false` when the history was too short to summarize, which leaves the task untouched. A `409` means the task is not in a state that can be compacted — a running task is mid-turn, and the tick writes rows as it goes, so a compaction would race it. A `500` with `COMPACTION_FAILED` means the model returned no summary; the history is unchanged. A `404` means the task is not the caller's.
 
 ### In the chat
 
-The command menu on the follow-up bar — the shell-prompt button next to the attach buttons — carries the task commands. "Compact conversation" asks the backend for one.
+The command menu on the follow-up bar — the shell-prompt button next to the attach buttons — carries the task commands. "Compact conversation" asks the backend for one. The composer stands down while it runs: the call rewrites the history the prompt would be appended to, and it takes a model round trip.
 
-The compacted turns are shown in a collapsed block above the messages rather than dropped: collapsed it says how many turns were compacted, expanded it shows what the model was told and the turns it was told instead of. The block sits above the messages because the compacted region is always a prefix of the transcript, and inside the turn structure it would split it.
+The compacted turns are shown in a collapsed block rather than dropped: collapsed it says how many messages were compacted, expanded it shows what the model was told and the turns it was told instead of.
+
+The block sits above the composer rather than where the compacted turns were. A compaction replaces the _older_ turns, so the block that stands in for them belongs at the top of the transcript — which is exactly where the reader is not looking. The transcript scrolls past it, so it goes where the operator is looking for the result of the action they just took.
 
 ## Task data keys
 
@@ -190,7 +204,6 @@ Two working sets ride on the `tasks.data` JSON column rather than on their own t
 ```
 
 `ConversationCompactor` replaces the older part of a task's history with a summary when the context window fills, but it never touches `tasks.data` — so the todo list survives compaction. See [Context window and compaction](#context-window-and-compaction).
-
 `tasks.pending_state.pending_questions` holds the parked question batches described above.
 
 ## Worker CLI

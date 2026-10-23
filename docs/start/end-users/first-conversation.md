@@ -89,7 +89,7 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 - **Aborted at HH:MM** — a faint horizontal divider the chat inserts after the last assistant turn when the agent loop was halted. Renders only when the task carries a `system` history row with `kind: abort_marker`. The timestamp matches the wall-clock stamp the ABORTED banner displays.
 - **The follow-up input** — when the task is in a quiescent state (COMPLETED, FAILED, ABORTED, PENDING_APPROVAL, AWAITING_SUB_AGENTS) and the agent allows followup, the chat shows a single-line composer at the bottom; press Enter to send a new instruction.
 - **The command button** — a shell-prompt button next to the attach buttons opens the conversation commands. It is there for the things you ask for rather than type, today only **Compact conversation**.
-- **The compacted turns** — when a conversation has been compacted, the turns the summary replaced appear as a collapsed block above the messages. Click it to read what the model was told and the turns it was told instead of. The turns stay readable either way.
+- **The compacted turns** — when a conversation has been compacted, the messages the summary replaced appear as a collapsed block above the composer. Click it to read what the model was told and the turns it was told instead of. The turns stay readable either way.
 
 ## Compacting a long conversation
 
@@ -97,11 +97,12 @@ A long conversation eventually outgrows the model's context window. The agent co
 
 1. Open the command menu — the shell-prompt button next to the attach buttons on the follow-up bar.
 2. Click **Compact conversation**.
-3. The chat confirms with a toast. The compacted turns collapse into a block above the messages; click it to read them.
+3. The composer stands down and says **Compacting the conversation…** while the agent writes the summary. On a long conversation this takes a while — it is a model call over the whole history.
+4. The chat confirms with a toast, and a collapsed **N messages compacted** block appears above the composer. Click it to read the summary and the turns it stands in for.
 
 Nothing is lost. The agent gets a summary of the older turns in place of the full text — which is what keeps the conversation going — and you keep the original turns, readable in the collapsed block. The conversation carries on from the summary plus the last few turns.
 
-If the conversation is still too short to compact, the chat says so and leaves it alone.
+If the conversation is still too short to compact, the chat says so and leaves it alone. If the model fails to write a summary, the chat says so too and the history is left exactly as it was — a compaction that replaced the turns with nothing would take the conversation's context with it.
 
 ## Aborting a running agent
 

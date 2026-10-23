@@ -121,6 +121,52 @@ Several batches may coexist when the model invokes `ask_user_question` across se
 
 On success the answer is appended as a single `role:tool` history row carrying every formatted answer — one row per batch, mirroring the orchestrator's batched-tool-call pattern. The task flips to `QUEUED` when no batches remain pending, and stays `AWAITING_INPUT` while any other batch is still open. A `404` means the task is not the caller's; a `422` means the body was malformed, the `tool_call_id` matches no pending batch, the answer count differs from the question count, a `header` or `selections` label is unknown, or `free_text` was sent for a question that does not allow it.
 
+## Context window and compaction
+
+A long conversation eventually outgrows the model's context window. `ConversationCompactor` handles that by replacing the older part of the history with a summary the model reads instead.
+
+**The summarized turns are not deleted.** They stay in `task_history` with their sequences untouched, so the operator can still read them in the chat. What changes is what the model is sent: `MessageHistoryBuilder` drops the rows the summary covers and sends the summary in their place, at the position the range starts. A summary whose range a later, wider summary covers is redundant — the wider one was written from it — so it is dropped rather than sent.
+
+A compaction appends one `role=summary` row at the end of the history, carrying the sequence range it replaces in `summarized_sequence_range`:
+
+```jsonc
+{
+  "sequence": 8,
+  "role": "summary",
+  "content": "The agent read the page and answered…",
+  "summarized_sequence_range": "0-2",
+}
+```
+
+Appending rather than inserting is what keeps every existing row's sequence stable — `task_history` carries a unique index on `(task_id, sequence)`, so an inserted row would have to shift every row after it, and the SPA's `since_sequence` cursor is built on those sequences staying put. It also puts the summary above the SPA's cursor, so the next poll delivers it.
+
+### Two ways to trigger one
+
+**Automatically**, when the provider reports a context-window error. `ContextWindowRecovery` compacts the history and re-ticks.
+
+**Manually**, through `POST /api/v1/tasks/{taskId}/compact`:
+
+```http
+POST /api/v1/tasks/42/compact
+```
+
+```jsonc
+{
+  "data": {
+    "task": {/* the task detail resource */},
+    "compacted": true,
+  },
+}
+```
+
+It replaces everything but the last five rows with a summary. `compacted` is `false` when the history was too short to summarize, which leaves the task untouched. A `409` means the task is not in a state that can be compacted — a running task is mid-turn, and the tick writes rows as it goes, so a compaction would race it. A `404` means the task is not the caller's.
+
+### In the chat
+
+The command menu on the follow-up bar — the shell-prompt button next to the attach buttons — carries the task commands. "Compact conversation" asks the backend for one.
+
+The compacted turns are shown in a collapsed block above the messages rather than dropped: collapsed it says how many turns were compacted, expanded it shows what the model was told and the turns it was told instead of. The block sits above the messages because the compacted region is always a prefix of the transcript, and inside the turn structure it would split it.
+
 ## Task data keys
 
 Two working sets ride on the `tasks.data` JSON column rather than on their own tables, and both are visible to the operator without an extra API because the column is already serialised into the `TaskDetail` payload and onto Mercure events.
@@ -143,7 +189,7 @@ Two working sets ride on the `tasks.data` JSON column rather than on their own t
 }
 ```
 
-`MessageHistoryBuilder::compactHistory()` trims `task_history` rows when the context window fills, but it never touches `tasks.data` — so the todo list survives compaction.
+`ConversationCompactor` replaces the older part of a task's history with a summary when the context window fills, but it never touches `tasks.data` — so the todo list survives compaction. See [Context window and compaction](#context-window-and-compaction).
 
 `tasks.pending_state.pending_questions` holds the parked question batches described above.
 

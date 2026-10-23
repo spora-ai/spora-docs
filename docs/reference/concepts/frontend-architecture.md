@@ -126,6 +126,14 @@ The `useTaskStore` exposes a reactive sub-task cache for the `SubAgentTool` `sub
 
 The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to render the delegation breadcrumb via `data.handover.{target_agent_id, target_agent_name, target_task_id}` (the task id is the link's destination; the breadcrumb falls back to the agent page when it is absent), and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
 
+### The compacted prefix of a chat
+
+A [compaction](/reference/concepts/agent-loop-async#context-window-and-compaction) keeps the turns it replaced in the history — the model gets a summary in their place. `splitCompactedHistory()` (`src/composables/useTaskChat.ts`) splits that prefix off the transcript: the turns the summary stands in for, and the summary itself.
+
+The chat renders the split-off part in a collapsed block above the messages (`CompactedHistory.vue`), and the message list renders the rest. The block comes in through a `before-messages` slot on `TaskChatMessageList` rather than as a message of its own, because the compacted region is always a prefix of the transcript — inside the turn structure it would split it.
+
+The rule that decides which summaries are still in force mirrors the backend's `ActiveCompactions::find()`: the two have to agree on which rows the model still sees, or the chat would show turns the model never received.
+
 ## The `apps/` directory — extending the frontend
 
 Each "app" is a self-contained bundle of pages, components, types, stores, and an API client. The pattern keeps feature work isolated — adding a new top-level page (e.g. **Plugins**) does **not** touch the rest of the app.

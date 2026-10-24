@@ -126,6 +126,22 @@ The `useTaskStore` exposes a reactive sub-task cache for the `SubAgentTool` `sub
 
 The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to render the delegation breadcrumb via `data.handover.{target_agent_id, target_agent_name, target_task_id}` (the task id is the link's destination; the breadcrumb falls back to the agent page when it is absent), and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
 
+## The command menu
+
+The chat's task commands live in `useTaskChatCommands()` (`src/composables/useTaskChatCommands.ts`) and render through the shared `CommandMenu` component (`src/components/ui/CommandMenu.vue`). The list is data — `CommandAction[]` — so the menu stays a dumb renderer and a second command is one entry rather than a new component.
+
+A `CommandAction` carries an `id`, a `label`, an optional one-line `description`, an optional icon (a bundled name or a raw SVG path), a `disabled` flag and the `onSelect` callback. `CommandMenu` owns the open state, closes on an outside click and on `Escape`, and disables its trigger while an action is in flight — which is how the compaction command locks itself out for the duration of its model round trip.
+
+Today the list holds one command: **Compact conversation**, which asks the backend to compact the task's history and reports the outcome as a toast. The menu renders on the follow-up bar, so it is offered for a finished conversation — `COMPLETED`, `FAILED` or `ABORTED`, and only when the agent allows follow-ups. Those are exactly the states the backend accepts a compaction for.
+
+## The compacted prefix of a chat
+
+A [compaction](/reference/concepts/agent-loop-async#context-window-and-compaction) keeps the turns it replaced in the history — the model gets a summary in their place. `splitCompactedHistory()` (`src/composables/useTaskChat.ts`) splits that prefix off the transcript: the turns the summaries stand in for, and the summaries themselves.
+
+The chat renders the split-off part in a collapsed block (`CompactedHistory.vue`) above the composer, and the message list renders the rest. The block goes above the composer rather than at the top of the transcript — a compaction summarises the _older_ turns, so the top is where the reader is not looking, and the transcript scrolls past it.
+
+The rule that decides which summaries are still in force mirrors the backend's `ActiveCompactions::find()` exactly: the same candidate filter (a summary whose range does not parse is not a candidate at all), the same supersede rule (a summary whose range a later, wider summary covers was written from that wider one, so it is not sent to the model), the same ordering (by the sequence the range starts at, then the row's own sequence), and every in-force summary rather than only the newest — because the backend sends every in-force summary to the model. The two have to agree on which rows the model still sees, or the chat would show turns the model never received.
+
 ## The `apps/` directory — extending the frontend
 
 Each "app" is a self-contained bundle of pages, components, types, stores, and an API client. The pattern keeps feature work isolated — adding a new top-level page (e.g. **Plugins**) does **not** touch the rest of the app.
@@ -188,5 +204,7 @@ The global guard reads `meta.requiresAdmin` / `meta.requiresAuth` and short-circ
 - **`src/composables/useAdminAuth.ts`** — the canonical admin-gate pattern.
 - **`src/composables/useFeatureEnabled.ts`** — runtime feature flags from `/api/v1/config`.
 - **`src/components/agent/TaskChat/SubAgentToolCall.vue`** — the row widget rendered when a sub-agent op reports the spawned child ids — `sub_agent` and `sub_agent_continue` both do (one row per spawned child, live status from `subTaskCache`).
+- **`src/composables/useTaskChatCommands.ts`** — the task commands the chat offers, as data.
+- **`src/components/ui/CommandMenu.vue`** — the shared command-menu component those commands render through.
 - **`src/apps/plugins/`** — the template for adding a new top-level app.
 - **`src/stores/auth.ts`** — session, login, CSRF token.

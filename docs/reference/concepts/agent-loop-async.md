@@ -177,7 +177,7 @@ It summarises everything but the last five rows (`ConversationCompactor::KEEP_RO
 
 ### In the chat
 
-The command menu on the follow-up bar — the shell-prompt button next to the attach buttons — carries the task commands. "Compact conversation" asks the backend for one. The composer stands down while it runs: the call appends a summary row to the history the next prompt would be appended to, and it takes a model round trip.
+The command menu on the follow-up bar — the shell-prompt button next to the attach buttons — carries the task commands. "Compact conversation" asks the backend for one. The composer is gone while it runs: the call appends a summary row to the history the next prompt would be appended to, and it takes a model round trip. The **Compacting the conversation…** indicator sits in the transcript, beside the other in-flight states, because there is no composer left to carry it.
 
 The compacted turns are shown in a collapsed block rather than dropped: collapsed it says how many messages were compacted, expanded it shows what the model was told and the turns it was told instead of.
 

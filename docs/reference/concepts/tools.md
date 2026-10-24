@@ -659,6 +659,22 @@ There is no LLM-visible way to bypass the allowlist: `manage_skill` writes, `ski
 
 The tools below ship inside `spora-core` (not as plugins). Operators can configure their settings, but the implementations themselves are not pluggable — every operator gets the same behavior out of the box.
 
+### `ask_user_question` — `AskUserQuestionTool`
+
+The `ask_user_question` tool pauses the tick and puts a structured multiple-choice question to the operator, so the agent can ask for a decision that blocks its work instead of guessing or freeform-interrupting in chat.
+
+| Operation | Default enabled | Default approval | Purpose                                                                           |
+| --------- | --------------- | ---------------- | --------------------------------------------------------------------------------- |
+| `ask`     | yes             | auto             | Pose 1-4 questions in one call and park the task until the operator answers them. |
+
+The operation is enabled by default as soon as the tool is attached to an agent; the operator can still turn it off on the agent's **Tools** tab.
+
+It never asks for approval, because there is nothing to approve — the question _is_ the interaction, and the operator's answer is the tool result. A call flips the task to `AWAITING_INPUT` (the parallel to `PENDING_APPROVAL`) and parks the batch on `tasks.pending_state`; `POST /api/v1/tasks/{taskId}/answer` submits the answers and flips the task back to `QUEUED`. See [Agent loop / async → Parked work and operator input](/reference/concepts/agent-loop-async#parked-work-and-operator-input) for the wire shape.
+
+The limits are enforced: 1-4 questions per call, 2-4 options per question, and a header of at most 30 characters. A violation comes back as a tool error rather than a rejected call. The model is told to use the tool only for decisions that block its work — not for clarifying intent, which is what chat is for.
+
+**A parked task waits for a human indefinitely.** `AWAITING_INPUT` is a quiescent state: the worker stops driving the task, and the reaper only sweeps tasks stuck in `RUNNING`, so nothing times a pending batch out. On an agent that runs on a schedule — or one nobody is watching — an ask is a task that never finishes on its own. Turn the operation off for those agents on the **Tools** tab.
+
 ### `media` — `MediaTool`
 
 The `media` tool lets an agent search the media archive and mint public share URLs for individual assets. Its `scope` setting controls which `media_assets` rows the agent can see:

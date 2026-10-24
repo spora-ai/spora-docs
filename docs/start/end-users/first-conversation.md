@@ -90,6 +90,15 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 - **The follow-up input** — when the task is `COMPLETED`, `FAILED` or `ABORTED` and the agent allows followup, the chat shows a single-line composer at the bottom; press Enter to send a new instruction.
 - **The command button** — a shell-prompt button next to the attach buttons opens the conversation commands. It is there for the things you ask for rather than type, today only **Compact conversation**. It sits on the follow-up bar, so it appears once the conversation has finished.
 - **The compacted turns** — when a conversation has been compacted, the messages the summary replaced appear as a collapsed block above the composer. Click it to read what the model was told and the turns it was told instead of. The turns stay readable either way.
+- **The jump-to-newest button** — a round button in the lower right corner of the chat, shown while you are reading above the newest message. Click it to go back to the newest message.
+
+## Reading while the agent works
+
+While the agent works, the chat keeps the newest message in view: every turn that arrives scrolls the transcript down to it.
+
+Scrolling up pauses that. This is what you want when a turn takes a while and you want to read the tool calls or the context the agent is working from — the next message will not pull the transcript away from you. A round button appears in the lower right corner of the chat; click it to go back to the newest message, and the chat follows the conversation again.
+
+Scrolling back down to the newest message on your own does the same thing. Sending a follow-up message does too — you asked for the answer, so you want to watch it arrive.
 
 ## Compacting a long conversation
 

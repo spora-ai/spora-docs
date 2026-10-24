@@ -142,6 +142,16 @@ The chat renders the split-off part in a collapsed block (`CompactedHistory.vue`
 
 The rule that decides which summaries are still in force mirrors the backend's `ActiveCompactions::find()` exactly: the same candidate filter (a summary whose range does not parse is not a candidate at all), the same supersede rule (a summary whose range a later, wider summary covers was written from that wider one, so it is not sent to the model), the same ordering (by the sequence the range starts at, then the row's own sequence), and every in-force summary rather than only the newest — because the backend sends every in-force summary to the model. The two have to agree on which rows the model still sees, or the chat would show turns the model never received.
 
+## The chat's scroll position
+
+The chat follows the newest message while the agent works: `TaskChatPage` calls `scrollToBottom()` after every fetch and on every new history entry, and the message list scrolls its anchor into view.
+
+An operator who scrolls up to read a tool call must not be pulled back down by the next message, so `useChatAutoScroll()` (`src/composables/useChatAutoScroll.ts`) sits in front of that call. It watches the surface the transcript scrolls in and holds a `paused` flag; while the flag is set, `follow()` does nothing and the chat waits for the operator to ask for the newest message.
+
+The surface is not the message list: the chat column is not height-constrained, so the transcript scrolls in the layout's scroll container above it. The composable finds it by walking up from the transcript — the first ancestor with `overflow-y: auto` that actually overflows.
+
+The control that ends the pause is `TaskChatScrollToBottom.vue`, a round button in the lower right corner of the chat. It is `sticky` rather than `absolute`, because the transcript has no box of its own to position against, and it comes after the transcript in the DOM because a sticky element is only pulled up into view when it would otherwise be below the scrollport.
+
 ## The `apps/` directory — extending the frontend
 
 Each "app" is a self-contained bundle of pages, components, types, stores, and an API client. The pattern keeps feature work isolated — adding a new top-level page (e.g. **Plugins**) does **not** touch the rest of the app.

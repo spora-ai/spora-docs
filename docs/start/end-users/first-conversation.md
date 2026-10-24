@@ -97,7 +97,7 @@ A long conversation eventually outgrows the model's context window. The agent co
 
 1. Open the command menu — the shell-prompt button next to the attach buttons on the follow-up bar.
 2. Click **Compact conversation**.
-3. The composer stands down and says **Compacting the conversation…** while the agent writes the summary. On a long conversation this takes a while — it is a model call over the whole history.
+3. The composer disappears and the conversation says **Compacting the conversation…** while the agent writes the summary. On a long conversation this takes a while — it is a model call over the whole history.
 4. The chat confirms with a toast, and a collapsed **N messages compacted** block appears above the composer. Click it to read the summary and the turns it stands in for.
 
 You can only do this once the conversation has finished. The command menu sits on the follow-up bar, so it is offered for a `COMPLETED`, `FAILED` or `ABORTED` conversation — a running agent is mid-turn, and the tick writes rows as it goes, so compacting it would race that.

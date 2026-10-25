@@ -486,16 +486,25 @@ final class MySearchTool extends AbstractTool
 
 LLM driver settings (OpenAI/Anthropic API keys, model, base URL, etc.) are stored as a JSON blob on the `llm_driver_configurations` table, scoped to a per-driver `LLMDriverConfiguration` record, and surfaced via `LLMConfigService::decodeSettings()`. The driver class itself declares its settings via `#[ToolSetting]` on the class (see `app/Drivers/OpenAICompatibleDriver.php` and `app/Drivers/AnthropicCompatibleDriver.php`), and `DriverFactory` reads them when constructing a driver for an agent.
 
-## Setting cascade: schema defaults → global → user → agent
+## Setting cascade
 
 `ToolConfigService::getEffectiveSettings(toolClass, agentId, userId)` resolves each setting in order:
 
 1. **Schema defaults** — the `default:` value declared on the `#[ToolSetting(...)]` attribute, used when no row exists in any of the three tables below.
 2. **Global** value (`tool_configurations` table, scoped to the tool class).
-3. **User-level** override (`tool_user_settings`, when `userId` is provided).
-4. **Agent-level** override (`agent_tool_overrides`, when an entry exists for `agentId + toolClass`).
+3. **Group** value (`tool_user_settings`, on a row whose `principal_id` is a group principal).
+4. **Principal** value (`tool_user_settings`, on a row whose `principal_id` is the user principal).
+5. **Agent-level** override (`agent_tool_overrides`, when an entry exists for `agentId + toolClass`).
 
 Later layers win; schema defaults fill in any keys that no layer has set. Tools never read `tool_configurations` directly — always go through `ToolConfigService`.
+
+A plugin's [shared settings group](#shared-settings-groups) sits below the global layer: it fills in the keys the global layer has not set, the same way the schema defaults do.
+
+### Two layers, one table
+
+The group layer and the principal layer share `tool_user_settings`. The table was created for users; migration `0067` re-keyed it from `user_id` to `principal_id`, and migration `0082` restored the unique constraint on `(principal_id, tool_class)` — without it, two concurrent writes to the same `(principal_id, tool_class)` could both insert. The column value decides the layer: a `principal_id` pointing at a group principal is a group-level setting, one pointing at a user principal is the personal one.
+
+The group layer is opt-in. It is only consulted when `SPORA_TOOLS_GROUP_CASCADE_ENABLED` is on, which is off by default so that a group's tool settings stay on the group. With it on, the principal ids are iterated in a fixed order — the groups ascending by `principal.id`, the user principal last — so the user principal wins on conflict. See [Environment variables → Tools](/start/operators/env-vars#tools).
 
 ## Per-Tool Key Scoping
 

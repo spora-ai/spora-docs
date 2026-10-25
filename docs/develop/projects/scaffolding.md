@@ -131,18 +131,23 @@ final class MyApiController
 }
 ```
 
-After creation, the scaffolder prints the route call:
+After creation, the scaffolder prints the subscriber body to add to `app/App.php`:
 
 ```text
-$r->addRoute(
-    'GET',
-    '/api/v1/my-api',
-    [\App\Http\Controllers\MyApiController::class, 'index'],
-    [\Spora\Http\Middleware\AuthMiddleware::class, \Spora\Http\Middleware\CsrfMiddleware::class],
-);
+Add a RoutesRegisteringEvent subscriber to app/App.php. The App receives the event only if it implements EventSubscriberInterface and lists the method in getSubscribedEvents():
+
+public function onRoutesRegistering(RoutesRegisteringEvent $event): void
+{
+    $event->routes()->addRoute(
+        'GET',
+        '/api/v1/my-api',
+        [\App\Http\Controllers\MyApiController::class, 'index'],
+        [\Spora\Http\Middleware\AuthMiddleware::class, \Spora\Http\Middleware\CsrfMiddleware::class],
+    );
+}
 ```
 
-The maker's own instruction line tells you to paste that call into `app/App.php` inside `routes(MiddlewareRouteCollector $r)`. That hook was **removed in 1.0** — there is no `routes()` method to paste into. The call itself is unchanged; only its target moved. Paste it into an `onRoutesRegistering()` listener instead:
+That is the method body only. The surrounding class is yours to keep — but the App only receives the event if it implements `EventSubscriberInterface` and names the method in `getSubscribedEvents()`, so the pasteable shape is the whole class:
 
 ```php
 // app/App.php
@@ -174,7 +179,7 @@ final class App extends AbstractExtension implements EventSubscriberInterface
 }
 ```
 
-> **Note:** `make:controller` still prints the pre-1.0 wording verbatim — that string lives in `spora-maker/src/Maker/MakeController.php:63` and has not been updated. The route-registration model itself is unchanged; `RoutesRegisteringEvent::routes()` returns the same `MiddlewareRouteCollector` that the old `routes()` hook received.
+There is no `routes(MiddlewareRouteCollector $r)` hook to paste into — it was **removed in 1.0**. The route-registration model itself is unchanged; `RoutesRegisteringEvent::routes()` returns the same `MiddlewareRouteCollector` that the old `routes()` hook received.
 
 The middleware stack (`AuthMiddleware` + `CsrfMiddleware`) matches every other admin route. Change the HTTP verb, add a new route for another verb, or strip the auth/CSRF stack for a public route by editing the snippet before pasting.
 
@@ -215,9 +220,11 @@ final class App extends AbstractExtension
      * Project-level App extension. Discovered by AppLoader via reflection;
      * one per installation, no manifest, no slug.
      *
-     * Override hooks to wire project-local code into the framework:
-     *   tools(), drivers(), recipePaths(), schemaVersion(), migrationsPath(),
-     *   apps(), register(\DI\ContainerBuilder), routes(), boot().
+     * Override any of SporaExtensionInterface's ten data hooks to wire
+     * project-local code in — `tools()` is the common one. Lifecycle is not
+     * hooks: implement Symfony\Component\EventDispatcher\EventSubscriberInterface
+     * and react to Spora\Events\{ContainerBuildingEvent, RoutesRegisteringEvent,
+     * BootingEvent}.
      *
      * Promote to a plugin later: rename App → Plugin, add plugin.json, ship
      * as a Composer package.
@@ -229,10 +236,7 @@ final class App extends AbstractExtension
 }
 ```
 
-> **Note:** the scaffolder still emits that comment verbatim (`spora-maker/src/Maker/MakeApp.php:33-34`) — it has not been updated for 1.0, so **do not treat the list as the hook surface**. Only four of those nine names are hooks today: `tools()`, `schemaVersion()`, `migrationsPath()`, and `apps()`. The other five were removed in 1.0:
->
-> - `drivers()` and `recipePaths()` had no callers and are simply gone.
-> - `register()`, `routes()`, and `boot()` became PSR-14 events — `ContainerBuildingEvent` (payload `builder()`), `RoutesRegisteringEvent` (payload `routes()`), and `BootingEvent` (payload `container()`) respectively. An App takes part by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface`, exactly as the `make:controller` snippet above does.
+> **Note:** the comment names the ten data hooks of `SporaExtensionInterface` but does not enumerate them — the full list is in [Concepts → App extensions](/reference/concepts/app-extension). Two names the pre-1.0 comment used are gone: `drivers()` and `recipePaths()` had no callers and were dropped (their replacements are `agentTemplatePaths()` and `skillPaths()`). Lifecycle is not a hook at all: `register()`, `routes()`, and `boot()` became PSR-14 events — `ContainerBuildingEvent` (payload `builder()`), `RoutesRegisteringEvent` (payload `routes()`), and `BootingEvent` (payload `container()`) respectively. An App takes part by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface`, exactly as the `make:controller` snippet above does.
 
 The full hook table and the three lifecycle events are in [Concepts → App extensions](/reference/concepts/app-extension); the same contract from the plugin side is in [Foundations → Available hooks](/develop/plugins/author-guide/foundations#available-hooks).
 

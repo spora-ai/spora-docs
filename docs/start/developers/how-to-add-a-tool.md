@@ -174,7 +174,7 @@ final class HelloTool extends AbstractTool
 
 The operator sees `default_greeting` in the admin UI's Tools → Hello page. The setting is encrypted at rest and merged into the tool's effective settings via `ToolConfigService::getEffectiveSettings()`.
 
-For the full settings key convention, see [Concepts → Tool system → Setting cascade](/reference/concepts/tools#setting-cascade-schema-defaults-→-global-→-user-→-agent).
+For the full settings key convention, see [Concepts → Tool system → Setting cascade](/reference/concepts/tools#setting-cascade).
 
 ## Step 6 — Distribute as a plugin (optional)
 

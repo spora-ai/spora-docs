@@ -1,18 +1,26 @@
 ---
 title: Architecture
-description: System overview — config priority, orchestrator loop, worker modes, plugin system, agent templates, database.
+description: System overview — config priority, the settings registry, orchestrator loop, compaction, worker modes, internationalisation, plugin system, database.
 ---
 
 # Spora: Architecture
 
 ## Configuration
 
-Priority: `OS env` → `.env` → `config.php` → built-in defaults.
+Priority: `built-in defaults` → `config.php` → `OS env` / `.env` → the `settings` table.
 
 - **Shared hosting:** `config.php` (gitignored, like `wp-config.php`) — editable over FTP.
 - **Docker/VPS/CI:** `SPORA_*` env vars, skip `config.php` entirely.
 
 **Encryption key separation:** The DB stores encrypted tool credentials; the key must never be in the same backup. The path is recorded in `config.php` as `key_path` (default install writes `storage/secret.key`). `SPORA_SECRET_KEY` (base64 env var) bypasses the file entirely for containers; `SPORA_KEY_PATH` overrides the file path instead.
+
+### The settings registry
+
+Every runtime setting is declared once, in `app/Settings/SettingDeclarations.php`: its key, its type, its default, and whether it is `bootOnly`. `SettingsRegistry` reads those declarations, `SettingsRepository` reads and writes the `settings` table (migration `0092`), and `ConfigFactory` turns them into a `Config` value object that carries each value together with where it came from.
+
+The table is what makes the registry a registry rather than a list of constants: one row per saved override, keyed `UNIQUE(group_key, setting_key)`, and a row there beats both `config.php` and the environment. The sixteen `bootOnly` keys are the exception — they are read before the database opens, so they stay file-only and the admin UI lists them without offering an editor.
+
+The same declarations drive the admin UI, so a setting cannot exist in the registry and be missing from the page that edits it. See [Global settings](/start/operators/global-settings) for the operator's side and [Config keys](/reference/config-keys) for every key.
 
 ## Tool Taxonomy
 
@@ -110,6 +118,14 @@ flowchart LR
 
 Status transitions: `QUEUED → RUNNING → COMPLETED | FAILED | PENDING_APPROVAL ⇄ RUNNING → CANCELLED` and `RUNNING → AWAITING_SUB_AGENTS → RUNNING (sync) | QUEUED (worker)` (added in spora-core PR #196 — `AWAITING_SUB_AGENTS` is set by the `SubAgentTool` `sub_agent` and `sub_agent_continue` ops while the parent task waits for every spawned child to reach a terminal state) plus `RUNNING → ABORTED` and `AWAITING_SUB_AGENTS → ABORTED` (quiescent, added in spora-core PR #207 via `POST /api/v1/tasks/{id}/abort`) and `RUNNING → ABORTED` from the step cap (system-initiated, added in spora-core PR #266 via `TaskStatusWriter::autoAbortTransition` — the row carries `data.max_steps_reached: true` to distinguish it from operator aborts; the existing follow-up flow covers continuation). `ABORTED` is resumable via `POST /api/v1/tasks/{id}/continue` and `data.aborted_at` (and `data.max_steps_reached`, where present) is wiped on resume. PENDING is the initial value written by the migration; in practice the worker transitions QUEUED→RUNNING before the first tick. The `CANCELLED` terminal status is set by `TaskService::cancelRetryChain`; the `ABORTED` quiescent status is set by `Orchestrator::abort` or by `TaskStatusWriter::autoAbortTransition` (the step-cap path) — `REJECTED` is the analogous status for `tool_calls` rows, not `tasks`.
 
+### Context window and compaction
+
+A long conversation eventually outgrows the model's context window. `ConversationCompactor` summarises the older part of the history: the model reads the summary in place of the turns it covers, and **the summarized turns are not deleted** — they stay in `task_history` with their sequences untouched, so the operator can still read them in the chat.
+
+A compaction is triggered two ways: automatically, when the provider reports a context-window error, and manually, through `POST /api/v1/tasks/{taskId}/compact` (the chat's **Compact conversation** command). Both append one `role=summary` row at the end of the history carrying the sequence range it replaces. Appending rather than inserting is what keeps every existing row's sequence stable — `task_history` carries a unique index on `(task_id, sequence)`, and the SPA's `since_sequence` cursor is built on those sequences staying put.
+
+If the summariser returns nothing, the compaction fails and **the history is left unchanged**: a compaction that produces no summary must not replace the turns it was meant to summarize. See [Agent loop and async mode → Context window and compaction](/reference/concepts/agent-loop-async#context-window-and-compaction) for the summary budget, what the summariser sees, and the failure modes.
+
 ### Worker runtime modes (`SPORA_WORKER_RUNTIME_MODE`)
 
 Spora has two runtime modes — `server` (a supervised daemon drains the queue) and `client` (the browser's `SharedWorker` drives tasks for the user who ran them). The active mode is set via `SPORA_WORKER_RUNTIME_MODE` (env) or `worker_runtime_mode` (config key); `spora-ai/spora` defaults to `server`, and flipping the env var to `client` lands in the same place without changing packages. The HTTP request always returns once the task is `QUEUED`; the worker (daemon or browser) drives the result.
@@ -117,6 +133,14 @@ Spora has two runtime modes — `server` (a supervised daemon drains the queue) 
 In both modes, multi-step tasks (multiple LLM turns before reaching a terminal state) run synchronously within a single `tick()` chain — the loop calls itself recursively until `COMPLETED`, `FAILED`, or `PENDING_APPROVAL`. The legacy `SPORA_SYNC_MODE` boolean and the `WorkerMode::Sync` enum case were removed in spora-core 0.19.0.
 
 For the full three-configuration overview (server + Mercure, server + polling, client + polling), see [Deployment modes](/reference/concepts/deployment-modes). For tick phases, task lifecycle, and Mercure publishing, see [Agent loop and async mode](/reference/concepts/agent-loop-async). For the shared-host browser-driven path, see [Client-worker mode](/deploy/shared-host/client-worker-mode).
+
+## Internationalisation
+
+The interface language is a runtime setting, not a build-time constant. `SPORA_DEFAULT_LANG` sets the instance default; a signed-in user overrides it with their own choice, stored server-side in `users.locale` (migration `0096`).
+
+The frontend ships with `vue-i18n` and the catalogues in `src/locales/` — `en` and `de`. The source is the catalogue: `scripts/i18n.mjs` harvests every literal `$t('…')` and regenerates `en.json` from it, and CI enforces the contract — a locale missing a key, an English-identical placeholder, or a translation whose placeholders do not match its key fails the build. Because the key **is** the English source text, a string with no translation falls back to English rather than to a raw key.
+
+`SPORA_DEFAULT_LANG` is an ordinary (non-`bootOnly`) setting, so an operator can change it at **Settings → Runtime settings** and it takes effect on the next request. See [Frontend architecture → i18n](/reference/concepts/frontend-architecture#i18n) for the implementation and [Global settings → Language](/start/operators/global-settings) for the operator's side.
 
 ## Plugin System
 

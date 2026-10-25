@@ -73,6 +73,26 @@ on two machines.
 It is a plain setting, not a file-only one, so a value saved here overrides one
 set in `.env` or `config.php` — the same four-layer chain as every other field.
 
+### The languages that ship
+
+Two: **English** (`en`) and **German** (`de`). The admin UI bundles a catalogue for each in
+`spora-frontend/src/locales/`, and core carries the same two for the strings it renders. An
+installed plugin can add a third — the language picker's option list is every locale that has a
+catalogue in core or in a plugin, so adding a language is a file, not a release.
+
+### A locale that is only partly translated
+
+A partly translated catalogue never shows raw keys. The catalogue key **is** the English source
+text, so a string with no translation renders as the English text — `Save`, not `settings.save`.
+A user sees one English label inside an otherwise German interface, not a broken one.
+
+The shipped catalogues do not reach that state by accident: the frontend's CI gate fails the
+build when a locale is missing a key, so `de` is complete or the release does not ship. The
+fallback matters in the other direction — a plugin that registers a language the admin UI has no
+catalogue for. The picker does not offer such a language, because offering it would render the
+whole interface in raw keys, and the instance default falls back to `en` instead of to a language
+nobody can read.
+
 ## Saving, and resetting
 
 Save sends only the fields you changed, and the whole batch is validated before anything is written —

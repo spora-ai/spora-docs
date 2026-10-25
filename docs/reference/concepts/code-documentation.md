@@ -56,26 +56,55 @@ These patterns provide genuine value:
 ### Security Rationale
 
 ```php
-// #1 SSRF guard: allowlist only http/https — blocks file://, ftp://, gopher://,
-// cloud metadata endpoints (http://169.254.169.254), etc.
+// The scheme allowlist stops file://, ftp:// and gopher:// — it does
+// not stop an http:// URL that points at a private address. The
+// private-range screen is a separate layer, in SsrfGuard, and applies
+// to every operation.
 $scheme = strtolower(parse_url($url, PHP_URL_SCHEME) ?? '');
 ```
 
 _(from `app/Tools/ReadUrlTool.php`)_
 
 ```php
-// Security Barrier: Allowed Recipients check
+/**
+ * Reserved IPv4 space as leading text prefixes: RFC1918, loopback,
+ * link-local, carrier-grade NAT, `192.0.0.0/24`, benchmarking
+ * (`198.18.0.0/15`), multicast and `240.0.0.0/4`.
+ *
+ * Not exhaustive — the broadcast address is not covered, and matching on
+ * text rather than on packed bits means an address written in an unusual
+ * numeric form is caught by `inet_pton()` failing to parse it, not here.
+ */
 ```
 
-_(from `app/Tools/EmailTool.php`)_
+_(from `app/Services/SsrfGuard.php`)_
+
+```php
+// `SsrfGuard` screened the URL as supplied, once. Following a
+// redirect would re-issue the POST to a host that was never
+// screened — a `302` to the cloud metadata endpoint turns the
+// guard into a comment. A 3xx falls through to
+// `recordFailure()` and is retried, which is the right answer
+// for a receiver that has no reason to redirect.
+'max_redirects' => 0,
+```
+
+_(from `app/Services/AgentApi/AgentApiCallbackDispatcher.php`)_
 
 **Why:** Security decisions often look arbitrary without context. The _why_ prevents future developers from accidentally weakening protections.
+
+> **A comment must not over-claim.** The scheme allowlist and the private-range screen are two separate checks: `http://169.254.169.254` passes the allowlist. A comment that credits the allowlist with blocking the metadata endpoint tells the next reader that a layer they cannot see is covered — which is how one of them quietly gets weakened.
 
 ### Complex Business Logic
 
 ```php
-// Seed schema defaults if no global config AND no agent override exists
-$globalSettings = $this->toolConfig->getGlobalSettings($toolClass);
+// Per-agent ceiling on temp media rows. Migration 0081
+// backfills every pre-existing agent to the schema's default
+// (`5`); new agents get the explicit body value when supplied,
+// falling back to `5` to match the column default so the
+// "voice recordings auto-purge after 5" mental model holds
+// out of the box.
+'voice_message_retention_count' => (int) ($allowed['voice_message_retention_count'] ?? 5),
 ```
 
 _(from `app/Services/AgentService.php`)_

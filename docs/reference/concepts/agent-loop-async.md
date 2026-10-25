@@ -179,9 +179,9 @@ It summarises everything but the last five rows (`ConversationCompactor::KEEP_RO
 
 The command menu on the follow-up bar — the shell-prompt button next to the attach buttons — carries the task commands. "Compact conversation" asks the backend for one. The composer is gone while it runs: the call appends a summary row to the history the next prompt would be appended to, and it takes a model round trip. The **Compacting the conversation…** indicator sits in the transcript, beside the other in-flight states, because there is no composer left to carry it.
 
-The compacted turns are shown in a collapsed block rather than dropped: collapsed it says how many messages were compacted, expanded it shows what the model was told and the turns it was told instead of.
+The compaction leaves a mark in the transcript rather than replacing anything: the summary row is appended to the history where the compaction happened, so the chat shows a collapsed **N messages compacted** marker at that point — expanded, what the model was told. The turns the summary stands in for stay in the transcript, right where they were.
 
-The block sits above the composer rather than where the compacted turns were. A compaction summarises the _older_ turns, so the block that stands in for them belongs at the top of the transcript — which is exactly where the reader is not looking. The transcript scrolls past it, so it goes where the operator is looking for the result of the action they just took.
+The marker's position is the summary row's own sequence, which is where the compaction was written: the row is appended to the history at that moment. A conversation can be compacted more than once, and each compaction leaves its own marker — the later one covers everything the earlier one did, because its range starts where the earlier range started.
 
 ## Task data keys
 

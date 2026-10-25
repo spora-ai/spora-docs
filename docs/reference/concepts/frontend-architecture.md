@@ -134,13 +134,23 @@ A `CommandAction` carries an `id`, a `label`, an optional one-line `description`
 
 Today the list holds one command: **Compact conversation**, which asks the backend to compact the task's history and reports the outcome as a toast. The menu renders on the follow-up bar, so it is offered for a finished conversation — `COMPLETED`, `FAILED` or `ABORTED`, and only when the agent allows follow-ups. Those are exactly the states the backend accepts a compaction for.
 
-## The compacted prefix of a chat
+## The compacted turns of a chat
 
-A [compaction](/reference/concepts/agent-loop-async#context-window-and-compaction) keeps the turns it replaced in the history — the model gets a summary in their place. `splitCompactedHistory()` (`src/composables/useTaskChat.ts`) splits that prefix off the transcript: the turns the summaries stand in for, and the summaries themselves.
+A [compaction](/reference/concepts/agent-loop-async#context-window-and-compaction) keeps the turns it replaced in the history — the model gets a summary in their place.
 
-The chat renders the split-off part in a collapsed block (`CompactedHistory.vue`) above the composer, and the message list renders the rest. The block goes above the composer rather than at the top of the transcript — a compaction summarises the _older_ turns, so the top is where the reader is not looking, and the transcript scrolls past it.
+The transcript shows the conversation as it happened, with the compaction marked in it. `buildChatMessages()` (`src/composables/useTaskChat.ts`) turns a `summary` row into a `summary` message, and `buildChatBlocks()` gives it a block of its own, so the marker stands where the summary row sits. That position is the point in the conversation where the compaction happened: the backend appends the summary row to the history at that moment, so its sequence is the marker's place. The turns the summary stands in for stay in the transcript — the chat is the history, not the model's view of it.
 
-The rule that decides which summaries are still in force mirrors the backend's `ActiveCompactions::find()` exactly: the same candidate filter (a summary whose range does not parse is not a candidate at all), the same supersede rule (a summary whose range a later, wider summary covers was written from that wider one, so it is not sent to the model), the same ordering (by the sequence the range starts at, then the row's own sequence), and every in-force summary rather than only the newest — because the backend sends every in-force summary to the model. The two have to agree on which rows the model still sees, or the chat would show turns the model never received.
+`CompactionMarker.vue` renders the marker: collapsed it says how many turns the summary stands in for (the range the summary carries names them), expanded it shows what the model was given in their place.
+
+## The chat's scroll position
+
+The chat follows the newest message while the agent works: `TaskChatPage` calls `scrollToBottom()` after every fetch and on every new history entry, and the message list scrolls its anchor into view.
+
+An operator who scrolls up to read a tool call must not be pulled back down by the next message, so `useChatAutoScroll()` (`src/composables/useChatAutoScroll.ts`) sits in front of that call. It watches the surface the transcript scrolls in and holds a `paused` flag; while the flag is set, `follow()` does nothing and the chat waits for the operator to ask for the newest message.
+
+The surface is not the message list: the chat column is not height-constrained, so the transcript scrolls in the layout's scroll container above it. The composable finds it by walking up from the transcript — the first ancestor with `overflow-y: auto` that actually overflows.
+
+The control that ends the pause is `TaskChatScrollToBottom.vue`, a round button in the lower right corner of the chat. It is `sticky` rather than `absolute`, because the transcript has no box of its own to position against, and it comes after the transcript in the DOM because a sticky element is only pulled up into view when it would otherwise be below the scrollport.
 
 ## The `apps/` directory — extending the frontend
 

@@ -175,6 +175,12 @@ The key **is** the English source text, so `en.json` is a generated identity map
 
 Both run in `.github/workflows/ci.yml`: extract first, then check.
 
+### What a plugin frontend costs
+
+A plugin frontend that ships its own catalogue brings its **own `vue-i18n` runtime** — roughly 74 KB measured — and the host deliberately does not publish an instance of its own for plugins to share (`src/apps/registry.ts:53-57`). Five plugin frontends therefore ship five copies of the runtime, which is why the per-plugin bundle budget in `spora-plugin-typst-frontend` was raised from 200 KB to 240 KB.
+
+The trade-off is deliberate: a plugin that could not translate at all would be a plugin an operator cannot read in their own language, and sharing one instance across independently versioned plugins would couple their release cycles. The cost is measured per plugin, and a plugin that does not need a catalogue should not ship one.
+
 ## The command menu
 
 The chat's task commands live in `useTaskChatCommands()` (`src/composables/useTaskChatCommands.ts`) and render through the shared `CommandMenu` component (`src/components/ui/CommandMenu.vue`). The list is data — `CommandAction[]` — so the menu stays a dumb renderer and a second command is one entry rather than a new component.

@@ -1,6 +1,6 @@
 ---
 title: Frontend architecture
-description: Vue 3 + Vite + Tailwind + radix-vue + Pinia, build, shared API client, composables, apps/ module pattern.
+description: Vue 3 + Vite + Tailwind + radix-vue + Pinia, build, shared API client, composables, i18n, apps/ module pattern.
 ---
 
 # Spora Frontend (`spora-frontend`)
@@ -21,6 +21,7 @@ This document covers how the frontend is structured, how it talks to the backend
 | Icons      | `lucide-vue-next`                      | Tree-shaken; the shared `<Icon>` component resolves names from the lucide palette.               |
 | HTTP       | `fetch` via the shared `api/client.ts` | Same envelope handling as the backend (`{ data }` / `{ error }`).                                |
 | Routing    | `vue-router` 4                         | Route guards read the auth store.                                                                |
+| i18n       | `vue-i18n` 11                          | Bundled catalogues; the catalogue contract is enforced in CI.                                    |
 
 ## Build & deploy
 
@@ -126,6 +127,54 @@ The `useTaskStore` exposes a reactive sub-task cache for the `SubAgentTool` `sub
 
 The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to render the delegation breadcrumb via `data.handover.{target_agent_id, target_agent_name, target_task_id}` (the task id is the link's destination; the breadcrumb falls back to the agent page when it is absent), and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
 
+## i18n
+
+The interface is translated with `vue-i18n` (Composition API only, `legacy: false`). Four places carry it:
+
+| Path                                        | What it holds                                                                 |
+| ------------------------------------------- | ----------------------------------------------------------------------------- |
+| `src/i18n/index.ts`                         | The `createI18n` instance, the bundled catalogues, `availableLocales`.        |
+| `src/locales/*.json`                        | One catalogue per locale. `en.json` is generated; the others are hand-edited. |
+| `src/stores/locale.ts`                      | The Pinia store that owns the active language and resolves it.                |
+| `src/components/profile/LocaleSelector.vue` | The picker in the profile menu.                                               |
+
+### The catalogues are bundled, not fetched
+
+`src/i18n/index.ts` inlines every `src/locales/*.json` at build time with `import.meta.glob(..., { eager: true })`. A locale switch therefore costs no round trip. The alternative — a runtime `fetch` per locale — would put a request on the critical path of every first paint for a payload of a few KB.
+
+### Which language wins
+
+`useLocaleStore().init()` resolves the active locale in this order:
+
+1. the signed-in user's own preference, stored server-side in `users.locale` (not only in the browser — a preference that lives in `localStorage` alone is gone on the next device);
+2. the instance default, `SPORA_DEFAULT_LANG`, read from the boot config;
+3. `en`.
+
+`Accept-Language` is deliberately not consulted: the instance owner sets one language for the install, and a browser header would show the same user two languages on two machines.
+
+The `localStorage` copy under `spora.locale` is a **boot placeholder**, not a fourth link in the chain. It paints the right language before the preference round trip resolves, and `init()` then overwrites it with the authoritative answer — treating it as a link would pin the browser to a stale language forever, because nothing would ever demote it once the instance default changed.
+
+### An untranslated string
+
+The key **is** the English source text, so `en.json` is a generated identity map (`"Save": "Save"`). A key with no translation in the active locale falls back to `en`, which renders the English text rather than a raw key. The fallback is a safety net, not the everyday path: the CI gate below fails the build when a target locale is missing a key.
+
+### Dates, numbers and relative time
+
+`src/utils/locale.ts` exports `activeLocale()` — the app's own locale, not the browser's, because `toLocaleString(undefined, …)` follows the runtime's locale, which is the machine's. Dates and numbers are formatted through it (`toLocaleDateString(activeLocale(), …)`, `n.toLocaleString(activeLocale())`), and relative times go through `formatRelativeTime(iso, locale)` in `src/composables/useRelativeTime.ts`, which uses `Intl.RelativeTimeFormat` for every locale except English — English keeps the compact `5m ago` form the dashboard has always shipped.
+
+### The catalogue is enforced in CI
+
+`scripts/i18n.mjs` harvests the literal `$t('…')` / `t('…')` arguments out of the source, using the two parsers already in the tree (`vue-eslint-parser` and `@typescript-eslint/typescript-estree`) rather than a bundler plugin, because the failure output has to name `file:line`. `npm run i18n:extract` regenerates `en.json`; `npm run i18n:check` writes nothing and fails on:
+
+- a key vue-i18n cannot compile;
+- `en.json` drifting from the source;
+- a target locale missing a key, or carrying a key the source no longer has — the English text was edited and the translation was orphaned;
+- an empty or English-identical value — an untranslated placeholder that reads as translated until a German user hits it;
+- a translation whose placeholders are not the key's placeholders, which would render them literally;
+- raw operator-facing text outside `t()`.
+
+Both run in `.github/workflows/ci.yml`: extract first, then check.
+
 ## The command menu
 
 The chat's task commands live in `useTaskChatCommands()` (`src/composables/useTaskChatCommands.ts`) and render through the shared `CommandMenu` component (`src/components/ui/CommandMenu.vue`). The list is data — `CommandAction[]` — so the menu stays a dumb renderer and a second command is one entry rather than a new component.
@@ -218,3 +267,5 @@ The global guard reads `meta.requiresAdmin` / `meta.requiresAuth` and short-circ
 - **`src/components/ui/CommandMenu.vue`** — the shared command-menu component those commands render through.
 - **`src/apps/plugins/`** — the template for adding a new top-level app.
 - **`src/stores/auth.ts`** — session, login, CSRF token.
+- **`src/i18n/index.ts`** — the i18n instance, the bundled catalogues and the locale set the picker offers.
+- **`scripts/i18n.mjs`** — the catalogue extractor and the CI rules that keep `src/locales/*.json` honest.

@@ -28,6 +28,12 @@ The admin UI is a single-page Vue 3 application. Once you log in, everything hap
 | **My Account**  | Your own display name, email address, password and notification subscriptions — and the interface language of the admin UI, under **Language**. The picker lists the languages the interface ships translations for; each user picks their own, and the instance default (`SPORA_DEFAULT_LANG`) applies only where a user has not chosen.                                      |
 | **Settings**    | Site-wide config, mail transport, Mercure, plugin install flag.                                                                                                                                                                                                                                                                                                                |
 
+**If a label comes out in English.** A string with no translation in your language renders as the
+English text, never as a raw key like `settings.save` — so a half-translated interface is one
+English label rather than a broken page. The languages that ship are English and German; if your
+language is not one of them, the picker will not offer it, because offering a language the
+interface cannot render would show you raw keys everywhere.
+
 ## What you can't do in the admin UI
 
 Some things still require the CLI:

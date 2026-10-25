@@ -131,26 +131,19 @@ final class MyApiController
 }
 ```
 
-After creation, the scaffolder prints the subscriber body to add to `app/App.php`:
+After creation, the scaffolder prints the complete subscriber class to merge into `app/App.php`:
 
 ```text
-Add a RoutesRegisteringEvent subscriber to app/App.php. The App receives the event only if it implements EventSubscriberInterface and lists the method in getSubscribedEvents():
-
-public function onRoutesRegistering(RoutesRegisteringEvent $event): void
-{
-    $event->routes()->addRoute(
-        'GET',
-        '/api/v1/my-api',
-        [\App\Http\Controllers\MyApiController::class, 'index'],
-        [\Spora\Http\Middleware\AuthMiddleware::class, \Spora\Http\Middleware\CsrfMiddleware::class],
-    );
-}
+Add a RoutesRegisteringEvent subscriber to app/App.php. The App receives the event only if it implements EventSubscriberInterface and lists the method in getSubscribedEvents(). The class below is complete and compiles as written — merge it into app/App.php: copy the use statements, add implements EventSubscriberInterface to the class declaration, and add the members, keeping your own getName() value and the hooks your project already overrides.
 ```
 
-That is the method body only. The surrounding class is yours to keep — but the App only receives the event if it implements `EventSubscriberInterface` and names the method in `getSubscribedEvents()`, so the pasteable shape is the whole class:
+`AbstractExtension` leaves `getName()` abstract, so a class without it does not load — that is why the printed class carries one. Keep your own value for it, and the data hooks your project already overrides, when you merge the members into your existing `app/App.php`:
 
 ```php
-// app/App.php
+<?php
+
+declare(strict_types=1);
+
 namespace App;
 
 use Spora\Events\RoutesRegisteringEvent;
@@ -161,6 +154,11 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 final class App extends AbstractExtension implements EventSubscriberInterface
 {
+    public function getName(): string
+    {
+        return 'My Spora App';
+    }
+
     /** @return array<class-string, string> */
     public static function getSubscribedEvents(): array
     {

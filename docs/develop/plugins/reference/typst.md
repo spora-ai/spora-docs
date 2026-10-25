@@ -247,7 +247,7 @@ The plugin ships one skill, `typst` (`skills/typst/SKILL.md`), plus its resource
 - `examples/showcase.typ` — a full syntax demo document.
 - `fonts/` — the five bundled families plus both licence files.
 
-The skill is `allowedByDefault: "false"` and declares `requiresTools: typst_compile,typst_resources`, so the agent-tools UI offers to activate it (and `SkillTool`) when the operator enables either Typst tool.
+The skill declares `metadata.allowedByDefault: "false"` and `allowed-tools: typst_compile typst_resources` — the tools it expects to use, surfaced as `required_tools`. The second is a declaration, not a grant: the plugin's two tools declare no `recommendsSkills`, so the agent-tools UI offers no bundled-skill toggle for them, and the operator adds `typst` to the Skill tool's `allowed_skills` allowlist by hand.
 
 ## Agent template
 

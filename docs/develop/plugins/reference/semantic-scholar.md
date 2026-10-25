@@ -88,9 +88,9 @@ The plugin ships a German catalogue at `locales/de.json`, declared through `Sema
 
 `"Semantic Scholar"` is a product name, and German orthography hyphenates a foreign proper name made of several words — so the value is `"Semantic-Scholar"`. The hyphen is the translation, not a rewording: inside a sentence the name keeps its original spelling, as the second entry shows.
 
-Only operator-facing copy is translated — the tool's display name and the plugin description. The one `#[ToolSetting]` description the tool declares (`http_timeout`) is **not** in the catalogue, so that setting still reads in English on a German install. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+Only operator-facing copy is translated — the tool's display name and the plugin description. The one `#[ToolSetting]` description the tool declares (`http_timeout`) is **not** in the catalogue, so that setting still reads in English on a German install — core declares the identical string and already translates it. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
 
-Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit. The repository checks its catalogue against three rules: no translation is empty, none is identical to its key, and no key survives a copy edit.
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit. The repository checks its catalogue against three rules: no translation is empty, none is identical to its key, and no key survives a copy edit. The gate is this repository's own `tests/Unit/LocaleCatalogTest.php`.
 
 Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
 

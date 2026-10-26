@@ -49,12 +49,11 @@ export default defineUserConfig({
     // The code blocks use the shiki plugin's default theme (vitesse-light in
     // light mode, vitesse-dark in dark mode).
     //
-    // This used to carry `highlight: { theme: 'github-light' }`, which never
-    // took effect: `highlight` is markdown-it's own callback and VuePress
-    // replaces it with the shiki plugin's, so a theme set there was dropped
-    // on the floor. Pinning a theme is a deliberate visual change — it means
-    // overriding the plugin's `themes` pair under `markdown.shiki`, which
-    // changes both the light and the dark code-block palette.
+    // `highlight: { theme: … }` never took effect — `highlight` is
+    // markdown-it's own callback and VuePress replaces it with the shiki
+    // plugin's, so a theme set there was dropped on the floor. Pinning one is
+    // a deliberate visual change: it means overriding the plugin's `themes`
+    // pair here, which moves the light and the dark palette together.
     shiki: {
       themes: {
         light: 'vitesse-light',

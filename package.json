@@ -9,7 +9,7 @@
     "dev": "vuepress dev docs",
     "build": "vuepress build docs",
     "preview": "vuepress preview docs",
-    "typecheck": "vuepress typecheck docs",
+    "typecheck": "vue-tsc --noEmit",
     "lint:md": "markdownlint-cli2 \"docs/**/*.md\" \".github/**/*.md\" \"*.md\"",
     "format": "prettier --write \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",
     "format:check": "prettier --check \"docs/**/*.{md,vue,ts,js,scss}\" \".github/**/*.yml\" \"*.{md,json,jsonc}\"",

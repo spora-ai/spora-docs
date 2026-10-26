@@ -46,13 +46,19 @@ export default defineUserConfig({
   markdown: {
     linkify: true,
     typographer: true,
-    // Pin Shiki to a light theme to match the light code-block surface in
-    // styles/index.scss (--spora-paper-deep bg, --spora-ink text). The default
-    // Shiki theme paints near-white backgrounds per token, which read as muddy
-    // against a dark surface; pinning the theme to github-light keeps the
-    // token palette designed for a light surface.
-    highlight: {
-      theme: 'github-light',
+    // The code blocks use the shiki plugin's default theme (vitesse-light in
+    // light mode, vitesse-dark in dark mode).
+    //
+    // `highlight: { theme: … }` never took effect — `highlight` is
+    // markdown-it's own callback and VuePress replaces it with the shiki
+    // plugin's, so a theme set there was dropped on the floor. Pinning one is
+    // a deliberate visual change: it means overriding the plugin's `themes`
+    // pair here, which moves the light and the dark palette together.
+    shiki: {
+      themes: {
+        light: 'vitesse-light',
+        dark: 'vitesse-dark',
+      },
     },
   },
 
@@ -63,7 +69,7 @@ export default defineUserConfig({
     // dark brown. Docs mirror that treatment.
     appearance: false,
     // Show last-updated timestamps + edit links
-    lastUpdated: true,
+    lastUpdated: {},
     editLink: true,
     // Repo for edit links and the "View source" button
     docsRepo: repo,
@@ -193,8 +199,10 @@ export default defineUserConfig({
                 { text: 'Serper', link: '/develop/plugins/reference/serper' },
                 { text: 'Staan', link: '/develop/plugins/reference/staan' },
                 { text: 'Tavily', link: '/develop/plugins/reference/tavily' },
+                { text: 'Team Graph', link: '/develop/plugins/reference/team-graph' },
                 { text: 'Typst', link: '/develop/plugins/reference/typst' },
                 { text: 'Weather', link: '/develop/plugins/reference/weather' },
+                { text: 'Word', link: '/develop/plugins/reference/word' },
                 { text: 'World News', link: '/develop/plugins/reference/worldnews' },
                 { text: 'Zernio', link: '/develop/plugins/reference/zernio' },
               ],
@@ -267,7 +275,7 @@ export default defineUserConfig({
       ],
     },
     // Social links in the nav
-    socials: [{ icon: 'github', link: 'https://github.com/spora-ai/spora' }],
+    social: [{ icon: 'github', link: 'https://github.com/spora-ai/spora' }],
     // Footer — 4-column layout matching https://spora-ai.com/ (logo + tagline + 4 link groups + closing line)
     footer: {
       copyright: '© 2026 — Released under the MIT License.',

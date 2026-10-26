@@ -143,6 +143,20 @@ The plugin ships one skill, `openai-image` (`skills/openai-image/SKILL.md`). It 
 
 Its system prompt is where the verbatim-echo rule is written down as an agent-level contract — echo the block exactly, keep the trailing sentence, read raw URLs from `ToolResult.data.image_urls` rather than re-extracting them — alongside two rules worth stealing: **ask before guessing** on size, quality, and background (a square avatar and a hero banner are not interchangeable), and **do not retry a successful call**.
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `OpenAIImagePlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{ "OpenAI Image": "OpenAI-Bild", "Image model identifier.": "Bezeichner des Bildmodells." }
+```
+
+Only operator-facing copy is translated — the tool's display name, the four `#[ToolSetting]` descriptions, and the plugin description. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit. The gate is the plugin's own `tests/Unit/LocaleCatalogTest.php`: it fails on an empty translation, on a translation identical to its key, and on a key the source no longer produces.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

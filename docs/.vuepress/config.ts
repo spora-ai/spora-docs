@@ -114,6 +114,7 @@ export default defineUserConfig({
             { text: 'Security', link: '/start/operators/security' },
             { text: 'Day-2 operations', link: '/start/operators/operations' },
             { text: 'Backups', link: '/start/operators/backups' },
+            { text: 'Global settings', link: '/start/operators/global-settings' },
             {
               text: 'Upgrade to client-worker mode',
               link: '/start/operators/upgrade-to-client-worker',
@@ -292,7 +293,7 @@ export default defineUserConfig({
     <h4>Project</h4>
     <ul>
       <li><a href="https://github.com/spora-ai/spora" rel="noopener">Source</a></li>
-      <li><a href="https://github.com/spora-ai/spora/releases" rel="noopener">Releases</a></li>
+      <li><a href="/about/releases" rel="noopener">Releases</a></li>
       <li><a href="https://github.com/spora-ai/spora/blob/main/LICENSE" rel="noopener">MIT License</a></li>
     </ul>
   </div>

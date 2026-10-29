@@ -85,9 +85,9 @@ The plugin ships a German catalogue at `locales/de.json`, declared through `Tavi
 }
 ```
 
-Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions, and the plugin description. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+Only operator-facing copy is translated — the tool's display name, every `#[ToolSetting]` description this plugin owns, and the plugin description. A description core already translates is core's to keep: the host merges the plugin's catalogue under core's, and core wins a key collision, so the plugin does not repeat it. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
 
-Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit. The repository checks its catalogue against three rules: no translation is empty, none is identical to its key, and no key survives a copy edit. The gate is this repository's own `tests/Unit/LocaleCatalogTest.php`.
 
 Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
 

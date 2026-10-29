@@ -257,6 +257,22 @@ Three details in that migration are easy to trip over:
 
 Failures use one envelope, `{"error":{"code":…,"message":…}}`, with the codes the tool surface also renders. The two name-collision codes are deliberately distinct because the fix differs: `SKILL_NAME_TAKEN` means pick another name, `SKILL_NAME_RESERVED` means you picked a shipped skill's.
 
+## Translations
+
+The plugin ships a German catalogue at `locales/de.json`, declared through `CustomSkillsPlugin::translationsPaths()`. The catalogue key is the **English source string**:
+
+```json
+{ "Manage Skill": "Skill verwalten", "Custom Skills": "Eigene Skills" }
+```
+
+Only operator-facing copy is translated — the tool's display name, the admin app's `displayName()` and `description()`, the one approval prompt, and the plugin description. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+
+An approval prompt is translated only in its `%s` form: the host matches the stored, already-rendered sentence against the catalogue's `%s` / `%d` templates, so the key is the `sprintf()` template (`"Skill delete: %s — …"`), never the rendered text.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit. The gate is the plugin's own `tests/Unit/LocaleCatalogTest.php`: it fails on an empty translation, on a translation identical to its key, and on a key the source no longer produces.
+
+Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
+
 ## Development
 
 ```bash

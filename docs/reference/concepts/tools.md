@@ -486,16 +486,25 @@ final class MySearchTool extends AbstractTool
 
 LLM driver settings (OpenAI/Anthropic API keys, model, base URL, etc.) are stored as a JSON blob on the `llm_driver_configurations` table, scoped to a per-driver `LLMDriverConfiguration` record, and surfaced via `LLMConfigService::decodeSettings()`. The driver class itself declares its settings via `#[ToolSetting]` on the class (see `app/Drivers/OpenAICompatibleDriver.php` and `app/Drivers/AnthropicCompatibleDriver.php`), and `DriverFactory` reads them when constructing a driver for an agent.
 
-## Setting cascade: schema defaults → global → user → agent
+## Setting cascade
 
 `ToolConfigService::getEffectiveSettings(toolClass, agentId, userId)` resolves each setting in order:
 
 1. **Schema defaults** — the `default:` value declared on the `#[ToolSetting(...)]` attribute, used when no row exists in any of the three tables below.
 2. **Global** value (`tool_configurations` table, scoped to the tool class).
-3. **User-level** override (`tool_user_settings`, when `userId` is provided).
-4. **Agent-level** override (`agent_tool_overrides`, when an entry exists for `agentId + toolClass`).
+3. **Group** value (`tool_user_settings`, on a row whose `principal_id` is a group principal).
+4. **Principal** value (`tool_user_settings`, on a row whose `principal_id` is the user principal).
+5. **Agent-level** override (`agent_tool_overrides`, when an entry exists for `agentId + toolClass`).
 
 Later layers win; schema defaults fill in any keys that no layer has set. Tools never read `tool_configurations` directly — always go through `ToolConfigService`.
+
+A plugin's [shared settings group](#shared-settings-groups) sits below the global layer: it fills in the keys the global layer has not set, the same way the schema defaults do.
+
+### Two layers, one table
+
+The group layer and the principal layer share `tool_user_settings`. The table was created for users; migration `0067` re-keyed it from `user_id` to `principal_id`, and migration `0082` restored the unique constraint on `(principal_id, tool_class)` — without it, two concurrent writes to the same `(principal_id, tool_class)` could both insert. The column value decides the layer: a `principal_id` pointing at a group principal is a group-level setting, one pointing at a user principal is the personal one.
+
+The group layer is opt-in. It is only consulted when `SPORA_TOOLS_GROUP_CASCADE_ENABLED` is on, which is off by default so that a group's tool settings stay on the group. With it on, the principal ids are iterated in a fixed order — the groups ascending by `principal.id`, the user principal last — so the user principal wins on conflict. See [Environment variables → Tools](/start/operators/env-vars#tools).
 
 ## Per-Tool Key Scoping
 
@@ -658,6 +667,22 @@ There is no LLM-visible way to bypass the allowlist: `manage_skill` writes, `ski
 ## Built-in tools
 
 The tools below ship inside `spora-core` (not as plugins). Operators can configure their settings, but the implementations themselves are not pluggable — every operator gets the same behavior out of the box.
+
+### `ask_user_question` — `AskUserQuestionTool`
+
+The `ask_user_question` tool pauses the tick and puts a structured multiple-choice question to the operator, so the agent can ask for a decision that blocks its work instead of guessing or freeform-interrupting in chat.
+
+| Operation | Default enabled | Default approval | Purpose                                                                           |
+| --------- | --------------- | ---------------- | --------------------------------------------------------------------------------- |
+| `ask`     | yes             | auto             | Pose 1-4 questions in one call and park the task until the operator answers them. |
+
+The operation is enabled by default as soon as the tool is attached to an agent; the operator can still turn it off on the agent's **Tools** tab.
+
+It never asks for approval, because there is nothing to approve — the question _is_ the interaction, and the operator's answer is the tool result. A call flips the task to `AWAITING_INPUT` (the parallel to `PENDING_APPROVAL`) and parks the batch on `tasks.pending_state`; `POST /api/v1/tasks/{taskId}/answer` submits the answers and flips the task back to `QUEUED`. See [Agent loop / async → Parked work and operator input](/reference/concepts/agent-loop-async#parked-work-and-operator-input) for the wire shape.
+
+The limits are enforced: 1-4 questions per call, 2-4 options per question, and a header of at most 30 characters. A violation comes back as a tool error rather than a rejected call. The model is told to use the tool only for decisions that block its work — not for clarifying intent, which is what chat is for.
+
+**A parked task waits for a human indefinitely.** `AWAITING_INPUT` is a quiescent state: the worker stops driving the task, and the reaper only sweeps tasks stuck in `RUNNING`, so nothing times a pending batch out. On an agent that runs on a schedule — or one nobody is watching — an ask is a task that never finishes on its own. Turn the operation off for those agents on the **Tools** tab.
 
 ### `media` — `MediaTool`
 

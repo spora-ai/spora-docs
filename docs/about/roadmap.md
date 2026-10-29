@@ -61,6 +61,7 @@ For the project's tagging policy (tag from `main` only, after CI is green, never
 
 ## What's next
 
+- [Release notes](/about/releases) — what shipped in each release
 - [FAQ](/about/faq) — frequently asked questions
 - [License](/about/license) — MIT
 - [Contribute](/contribute/) — how to file issues and PRs

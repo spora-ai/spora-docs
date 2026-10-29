@@ -198,6 +198,7 @@ export default defineUserConfig({
                 { text: 'OpenAI Image', link: '/develop/plugins/reference/openai-image' },
                 { text: 'Semantic Scholar', link: '/develop/plugins/reference/semantic-scholar' },
                 { text: 'Serper', link: '/develop/plugins/reference/serper' },
+                { text: 'Social', link: '/develop/plugins/reference/social' },
                 { text: 'Staan', link: '/develop/plugins/reference/staan' },
                 { text: 'Tavily', link: '/develop/plugins/reference/tavily' },
                 { text: 'Team Graph', link: '/develop/plugins/reference/team-graph' },

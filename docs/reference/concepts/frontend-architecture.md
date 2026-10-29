@@ -1,6 +1,6 @@
 ---
 title: Frontend architecture
-description: Vue 3 + Vite + Tailwind + radix-vue + Pinia, build, shared API client, composables, apps/ module pattern.
+description: Vue 3 + Vite + Tailwind + radix-vue + Pinia, build, shared API client, composables, i18n, apps/ module pattern.
 ---
 
 # Spora Frontend (`spora-frontend`)
@@ -21,6 +21,7 @@ This document covers how the frontend is structured, how it talks to the backend
 | Icons      | `lucide-vue-next`                      | Tree-shaken; the shared `<Icon>` component resolves names from the lucide palette.               |
 | HTTP       | `fetch` via the shared `api/client.ts` | Same envelope handling as the backend (`{ data }` / `{ error }`).                                |
 | Routing    | `vue-router` 4                         | Route guards read the auth store.                                                                |
+| i18n       | `vue-i18n` 11                          | Bundled catalogues; the catalogue contract is enforced in CI.                                    |
 
 ## Build & deploy
 
@@ -126,6 +127,86 @@ The `useTaskStore` exposes a reactive sub-task cache for the `SubAgentTool` `sub
 
 The `TaskDetail.data` field is a free-form JSON column (snake_case, per the backend `data` JSON column convention) carrying tool-specific side-channel payloads. Today it is read by `TaskChatMessageList` to render the delegation breadcrumb via `data.handover.{target_agent_id, target_agent_name, target_task_id}` (the task id is the link's destination; the breadcrumb falls back to the agent page when it is absent), and by `TaskChatPage` to drive the sub-agent count badge via `data.spawned_sub_task_ids: number[]`. Vue components normalise the snake_case payload into camelCase locals — consumers should not hard-code snake_case field access in templates.
 
+## i18n
+
+The interface is translated with `vue-i18n` (Composition API only, `legacy: false`). Four places carry it:
+
+| Path                                        | What it holds                                                                 |
+| ------------------------------------------- | ----------------------------------------------------------------------------- |
+| `src/i18n/index.ts`                         | The `createI18n` instance, the bundled catalogues, `availableLocales`.        |
+| `src/locales/*.json`                        | One catalogue per locale. `en.json` is generated; the others are hand-edited. |
+| `src/stores/locale.ts`                      | The Pinia store that owns the active language and resolves it.                |
+| `src/components/profile/LocaleSelector.vue` | The picker in the profile menu.                                               |
+
+### The catalogues are bundled, not fetched
+
+`src/i18n/index.ts` inlines every `src/locales/*.json` at build time with `import.meta.glob(..., { eager: true })`. A locale switch therefore costs no round trip. The alternative — a runtime `fetch` per locale — would put a request on the critical path of every first paint for a payload of a few KB.
+
+### Which language wins
+
+`useLocaleStore().init()` resolves the active locale in this order:
+
+1. the signed-in user's own preference, stored server-side in `users.locale` (not only in the browser — a preference that lives in `localStorage` alone is gone on the next device);
+2. the instance default, `SPORA_DEFAULT_LANG`, read from the boot config;
+3. `en`.
+
+`Accept-Language` is deliberately not consulted: the instance owner sets one language for the install, and a browser header would show the same user two languages on two machines.
+
+The `localStorage` copy under `spora.locale` is a **boot placeholder**, not a fourth link in the chain. It paints the right language before the preference round trip resolves, and `init()` then overwrites it with the authoritative answer — treating it as a link would pin the browser to a stale language forever, because nothing would ever demote it once the instance default changed.
+
+### An untranslated string
+
+The key **is** the English source text, so `en.json` is a generated identity map (`"Save": "Save"`). A key with no translation in the active locale falls back to `en`, which renders the English text rather than a raw key. The fallback is a safety net, not the everyday path: the CI gate below fails the build when a target locale is missing a key.
+
+### Dates, numbers and relative time
+
+`src/utils/locale.ts` exports `activeLocale()` — the app's own locale, not the browser's, because `toLocaleString(undefined, …)` follows the runtime's locale, which is the machine's. Dates and numbers are formatted through it (`toLocaleDateString(activeLocale(), …)`, `n.toLocaleString(activeLocale())`), and relative times go through `formatRelativeTime(iso, locale)` in `src/composables/useRelativeTime.ts`, which uses `Intl.RelativeTimeFormat` for every locale except English — English keeps the compact `5m ago` form the dashboard has always shipped.
+
+### The catalogue is enforced in CI
+
+`scripts/i18n.mjs` harvests the literal `$t('…')` / `t('…')` arguments out of the source, using the two parsers already in the tree (`vue-eslint-parser` and `@typescript-eslint/typescript-estree`) rather than a bundler plugin, because the failure output has to name `file:line`. `npm run i18n:extract` regenerates `en.json`; `npm run i18n:check` writes nothing and fails on:
+
+- a key vue-i18n cannot compile;
+- `en.json` drifting from the source;
+- a target locale missing a key, or carrying a key the source no longer has — the English text was edited and the translation was orphaned;
+- an empty or English-identical value — an untranslated placeholder that reads as translated until a German user hits it;
+- a translation whose placeholders are not the key's placeholders, which would render them literally;
+- raw operator-facing text outside `t()`.
+
+Both run in `.github/workflows/ci.yml`: extract first, then check.
+
+### What a plugin frontend costs
+
+A plugin frontend that ships its own catalogue brings its **own `vue-i18n` runtime** — roughly 74 KB measured — and the host deliberately does not publish an instance of its own for plugins to share (`src/apps/registry.ts:53-57`). Five plugin frontends therefore ship five copies of the runtime, which is why the per-plugin bundle budget in `spora-plugin-typst-frontend` was raised from 200 KB to 240 KB.
+
+The trade-off is deliberate: a plugin that could not translate at all would be a plugin an operator cannot read in their own language, and sharing one instance across independently versioned plugins would couple their release cycles. The cost is measured per plugin, and a plugin that does not need a catalogue should not ship one.
+
+## The command menu
+
+The chat's task commands live in `useTaskChatCommands()` (`src/composables/useTaskChatCommands.ts`) and render through the shared `CommandMenu` component (`src/components/ui/CommandMenu.vue`). The list is data — `CommandAction[]` — so the menu stays a dumb renderer and a second command is one entry rather than a new component.
+
+A `CommandAction` carries an `id`, a `label`, an optional one-line `description`, an optional icon (a bundled name or a raw SVG path), a `disabled` flag and the `onSelect` callback. `CommandMenu` owns the open state, closes on an outside click and on `Escape`, and disables its trigger while an action is in flight — which is how the compaction command locks itself out for the duration of its model round trip.
+
+Today the list holds one command: **Compact conversation**, which asks the backend to compact the task's history and reports the outcome as a toast. The menu renders on the follow-up bar, so it is offered for a finished conversation — `COMPLETED`, `FAILED` or `ABORTED`, and only when the agent allows follow-ups. Those are exactly the states the backend accepts a compaction for.
+
+## The compacted turns of a chat
+
+A [compaction](/reference/concepts/agent-loop-async#context-window-and-compaction) keeps the turns it replaced in the history — the model gets a summary in their place.
+
+The transcript shows the conversation as it happened, with the compaction marked in it. `buildChatMessages()` (`src/composables/useTaskChat.ts`) turns a `summary` row into a `summary` message, and `buildChatBlocks()` gives it a block of its own, so the marker stands where the summary row sits. That position is the point in the conversation where the compaction happened: the backend appends the summary row to the history at that moment, so its sequence is the marker's place. The turns the summary stands in for stay in the transcript — the chat is the history, not the model's view of it.
+
+`CompactionMarker.vue` renders the marker: collapsed it says how many turns the summary stands in for (the range the summary carries names them), expanded it shows what the model was given in their place.
+
+## The chat's scroll position
+
+The chat follows the newest message while the agent works: `TaskChatPage` calls `scrollToBottom()` after every fetch and on every new history entry, and the message list scrolls its anchor into view.
+
+An operator who scrolls up to read a tool call must not be pulled back down by the next message, so `useChatAutoScroll()` (`src/composables/useChatAutoScroll.ts`) sits in front of that call. It watches the surface the transcript scrolls in and holds a `paused` flag; while the flag is set, `follow()` does nothing and the chat waits for the operator to ask for the newest message.
+
+The surface is not the message list: the chat column is not height-constrained, so the transcript scrolls in the layout's scroll container above it. The composable finds it by walking up from the transcript — the first ancestor with `overflow-y: auto` that actually overflows.
+
+The control that ends the pause is `TaskChatScrollToBottom.vue`, a round button in the lower right corner of the chat. It is `sticky` rather than `absolute`, because the transcript has no box of its own to position against, and it comes after the transcript in the DOM because a sticky element is only pulled up into view when it would otherwise be below the scrollport.
+
 ## The `apps/` directory — extending the frontend
 
 Each "app" is a self-contained bundle of pages, components, types, stores, and an API client. The pattern keeps feature work isolated — adding a new top-level page (e.g. **Plugins**) does **not** touch the rest of the app.
@@ -188,5 +269,9 @@ The global guard reads `meta.requiresAdmin` / `meta.requiresAuth` and short-circ
 - **`src/composables/useAdminAuth.ts`** — the canonical admin-gate pattern.
 - **`src/composables/useFeatureEnabled.ts`** — runtime feature flags from `/api/v1/config`.
 - **`src/components/agent/TaskChat/SubAgentToolCall.vue`** — the row widget rendered when a sub-agent op reports the spawned child ids — `sub_agent` and `sub_agent_continue` both do (one row per spawned child, live status from `subTaskCache`).
+- **`src/composables/useTaskChatCommands.ts`** — the task commands the chat offers, as data.
+- **`src/components/ui/CommandMenu.vue`** — the shared command-menu component those commands render through.
 - **`src/apps/plugins/`** — the template for adding a new top-level app.
 - **`src/stores/auth.ts`** — session, login, CSRF token.
+- **`src/i18n/index.ts`** — the i18n instance, the bundled catalogues and the locale set the picker offers.
+- **`scripts/i18n.mjs`** — the catalogue extractor and the CI rules that keep `src/locales/*.json` honest.

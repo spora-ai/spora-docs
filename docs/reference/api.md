@@ -385,7 +385,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 - [Agents](/reference/api/agents) — 35 routes
 - [Groups](/reference/api/groups) — 22 routes
-- [Tasks](/reference/api/tasks) — 13 routes
+- [Tasks](/reference/api/tasks) — 14 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Agent-api](/reference/api/agent-api) — 11 routes
 - [Speech](/reference/api/speech) — 10 routes
@@ -589,6 +589,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/tasks/{taskId}/abort-sub-agent`                    | `cookieAuth` + `csrfToken` | Abort sub-agent and cascade-up                                           | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/answer`                             | `cookieAuth` + `csrfToken` | Answer pending question batch                                            | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/approve`                            | `cookieAuth` + `csrfToken` | Approve Task                                                             | Tasks            |
+| `POST`   | `/api/v1/tasks/{taskId}/compact`                            | `cookieAuth` + `csrfToken` | Compact Task History                                                     | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/continue`                           | `cookieAuth` + `csrfToken` | Continue Task                                                            | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/reject`                             | `cookieAuth` + `csrfToken` | Reject Task                                                              | Tasks            |
 | `POST`   | `/api/v1/tasks/{taskId}/retry`                              | `cookieAuth` + `csrfToken` | Retry Task                                                               | Tasks            |

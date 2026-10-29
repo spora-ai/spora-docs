@@ -57,6 +57,26 @@ Keep-file auth: global admin OR the asset's `user_id == currentUserId`. Non-owne
 
 The retention sweep itself runs server-side (`media:gc --temporary [--older-than-hours N]`, default 24 h). Per-agent retention is governed by `agents.voice_message_retention_count` (default 5; 0 disables auto-purge — operators must then run the GC manually or hit `/keep` per row). The ceiling is a per-(user, agent) count of temp rows, and it is what the upload controller enforces: when a multipart upload sets `is_temporary` _and_ names an `agent_id`, `MediaArchiveService::enforceTempRetention()` trims that pair's temp set back under the agent's ceiling. The value is a `0`–`100` integer, range-checked server-side and answered with a `422` when it is not. See the Media API reference for the full lifecycle: `POST /api/v1/media` (temp opt-in via `is_temporary`), `GET /api/v1/media?include_temporary=true`, `POST /api/v1/media/{id}/keep`, and the `media:gc` CLI.
 
+## What lands in the archive
+
+What ends up in the grid is decided by five settings on the **Media & Plugins** tab of
+**Settings → Runtime settings**. They are ordinary settings — the same four-layer chain as every
+other field, so a value saved there wins over one set in `.env`. See
+[Config keys](/reference/config-keys) for the `config.php` and env-var spellings.
+
+| Setting                                   | Default           | What it decides                                                                                |
+| ----------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `SPORA_MEDIA_ARCHIVE_PROMOTE_EXTERNAL`    | `true`            | When on, a URL an agent was given is downloaded and stored. Turn it off to keep only the link. |
+| `SPORA_MEDIA_ARCHIVE_FETCH_TIMEOUT`       | `30`              | Seconds allowed for the remote media fetch.                                                    |
+| `SPORA_MEDIA_ARCHIVE_MAX_PROMOTE_BYTES`   | `104857600`       | 100 MiB. A larger response is recorded as external rather than downloaded.                     |
+| `SPORA_MEDIA_ARCHIVE_FFPROBE_ENABLED`     | `false`           | Extracts the duration with `ffprobe`. Needs ffprobe on `PATH`, and is slower to ingest.        |
+| `SPORA_MEDIA_ARCHIVE_ALLOWED_IMAGE_TYPES` | `png, jpeg, webp` | The image formats offered as attachments. SVG is always rejected and cannot be enabled here.   |
+
+An asset recorded as **external** — because promotion is off, or because the response was over the
+ceiling — still appears in the grid, with the source URL in the detail drawer instead of a stored
+copy. There are no bytes on this side to hand out, so the download route answers
+`404 asset_not_found` for it.
+
 ## Where the data comes from
 
 | Endpoint                                       | Used for                                                                                                             |

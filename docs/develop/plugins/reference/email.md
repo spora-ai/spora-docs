@@ -94,11 +94,13 @@ The plugin ships a German catalogue at `locales/de.json`, declared through `Emai
 }
 ```
 
-Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions, the plugin description, and the approval prompt. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
+Only operator-facing copy is translated — the tool's display name, the `#[ToolSetting]` descriptions, the plugin description, and the fourteen approval prompts the tool's `describeAction()` returns. Strings the model reads (`#[Tool].description`, `#[ToolParameter].description`, `#[ToolSetting].label` and its option labels) stay English, in the operator's view too: a German tool description degrades the model's tool selection, and a translated label that also reaches the model puts German into its prompt.
 
-The approval prompt is translated at serialization time, so a call recorded under one interface language still reads correctly under another.
+An approval prompt is translated only in its `%s` form: the host matches the stored, already-rendered sentence against the catalogue's `%s` / `%d` templates, so the key is the `sprintf()` template (`"Create email folder '%s'"`), never the rendered text.
 
-Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+The approval prompts are translated at serialization time, so a call recorded under one interface language still reads correctly under another.
+
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit. The gate is the plugin's own `tests/Unit/LocaleCatalogTest.php`: it fails on an empty translation, on a translation identical to its key, and on a key the source no longer produces.
 
 Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
 

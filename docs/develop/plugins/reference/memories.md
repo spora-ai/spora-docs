@@ -213,7 +213,7 @@ The plugin ships a German catalogue at `locales/de.json`, declared through `Memo
 
 Only operator-facing copy is translated — the two tool display names, the admin app's display name and description, and the plugin description. The plugin declares no settings, so the catalogue holds nothing else. The `#[Tool].description` and `#[ToolOperation].description` values go into the LLM function definition and stay English, in the operator's view too: a German tool description degrades the model's tool selection.
 
-Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit.
+Editing the English orphans the translation — the key changes and the old entry is dead — so re-translate in the same commit. The gate is the plugin's own `tests/Unit/LocaleCatalogTest.php`: it fails on an empty translation, on a translation identical to its key, and on a key the source no longer produces.
 
 Requires `spora-core >= 0.31.0`; on older cores the catalogue is ignored.
 

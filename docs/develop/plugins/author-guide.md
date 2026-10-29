@@ -19,7 +19,7 @@ For the **local development workflow** (Composer path repos, 3-terminal HMR walk
 2. [Tools](/develop/plugins/author-guide/tools) — add the first callable surface.
 3. [Admin UI](/develop/plugins/author-guide/admin-ui) — only if your plugin ships a frontend.
 
-Skip [Migrations](/develop/plugins/author-guide/migrations), [Skills](/develop/plugins/author-guide/skills), [Agent templates](/develop/plugins/author-guide/agent-templates), and [Translations](/develop/plugins/author-guide/translations) on first read — they are independent and can be picked up when needed. [Distribution](/develop/plugins/author-guide/distribution) is for after you have working code on `main` and want to ship it.
+Skip [Migrations](/develop/plugins/author-guide/migrations), [Skills](/develop/plugins/author-guide/skills), [Agent templates](/develop/plugins/author-guide/agent-templates), [Translations](/develop/plugins/author-guide/translations), [Due work](/develop/plugins/author-guide/due-work) and [Plugin settings](/develop/plugins/author-guide/plugin-settings) on first read — they are independent and can be picked up when needed. [Distribution](/develop/plugins/author-guide/distribution) is for after you have working code on `main` and want to ship it.
 
 ## Chapter index
 
@@ -32,6 +32,8 @@ Skip [Migrations](/develop/plugins/author-guide/migrations), [Skills](/develop/p
 | [Agent templates](/develop/plugins/author-guide/agent-templates)   | Ship curated Agent templates with your plugin. Operator gallery, auto-install policy, warning codes.                                           |
 | [Skills](/develop/plugins/author-guide/skills)                     | Ship skills with your plugin — a directory via `skillPaths()`, or a provider via `skillProviders()`.                                           |
 | [Speech providers](/develop/plugins/author-guide/speech-providers) | Contribute a `SpeechToTextProviderInterface` — only when the vendor's wire shape is not OpenAI-multipart.                                      |
+| [Due work](/develop/plugins/author-guide/due-work)                 | Contribute a `DueWorkProviderInterface` — work of your own on a cadence, and the guarantee that two workers do not run the same unit.          |
+| [Plugin settings](/develop/plugins/author-guide/plugin-settings)   | Contribute a `PluginSettingsProviderInterface` — operator-facing settings, and the key the host builds for you.                                |
 | [Translations](/develop/plugins/author-guide/translations)         | Ship a German catalogue with your plugin — the `translationsPaths()` hook, the `locales/` layout, and what is never translated.                |
 | [Distribution](/develop/plugins/author-guide/distribution)         | The `spora-plugin` keyword, the PSR-4 entry-point quirk, testing, SemVer, the release checklist.                                               |
 

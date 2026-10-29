@@ -173,6 +173,14 @@ export default defineUserConfig({
                   text: 'Speech providers',
                   link: '/develop/plugins/author-guide/speech-providers',
                 },
+                {
+                  text: 'Due work',
+                  link: '/develop/plugins/author-guide/due-work',
+                },
+                {
+                  text: 'Plugin settings',
+                  link: '/develop/plugins/author-guide/plugin-settings',
+                },
               ],
             },
             { text: 'Local development', link: '/develop/plugins/local-development' },

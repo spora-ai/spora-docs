@@ -7,6 +7,8 @@ description: Social-media scheduling and publishing for Spora agents, powered by
 
 Social-media scheduling and publishing for [Spora](https://github.com/spora-ai/spora-core) agents, powered by the [Zernio](https://docs.zernio.com/) API. Lets an agent discover connected social accounts, and draft, schedule, or publish posts across 15+ networks (Twitter/X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Bluesky, Threads, Telegram, Discord, and more), plus manage the recurring posting queue and read analytics.
 
+> **Looking for the native version?** The [Social](/develop/plugins/reference/social) plugin publishes to LinkedIn, Facebook and Instagram without a third-party service in between — the plugin holds the tokens and does the posting.
+
 ## Installation
 
 ```bash

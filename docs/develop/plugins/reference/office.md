@@ -172,4 +172,4 @@ CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan, php-cs-fixer 
 
 ---
 
-**Repo:** [spora-ai/spora-plugin-office](https://github.com/spora-ai/spora-plugin-office) · **MIT**
+**Package:** `spora-ai/spora-plugin-office` · **MIT** — the source is in [`spora-ai/spora-plugin-word`](https://github.com/spora-ai/spora-plugin-word), the repository this plugin was renamed from.

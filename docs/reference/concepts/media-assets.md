@@ -21,6 +21,8 @@ ToolResult.content ◄──── MediaEmbed::* ◄─────────�
 
 This page walks through each piece.
 
+An asset is filed in a **folder** — a named container scoped to one principal — and carries an advisory `kind` mark. The folder tree, its two uniqueness rules and the themes that live in a folder are in [Media folders](/reference/concepts/media-folders).
+
 ## 1. The two ingredients
 
 ### `Spora\Services\AssetStore`
@@ -158,7 +160,7 @@ Uploads are gated on the **sniffed** MIME (`MediaUploadController::checkMimeAllo
 A refiner upgrades the verdict:
 
 ```php
-final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMimeRefinerInterface
+final class OfficeMimeRefiner implements Spora\Services\MediaArchive\MediaMimeRefinerInterface
 {
     // No constructor — see the contract below.
     public function refine(string $bytes, ?string $filename, string $sniffedMime): ?string
@@ -199,7 +201,7 @@ final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMime
 ```
 
 ```php
-MediaMimeRefinerDiscovery::add(WordDocxMimeRefiner::class);
+MediaMimeRefinerDiscovery::add(OfficeMimeRefiner::class);
 ```
 
 Contract, and the reasons behind each part:
@@ -312,11 +314,11 @@ Because the derivative path is a second `MediaAsset::find()` plus a real `file_g
 
 ### The producer union is a second allowlist surface
 
-`MediaAllowedTypesService` builds the upload allowlist from four sources: the static text list, the static audio list, the operator's image config, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-word` registers `DocxToMarkdownProducer`.
+`MediaAllowedTypesService` builds the upload allowlist from four sources: the static text list, the static audio list, the operator's image config, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-office` registers `OfficeToMarkdownProducer`.
 
-That makes the union a **second, parallel allowlist surface**, and it has to stay in sync with the MIME-refiner chain. Nothing structurally enforces the coupling: a `.docx` that sniffs as `application/zip` is fixed by `WordDocxMimeRefiner` _before_ the gate and still works, but no code path asserts that a refiner's target mime is also in some producer's source list. If you ship a refiner that upgrades a format into a mime, confirm a producer claims that mime yourself: not even a test asserts the pairing, and no owner is designated for the invariant.
+That makes the union a **second, parallel allowlist surface**, and it has to stay in sync with the MIME-refiner chain. Nothing structurally enforces the coupling: a `.docx` that sniffs as `application/zip` is fixed by `OfficeMimeRefiner` _before_ the gate and still works, but no code path asserts that a refiner's target mime is also in some producer's source list. If you ship a refiner that upgrades a format into a mime, confirm a producer claims that mime yourself: not even a test asserts the pairing, and no owner is designated for the invariant.
 
-`supportedSourceFormats()` returns **bare extensions as well as mimes** — `TypstRenderProducer` returns `['text/x-typst', 'typ']`, `MarkdownToDocxProducer` returns `['text/markdown', 'md', 'markdown']` — and producer resolution checks both. The allowlist union does not: it must filter on entries containing `/`, or `md`, `typ`, and `markdown` leak into the LLM-facing `Allowed: %s` string in `create_media`'s rejection message. The leak is **invisible in the upload UI**: `allowedExtensions()` maps every mime through `extensionForMime()`, and a bare extension yields null there, so it is dropped from the `accept=` attribute rather than surfacing as a bogus name. It only ever surfaces in the LLM contract.
+`supportedSourceFormats()` returns **bare extensions as well as mimes** — `TypstRenderProducer` returns `['text/x-typst', 'typ']`, `MarkdownToOfficeProducer` returns `['text/markdown', 'md', 'markdown']` — and producer resolution checks both. The allowlist union does not: it must filter on entries containing `/`, or `md`, `typ`, and `markdown` leak into the LLM-facing `Allowed: %s` string in `create_media`'s rejection message. The leak is **invisible in the upload UI**: `allowedExtensions()` maps every mime through `extensionForMime()`, and a bare extension yields null there, so it is dropped from the `accept=` attribute rather than surfacing as a bogus name. It only ever surfaces in the LLM contract.
 
 ### Discovery: `search` hides derivatives
 

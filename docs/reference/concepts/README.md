@@ -21,6 +21,7 @@ The deep-dive reference for Spora's internals. These pages were migrated from th
 - **[Plugin system](/reference/concepts/plugins-system)** — manifest, auto-discovery, `PluginLoader`, conflicts, security model
 - **[App extensions](/reference/concepts/app-extension)** — `app/App.php`, the `SporaExtensionInterface` hooks
 - **[Media assets](/reference/concepts/media-assets)** — `AssetStore`, `MediaEmbed`, binary tool outputs
+- **[Media folders](/reference/concepts/media-folders)** — the folder tree, the two uniqueness rules, the advisory `kind` mark, and the themes that live in a folder
 - **[UTF-8 sanitizer](/reference/concepts/utf8-sanitizer)** — `Utf8Sanitizer::scrubString` / `scrub`, write-time sanitisation (core + plugins)
 
 ### Operations

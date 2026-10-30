@@ -50,7 +50,7 @@ The 19 plugins currently in the Spora org:
 | [OpenAI Image](/develop/plugins/reference/openai-image)                 | OpenAI-compatible image generation — configure the model, API URL, and key for OpenAI or any compatible provider      |
 | [Team graph](/develop/plugins/reference/team-graph)                     | A directed graph of the spawning relationships between this principal's agents, rendered via Mermaid in the admin SPA |
 | [Typst](/develop/plugins/reference/typst)                               | Compile Typst source to PDF/PNG/SVG via ext-typst — Inter OFL fonts and a writable per-principal example store        |
-| [Word](/develop/plugins/reference/word)                                 | Convert Markdown to Word (.docx), and read .docx back as Markdown for the LLM                                         |
+| [Office](/develop/plugins/reference/office)                             | Convert Markdown to Word (.docx), OpenDocument (.odt), RTF and PowerPoint (.pptx), and read them back                 |
 
 > **Note:** [`spora-plugin-mistral`](https://github.com/spora-ai/spora-plugin-mistral) also lives in the org but is **archived** — it is no longer maintained and is excluded from the count above.
 

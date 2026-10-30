@@ -142,21 +142,25 @@ The data hook surface after the 1.0 cut. Every hook is optional — `AbstractPlu
 > **Status — `searchProviders()` and the palette seam require spora-core ≥ v0.30.0.** Neither hook existed at v0.29.0. `SearchController`, `GET /api/v1/search`, `SearchProviderRegistry`, and core's now-deleted `SkillSearchProvider` all ship in v0.30.0, and the palette's caller ships in spora-frontend v0.25.0. A plugin declaring `searchProviders()` against a released v0.29.0 core fatals at class-load — the interface does not declare the method.
 >
 > **Status — `translationsPaths()` requires spora-core ≥ v0.31.0.** `PluginInterface::translationsPaths()` ships in v0.31.0, as does `settingsClasses()`. On an older core the host never calls `translationsPaths()`, so the plugin's catalogue is ignored.
+>
+> **Status — `dueWorkProviders()` and `pluginSettingProviders()` require spora-core ≥ v0.32.0.** Both hooks ship in v0.32.0, as do `Spora\Scheduling\DueWorkProviderInterface` and `Spora\Settings\PluginSettingsProviderInterface`. On an older core the host never calls either hook: the due work never runs and the settings never appear. A plugin that implements `SporaExtensionInterface` directly rather than extending `AbstractPlugin` fatals at class-load against a v0.32.0 core, because the interface declares two methods it does not implement.
 
-| Hook                      | Returns                                         | Purpose                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getName()`               | `string`                                        | Human-readable name shown in the inventory UI and logs.                                                                                                                                                                                                                                                                                                             |
-| `tools()`                 | `class-string<ToolInterface>[]`                 | Tools contributed to the tool registry. Namespaced as `<plugin-slug>:<tool-name>` when sent to the LLM.                                                                                                                                                                                                                                                             |
-| `agentTemplatePaths()`    | `string[]`                                      | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates).                                                                                                                                                                                                                          |
-| `skillPaths()`            | `string[]`                                      | Absolute paths to directories containing `SKILL.md` files. Each directory's immediate subdirectories are skill roots.                                                                                                                                                                                                                                               |
-| `schemaVersion()`         | `int`                                           | Bump every time a new migration file is added. `0` if no schema.                                                                                                                                                                                                                                                                                                    |
-| `migrationsPath()`        | `?string`                                       | Absolute path to the plugin's migrations directory, or `null` if no schema. The `{slug}_` filename prefix is enforced.                                                                                                                                                                                                                                              |
-| `apps()`                  | `class-string<AppInterface>[]`                  | Admin-UI side-panels contributed to the AppRegistry when the AppRegistry is first resolved.                                                                                                                                                                                                                                                                         |
-| `speechToTextProviders()` | `class-string<SpeechToTextProviderInterface>[]` | Speech-to-text provider classes participating in `Spora\Speech\SpeechToTextRegistry` alongside core's OpenAI-compatible transcriber. Only needed for a wire shape OpenAI-multipart cannot express. See [Speech providers](/develop/plugins/author-guide/speech-providers).                                                                                          |
-| `skillProviders()`        | `class-string<SkillProviderInterface>[]`        | Skill provider classes for skills that have **no directory** — user-authored, tenant-scoped, or synthesised. Ships [custom skills](/reference/concepts/skills#custom-skills); a static class list, read when `SkillProviderRegistry` is first resolved. See [Authoring a skill provider](/develop/plugins/author-guide/skills#shipping-a-provider-not-a-directory). |
-| `settingsClasses()`       | `class-string[]`                                | Shared settings group classes contributed to the host's shared-settings resolver — one group replaces the credential repeated on each of a plugin's tools. See [Shared settings groups](/reference/concepts/tools#shared-settings-groups).                                                                                                                          |
-| `searchProviders()`       | `class-string<SearchProviderInterface>[]`       | Search provider classes contributing to the host ⌘K palette's `Spora\Search\SearchProviderRegistry`. Distinct from `skillProviders()`: that makes a resource _readable_, this makes it _findable_. Core ships none, so every section the palette renders from the server comes from a plugin — see [Palette search](#palette-search).                               |
-| `translationsPaths()`     | `string[]`                                      | Absolute paths to directories holding `<locale>.json` translation catalogues. The catalogue key **is** the English source string; on a collision with core, **core wins** and the plugin entry is dropped with a logged warning. A plugin that ships no catalogue returns `[]`. See [Translations](/develop/plugins/author-guide/translations).                     |
+| Hook                       | Returns                                           | Purpose                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getName()`                | `string`                                          | Human-readable name shown in the inventory UI and logs.                                                                                                                                                                                                                                                                                                             |
+| `tools()`                  | `class-string<ToolInterface>[]`                   | Tools contributed to the tool registry. Namespaced as `<plugin-slug>:<tool-name>` when sent to the LLM.                                                                                                                                                                                                                                                             |
+| `agentTemplatePaths()`     | `string[]`                                        | Absolute paths to Agent template files (`.json` / `.yaml` / `.yml`). See [Agent templates](/develop/plugins/author-guide/agent-templates).                                                                                                                                                                                                                          |
+| `skillPaths()`             | `string[]`                                        | Absolute paths to directories containing `SKILL.md` files. Each directory's immediate subdirectories are skill roots.                                                                                                                                                                                                                                               |
+| `schemaVersion()`          | `int`                                             | Bump every time a new migration file is added. `0` if no schema.                                                                                                                                                                                                                                                                                                    |
+| `migrationsPath()`         | `?string`                                         | Absolute path to the plugin's migrations directory, or `null` if no schema. The `{slug}_` filename prefix is enforced.                                                                                                                                                                                                                                              |
+| `apps()`                   | `class-string<AppInterface>[]`                    | Admin-UI side-panels contributed to the AppRegistry when the AppRegistry is first resolved.                                                                                                                                                                                                                                                                         |
+| `speechToTextProviders()`  | `class-string<SpeechToTextProviderInterface>[]`   | Speech-to-text provider classes participating in `Spora\Speech\SpeechToTextRegistry` alongside core's OpenAI-compatible transcriber. Only needed for a wire shape OpenAI-multipart cannot express. See [Speech providers](/develop/plugins/author-guide/speech-providers).                                                                                          |
+| `skillProviders()`         | `class-string<SkillProviderInterface>[]`          | Skill provider classes for skills that have **no directory** — user-authored, tenant-scoped, or synthesised. Ships [custom skills](/reference/concepts/skills#custom-skills); a static class list, read when `SkillProviderRegistry` is first resolved. See [Authoring a skill provider](/develop/plugins/author-guide/skills#shipping-a-provider-not-a-directory). |
+| `settingsClasses()`        | `class-string[]`                                  | Shared settings group classes contributed to the host's shared-settings resolver — one group replaces the credential repeated on each of a plugin's tools. See [Shared settings groups](/reference/concepts/tools#shared-settings-groups).                                                                                                                          |
+| `searchProviders()`        | `class-string<SearchProviderInterface>[]`         | Search provider classes contributing to the host ⌘K palette's `Spora\Search\SearchProviderRegistry`. Distinct from `skillProviders()`: that makes a resource _readable_, this makes it _findable_. Core ships none, so every section the palette renders from the server comes from a plugin — see [Palette search](#palette-search).                               |
+| `dueWorkProviders()`       | `class-string<DueWorkProviderInterface>[]`        | Classes that report work of their own to run on a cadence — a publishing slot, a metrics sweep. The worker hands the provider the principals it may act for, and the provider guarantees that two workers on the same install do not run the same unit of work. Core ships none, so the order is plugin load order. See [Due work](#due-work).                      |
+| `pluginSettingProviders()` | `class-string<PluginSettingsProviderInterface>[]` | Classes that contribute operator-facing settings. The host rewrites the key to `SPORA_<SLUG>_<KEY>`, stores the row under the group `plugin:<slug>` in the `plugins` section, and merges the value into the configuration. See [Plugin settings](#plugin-settings).                                                                                                 |
+| `translationsPaths()`      | `string[]`                                        | Absolute paths to directories holding `<locale>.json` translation catalogues. The catalogue key **is** the English source string; on a collision with core, **core wins** and the plugin entry is dropped with a logged warning. A plugin that ships no catalogue returns `[]`. See [Translations](/develop/plugins/author-guide/translations).                     |
 
 > **Moved to events in 1.0.** The hooks `register()`, `routes()`, and `boot()` no longer exist on the interface. They became PSR-14 events — see [Lifecycle Events](#lifecycle-events) below. The hooks `autoload()`, `drivers()`, and `recipePaths()` were removed entirely; their data lives in `plugin.json` (PSR-4 mappings) or has no current consumers. The manifest `autoload` block is still read by the loader (`autoload.psr-4` / `autoload.files`) even though the published [`plugin.schema.json`](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json) does not list it — a strict JSON-Schema validator flags the block under its `additionalProperties: false`, but `PluginLoader` only enforces `slug` and `class`, so the block is honoured. `composer.json` remains the supported home for PSR-4 mappings; see [Plugin manifest schema](/reference/plugin-schema).
 
@@ -200,6 +204,80 @@ On the `library` branch it is not an owner — a shipped skill belongs to no pri
 The merge order is the order of `search_provider_classes_merged`: core's `search_provider_classes` first, then `PluginLoader::searchProviderClasses()`. Core's list is empty, so in practice **the order is plugin load order** — unlike `SkillProviderRegistry`, where `skill_provider_classes` really does put `FilesystemSkillProvider` first. A newly installed plugin that collides on `type::id` can therefore win, which is the opposite of the guarantee the skills registry gives.
 
 So `type()` is a namespace shared by every installed plugin, and `id` is a namespace within it. A plugin must not claim a `type` another plugin already ships — `skill` and `media-archive` are taken by the two providers above. Use the plugin slug, as `MediaAssetSearchProvider` does, and keep the value stable: it is half of the palette's dedup key and the palette title-cases it into a section header.
+
+### Due work
+
+Core's scheduler fires prompts at agents. It knows nothing about a plugin's own schedule — a publishing slot, a metrics sweep, a half-finished upload. A plugin that has such work implements `Spora\Scheduling\DueWorkProviderInterface` and names the class in `dueWorkProviders()`; the worker asks it what is due and executes what it hands back.
+
+```php
+namespace Spora\Scheduling;
+
+interface DueWorkProviderInterface
+{
+    /** @param list<int> $principalIds principals the caller may act for */
+    public function dueWork(array $principalIds): array;
+
+    public function execute(DueWork $work): void;
+}
+```
+
+The provider owns its rows. **Two workers on the same install must not both run the same unit of work**, and core neither enforces that nor touches the provider's tables — the provider guarantees it, either by taking the unit out of the running in one atomic transition inside `dueWork()`, or by claiming it atomically inside `execute()`.
+
+`DueWork` is a value object, not a row: `provider` (the class name as the provider spells it), `principalId`, `payload` (the provider's own data — core does not read it) and `dueAt` (`Y-m-d H:i:s` in UTC). Core routes a unit back to the provider that reported it, so a wrong `provider` name costs nothing but a log line.
+
+**A unit outside the caller's scope is discarded** and never executed, and the discard is logged at ERROR level. The scope is the principals the caller may act for: the whole install for the server worker, the calling user's own principal plus their groups' principals for the browser's housekeeping call. A provider must therefore not claim a unit before it knows the unit is in scope — a claimed unit that is discarded is lost work.
+
+Dispatch happens in both worker modes:
+
+| Mode   | Call site                                           | Scope                                       |
+| ------ | --------------------------------------------------- | ------------------------------------------- |
+| Server | `bin/spora worker:run` (daemon or `--once`)         | every principal in the install              |
+| Client | `POST /api/v1/worker/housekeeping` from the browser | the principals the calling user may act for |
+
+One provider's failure does not take the others with it: a provider that throws while reporting contributes nothing and is logged, and a unit that throws while executing leaves the units behind it running. The work is executed oldest-first by `dueAt`.
+
+Core ships no provider of its own, so the order the registry consults them in is plugin load order. The author guide chapter is [Due work](/develop/plugins/author-guide/due-work).
+
+### Plugin settings
+
+A plugin with operator-facing settings — a client id, a token, a URL — implements `Spora\Settings\PluginSettingsProviderInterface` and names the class in `pluginSettingProviders()`. The host collects the definitions from every installed plugin and renders them on the **Plugins** tab of the settings page.
+
+```php
+namespace Spora\Settings;
+
+interface PluginSettingsProviderInterface
+{
+    /** The plugin slug. The setting keys and the DB group are derived from it. */
+    public function slug(): string;
+
+    /** @return list<SettingDefinition> */
+    public function settings(): array;
+}
+```
+
+The host owns the key space, the storage group and the section:
+
+- The key is rewritten to `SPORA_<SLUG>_<KEY>`. The provider gives its key without the prefix; a key that arrives with the prefix already on it is stripped first, so `api_key` and `SPORA_ACME_API_KEY` are the same setting.
+- The row is stored under the group `plugin:<slug>`, so one plugin's rows never mix with another's.
+- The setting is rendered in the `plugins` section. A `group` or a `section` on the provider's own `SettingDefinition` is **ignored** — the host overrides both.
+- A plugin setting is read at request time, never before the database is open, so it is stored and edited like any other setting.
+
+The provider may depend on the configuration. The config is built from core's own declarations first, and the plugin values are folded in on the first read, so there is no cycle: a provider that reads `SPORA_APP_URL` to describe its setting works. The definitions are read before the database is open, so a provider must not touch the database in `settings()`.
+
+**A plugin may not redefine a core setting.** A definition whose rewritten key collides with a core key is refused, and the core definition stands — a plugin that could redefine `SPORA_DB_DRIVER` would move it out of the `framework` group and off the boot-only list, and the stored row would be orphaned.
+
+A plugin setting resolves like any other: the declared default, then `config.php`, then the environment, then the stored row. The stored row wins.
+
+#### Seeing a provider that did not contribute
+
+A provider can fail to contribute, and a setting that silently does not exist is a setting nobody configured. Two surfaces report it:
+
+- **`GET /api/v1/admin/settings`** carries `data.plugin_problems` — a list of `{ provider, message }` objects, empty when nothing is wrong. A provider that could not be resolved, one with no slug, one whose `settings()` threw, and one whose key collided with a core setting each appear there.
+- **PHP's error log** carries the same message, prefixed `[spora] ERROR`. It is written with `error_log()` rather than the PSR-3 logger, because the registry is read while the configuration is being built and the logger is built _from_ that configuration.
+
+The admin UI does not render `plugin_problems`; the response is where an operator or a script reads it.
+
+The author guide chapter is [Plugin settings](/develop/plugins/author-guide/plugin-settings).
 
 ## Lifecycle Events
 
@@ -281,9 +359,11 @@ Spora divides its PHP surface into two zones. Plugins should depend only on the 
 
 ### Plugin-stable (depend freely)
 
-- `Spora\Plugins\PluginInterface` and the eleven data hooks on `Spora\Extensions\SporaExtensionInterface` (`getName`, `tools`, `apps`, `skillPaths`, `skillProviders`, `searchProviders`, `speechToTextProviders`, `agentTemplatePaths`, `schemaVersion`, `migrationsPath`, `settingsClasses`), plus `translationsPaths()` — declared on `PluginInterface` itself rather than on the extension interface, because it is plugin-shaped rather than extension-shaped: an App extends the host, and the host has no catalogue of its own to ship.
+- `Spora\Plugins\PluginInterface` and the thirteen data hooks on `Spora\Extensions\SporaExtensionInterface` (`getName`, `tools`, `apps`, `skillPaths`, `skillProviders`, `searchProviders`, `speechToTextProviders`, `agentTemplatePaths`, `schemaVersion`, `migrationsPath`, `settingsClasses`, `dueWorkProviders`, `pluginSettingProviders`), plus `translationsPaths()` — declared on `PluginInterface` itself rather than on the extension interface, because it is plugin-shaped rather than extension-shaped: an App extends the host, and the host has no catalogue of its own to ship.
 - `Spora\Skills\SkillProviderInterface` plus its two wire types `SkillSummary` / `SkillDescriptor` and the `SkillProviderRegistry` — the seam a custom-skill plugin implements. The five members and the `MAX_FILE_BYTES` constant are frozen; see [Authoring a skill provider](/develop/plugins/author-guide/skills#the-interface-contract).
 - `Spora\Search\SearchProviderInterface` plus its two wire types `SearchHit` / `SearchContext` and the `SearchProviderRegistry` — the seam a palette-search plugin implements. Core ships no implementation, so this is the whole palette-search surface. See [Palette search](#palette-search) and [Author guide → Worked example: a palette search provider](/develop/plugins/author-guide/foundations#worked-example-a-palette-search-provider).
+- `Spora\Scheduling\DueWorkProviderInterface` plus its wire type `DueWork` and the `DueWorkProviderRegistry` — the seam a plugin implements to run work of its own on a cadence. Core ships no implementation, so this is the whole due-work surface. See [Due work](#due-work) and [Author guide → Due work](/develop/plugins/author-guide/due-work).
+- `Spora\Settings\PluginSettingsProviderInterface` plus `SettingDefinition` and the `PluginSettingsRegistry` — the seam a plugin implements to contribute operator-facing settings. The host owns the key, the storage group and the section. See [Plugin settings](#plugin-settings) and [Author guide → Plugin settings](/develop/plugins/author-guide/plugin-settings).
 - `Spora\Events\*` (the three lifecycle events) and the PSR-14 `Symfony\Component\EventDispatcher\EventSubscriberInterface` opt-in pattern documented in [Lifecycle Events](#lifecycle-events).
 - The orchestrator and task services: `Spora\Agents\AgentOrchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
 - The `#[Tool]` attribute and the `ToolInterface` contract for declaring plugin-supplied tools.

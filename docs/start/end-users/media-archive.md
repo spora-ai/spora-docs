@@ -1,6 +1,6 @@
 ---
 title: Browsing the Media Archive
-description: Filter and download media assets in the Media Archive admin app — type pills, search, dashboard-style scope chips, and the per-asset detail drawer.
+description: Filter and download media assets in the Media Archive admin app — type and kind pills, a folder tree, search, dashboard-style scope chips, and the per-asset detail drawer.
 ---
 
 # Browsing the Media Archive
@@ -11,8 +11,11 @@ The **Media Archive** plugin (one of the built-in apps in the operator panel) su
 
 - Every `media_assets` row the caller is allowed to see (filtered by `PrincipalResolver::visiblePrincipalIds()` server-side).
 - Type pill (`All` / `Images` / `Audio` / `Video` / `Documents`) plus a search input.
+- A kind chip row (`All` / `Asset` / `Template` / `Example`) under the type pills (see [Kind mark](#kind-mark)).
+- A folder tree above the search field (see [Folder tree](#folder-tree)).
 - A dashboard-style scope chip row above the search field (see [Scope chips](#scope-chips--all--my-media--group-x)).
-- A click-through detail drawer with metadata (dimensions, duration, mime type, source URL).
+- A folder badge on every card that is filed in a folder, carrying the folder's name.
+- A click-through detail drawer with metadata (dimensions, duration, mime type, source URL), the asset's folder and its editable kind.
 - One-click download via the existing `AssetController::show()` route.
 
 ## Scope chips — ALL / My Media / Group X
@@ -35,9 +38,39 @@ The server intersects the request values with the caller's `visiblePrincipalIds(
 
 If the caller asks for a filter that intersects with **nothing** they can see (e.g. asking for a foreign group after they've been removed from it), the controller clears the principal-id filter and the service falls back to the legacy `agentOwnerUserId`-based ownership union. That union is also empty when the caller is unauthenticated, so the safe default holds.
 
+## Folder tree
+
+A **folder** is a named container in the Media Archive, scoped to one principal. The filter bar carries a tree of them above the search field, built on the client from the flat `parent_id` list the server returns. The tree and the rules behind it are in [Concepts → Media folders](/reference/concepts/media-folders).
+
+- The root button, **All media**, is the whole library. Picking it clears the folder filter.
+- Every folder below it is one row, indented by its depth, carrying the folder's name and the number of assets filed **directly** in it — a subfolder's assets are counted in the subfolder, not in its parent.
+- In the **All** scope, and only when more than one principal in scope owns folders, each row also names the principal that owns it: two principals may each hold a folder called `Corporate`.
+- Picking a folder sends the scalar `?folder_id=<uuid>` — one folder at a time. The server accepts the bracket form but honours only the first id, and a multi-folder filter that silently returns one folder's rows is worse than none.
+- The tree shows the folders of the principals **in scope**. A folder of a principal outside the scope would filter the listing down to nothing, so it is not offered, and changing the scope drops a folder selection the new scope cannot filter by.
+- The upload dialog has a folder picker of its own, offering only the folders of the principal the upload is filed under; changing that principal drops the picked folder.
+
+The tree and the kind chip row are offered only when the host's core carries the folders release. The panel probes `GET /api/v1/media/folders`, and a **404** means the core has no folders endpoint at all — so the panel offers neither filter rather than offering one the server ignores.
+
+## Kind mark
+
+Every asset carries a **kind** — the advisory mark `asset`, `template` or `example`, `asset` by default. The filter bar carries a chip row for it: `All` / `Asset` / `Template` / `Example`. Picking one sends `?kind=<value>`.
+
+The mark is a label and the operator owns it:
+
+- The detail drawer shows the asset's kind as a select, and changing it PATCHes `{"kind": …}`.
+- The mark never refuses an asset — a theme filed as a plain `asset` still renders, and a file marked `template` is still whatever its bytes are.
+- A value **outside** the three is refused on write: the upload endpoint answers **400** `INVALID_KIND`, and the panel's `PATCH /api/v1/media/{id}` answers **422** `INVALID_KIND`.
+- The listing filter is lenient where the write path is not: `?kind=bogus` is dropped and the listing comes back unfiltered rather than failing.
+
 ## Wire shape: `?principal_id[]=…`
 
 The frontend sends the request as repeated `?principal_id[]=…` keys. The **array-bracket form** is required — the plain repeated scalar form (`?principal_id=…&principal_id=…`) is collapsed to the LAST value by PHP's `parse_str`, which silently dropped everything except the last group-principal when the chip row sent every visible id. The `[principal_id]` parameter is defined in the OpenAPI spec — see the auto-generated [Media API reference](/reference/api/media#query-parameters).
+
+## The search box and the plugin filter only work now
+
+The panel used to send `?search=` and `?plugin=`, while core read `?q=` and `?plugin_slug=` — two spellings for the same two filters. Neither reached the server, so the search box filtered nothing at all.
+
+Core now accepts either spelling and the panel sends core's canonical ones, so the box filters the grid for the first time: a case-insensitive substring match on the asset's **prompt**, **filename**, stored URL, source URL and id. The plugin filter is the same fix on the panel's side — the request carries it, but the panel exposes no control for it, so nothing on screen changes.
 
 ## Keyboard / a11y notes
 
@@ -79,19 +112,22 @@ copy. There are no bytes on this side to hand out, so the download route answers
 
 ## Where the data comes from
 
-| Endpoint                                       | Used for                                                                                                             |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/media?principal_id[]=…`           | The grid itself — paginated, filtered, scoped. Returns `{ data: { assets, page, perPage, total, lastPage } }`.       |
-| `GET /api/v1/principals/me`                    | The list of visible principals (typed: `user` vs `group`). Drives the chip row shape.                                |
-| `GET /api/v1/groups`                           | Friendly group names keyed by `principal_id`. The chip row falls back to `Group #N` if this endpoint is unavailable. |
-| `GET /api/v1/media/{id}`                       | Detail drawer payload.                                                                                               |
-| `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                  |
-| `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, public sharing. Validators are in `MediaArchiveUpdateValidator`.              |
-| `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                   |
-| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                 |
+| Endpoint                                       | Used for                                                                                                                                 |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/media?principal_id[]=…`           | The grid itself — paginated, filtered, scoped (`?folder_id=`, `?kind=`). Returns `{ data: { assets, page, perPage, total, lastPage } }`. |
+| `GET /api/v1/media/folders?principal_id=…`     | The folder tree — one flat list per principal, each folder with its `asset_count`.                                                       |
+| `POST /api/v1/media`                           | The upload. Takes the file plus `principal_id`, `folder_id` and `kind`; a `kind` outside the vocabulary is a **400**.                    |
+| `GET /api/v1/principals/me`                    | The list of visible principals (typed: `user` vs `group`). Drives the chip row shape.                                                    |
+| `GET /api/v1/groups`                           | Friendly group names keyed by `principal_id`. The chip row falls back to `Group #N` if this endpoint is unavailable.                     |
+| `GET /api/v1/media/{id}`                       | Detail drawer payload.                                                                                                                   |
+| `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                                      |
+| `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, public sharing — and now `folder_id` and `kind`. Validators are in `MediaArchiveUpdateValidator`. |
+| `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                                       |
+| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                                     |
 
 ## Related
 
 - [Concepts → Media assets](/reference/concepts/media-assets) — plugin-author guide for embedding media in tool results (AssetStore, MediaEmbed, StoresBinaryAssets trait).
+- [Concepts → Media folders](/reference/concepts/media-folders) — the folder tree, the two uniqueness rules and the advisory `kind` mark behind the two filters above.
 - [Concepts → Architecture → Tool ownership is principal-scoped](/reference/concepts/architecture#tool-ownership-is-principal-scoped) — migration 0067 introduced the principal_id column that drives the new ownership union.
 - [Media API reference](/reference/api/media) — auto-generated from `openapi.json`; refresh with `npm run gen:api`.

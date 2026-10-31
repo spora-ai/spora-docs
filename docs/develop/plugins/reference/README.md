@@ -13,6 +13,7 @@ One page per plugin in the `spora-ai` GitHub org, each covering what it adds, ho
 - **[Memories](/develop/plugins/reference/memories)** — persistent memory storage for agents and users, plus the Memories admin panel
 - **[MiniMax](/develop/plugins/reference/minimax)** — image, speech, music, and video generation
 - **[Muse](/develop/plugins/reference/muse)** — Meta Muse vendor home on a single Meta Model API key
+- **[Office](/develop/plugins/reference/office)** — convert Markdown to Word (.docx), OpenDocument (.odt), RTF and PowerPoint (.pptx), and read documents back as Markdown
 - **[OpenAI Image](/develop/plugins/reference/openai-image)** — OpenAI-compatible image generation against any compatible provider
 - **[Plugin skeleton](/develop/plugins/reference/plugin-skeleton)** — minimal template — start here for new plugins
 - **[Semantic Scholar](/develop/plugins/reference/semantic-scholar)** — academic paper search and metadata (free, no key)
@@ -22,6 +23,5 @@ One page per plugin in the `spora-ai` GitHub org, each covering what it adds, ho
 - **[Team Graph](/develop/plugins/reference/team-graph)** — a directed graph of the spawning relationships between a principal's agents
 - **[Typst](/develop/plugins/reference/typst)** — compile Typst source to PDF/PNG/SVG
 - **[Weather](/develop/plugins/reference/weather)** — current conditions, forecasts, astronomy (WeatherAPI.com)
-- **[Word](/develop/plugins/reference/word)** — convert Markdown to Word (.docx), and read .docx back as Markdown
 - **[World News](/develop/plugins/reference/worldnews)** — top news by country and full-text news search
 - **[Zernio](/develop/plugins/reference/zernio)** — social-media scheduling and publishing across 15+ networks

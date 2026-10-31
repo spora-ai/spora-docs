@@ -113,7 +113,7 @@ The group is part of the unique key with the setting key, so one plugin's rows n
 
 ## The provider may depend on the config
 
-The definitions are read while the configuration is being built. The config is built from core's own declarations first and the plugin's values are folded in on the first read, so there is no cycle: a provider that reads the configuration to describe its settings works.
+The definitions are read on the configuration's first read. The config is built from core's own declarations first and the plugin's values are folded in on that first read, so there is no cycle: a provider that reads the configuration to describe its settings works.
 
 That is what lets a provider put the instance's public address into the description of the setting that address is registered on. The operator pastes the address into a third-party console, and the provider takes it from the config its own request carries, so the two cannot disagree.
 
@@ -219,7 +219,7 @@ A provider can fail to contribute, and the failure is reported in four cases:
 Two surfaces carry it:
 
 - **`GET /api/v1/admin/settings`** carries `data.plugin_problems` — a list of `{ provider, message }` objects, empty when nothing is wrong. The admin UI does not render it; the response is where an operator or a script reads it.
-- **PHP's error log** carries the same message, prefixed `[spora] ERROR`. It is written with `error_log()` rather than the PSR-3 logger, because the registry is read while the configuration is being built and the logger is built _from_ that configuration — there is no logger to inject at that point.
+- **PHP's error log** carries the same message, prefixed `[spora] ERROR`. It is written with `error_log()` rather than the PSR-3 logger, because the plugin settings are folded into the configuration on its first read and the logger is built _from_ that configuration — there is no logger to inject at that point.
 
 ## Testing
 

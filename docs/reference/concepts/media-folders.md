@@ -37,9 +37,11 @@ A folder's **name is one path segment**. A name with a `/` in it is refused with
 
 ## The kind mark
 
-`kind` is **advisory**. It is a filter hint for the operator's UI, and nothing in the read or the write path refuses an asset because of it: a theme filed as a plain `asset` still renders, and a template marked `example` is still a template. The mark is a label, and the operator changes it whenever they like.
+`kind` is **advisory**. It is a filter hint for the operator's UI, and nothing refuses an asset because of the mark it carries: a theme filed as a plain `asset` still renders, and a template marked `example` is still a template. The operator changes the mark whenever they like, and a mark they chose is never refused.
 
-The three values are a closed set **for the filter only**: `GET /api/v1/media?kind=bogus` drops the unknown value and returns the unfiltered listing rather than an error.
+The one thing the vocabulary refuses is a value **outside** it. The upload endpoint answers a mark it does not know with a **400** `INVALID_KIND`, and the Media Archive plugin's `PATCH /api/v1/media/{id}` answers with a **422** `INVALID_KIND` — the column cannot hold a value the filter cannot select, so the write is refused rather than stored.
+
+The listing filter is lenient where the write path is not: `GET /api/v1/media?kind=bogus` drops the unknown value and returns the unfiltered listing rather than an error.
 
 ## The API
 

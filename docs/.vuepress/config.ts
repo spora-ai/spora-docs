@@ -270,6 +270,7 @@ export default defineUserConfig({
             { text: 'Interfaces', link: '/reference/concepts/interfaces' },
             { text: 'Logging', link: '/reference/concepts/logging' },
             { text: 'Media assets', link: '/reference/concepts/media-assets' },
+            { text: 'Media folders', link: '/reference/concepts/media-folders' },
             { text: 'Plugin system', link: '/reference/concepts/plugins-system' },
             { text: 'Principals & groups', link: '/reference/concepts/principals' },
             { text: 'Schema', link: '/reference/concepts/schema' },

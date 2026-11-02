@@ -59,7 +59,7 @@ A **folder** is a named container in the Media Archive, scoped to one principal.
 - A principal's heading is a button: clicking it switches the scope to that principal.
 - Picking a folder sends the scalar `?folder_id=<uuid>` — one folder at a time. The server accepts the bracket form but honours only the first id, and a multi-folder filter that silently returns one folder's rows is worse than none.
 - The tree shows the folders of the principals **in scope**. A folder of a principal outside the scope would filter the listing down to nothing, so it is not offered, and changing the scope drops a folder selection the new scope cannot filter by.
-- The upload dialog has a folder picker of its own, offering only the folders of the principal the upload is filed under; changing that principal drops the picked folder.
+- The upload dialog has a folder picker of its own, offering only the folders of the principal the upload is filed under; changing that principal drops the picked folder. It opens on the folder the panel is scoped to, when the upload's principal owns it — the operator is looking at that folder, so that is where the file belongs.
 
 The tree and the kind dropdown are offered only when the host's core carries the folders release. The panel probes `GET /api/v1/media/folders`, and a **404** means the core has no folders endpoint at all — so the panel offers neither filter rather than offering one the server ignores. On such a core the rail is not drawn at all, and the scope dropdown stays in the toolbar.
 

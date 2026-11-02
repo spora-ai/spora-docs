@@ -21,7 +21,7 @@ The panel is a **folder rail** on the left and the **grid** on the right.
 - A toolbar above the grid: a search box, a **file-type dropdown** (`All file types` / `Images` / `Audio` / `Video` / `Documents`), a **kind dropdown** (`All kinds` / `Asset` / `Template` / `Example`), the **Upload** button and the "Include temporary files" toggle (see [Kind mark](#kind-mark)).
 - The folder rail beside it, holding the scope dropdown and the folder tree (see [The folder rail](#the-folder-rail)).
 - A folder badge on every card that is filed in a folder, carrying the folder's name.
-- A click-through detail drawer with metadata (dimensions, duration, mime type, source URL), the asset's folder and its editable kind.
+- A click-through detail drawer with metadata (dimensions, duration, mime type, source URL), the asset's folder and its kind — **both editable**: a picker beside each other, one that files the asset into a folder and one that changes its mark. The folder picker offers the folders of the asset's own principal; a folder of another principal is refused by the server, so offering it would be offering a refusal.
 - One-click download via the existing `AssetController::show()` route.
 - An empty state that names the case: **"This folder is empty."** when a folder is selected, and **"No media yet — generate something with a companion plugin to see it here."** when the whole library is shown. Both offer an upload button.
 

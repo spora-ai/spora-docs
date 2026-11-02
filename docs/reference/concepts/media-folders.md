@@ -70,6 +70,14 @@ One folder on the wire:
 
 A rename or a move rewrites the folder's path **and the paths of every descendant** — they are recomputed from the names under the new root, so a stale segment cannot survive a move. A folder cannot be moved inside itself (**400**).
 
+## The panel's folder surface
+
+The Media Archive panel shows the tree in a **rail** beside the grid, grouped by principal in the all-principals scope — two principals may own folders with the same name, so the grouping is what tells them apart.
+
+The panel can **create** a folder: the rail's **New folder** button opens an overlay that asks for the name, the principal the folder belongs to and the parent it sits under, and calls `POST /api/v1/media/folders`. A duplicate sibling name comes back as a **422** `NOT_UNIQUE` and the overlay says so.
+
+Renaming, moving and deleting a folder are API-only — the panel has no control for them. See [Browsing the Media Archive](/start/end-users/media-archive) for the panel itself.
+
 ## Filtering the library
 
 `GET /api/v1/media` takes two filters for the two new columns:
@@ -89,7 +97,7 @@ The `media_folders` tool carries the folder surface for the agent:
 | `file_asset`    | file an asset into a folder (`asset_id` + `folder_id`); omit `folder_id` to move it back into the root |
 | `search_assets` | the assets inside one folder (`folder_id`)                                                             |
 
-There is no `create_folder`: the tree is the operator's. `file_asset` fails when the folder already holds a file with that name, and every operation is scoped to the calling principal — an asset or a folder of another principal is reported as missing.
+There is no `create_folder`: the tree is the operator's, not the assistant's — the panel can create a folder, the agent cannot. `file_asset` fails when the folder already holds a file with that name, and every operation is scoped to the calling principal — an asset or a folder of another principal is reported as missing.
 
 ## Themes and templates
 

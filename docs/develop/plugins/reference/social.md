@@ -22,7 +22,7 @@ After install the **Social** tile appears in the admin panel's Apps dropdown at 
 
 ## The agent that posts for you
 
-The agent-driven mode is the reason the plugin exists. You give an agent a schedule; the agent writes the post. It wakes, reads what is already going out, drafts a body per network, checks the media against each network's rules, and hands the finished post to you. You approve the copy and the time **once**, and the worker publishes when the moment comes.
+The agent-driven mode is the reason the plugin exists. You give an agent a schedule; the agent writes the post. It wakes, reads what is already going out, checks the media against each network's rules, and hands the finished post to you. You approve the copy and the time **once**, and the worker publishes when the moment comes.
 
 You do not have to build that agent yourself — the plugin ships both halves.
 
@@ -30,7 +30,7 @@ You do not have to build that agent yourself — the plugin ships both halves.
 
 `agent-templates/social-poster.json` — id **`social/social-poster`**, name "Spora Social Poster", version 1.0.0, `required_plugins: ["spora-ai/spora-plugin-social"]`.
 
-It enables the five tools with the approval defaults already set: every read and every draft is pre-approved, and everything that commits copy to a network is not. It also grants the **Skill** tool with `social-poster` allowlisted, so the imported agent arrives with the operating manual as well as the tools. Its system prompt carries the per-platform rules — the character limits, that Instagram needs media and takes no PNG, that each network gets its own body — because a body over Instagram's limit fails that target, and a post that reaches LinkedIn but not Instagram is a `partial` one. See [Concepts → Agent templates](/reference/concepts/agent-templates).
+It enables the five tools with the approval defaults already set: every read and every draft is pre-approved, and everything that commits copy to a network is not. It also grants the **Skill** tool with `social-poster` allowlisted, so the imported agent arrives with the operating manual as well as the tools. Its system prompt carries the per-platform rules — the character limits, that Instagram needs media and takes no PNG, that a network whose copy has to differ gets its own body — because a body over Instagram's limit fails that target, and a post that reaches LinkedIn but not Instagram is a `partial` one. See [Concepts → Agent templates](/reference/concepts/agent-templates).
 
 ### The skill
 
@@ -214,14 +214,18 @@ A skipped check is not a passed check: it is a fact about the environment, not a
 
 ## Publishing
 
-The composer is the landing screen, for the operator writing one post by hand. It has an internal title, a message, the accounts to publish to, the media to publish, and what to do with it.
+The composer is the landing screen. It has two jobs: writing a post by hand, and editing a post an agent wrote. It has an internal title, a message, the accounts to publish to, the media to publish, and what to do with it.
 
 - **Title** — an internal label. It never reaches the network.
-- **Message** — the shared body.
-- **Publish to** — the accounts. Each network gets its own body if one was drafted for it, and the shared body otherwise.
+- **Message** — the body. One message goes to every platform; a platform whose copy has to differ carries its own text, stored in `platform_bodies`.
+- **Publish to** — the accounts.
 - **Platform preview** — a live character counter per targeted network, and the media badges for that network.
 
-**Draft with AI** asks the principal's configured model for copy and returns **one body per network**, because the post that reads well on LinkedIn is not the post that reads well on Instagram. It needs a language model; without one it answers _No language model is configured for this principal. Set a preferred configuration, or a global default._
+**Draft with an agent** opens a panel with a prompt and the agents of the principal. The agent needs its `social_post` tool enabled; one that has it off cannot write a post, and the panel says so and links to the agent's own tools.
+
+The plugin hands the prompt over as an ordinary Spora task and stops there: it writes no copy and waits for no answer. The agent writes the post in its own chat, with its own `social_post` tool, and saves it as a **draft**. The operator watches the agent write in the task chat, finds the draft in the **Posts** list, edits it and then schedules or publishes it.
+
+A post can carry **hashtags**: they are stored on the post and added under the body when it goes out, on every platform. The agent names them in the `hashtags` parameter of `social_post`.
 
 **When** offers three: _Save as draft_, _Schedule_, _Publish now_. _Schedule_ here is the one-shot path — a post dated for a moment. The recurring path is the agent's own schedule; see [The agent that posts for you](#the-agent-that-posts-for-you).
 
@@ -246,6 +250,7 @@ The Recurring screen went with the static slot. A fixed slot posted **the same w
 What did replace it is where the posts themselves are:
 
 - **The Posts list** — a post the agent wrote is labelled **By an agent**, and one that is still waiting says **The agent will publish this.** Filter the list by status to see only what is **Scheduled**.
+- **The drawer** — the post itself: the media, the message, the targets and what each of them did, the time. A **draft** can be edited from it: the **Edit** button opens the post in the composer, where the copy, the accounts, the media and the time can be changed before it is saved, scheduled or published.
 - **The Calendar** — the month's posts, on the day each one is due or went out.
 
 The recurrence itself lives in the agent's own **Schedules** tab — the cron expression and the prompt are there, and that is where it is edited.
@@ -254,13 +259,15 @@ The recurrence itself lives in the agent's own **Schedules** tab — the cron ex
 
 Each network takes its own things, and the rules are the reason a post is rejected:
 
-| Platform  | Media        | Types                     | Cap    | Body              |
-| --------- | ------------ | ------------------------- | ------ | ----------------- |
-| LinkedIn  | optional     | JPEG, PNG, GIF            | 8 MB   | 3,000 characters  |
-| Facebook  | optional     | JPEG, PNG, GIF, BMP, MP4  | 1 GB   | 63,206 characters |
-| Instagram | **required** | JPEG (image), MP4 (video) | 100 MB | 2,200 characters  |
+| Platform  | Media        | Types                     | Cap    | Body              | Shown                  |
+| --------- | ------------ | ------------------------- | ------ | ----------------- | ---------------------- |
+| LinkedIn  | optional     | JPEG, PNG, GIF            | 8 MB   | 3,000 characters  | ~200 before _see more_ |
+| Facebook  | optional     | JPEG, PNG, GIF, BMP, MP4  | 1 GB   | 63,206 characters | ~125 in the feed       |
+| Instagram | **required** | JPEG (image), MP4 (video) | 100 MB | 2,200 characters  | ~125 before _more_     |
 
-**Both are enforced, per target.** Before it publishes, the backend checks every attachment against the rules of every target, and counts the body against that target's platform's limit. A body over it is refused with the numbers: _Over the limit: 5000 / 2200 characters for Instagram. Shorten the post._
+The last column is what a reader sees before the network hides the rest: a post that reads well in full can still say nothing in the first line. The plugin carries the number; the network decides where it cuts.
+
+**Both are enforced, per target.** Before it publishes, the backend checks every attachment against the rules of every target, and counts the text that goes out — the body, with the hashtags under it — against that target's platform's limit. Text over it is refused with the numbers: _Over the limit: 5000 / 2200 characters for Instagram. Shorten the post._
 
 Each platform is judged against **its own** body — `platform_bodies[platform]`, or the shared body when there is none for it — so one post aimed at LinkedIn and Instagram is checked twice, against each platform's limit. A post that is fine for LinkedIn and too long for Instagram fails **only the Instagram target**: the LinkedIn one goes out, and the post ends `partial`.
 

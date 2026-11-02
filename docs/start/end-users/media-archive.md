@@ -54,6 +54,7 @@ If the caller asks for a filter that intersects with **nothing** they can see (e
 A **folder** is a named container in the Media Archive, scoped to one principal. The tree of them lives in the rail on the left of the grid, built on the client from the flat `parent_id` list the server returns. The tree and the rules behind it are in [Concepts → Media folders](/reference/concepts/media-folders).
 
 - The rail's root button, **All media**, is the whole library. Picking it clears the folder filter.
+- Under it, **All media without a folder** is the pile that belongs to no folder yet. It is a filter of its own — `?unfiled=true` — and not a folder: a library that has just been given folders holds most of its assets outside them, and "show me what is not filed yet" is the first question an operator asks while sorting. The two filters are exclusive on the wire: a `folder_id` is the more specific one, so the server ignores `unfiled` when a folder is named.
 - Every folder below it is one row, indented by its depth, carrying the folder's name and the number of assets filed **directly** in it — a subfolder's assets are counted in the subfolder, not in its parent.
 - In one principal's scope the tree is that principal's folders. In the **All principals** scope the tree is **grouped**: each principal is a heading carrying the number of folders it owns, and its folders hang under it. Two principals may each hold a folder called `Corporate`, so the grouping is what tells them apart. A principal with no folders shows **No folders**.
 - A principal's heading is a button: clicking it switches the scope to that principal.
@@ -74,6 +75,19 @@ Both places that file an asset into a folder — the detail page and the upload 
 The write is the same in both places: `PATCH /api/v1/media/{id}` with a `folder_id`. The server scopes it by the asset's principal, so a folder of another principal is refused with a **422**.
 
 The tree and the kind dropdown are offered only when the host's core carries the folders release. The panel probes `GET /api/v1/media/folders`, and a **404** means the core has no folders endpoint at all — so the panel offers neither filter rather than offering one the server ignores. On such a core the rail is not drawn at all, and the scope dropdown stays in the toolbar.
+
+### Selecting several assets
+
+The grid can act on more than one asset at a time. The toolbar's **Select** button turns the selection mode on: every card grows a tick, and a click now adds or removes the asset instead of opening its detail page. The bar under the toolbar counts the selection and offers what can be done with it.
+
+- **Select all** takes every loaded row — the panel holds one page at a time, so this is the page, not the whole library.
+- **Move to folder** opens a dialog with the folder picker (see above). It files the selected assets into the chosen folder, one `PATCH /api/v1/media/{id}` per asset.
+- **Delete** asks first. The confirmation names the number of assets, and nothing is deleted until it is confirmed.
+- The **X** leaves the selection mode and drops the selection.
+
+A folder belongs to one principal, and the server scopes a folder write by the asset's principal — filing an asset of another principal into a folder is refused with a **422**. So a selection that spans principals cannot be filed into one folder as a whole: the move dialog asks which principal's folders to use, and the assets of the others stay where they are. The dialog says how many those are, and the toast after the move says what happened: how many were filed, how many stayed, and how many the server refused — a filename already taken in the target folder is the usual reason.
+
+Deleting is per asset as well, one `DELETE /api/v1/media/{id}` each. An asset that is not the caller's to delete is refused with a **403**; the rest are deleted, and the toast counts both.
 
 ### Creating a folder
 

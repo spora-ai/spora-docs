@@ -85,6 +85,10 @@ Renaming, moving and deleting a folder are API-only — the panel has no control
 - `?folder_id=<uuid>` — the assets filed in that folder. A folder of another principal yields no rows rather than somebody else's.
 - `?kind=asset|template|example` — the assets carrying that mark.
 
+And one for the pile outside the folders:
+
+- `?unfiled=true` — the assets filed in **no** folder. The flag and `folder_id` are exclusive: a folder is the more specific filter, so the server ignores `unfiled` when a folder is named. The scope is the caller's principals, as everywhere else — the flag narrows the rows the caller may see, it never widens them.
+
 Every asset in the listing carries `folder_id` and `kind`, so a client does not have to ask twice.
 
 ## What the assistant may do

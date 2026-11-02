@@ -62,6 +62,17 @@ A **folder** is a named container in the Media Archive, scoped to one principal.
 - The tree shows the folders of the principals **in scope**. A folder of a principal outside the scope would filter the listing down to nothing, so it is not offered, and changing the scope drops a folder selection the new scope cannot filter by.
 - The upload dialog has a folder picker of its own, offering only the folders of the principal the upload is filed under; changing that principal drops the picked folder. It opens on the folder the panel is scoped to, when the upload's principal owns it — the operator is looking at that folder, so that is where the file belongs.
 
+### Picking a folder
+
+Both places that file an asset into a folder — the detail page and the upload dialog — pick it from the same **folder picker**, and the picker draws the tree rather than a flat list. A flat list cannot say whether a folder called `2026` sits under `Corporate` or under `Templates`, and filing an asset in the wrong one is a mistake nobody notices until the library is a mess.
+
+- The control shows the chosen folder's **whole path** (`Corporate/2026`), so the tree is still readable once the menu is closed.
+- The menu lists the folders of one principal, indented by their depth, each with the number of assets filed in it, and a tick on the chosen one.
+- The top row, **No folder**, takes the asset out of its folder.
+- An asset filed in a folder the panel cannot resolve — because the folder belongs to a principal outside the operator's scope — is shown as **Unknown folder** rather than as an empty picker: the asset *is* filed somewhere, and saying otherwise would be a false claim.
+
+The write is the same in both places: `PATCH /api/v1/media/{id}` with a `folder_id`. The server scopes it by the asset's principal, so a folder of another principal is refused with a **422**.
+
 The tree and the kind dropdown are offered only when the host's core carries the folders release. The panel probes `GET /api/v1/media/folders`, and a **404** means the core has no folders endpoint at all — so the panel offers neither filter rather than offering one the server ignores. On such a core the rail is not drawn at all, and the scope dropdown stays in the toolbar.
 
 ### Creating a folder

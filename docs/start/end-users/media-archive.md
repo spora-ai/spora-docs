@@ -69,7 +69,7 @@ Both places that file an asset into a folder — the detail page and the upload 
 - The control shows the chosen folder's **whole path** (`Corporate/2026`), so the tree is still readable once the menu is closed.
 - The menu lists the folders of one principal, indented by their depth, each with the number of assets filed in it, and a tick on the chosen one.
 - The top row, **No folder**, takes the asset out of its folder.
-- An asset filed in a folder the panel cannot resolve — because the folder belongs to a principal outside the operator's scope — is shown as **Unknown folder** rather than as an empty picker: the asset *is* filed somewhere, and saying otherwise would be a false claim.
+- An asset filed in a folder the panel cannot resolve — because the folder belongs to a principal outside the operator's scope — is shown as **Unknown folder** rather than as an empty picker: the asset _is_ filed somewhere, and saying otherwise would be a false claim.
 
 The write is the same in both places: `PATCH /api/v1/media/{id}` with a `folder_id`. The server scopes it by the asset's principal, so a folder of another principal is refused with a **422**.
 

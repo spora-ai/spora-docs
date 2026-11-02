@@ -287,6 +287,10 @@ Every attachment carries its fit state **for the networks the post currently tar
 
 An agent does the same through the tools: `social_media` with `list_assets` to see the library, `check_fit` to ask whether an asset fits a network, and `attach` to put it on a post. Attach the **original** asset id — the backend converts for Instagram and publishes the bytes for LinkedIn and Facebook.
 
+`check_fit` judges the asset the way the publish does, against **the media the platform will actually receive**: a PNG fits Instagram, because the backend converts it to a JPEG before it publishes. A media the platform cannot take at all — a Markdown file on Instagram — is refused with the remedy named.
+
+Every read answers with the rows and not with a count: the account ids a post can go to, the asset ids that can be attached, the post ids and the days they are due. The model reads the answer, so an id that is not in it does not exist for the agent.
+
 ## The tools
 
 Five tools, for the agents that write the posts. They are declared as `social_connections`, `social_post`, `social_media`, `social_analytics` and `social_calendar`; on the wire to the model they carry the plugin's slug — `social:social_post` — see [Concepts → Tools → Tool naming](/reference/concepts/tools#tool-naming).

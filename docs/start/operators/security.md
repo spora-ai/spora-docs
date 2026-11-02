@@ -127,13 +127,52 @@ Spora's rate limiter is a simple in-memory IP-based sliding window (`Spora\Servi
 | Verification resend (`/api/v1/auth/verification/resend`)       | 5 req / 60 s | same constants                                                       |
 
 The [Agent API](/reference/agent-api#errors-and-rate-limits) is limited separately, and per
-**key** rather than per IP: `SPORA_AGENT_API_RATE_LIMIT_MAX` requests per minute (default 60)
+**key** rather than per IP: `SPORA_API_RATE_LIMIT_MAX` requests per minute (default 60)
 against `Spora\Services\DbRateLimiter`, a database-backed rolling window keyed on the key id. A
 shared NAT therefore does not throttle an integrator, and one integration cannot exhaust another's
 budget. The counter is only consulted **after** the secret verifies, so a wrong secret can never
 return `429` — otherwise `429`-vs-`401` would reveal whether a key id exists.
 
-All other endpoints are not currently rate-limited. Only the Agent API has a separate, non-IP-keyed limit.
+All other endpoints are not currently rate-limited. Only the API scopes have a separate,
+non-IP-keyed limit.
+
+## API key scopes
+
+An API key is the authorisation on the three bearer surfaces, so what it may reach is the whole
+security question. There are three scopes, and each is a separate switch in Global Settings.
+
+| Scope    | Reaches                                                             | Minted by                             |
+| -------- | ------------------------------------------------------------------- | ------------------------------------- |
+| `agent`  | One agent, its chats and their media.                               | Manage role on the agent's principal. |
+| `group`  | Every agent of one group, their chats and their media.              | Owner or admin of the group.          |
+| `global` | Every group, every agent a group owns, their chats and their media. | Global admin only.                    |
+
+A **personal agent** — one a user owns rather than a group — is outside every scope except
+`agent`. There is no user-scoped key: a personal agent is reachable only through its own
+per-agent key, and a global key does not reach it. A global key also does not read a group's
+membership list.
+
+Two properties hold across all three:
+
+- **The key is the only credential.** The bearer surfaces accept a bearer key and nothing else —
+  no session cookie, no CSRF token, and no fallback to one. Holding a browser session cannot
+  widen a key's reach.
+- **A scope mismatch is a `401`.** A global key presented to the group surface, or a group key
+  presented to the agent surface, does not authenticate: each surface accepts only its own scope,
+  so a key cannot be used on a surface it was not minted for.
+
+The key-management endpoints are session-authenticated and CSRF-protected, and they stay mounted
+even when the scope is switched off — so a key can always be revoked. The blast radius of the
+widest scope is therefore a matter of _who can mint one_, which is why a global key is a global
+admin's right and not a group's.
+
+The plaintext secret is shown exactly once, at creation. Spora stores a SHA-256 digest and cannot
+reproduce it, so a lost key is replaced rather than recovered. `last_used_at` records the last
+request a key authenticated, which is what tells an operator which keys are still live before they
+revoke one.
+
+See [Agent API](/reference/agent-api), [Group API](/reference/group-api) and
+[Global API](/reference/global-api).
 
 ## Plugin Risks
 

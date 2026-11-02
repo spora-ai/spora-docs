@@ -129,14 +129,18 @@ For SMTP, use a bare hostname in `SPORA_MAIL_HOST`. Pair port `587` with `SPORA_
 
 ## Agent API
 
-| Variable                         | Default | Config key | Description                                                                                                                                                                                                                                                                                 |
-| -------------------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SPORA_AGENT_API`                | `false` | —          | Mounts the per-agent `/api/v1/agent-api/*` surface for external tools. Requires a server-side worker — in client-worker mode every endpoint answers `404`, whatever this is set to. Keys are managed in the agent's **Settings → API keys** section. See [Agent API](/reference/agent-api). |
-| `SPORA_AGENT_API_RATE_LIMIT_MAX` | `60`    | —          | Requests per minute a single Agent API key may make. Exceeding it answers `429` with a `Retry-After` header.                                                                                                                                                                                |
+| Variable                   | Default | Config key | Description                                                                                                                                                                                                                                                                                                                        |
+| -------------------------- | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_AGENT_API`          | `false` | —          | Mounts the per-agent `/api/v1/agent-api/*` surface for external tools. Requires a server-side worker — in client-worker mode every endpoint answers `404`, whatever this is set to. Keys are managed in the agent's **Settings → API keys** section. See [Agent API](/reference/agent-api).                                        |
+| `SPORA_GROUP_API`          | `false` | —          | Mounts the per-group `/api/v1/group-api/*` surface for external tools. Requires a server-side worker — in client-worker mode every endpoint answers `404`, whatever this is set to. Keys are managed in the group's **Settings → Developer access** section. See [Group API](/reference/group-api).                                |
+| `SPORA_GLOBAL_API`         | `false` | —          | Mounts the install-wide `/api/v1/global-api/*` surface for external tools. Personal agents are not reachable through it. Requires a server-side worker — in client-worker mode every endpoint answers `404`, whatever this is set to. Keys are managed in **Settings → Global API keys**. See [Global API](/reference/global-api). |
+| `SPORA_API_RATE_LIMIT_MAX` | `60`    | —          | Requests per minute a single API key may make, whatever its scope. Exceeding it answers `429` with a `Retry-After` header.                                                                                                                                                                                                         |
 
-Neither has a `config.php` key of its own; the only spelling `config.php` accepts is the flat
-`'SPORA_AGENT_API' => true`. Both are plain (non-`bootOnly`) settings, so once either has been saved
-in Global Settings the stored value wins over `.env` — set it in one place, not both.
+The three scopes are independent switches: turning one on does not mount the others.
+
+None has a `config.php` key of its own; the only spelling `config.php` accepts is the flat
+`'SPORA_AGENT_API' => true`. All four are plain (non-`bootOnly`) settings, so once any of them has
+been saved in Global Settings the stored value wins over `.env` — set it in one place, not both.
 
 ## Plugins
 

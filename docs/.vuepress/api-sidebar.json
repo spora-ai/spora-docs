@@ -13,6 +13,14 @@
       "link": "/reference/api/groups"
     },
     {
+      "text": "Global-api",
+      "link": "/reference/api/global-api"
+    },
+    {
+      "text": "Group-api",
+      "link": "/reference/api/group-api"
+    },
+    {
       "text": "Tasks",
       "link": "/reference/api/tasks"
     },

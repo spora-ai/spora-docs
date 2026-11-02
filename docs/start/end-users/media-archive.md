@@ -98,7 +98,7 @@ Core now accepts either spelling and the panel sends core's canonical ones, so t
 
 ## Keyboard / a11y notes
 
-- The three dropdowns — scope, file type, kind — open a menu marked `role="listbox"`. Each row in it is a `role="option"` button carrying `aria-selected` on the chosen one, and the trigger carries `aria-haspopup="listbox"` and `aria-expanded`.
+- The three dropdowns — scope, file type, kind — open a menu marked `role="menu"`. Each row in it is a `role="menuitemradio"` button carrying `aria-checked` on the chosen one, and the trigger carries `aria-haspopup="true"` and `aria-expanded`.
 - Each dropdown closes on an outside click and on Escape.
 - The tree's rows — the **All media** root and every folder — are buttons with `aria-pressed` marking the selected folder.
 - The rail's close button is a real button with an accessible name, so the drawer can be dismissed from the keyboard.

@@ -123,8 +123,7 @@ purpose, so a caller cannot tell a bad id from a bad secret. Requests are rate l
 | `GET`  | `/api/v1/agent-api/media/{mediaId}`       | Read a media asset this agent produced |
 
 The per-endpoint reference, including the full status-code list for each, is in the
-[API reference](/reference/api/agent-api). That page is generated from the OpenAPI spec, so it
-gains this surface once the API is present in `spora-core@main`.
+[API reference](/reference/api/agent-api). That page is generated from the OpenAPI spec.
 
 ## Start a chat
 

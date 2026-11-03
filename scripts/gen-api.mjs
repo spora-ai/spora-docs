@@ -16,7 +16,7 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve, basename } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import prettier from 'prettier'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -59,6 +59,104 @@ function renderParamTable(params) {
     return `| \`${p.name}\` | ${type} | ${required} | ${desc} |`
   })
   return [...rows, ...body, ''].join('\n')
+}
+
+/**
+ * A schema's type as it reads in a table cell.
+ *
+ * Spelled out rather than written as `array<string>`: angle brackets are
+ * HTML-ish, and a cell that renders as an empty gap teaches a reader nothing.
+ */
+function baseType(schema) {
+  if (!schema) return '(unspecified)'
+  if (schema.type === 'array') {
+    return schema.items ? `array of ${baseType(schema.items)}` : 'array'
+  }
+  if (schema.type === 'string') {
+    if (schema.format === 'binary') return 'binary'
+    return schema.format ? `string (${schema.format})` : 'string'
+  }
+  if (schema.type === 'object' || schema.properties) return 'object'
+  return schema.type ?? '(unspecified)'
+}
+
+function renderType(schema) {
+  const base = baseType(schema)
+  return schema?.nullable ? `${base} ${PIPE} null` : base
+}
+
+function pluralItems(count) {
+  return count === 1 ? 'item' : 'items'
+}
+
+/**
+ * The property's description, plus the constraints the schema carries and the
+ * prose does not: the enum, the length and item bounds.
+ */
+function renderFieldDescription(schema) {
+  const bits = []
+  if (schema.description) bits.push(schema.description)
+  if (schema.enum?.length) {
+    bits.push(`One of ${schema.enum.map((v) => `\`${v}\``).join(', ')}.`)
+  }
+  if (schema.minLength !== undefined) bits.push(`At least ${schema.minLength} characters.`)
+  if (schema.maxLength !== undefined) bits.push(`At most ${schema.maxLength} characters.`)
+  if (schema.minItems !== undefined) bits.push(`At least ${schema.minItems} ${pluralItems(schema.minItems)}.`)
+  if (schema.maxItems !== undefined) bits.push(`At most ${schema.maxItems} ${pluralItems(schema.maxItems)}.`)
+  if (schema.format === 'binary') bits.push('File part.')
+  return bits.join(' ').replaceAll('|', PIPE)
+}
+
+/**
+ * The body's fields as flat rows, nested objects flattened into
+ * `parent[].child` paths.
+ *
+ * A nested object gets a row of its own *and* rows for its own fields: a row
+ * that says only "object" tells a caller nothing about what to put in it.
+ */
+function schemaFields(schema, prefix = '') {
+  const rows = []
+  const required = new Set(schema.required ?? [])
+
+  for (const [name, prop] of Object.entries(schema.properties ?? {})) {
+    const path = prefix ? `${prefix}.${name}` : name
+    rows.push({ name: path, schema: prop, required: required.has(name) })
+
+    const isArray = prop.type === 'array'
+    const child = isArray ? prop.items : prop
+    if (child?.type === 'object' && child.properties) {
+      rows.push(...schemaFields(child, isArray ? `${path}[]` : path))
+    }
+  }
+
+  return rows
+}
+
+/**
+ * The request body as a field table, one table per content type.
+ *
+ * A body the spec does not describe field-by-field still gets its content
+ * type stated, so the section is never silently empty.
+ */
+function renderRequestBody(requestBody) {
+  const parts = ['### Request body', '']
+
+  for (const [contentType, def] of Object.entries(requestBody.content ?? {})) {
+    parts.push(`\`${contentType}\` — ${requestBody.required ? 'required' : 'optional'}`, '')
+
+    const fields = schemaFields(def.schema ?? {})
+    if (fields.length === 0) continue
+
+    parts.push('| Field | Type | Required | Description |', '| ----- | ---- | -------- | ----------- |')
+    for (const row of fields) {
+      parts.push(
+        `| \`${row.name}\` | ${renderType(row.schema)} | ${row.required ? 'yes' : 'no'} | ${renderFieldDescription(row.schema)} |`,
+      )
+    }
+    parts.push('')
+  }
+
+  return parts.join('\n')
 }
 
 /**
@@ -115,7 +213,7 @@ function renderSummaryTable(endpoints, schemes) {
   return [...header, ...rows, ''].join('\n')
 }
 
-function renderEndpointDetail({ path, method, op }) {
+export function renderEndpointDetail({ path, method, op }) {
   const heading = op.summary
     ? `## \`${method.toUpperCase()} ${path}\` — ${op.summary}`
     : `## \`${method.toUpperCase()} ${path}\``
@@ -130,6 +228,9 @@ function renderEndpointDetail({ path, method, op }) {
   }
   if (queryParams.length > 0) {
     parts.push('### Query parameters', '', renderParamTable(queryParams))
+  }
+  if (op.requestBody) {
+    parts.push(renderRequestBody(op.requestBody))
   }
 
   const responses = op.responses ?? {}
@@ -301,14 +402,18 @@ async function main() {
   console.log(`Wrote ${SIDEBAR.slice(ROOT.length + 1)}.`)
 }
 
-if (!existsSync(SPEC)) {
-  console.error(`Missing OpenAPI spec at ${SPEC}.`)
-  process.exit(1)
-}
+// The renderer is imported by scripts/gen-api.test.mjs, so the CLI only runs
+// when this file is the entry point — importing it must not write anything.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  if (!existsSync(SPEC)) {
+    console.error(`Missing OpenAPI spec at ${SPEC}.`)
+    process.exit(1)
+  }
 
-try {
-  await main()
-} catch (err) {
-  console.error(err)
-  process.exit(1)
+  try {
+    await main()
+  } catch (err) {
+    console.error(err)
+    process.exit(1)
+  }
 }

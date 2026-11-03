@@ -21,6 +21,8 @@ ToolResult.content ◄──── MediaEmbed::* ◄─────────�
 
 This page walks through each piece.
 
+An asset is filed in a **folder** — a named container scoped to one principal — and carries an advisory `kind` mark. The folder tree, its two uniqueness rules and the themes that live in a folder are in [Media folders](/reference/concepts/media-folders).
+
 ## 1. The two ingredients
 
 ### `Spora\Services\AssetStore`
@@ -158,7 +160,7 @@ Uploads are gated on the **sniffed** MIME (`MediaUploadController::checkMimeAllo
 A refiner upgrades the verdict:
 
 ```php
-final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMimeRefinerInterface
+final class OfficeMimeRefiner implements Spora\Services\MediaArchive\MediaMimeRefinerInterface
 {
     // No constructor — see the contract below.
     public function refine(string $bytes, ?string $filename, string $sniffedMime): ?string
@@ -199,7 +201,7 @@ final class WordDocxMimeRefiner implements Spora\Services\MediaArchive\MediaMime
 ```
 
 ```php
-MediaMimeRefinerDiscovery::add(WordDocxMimeRefiner::class);
+MediaMimeRefinerDiscovery::add(OfficeMimeRefiner::class);
 ```
 
 Contract, and the reasons behind each part:
@@ -211,6 +213,46 @@ Contract, and the reasons behind each part:
 - **A refiner that throws is caught and declined**, not propagated. Plugin code is untrusted: an uncaught exception here would travel through `ingestFromBytes()` and fail every media upload in the process over one MIME verdict. The same tolerance applies to the plugin-supplied _derivative producer_ that runs later in the ingest: `MediaDerivativeService::ensureTextDerivative()` swallows and logs a throw rather than failing the upload.
 
 This is one of two discovery registries — `MediaDerivativeProducerDiscovery` and `MediaMimeRefinerDiscovery` — and both share one registration shape through the `DiscoversRegistrations` trait. They have independent storage, which is worth knowing if you extend them: a `private static` property declared on a shared _parent class_ would be inherited by every subclass and silently merge the two lists into one.
+
+### Filing an asset into a folder
+
+An asset is filed in a folder through core's `Spora\Services\MediaArchive\MediaFolderService`, never through a column write:
+
+```php
+use Spora\Models\MediaAsset;
+use Spora\Services\MediaArchive\MediaFolderService;
+
+final class MyFilingTool extends AbstractTool {
+    public function __construct(
+        private readonly MediaFolderService $folders,
+    ) {}
+
+    protected function doWork(ToolContext $ctx, array $args): ToolResult {
+        $asset = MediaAsset::find($args['asset_id']);
+        if ($asset === null) {
+            return new ToolResult(false, 'No such asset.');
+        }
+
+        // A null folder id files the asset back into the root.
+        $this->folders->fileAsset((int) $asset->principal_id, $asset, $args['folder_id'] ?? null);
+
+        return new ToolResult(true, 'Filed.');
+    }
+}
+```
+
+`$asset->fill(['folder_id' => $id]); $asset->save();` does not work. It bypasses the uniqueness rule the service owns and lands on the raw `UNIQUE (folder_id, filename)` index, so the caller gets a driver-level error — a `500` where the rule says `422`.
+
+What the service gives you:
+
+- **`MediaFolderNotFoundException`** — the folder is not the principal's. A folder of another principal is reported as missing, not as forbidden.
+- **`MediaFolderUniquenessException`** — the folder already holds an asset with that filename.
+
+Both are domain errors; catch them and turn them into a message the operator can act on.
+
+`fileTarget($principalId, $folderId, $filename)` is the same check without the write: it returns the folder, or raises the two exceptions above. Its fourth argument, `$exceptAssetId`, exists for the case where the asset already sits in that folder — without it, the asset would conflict with itself.
+
+Deleting a folder does not delete its assets: they fall back to the root, and the subfolders go with it. The service does that move itself, because SQLite cannot add a foreign key to an existing table — the `media_assets.folder_id` constraint only exists on MySQL/MariaDB — so the behaviour has to be the service's on every engine.
 
 ## 6. Derivatives
 
@@ -312,11 +354,11 @@ Because the derivative path is a second `MediaAsset::find()` plus a real `file_g
 
 ### The producer union is a second allowlist surface
 
-`MediaAllowedTypesService` builds the upload allowlist from four sources: the static text list, the static audio list, the operator's image config, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-word` registers `DocxToMarkdownProducer`.
+`MediaAllowedTypesService` builds the upload allowlist from four sources: the static text list, the static audio list, the operator's image config, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-office` registers `OfficeToMarkdownProducer`.
 
-That makes the union a **second, parallel allowlist surface**, and it has to stay in sync with the MIME-refiner chain. Nothing structurally enforces the coupling: a `.docx` that sniffs as `application/zip` is fixed by `WordDocxMimeRefiner` _before_ the gate and still works, but no code path asserts that a refiner's target mime is also in some producer's source list. If you ship a refiner that upgrades a format into a mime, confirm a producer claims that mime yourself: not even a test asserts the pairing, and no owner is designated for the invariant.
+That makes the union a **second, parallel allowlist surface**, and it has to stay in sync with the MIME-refiner chain. Nothing structurally enforces the coupling: a `.docx` that sniffs as `application/zip` is fixed by `OfficeMimeRefiner` _before_ the gate and still works, but no code path asserts that a refiner's target mime is also in some producer's source list. If you ship a refiner that upgrades a format into a mime, confirm a producer claims that mime yourself: not even a test asserts the pairing, and no owner is designated for the invariant.
 
-`supportedSourceFormats()` returns **bare extensions as well as mimes** — `TypstRenderProducer` returns `['text/x-typst', 'typ']`, `MarkdownToDocxProducer` returns `['text/markdown', 'md', 'markdown']` — and producer resolution checks both. The allowlist union does not: it must filter on entries containing `/`, or `md`, `typ`, and `markdown` leak into the LLM-facing `Allowed: %s` string in `create_media`'s rejection message. The leak is **invisible in the upload UI**: `allowedExtensions()` maps every mime through `extensionForMime()`, and a bare extension yields null there, so it is dropped from the `accept=` attribute rather than surfacing as a bogus name. It only ever surfaces in the LLM contract.
+`supportedSourceFormats()` returns **bare extensions as well as mimes** — `TypstRenderProducer` returns `['text/x-typst', 'typ']`, `MarkdownToOfficeProducer` returns `['text/markdown', 'md', 'markdown']` — and producer resolution checks both. The allowlist union does not: it must filter on entries containing `/`, or `md`, `typ`, and `markdown` leak into the LLM-facing `Allowed: %s` string in `create_media`'s rejection message. The leak is **invisible in the upload UI**: `allowedExtensions()` maps every mime through `extensionForMime()`, and a bare extension yields null there, so it is dropped from the `accept=` attribute rather than surfacing as a bogus name. It only ever surfaces in the LLM contract.
 
 ### Discovery: `search` hides derivatives
 

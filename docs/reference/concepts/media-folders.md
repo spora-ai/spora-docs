@@ -1,0 +1,134 @@
+---
+title: Media folders
+description: Folders in the Media Archive — the tree, the two uniqueness rules, the advisory kind mark, and the themes and templates that live in them.
+---
+
+# Media folders
+
+A **folder** is a named container in the [Media Archive](/reference/concepts/media-assets). It holds assets, it nests, and it belongs to exactly one principal. Folders are how an operator curates a library that has outgrown one flat list — a `Branding` folder for the assets every document uses, a `2026` folder under it for this year's drafts.
+
+The operator creates, renames, moves and deletes folders. The assistant may create, rename and delete folders as well, file an asset into one and search within one; it may not re-parent one.
+
+## What a folder is
+
+`media_folders` (migration `0097`) is a principal-scoped tree:
+
+| Column         |                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `id`           | UUID, the primary key                                                                                                   |
+| `principal_id` | the tenant boundary — `ON DELETE RESTRICT`, the same shape `media_assets.principal_id` uses                             |
+| `parent_id`    | the enclosing folder, null for a top-level one — `ON DELETE CASCADE`, so deleting a folder takes its subfolders with it |
+| `name`         | the folder's own name: one path segment, at most 255 characters                                                         |
+| `path`         | the path from the tenant root — `/Corporate`, `/Corporate/2026` — at most 512 characters                                |
+
+`media_assets` gains two columns and one index:
+
+- `folder_id` — the folder the asset is filed in, `NULL` for the root. Deleting a folder leaves its assets in the root rather than deleting them.
+- `kind` — the advisory mark: `asset`, `template` or `example`, defaulting to `asset`.
+- `UNIQUE (folder_id, filename)` — filenames are unique within a folder.
+
+## The two uniqueness rules
+
+**Sibling folder names are unique** per principal. `UNIQUE (principal_id, path)` is what enforces it: two siblings with one name produce one path and collide, while the same name under two different parents does not. The check lives in the service, so a create or a rename that would land on a taken path is refused with a **422** and never reaches the caller as a database exception.
+
+**Filenames are unique within a folder.** The root is not constrained: an asset with no folder has a `NULL` folder, and a SQL unique index does not compare `NULL`s — so two assets in the root may share a filename.
+
+A folder's **name is one path segment**. A name with a `/` in it is refused with a **422** `VALIDATION_ERROR`, because the library reads a theme's name as a name and never as a path.
+
+## The kind mark
+
+`kind` is **advisory**. It is a filter hint for the operator's UI, and nothing refuses an asset because of the mark it carries: a theme filed as a plain `asset` still renders, and a template marked `example` is still a template. The operator changes the mark whenever they like, and a mark they chose is never refused.
+
+The one thing the vocabulary refuses is a value **outside** it. The upload endpoint answers a mark it does not know with a **400** `INVALID_KIND`, and the Media Archive plugin's `PATCH /api/v1/media/{id}` answers with a **422** `INVALID_KIND` — the column cannot hold a value the filter cannot select, so the write is refused rather than stored.
+
+The listing filter is lenient where the write path is not: `GET /api/v1/media?kind=bogus` drops the unknown value and returns the unfiltered listing rather than an error.
+
+## The API
+
+| Route                               |                                                                  |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `GET /api/v1/media/folders`         | the principal's folders, flat                                    |
+| `POST /api/v1/media/folders`        | create — `name`, optional `parent_id`                            |
+| `PATCH /api/v1/media/folders/{id}`  | rename (`name`) and/or move (`parent_id`)                        |
+| `DELETE /api/v1/media/folders/{id}` | delete — subfolders go with it, the assets fall back to the root |
+
+Auth is enforced by the route's middleware, and CSRF on the writes. A folder that belongs to another principal is a **404**, not a 403: the caller has no business knowing that it exists.
+
+Filing an asset into a folder is a rule the media-folder service owns, so the refusal is a message and not a database error. `POST /api/v1/media` takes a `folder_id`: a folder that does not exist, or one that is not the caller's, is a **404** `NOT_FOUND` — the caller has no business telling the two apart — and a folder that already holds a file with that name is a **422** `FOLDER_FILENAME_TAKEN`. The Media Archive plugin's `PATCH /api/v1/media/{id}` files an existing asset the same way, and answers a **422** for a folder of another principal.
+
+One folder on the wire:
+
+```json
+{
+  "id": "6f1c…",
+  "name": "Corporate",
+  "path": "/Corporate",
+  "parent_id": null,
+  "asset_count": 4
+}
+```
+
+`asset_count` counts the assets filed directly in that folder; a subfolder's assets are counted in the subfolder. The listing arrives as `{"data": {"folders": [...]}}`.
+
+A rename or a move rewrites the folder's path **and the paths of every descendant** — they are recomputed from the names under the new root, so a stale segment cannot survive a move. A folder cannot be moved inside itself (**422** `VALIDATION_ERROR`).
+
+## The panel's folder surface
+
+The Media Archive panel shows the tree in a **rail** beside the grid, grouped by principal in the all-principals scope — two principals may own folders with the same name, so the grouping is what tells them apart.
+
+The panel can **create** a folder: the rail's **New folder** button opens an overlay that asks for the name, the principal the folder belongs to and the parent it sits under, and calls `POST /api/v1/media/folders`. A duplicate sibling name comes back as a **422** `NOT_UNIQUE` and the overlay says so.
+
+Renaming, moving and deleting a folder are API-only — the panel has no control for them. See [Browsing the Media Archive](/start/end-users/media-archive) for the panel itself.
+
+## Filtering the library
+
+`GET /api/v1/media` takes two filters for the two new columns:
+
+- `?folder_id=<uuid>` — the assets filed in that folder. A folder of another principal yields no rows rather than somebody else's.
+- `?kind=asset|template|example` — the assets carrying that mark.
+
+And one for the pile outside the folders:
+
+- `?unfiled=true` — the assets filed in **no** folder. The flag and `folder_id` are exclusive: a folder is the more specific filter, so the server ignores `unfiled` when a folder is named. The scope is the caller's principals, as everywhere else — the flag narrows the rows the caller may see, it never widens them.
+
+Every asset in the listing carries `folder_id` and `kind`, so a client does not have to ask twice.
+
+## What the assistant may do
+
+The `media` tool carries the folder surface for the agent:
+
+| Operation       |                                                                                                        | Approval |
+| --------------- | ------------------------------------------------------------------------------------------------------ | -------- |
+| `list_folders`  | the principal's folders: `id`, `name`, `path`, `parent_id`, `asset_count`                              | auto     |
+| `create_folder` | create a folder (`name`, optional `parent_id`)                                                         | asks     |
+| `rename_folder` | rename a folder (`folder_id` + `name`); the path of its subfolders follows                             | asks     |
+| `delete_folder` | delete a folder; its assets fall back to the root, its subfolders go with it                           | asks     |
+| `file_asset`    | file an asset into a folder (`asset_id` + `folder_id`); omit `folder_id` to move it back into the root | auto     |
+| `search_assets` | the assets inside one folder (`folder_id`)                                                             | auto     |
+
+The assistant may shape the tree, not only work inside it: a request that names a folder the tree does not have yet is a `create_folder` followed by a `file_asset`. The three mutations ask for approval, because they change a structure the operator curates.
+
+There is no `move_folder`: re-parenting rewrites the path of a whole subtree, so a new folder's `parent_id` is the way to nest. `file_asset` fails when the folder already holds a file with that name. Every operation is scoped to the calling principal, and a foreign folder is never named as forbidden: the answer is an absent folder or an empty listing, and an empty listing is indistinguishable from an empty folder.
+
+## Themes and templates
+
+A **theme** is a media-library folder. Its name is the theme's name, and its files are the library's own:
+
+```text
+Corporate/                     ← the folder; "Corporate" is the theme's name
+  theme.yml                    ← the manifest
+  styles.yml                   ← the Word style slots
+  layouts.yml                  ← the slides' layout roles
+  text-styles.yml              ← the slides' named text styles
+  template.pptx                ← the slides' master (optional)
+```
+
+- The folder is **top-level**. The library treats a `/` in a theme name as a path, so a theme's name is one segment and the folder's full path is never used as a name.
+- The folder's **UUID resolves as well as its name**, so a document can pin a theme by a value that does not change when the operator renames the folder.
+- The manifest is the **slides** manifest, which is a strict superset of the Word one: `name`, `description`, `author`, and — for a deck — `dark`, `colors`, `fonts`, `style`. The Word half refuses a key it does not know, so it is served a **projection** of the manifest: `name`, `description` and `author`, which is the whole of what it reads. That projection is the one lossy step in the arrangement, and it loses nothing the Word half uses — the Word half's colours come from `styles.yml`, not from the manifest.
+- A media theme **shadows a built-in theme of the same name**: the library asks the media library first and falls back to the themes that ship with the package.
+- A folder that lists a `template.pptx` the library cannot serve is refused by name (`MarkdownPresentation\Exception\UnservedTemplate`) rather than drawn without.
+
+The `kind` mark says what a file is **for**; it never says what it **is**. A theme whose files are marked `asset` is still a theme, and a file marked `template` is still whatever its bytes are.
+
+The [Office plugin](/develop/plugins/reference/office) is what reads these folders.

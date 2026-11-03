@@ -384,7 +384,9 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 ### Browse by resource
 
 - [Agents](/reference/api/agents) — 35 routes
-- [Groups](/reference/api/groups) — 22 routes
+- [Groups](/reference/api/groups) — 25 routes
+- [Global-api](/reference/api/global-api) — 24 routes
+- [Group-api](/reference/api/group-api) — 17 routes
 - [Tasks](/reference/api/tasks) — 14 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Agent-api](/reference/api/agent-api) — 11 routes
@@ -415,11 +417,11 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Security schemes
 
-| Scheme       | Where  | Key              | Description                                                                                                                                          |
-| ------------ | ------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cookieAuth` | cookie | `PHPSESSID`      | Session cookie issued by `delight-im/auth`. Required by `AuthMiddleware`.                                                                            |
-| `csrfToken`  | header | `X-CSRF-Token`   | CSRF token issued alongside the session. Required by `CsrfMiddleware` on every write method.                                                         |
-| `bearerAuth` | http   | `(scheme-level)` | Agent API key (`spk_<id>_<secret>`), scoped to one agent. Required by `AgentApiKeyMiddleware`; no session or CSRF token is accepted on that surface. |
+| Scheme       | Where  | Key              | Description                                                                                                                                                                     |
+| ------------ | ------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cookieAuth` | cookie | `PHPSESSID`      | Session cookie issued by `delight-im/auth`. Required by `AuthMiddleware`.                                                                                                       |
+| `csrfToken`  | header | `X-CSRF-Token`   | CSRF token issued alongside the session. Required by `CsrfMiddleware` on every write method.                                                                                    |
+| `bearerAuth` | http   | `(scheme-level)` | API key (`spk_<id>_<secret>`), scoped to one agent, one group or the whole install. Required by the API key middleware; no session or CSRF token is accepted on those surfaces. |
 
 ### Endpoints
 
@@ -494,8 +496,52 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/auth/verification/resend`                          | —                          | ResendVerification Auth                                                  | Auth             |
 | `GET`    | `/api/v1/auth/verify/{selector}`                            | —                          | Verify Auth                                                              | Auth             |
 | `GET`    | `/api/v1/config`                                            | —                          | Index Config                                                             | Config           |
+| `GET`    | `/api/v1/global-api-keys`                                   | `cookieAuth`               | List the global API keys                                                 | Global-api       |
+| `POST`   | `/api/v1/global-api-keys`                                   | `cookieAuth` + `csrfToken` | Mint a global API key                                                    | Global-api       |
+| `DELETE` | `/api/v1/global-api-keys/{keyId}`                           | `cookieAuth` + `csrfToken` | Revoke a global API key                                                  | Global-api       |
+| `GET`    | `/api/v1/global-api/agents`                                 | `bearerAuth`               | List the agents this key may reach                                       | Global-api       |
+| `POST`   | `/api/v1/global-api/agents`                                 | `bearerAuth`               | Create an agent from the import format                                   | Global-api       |
+| `GET`    | `/api/v1/global-api/agents/{agentId}`                       | `bearerAuth`               | Read an agent in the import format                                       | Global-api       |
+| `PATCH`  | `/api/v1/global-api/agents/{agentId}`                       | `bearerAuth`               | Update an agent from the import format                                   | Global-api       |
+| `DELETE` | `/api/v1/global-api/agents/{agentId}`                       | `bearerAuth`               | Delete an agent                                                          | Global-api       |
+| `GET`    | `/api/v1/global-api/chats`                                  | `bearerAuth`               | List the chats this key may reach                                        | Global-api       |
+| `POST`   | `/api/v1/global-api/chats`                                  | `bearerAuth`               | Start a chat with one of the agents this key reaches                     | Global-api       |
+| `POST`   | `/api/v1/global-api/chats/{chatId}/answer`                  | `bearerAuth`               | Answer the agent's question                                              | Global-api       |
+| `POST`   | `/api/v1/global-api/chats/{chatId}/approve`                 | `bearerAuth`               | Approve pending tool calls                                               | Global-api       |
+| `GET`    | `/api/v1/global-api/chats/{chatId}/messages`                | `bearerAuth`               | User messages and answers only                                           | Global-api       |
+| `POST`   | `/api/v1/global-api/chats/{chatId}/messages`                | `bearerAuth`               | Continue a chat                                                          | Global-api       |
+| `POST`   | `/api/v1/global-api/chats/{chatId}/reject`                  | `bearerAuth`               | Reject pending tool calls                                                | Global-api       |
+| `GET`    | `/api/v1/global-api/chats/{chatId}/status`                  | `bearerAuth`               | Status and final answer                                                  | Global-api       |
+| `GET`    | `/api/v1/global-api/chats/{chatId}/transcript`              | `bearerAuth`               | Everything the admin UI shows                                            | Global-api       |
+| `GET`    | `/api/v1/global-api/groups`                                 | `bearerAuth`               | List every group                                                         | Global-api       |
+| `POST`   | `/api/v1/global-api/groups`                                 | `bearerAuth`               | Create a group                                                           | Global-api       |
+| `GET`    | `/api/v1/global-api/groups/{groupId}`                       | `bearerAuth`               | Read a group                                                             | Global-api       |
+| `PATCH`  | `/api/v1/global-api/groups/{groupId}`                       | `bearerAuth`               | Update a group                                                           | Global-api       |
+| `DELETE` | `/api/v1/global-api/groups/{groupId}`                       | `bearerAuth`               | Delete a group                                                           | Global-api       |
+| `POST`   | `/api/v1/global-api/media`                                  | `bearerAuth`               | Upload a file for one of the agents this key reaches                     | Global-api       |
+| `GET`    | `/api/v1/global-api/media/{mediaId}`                        | `bearerAuth`               | Fetch a media asset this key may read                                    | Global-api       |
+| `GET`    | `/api/v1/group-api/agents`                                  | `bearerAuth`               | List the agents this key may reach                                       | Group-api        |
+| `POST`   | `/api/v1/group-api/agents`                                  | `bearerAuth`               | Create an agent from the import format                                   | Group-api        |
+| `GET`    | `/api/v1/group-api/agents/{agentId}`                        | `bearerAuth`               | Read an agent in the import format                                       | Group-api        |
+| `PATCH`  | `/api/v1/group-api/agents/{agentId}`                        | `bearerAuth`               | Update an agent from the import format                                   | Group-api        |
+| `DELETE` | `/api/v1/group-api/agents/{agentId}`                        | `bearerAuth`               | Delete an agent                                                          | Group-api        |
+| `GET`    | `/api/v1/group-api/chats`                                   | `bearerAuth`               | List the chats this key may reach                                        | Group-api        |
+| `POST`   | `/api/v1/group-api/chats`                                   | `bearerAuth`               | Start a chat with one of the agents this key reaches                     | Group-api        |
+| `POST`   | `/api/v1/group-api/chats/{chatId}/answer`                   | `bearerAuth`               | Answer the agent's question                                              | Group-api        |
+| `POST`   | `/api/v1/group-api/chats/{chatId}/approve`                  | `bearerAuth`               | Approve pending tool calls                                               | Group-api        |
+| `GET`    | `/api/v1/group-api/chats/{chatId}/messages`                 | `bearerAuth`               | User messages and answers only                                           | Group-api        |
+| `POST`   | `/api/v1/group-api/chats/{chatId}/messages`                 | `bearerAuth`               | Continue a chat                                                          | Group-api        |
+| `POST`   | `/api/v1/group-api/chats/{chatId}/reject`                   | `bearerAuth`               | Reject pending tool calls                                                | Group-api        |
+| `GET`    | `/api/v1/group-api/chats/{chatId}/status`                   | `bearerAuth`               | Status and final answer                                                  | Group-api        |
+| `GET`    | `/api/v1/group-api/chats/{chatId}/transcript`               | `bearerAuth`               | Everything the admin UI shows                                            | Group-api        |
+| `GET`    | `/api/v1/group-api/group`                                   | `bearerAuth`               | The group this key belongs to                                            | Group-api        |
+| `POST`   | `/api/v1/group-api/media`                                   | `bearerAuth`               | Upload a file for one of the agents this key reaches                     | Group-api        |
+| `GET`    | `/api/v1/group-api/media/{mediaId}`                         | `bearerAuth`               | Fetch a media asset this key may read                                    | Group-api        |
 | `GET`    | `/api/v1/groups`                                            | `cookieAuth`               | Index Group                                                              | Groups           |
 | `POST`   | `/api/v1/groups`                                            | `cookieAuth` + `csrfToken` | Store Group                                                              | Groups           |
+| `GET`    | `/api/v1/groups/{groupId}/api-keys`                         | `cookieAuth`               | List a group's API keys                                                  | Groups           |
+| `POST`   | `/api/v1/groups/{groupId}/api-keys`                         | `cookieAuth` + `csrfToken` | Mint a group API key                                                     | Groups           |
+| `DELETE` | `/api/v1/groups/{groupId}/api-keys/{keyId}`                 | `cookieAuth` + `csrfToken` | Revoke a group API key                                                   | Groups           |
 | `GET`    | `/api/v1/groups/{id}`                                       | `cookieAuth`               | Show Group                                                               | Groups           |
 | `PATCH`  | `/api/v1/groups/{id}`                                       | `cookieAuth` + `csrfToken` | Update Group                                                             | Groups           |
 | `DELETE` | `/api/v1/groups/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Group                                                            | Groups           |

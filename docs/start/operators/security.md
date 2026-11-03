@@ -82,7 +82,7 @@ It deletes **every** row in the `settings` table, including rows whose key the r
 declares — which is precisely the row that would otherwise survive a reset. Nothing is archived. The
 resolution order is unchanged; only the database layer is dropped, so every setting falls back to
 `config.php` / `.env` / its declared default and the instance boots. Re-enter each credential
-afterwards at **Settings → Runtime settings**.
+afterwards — an ordinary one at **Settings → Runtime settings**, a plugin's at **Settings → Plugins**.
 
 ## API Authentication
 

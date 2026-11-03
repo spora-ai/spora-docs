@@ -17,6 +17,7 @@ One page per plugin in the `spora-ai` GitHub org, each covering what it adds, ho
 - **[Plugin skeleton](/develop/plugins/reference/plugin-skeleton)** — minimal template — start here for new plugins
 - **[Semantic Scholar](/develop/plugins/reference/semantic-scholar)** — academic paper search and metadata (free, no key)
 - **[Serper](/develop/plugins/reference/serper)** — Google Search via Serper.dev — 9 operations
+- **[Social](/develop/plugins/reference/social)** — publish to LinkedIn, Facebook and Instagram — an agent writes and schedules the posts, per-network analytics
 - **[Staan](/develop/plugins/reference/staan)** — EU-hosted web search
 - **[Tavily](/develop/plugins/reference/tavily)** — AI-native web search (LLM-optimised answer + ranked sources)
 - **[Team Graph](/develop/plugins/reference/team-graph)** — a directed graph of the spawning relationships between a principal's agents

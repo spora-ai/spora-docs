@@ -93,15 +93,20 @@ Every asset in the listing carries `folder_id` and `kind`, so a client does not 
 
 ## What the assistant may do
 
-The `media_folders` tool carries the folder surface for the agent:
+The `media` tool carries the folder surface for the agent:
 
-| Operation       |                                                                                                        |
-| --------------- | ------------------------------------------------------------------------------------------------------ |
-| `list_folders`  | the principal's folders: `id`, `name`, `path`, `parent_id`, `asset_count`                              |
-| `file_asset`    | file an asset into a folder (`asset_id` + `folder_id`); omit `folder_id` to move it back into the root |
-| `search_assets` | the assets inside one folder (`folder_id`)                                                             |
+| Operation       |                                                                                                        | Approval |
+| --------------- | ------------------------------------------------------------------------------------------------------ | -------- |
+| `list_folders`  | the principal's folders: `id`, `name`, `path`, `parent_id`, `asset_count`                              | auto     |
+| `create_folder` | create a folder (`name`, optional `parent_id`)                                                         | asks     |
+| `rename_folder` | rename a folder (`folder_id` + `name`); the path of its subfolders follows                             | asks     |
+| `delete_folder` | delete a folder; its assets fall back to the root, its subfolders go with it                           | asks     |
+| `file_asset`    | file an asset into a folder (`asset_id` + `folder_id`); omit `folder_id` to move it back into the root | auto     |
+| `search_assets` | the assets inside one folder (`folder_id`)                                                             | auto     |
 
-There is no `create_folder`: the tree is the operator's, not the assistant's — the panel can create a folder, the agent cannot. `file_asset` fails when the folder already holds a file with that name, and every operation is scoped to the calling principal — an asset or a folder of another principal is reported as missing.
+The assistant may shape the tree, not only work inside it: a request that names a folder the tree does not have yet is a `create_folder` followed by a `file_asset`. The three mutations ask for approval, because they change a structure the operator curates.
+
+There is no `move_folder`: re-parenting rewrites the path of a whole subtree, so a new folder's `parent_id` is the way to nest. `file_asset` fails when the folder already holds a file with that name, and every operation is scoped to the calling principal — an asset or a folder of another principal is reported as missing.
 
 ## Themes and templates
 

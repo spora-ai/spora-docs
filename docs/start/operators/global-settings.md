@@ -59,6 +59,12 @@ Some toggles gate a whole capability rather than a value, and are worth calling 
   worker — in client-worker mode every endpoint answers `404`. Unlike the file-only settings
   above, a save here takes effect on the next request without restarting the worker or the web
   server. See the [Agent API](/reference/agent-api).
+- **Group API** mounts a per-group HTTP surface for external tools, and **Global API** mounts an
+  install-wide one. They are the same kind of switch as the Agent API, with the same
+  server-side-worker requirement, and they are independent of it: turning one on does not mount
+  the others. A group's keys are managed in the group's **Settings → Developer access** section,
+  the install's in **Settings → Global API keys**. See the [Group API](/reference/group-api) and
+  the [Global API](/reference/global-api).
 
 ## Language
 

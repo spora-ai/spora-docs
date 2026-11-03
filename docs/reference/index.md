@@ -30,18 +30,20 @@ This page is the canonical TOC for the Spora reference material. The user-facing
 
 ## Operations
 
-| Topic                                                   | Location                                                                         |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Logging (PSR-3, PII policy, what gets logged)           | [/reference/concepts/logging](/reference/concepts/logging)                       |
-| Error handling (envelope, codes, toast mapping)         | [/reference/concepts/error-handling](/reference/concepts/error-handling)         |
-| Agent loop and async mode (tick structure, SSE)         | [/reference/concepts/agent-loop-async](/reference/concepts/agent-loop-async)     |
-| Worker deployment (cron / daemon)                       | [/reference/concepts/worker-deployment](/reference/concepts/worker-deployment)   |
-| Installation (5 routes)                                 | [/start/operators/install](/start/operators/install)                             |
-| Environment variables (canonical `SPORA_*` reference)   | [/start/operators/env-vars](/start/operators/env-vars)                           |
-| Security (encryption, auth, rate limiting, plugin risk) | [/start/operators/security](/start/operators/security)                           |
-| REST API reference                                      | [/reference/api](/reference/api) — source of record: `spora-core/docs/04_api.md` |
-| Plugin install API (`/api/v1/plugins/*`)                | [/develop/plugins/install-api](/develop/plugins/install-api)                     |
-| Agent API (`/api/v1/agent-api/*`)                       | [/reference/agent-api](/reference/agent-api) — bearer-key API for external tools |
+| Topic                                                   | Location                                                                                       |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Logging (PSR-3, PII policy, what gets logged)           | [/reference/concepts/logging](/reference/concepts/logging)                                     |
+| Error handling (envelope, codes, toast mapping)         | [/reference/concepts/error-handling](/reference/concepts/error-handling)                       |
+| Agent loop and async mode (tick structure, SSE)         | [/reference/concepts/agent-loop-async](/reference/concepts/agent-loop-async)                   |
+| Worker deployment (cron / daemon)                       | [/reference/concepts/worker-deployment](/reference/concepts/worker-deployment)                 |
+| Installation (5 routes)                                 | [/start/operators/install](/start/operators/install)                                           |
+| Environment variables (canonical `SPORA_*` reference)   | [/start/operators/env-vars](/start/operators/env-vars)                                         |
+| Security (encryption, auth, rate limiting, plugin risk) | [/start/operators/security](/start/operators/security)                                         |
+| REST API reference                                      | [/reference/api](/reference/api) — source of record: `spora-core/docs/04_api.md`               |
+| Plugin install API (`/api/v1/plugins/*`)                | [/develop/plugins/install-api](/develop/plugins/install-api)                                   |
+| Agent API (`/api/v1/agent-api/*`)                       | [/reference/agent-api](/reference/agent-api) — bearer-key API for external tools               |
+| Group API (`/api/v1/group-api/*`)                       | [/reference/group-api](/reference/group-api) — bearer-key API for one group's agents and chats |
+| Global API (`/api/v1/global-api/*`)                     | [/reference/global-api](/reference/global-api) — bearer-key API for every group on the install |
 
 ## Frontend
 

@@ -21,7 +21,7 @@ and `SPORA_WORKER_RUNTIME_MODE` are the two that catch people out — they read 
 but the worker reads them while it boots, so a value saved in the database would never reach them.
 See [Config keys](/reference/config-keys) for the full chain.
 
-**Quick links:** [SERVER_NAME](#server_name) · [Application](#application) · [Encryption](#encryption) · [Database](#database) · [Worker runtime mode](#worker-runtime-mode) · [Timeouts](#timeouts) · [Tools](#tools) · [Mercure (SSE)](#mercure-sse) · [Logging](#logging) · [Notifications / Mail](#notifications--mail) · [Agent API](#agent-api) · [Plugins](#plugins) · [Config path](#config-path)
+**Quick links:** [SERVER_NAME](#server_name) · [Application](#application) · [Encryption](#encryption) · [Database](#database) · [Worker runtime mode](#worker-runtime-mode) · [Timeouts](#timeouts) · [Tools](#tools) · [Mercure (SSE)](#mercure-sse) · [Logging](#logging) · [Notifications / Mail](#notifications--mail) · [API scopes](#api-scopes) · [Plugins](#plugins) · [Config path](#config-path)
 
 ## SERVER_NAME
 
@@ -127,7 +127,7 @@ Mail transport has three ways to be set: these env vars (read by `app/Services/S
 
 For SMTP, use a bare hostname in `SPORA_MAIL_HOST`. Pair port `587` with `SPORA_MAIL_ENCRYPTION=tls` for STARTTLS, or port `465` with `SPORA_MAIL_ENCRYPTION=ssl` for implicit TLS/SMTPS. Using `ssl` on port `587` causes OpenSSL `wrong version number` errors because that port expects an SMTP greeting before the TLS upgrade.
 
-## Agent API
+## API scopes
 
 | Variable                   | Default | Config key | Description                                                                                                                                                                                                                                                                                                                        |
 | -------------------------- | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -138,9 +138,10 @@ For SMTP, use a bare hostname in `SPORA_MAIL_HOST`. Pair port `587` with `SPORA_
 
 The three scopes are independent switches: turning one on does not mount the others.
 
-None has a `config.php` key of its own; the only spelling `config.php` accepts is the flat
-`'SPORA_AGENT_API' => true`. All four are plain (non-`bootOnly`) settings, so once any of them has
-been saved in Global Settings the stored value wins over `.env` — set it in one place, not both.
+None has a `config.php` key of its own: `config.php` takes the flat `SPORA_*` spelling of a
+setting, so `'SPORA_AGENT_API' => true` and its siblings read there exactly as they do in `.env`.
+All four are plain (non-`bootOnly`) settings, so once any of them has been saved in Global
+Settings the stored value wins over `.env` — set it in one place, not both.
 
 ## Plugins
 

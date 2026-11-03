@@ -166,15 +166,15 @@ SELECT COUNT(*) FROM tasks WHERE status = 'QUEUED' AND created_at < datetime('no
 -- Tasks stuck in RUNNING (worker may be dead or stuck on LLM)
 SELECT COUNT(*) FROM tasks WHERE status = 'RUNNING' AND updated_at < datetime('now', '-10 minutes');
 
--- Agent API callbacks owed but never delivered (sweep not running)
-SELECT COUNT(*) FROM agent_api_callbacks
+-- API callbacks owed but never delivered (sweep not running)
+SELECT COUNT(*) FROM api_callbacks
 WHERE delivered_at IS NULL
   AND next_attempt_at IS NOT NULL
   AND next_attempt_at < datetime('now', '-10 minutes');
 ```
 
 Alert when any count is non-zero for more than 2 consecutive minutes. A non-zero callback count
-with an empty queue is the signature of a worker that is running but whose Agent API sweep is
+with an empty queue is the signature of a worker that is running but whose callback sweep is
 failing — check `storage/spora.log` for `Agent API callback sweep failed`.
 
 > **MySQL / MariaDB:** replace `datetime('now', '-N minutes')` with `NOW() - INTERVAL N MINUTE` (e.g. `NOW() - INTERVAL 5 MINUTE`).

@@ -35,6 +35,10 @@ Open the group in the admin UI and go to **Settings**, then the **Developer acce
 **New key**. Name it after the integration it belongs to — one key per integration, so revoking one
 does not take the others down.
 
+The endpoints behind that button are `GET|POST /api/v1/groups/{groupId}/api-keys` and
+`DELETE /api/v1/groups/{groupId}/api-keys/{keyId}`. They are session-authenticated and
+CSRF-protected, so a bearer key cannot mint or revoke one.
+
 > **The key is shown once.** Spora stores a SHA-256 digest and cannot reproduce the secret, so a
 > lost key must be replaced rather than recovered.
 
@@ -43,7 +47,9 @@ revoke anything. The key-management endpoints stay mounted either way, so a key 
 flipped the toggle can always be revoked.
 
 > **Who can mint and revoke.** The key-management endpoints require the _owner_ or _admin_ role on
-> the group. A plain member who can read the group gets a `403`, not a hidden button.
+> the group, and a global admin can manage any group's keys without holding either. A plain member
+> sees no **Developer access** section at all — there is no button to click — and the endpoint
+> answers a `403` if they call it anyway.
 
 ## Authentication
 
@@ -208,7 +214,8 @@ The limit is per key and operator-tunable in Global Settings as **API rate limit
 - **Storage precedence.** `SPORA_GROUP_API=1` in `.env` seeds the setting, but once it has been
   saved in Global Settings the stored value wins. Set it in one place.
 - **`GET /api/v1/config` carries `group_api_enabled`** — the flag the admin SPA reads to decide
-  whether to show the group's keys section.
+  whether the scope is mounted. It drives the warning on the keys section, not whether the section
+  is there: the section renders either way, so keys stay revocable when the scope is off.
 - **The API is not a worker.** `POST /chats` answers `202` and returns immediately — it queues the
   chat and a worker runs it. In client-worker mode the API answers `404` on every endpoint.
 - **A group key does not reach outside its group.** It cannot list or mutate groups, and it

@@ -38,6 +38,10 @@ The three API scopes are independent switches: `SPORA_AGENT_API`, `SPORA_GROUP_A
 Open **Settings → Global API keys** in the admin UI. **New key**. Name it after the integration it
 belongs to — one key per integration, so revoking one does not take the others down.
 
+The endpoints behind that button are `GET|POST /api/v1/global-api-keys` and
+`DELETE /api/v1/global-api-keys/{keyId}`. They are session-authenticated and CSRF-protected, so a
+bearer key cannot mint or revoke one.
+
 > **The key is shown once.** Spora stores a SHA-256 digest and cannot reproduce the secret, so a
 > lost key must be replaced rather than recovered.
 >
@@ -46,7 +50,8 @@ belongs to — one key per integration, so revoking one does not take the others
 
 Keys survive disabling and re-enabling the feature — the toggle takes the API offline, it does not
 revoke anything. The key-management endpoints stay mounted either way, so a key minted before you
-flipped the toggle can always be revoked.
+flipped the toggle can always be revoked, and the **Settings → Global API keys** page stays in the
+sidebar either way, so it can be revoked from the UI too.
 
 ## Authentication
 
@@ -176,8 +181,9 @@ per-agent API verifies a global-scoped callback with the same code — see
 
 - **Personal agents.** An agent a user owns rather than a group is outside every scope except the
   per-agent one. There is no user-scoped key, and a global key is not one.
-- **Group members.** The groups, their agents and their chats — not the membership list. Read
-  membership through the [REST API](/reference/api/groups) with a session.
+- **Group members.** The groups, their agents and their chats — a group's member _count_ and the
+  caller's own role in it, but not who the members are. Read the membership list through the
+  [REST API](/reference/api/groups) with a session.
 - **Other installs.** The key is bound to this database.
 
 ## Errors and rate limits
@@ -205,11 +211,13 @@ The limit is per key and operator-tunable in Global Settings as **API rate limit
 - **Storage precedence.** `SPORA_GLOBAL_API=1` in `.env` seeds the setting, but once it has been
   saved in Global Settings the stored value wins. Set it in one place.
 - **`GET /api/v1/config` carries `global_api_enabled`** — the flag the admin SPA reads to decide
-  whether to offer the global keys page.
+  whether the scope is mounted. It drives the warning on the keys page, not whether the entry is
+  in the sidebar: the page renders either way, so keys stay revocable when the scope is off.
 - **The API is not a worker.** `POST /chats` answers `202` and returns immediately — it queues the
   chat and a worker runs it. In client-worker mode the API answers `404` on every endpoint.
-- **Audit the keys.** `last_used_at` is recorded on every authenticated request, so the page shows
-  which of the install's global keys are still in use before you revoke one.
+- **Audit the keys.** `last_used_at` records the last request a key authenticated, at minute
+  granularity, so the page shows which of the install's global keys are still in use before you
+  revoke one.
 
 ## What's next
 

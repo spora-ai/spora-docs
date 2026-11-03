@@ -108,7 +108,7 @@ The session above covers the admin UI. External tools use a different mechanism:
 
 Four properties of it are worth stating here rather than only in the integration guide.
 
-**Secret storage.** A key is `spk_<id>_<secret>`. Only a SHA-256 hex digest of the secret is stored (`agent_api_keys.secret_hash`); the plaintext is returned exactly once, by the mint endpoint, and no endpoint can return it again. SHA-256 rather than bcrypt/argon is deliberate — the input is 32 bytes of CSPRNG output, so there is no dictionary to attack and no slow-KDF benefit to buy with request-path latency. A lost key is replaced, not recovered. The `id` half is 16 bytes of CSPRNG and is the row's primary key, so verification is one indexed lookup rather than a scan, and key ids cannot be walked.
+**Secret storage.** A key is `spk_<id>_<secret>`. Only a SHA-256 hex digest of the secret is stored (`api_keys.secret_hash`); the plaintext is returned exactly once, by the mint endpoint, and no endpoint can return it again. SHA-256 rather than bcrypt/argon is deliberate — the input is 32 bytes of CSPRNG output, so there is no dictionary to attack and no slow-KDF benefit to buy with request-path latency. A lost key is replaced, not recovered. The `id` half is 16 bytes of CSPRNG and is the row's primary key, so verification is one indexed lookup rather than a scan, and key ids cannot be walked.
 
 **Callback signing.** `callback_url` deliveries carry `X-Spora-Signature: hex(hmac_sha256(timestamp + "." + rawBody, key_digest))`. The HMAC is keyed on the **stored digest**, not the plaintext secret, so a receiver holding only the secret it was issued can verify while Spora never holds that secret again. Rotating a key rotates its signing key with it. Receivers must enforce a freshness window — the 5-minute window in the integration guide is a receiver-side requirement, not something Spora enforces.
 
@@ -126,12 +126,15 @@ Spora's rate limiter is a simple in-memory IP-based sliding window (`Spora\Servi
 | Password reset (`/api/v1/auth/forgot-password`)                | 5 req / 60 s | same constants                                                       |
 | Verification resend (`/api/v1/auth/verification/resend`)       | 5 req / 60 s | same constants                                                       |
 
-The [Agent API](/reference/agent-api#errors-and-rate-limits) is limited separately, and per
-**key** rather than per IP: `SPORA_API_RATE_LIMIT_MAX` requests per minute (default 60)
-against `Spora\Services\DbRateLimiter`, a database-backed rolling window keyed on the key id. A
-shared NAT therefore does not throttle an integrator, and one integration cannot exhaust another's
-budget. The counter is only consulted **after** the secret verifies, so a wrong secret can never
-return `429` — otherwise `429`-vs-`401` would reveal whether a key id exists.
+The three API surfaces — the [agent](/reference/agent-api#errors-and-rate-limits),
+[group](/reference/group-api#errors-and-rate-limits) and
+[global](/reference/global-api#errors-and-rate-limits) ones — are limited separately from the
+IP-based limits above, and per **key** rather than per IP: `SPORA_API_RATE_LIMIT_MAX` requests per
+minute (default 60) against `Spora\Services\DbRateLimiter`, a database-backed rolling window keyed
+on the key id. One limit covers every scope. A shared NAT therefore does not throttle an
+integrator, and one integration cannot exhaust another's budget. The counter is only consulted
+**after** the secret verifies, so a wrong secret can never return `429` — otherwise `429`-vs-`401`
+would reveal whether a key id exists.
 
 All other endpoints are not currently rate-limited. Only the API scopes have a separate,
 non-IP-keyed limit.
@@ -149,8 +152,8 @@ security question. There are three scopes, and each is a separate switch in Glob
 
 A **personal agent** — one a user owns rather than a group — is outside every scope except
 `agent`. There is no user-scoped key: a personal agent is reachable only through its own
-per-agent key, and a global key does not reach it. A global key also does not read a group's
-membership list.
+per-agent key, and a global key does not reach it. A global key reads a group's member _count_
+and the caller's own role in it, but not who the members are.
 
 Two properties hold across all three:
 

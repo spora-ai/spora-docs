@@ -390,12 +390,12 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Tasks](/reference/api/tasks) — 14 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Agent-api](/reference/api/agent-api) — 11 routes
+- [Media](/reference/api/media) — 11 routes
 - [Speech](/reference/api/speech) — 10 routes
 - [Users](/reference/api/users) — 10 routes
 - [Me](/reference/api/me) — 9 routes
 - [Notifications](/reference/api/notifications) — 8 routes
 - [Llm-configs](/reference/api/llm-configs) — 7 routes
-- [Media](/reference/api/media) — 7 routes
 - [Tools](/reference/api/tools) — 7 routes
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
 - [Plugins](/reference/api/plugins) — 5 routes
@@ -594,6 +594,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/media/{id}/derivatives/options`                    | `cookieAuth`               | Index MediaDerivativeOptions                                             | Media            |
 | `POST`   | `/api/v1/media/{id}/keep`                                   | `cookieAuth` + `csrfToken` | Keep KeepMedia                                                           | Media            |
 | `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes                                                  | Media            |
+| `GET`    | `/api/v1/media/folders`                                     | `cookieAuth`               | Index MediaFolder                                                        | Media            |
+| `POST`   | `/api/v1/media/folders`                                     | `cookieAuth` + `csrfToken` | Store MediaFolder                                                        | Media            |
+| `PATCH`  | `/api/v1/media/folders/{id}`                                | `cookieAuth` + `csrfToken` | Update MediaFolder                                                       | Media            |
+| `DELETE` | `/api/v1/media/folders/{id}`                                | `cookieAuth` + `csrfToken` | Destroy MediaFolder                                                      | Media            |
 | `POST`   | `/api/v1/media/resolve`                                     | `cookieAuth` + `csrfToken` | Resolve MediaResolve                                                     | Media            |
 | `GET`    | `/api/v1/notifications`                                     | `cookieAuth`               | Index Notification                                                       | Notifications    |
 | `DELETE` | `/api/v1/notifications`                                     | `cookieAuth` + `csrfToken` | DestroyAll Notification                                                  | Notifications    |

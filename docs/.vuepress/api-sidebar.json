@@ -33,6 +33,10 @@
       "link": "/reference/api/agent-api"
     },
     {
+      "text": "Media",
+      "link": "/reference/api/media"
+    },
+    {
       "text": "Speech",
       "link": "/reference/api/speech"
     },
@@ -51,10 +55,6 @@
     {
       "text": "Llm-configs",
       "link": "/reference/api/llm-configs"
-    },
-    {
-      "text": "Media",
-      "link": "/reference/api/media"
     },
     {
       "text": "Tools",

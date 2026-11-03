@@ -303,6 +303,8 @@ Five tools, for the agents that write the posts. They are declared as `social_co
 | `social_analytics`   | `post_metrics`, `period_totals`, `top_posts`, `network_comparison`              | What the posts did: one post, a period, the top posts, the networks side by side. |
 | `social_calendar`    | `list_month`                                                                    | The posts of a month with the days they are due.                                  |
 
+A **draft** needs no account: the accounts are what name the platforms, and a draft has not been sent anywhere. It cannot go out until one is picked — the publish refuses it and names the way out, and the post carries the warning in the list. A **scheduled** post needs at least one account, because it commits the copy to go out.
+
 Several of them changed shape in the last round, and an agent that still reads them the old way will miss what is already going out:
 
 - **`social_connections` replaced `social_accounts`.** The unit is the connection, not the account: one login per provider, and the accounts it covers ride inside it. `connect` takes a **provider** — `meta` or `linkedin` — and `disconnect`, `refresh` and `health` take a **connection id**.

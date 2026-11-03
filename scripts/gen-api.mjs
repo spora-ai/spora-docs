@@ -97,7 +97,8 @@ function renderFieldDescription(schema) {
   const bits = []
   if (schema.description) bits.push(schema.description)
   if (schema.enum?.length) {
-    bits.push(`One of ${schema.enum.map((v) => `\`${v}\``).join(', ')}.`)
+    const values = schema.enum.map((v) => `\`${v}\``).join(', ')
+    bits.push(`One of ${values}.`)
   }
   if (schema.minLength !== undefined) bits.push(`At least ${schema.minLength} characters.`)
   if (schema.maxLength !== undefined) bits.push(`At most ${schema.maxLength} characters.`)

@@ -242,6 +242,8 @@ Core ships no provider of its own, so the order the registry consults them in is
 
 A plugin with operator-facing settings — a client id, a token, a URL — implements `Spora\Settings\PluginSettingsProviderInterface` and names the class in `pluginSettingProviders()`. The host collects the definitions from every installed plugin and renders them on the **Plugins** tab of the settings page.
 
+That tab sits under **Administration**, and only an admin can reach it: a plugin's settings are install-wide, and some of them are the OAuth client secrets of the whole installation. The tab groups the rows by the storage group they live in — the plugin system's own settings under **Plugin system**, and one group per plugin that contributed any, so a plugin with nothing to configure contributes no heading over nothing. A setting declared `secret` is stored encrypted and never leaves the server: the row renders as a locked display with a **Change** button, and only a value the operator typed is ever sent.
+
 ```php
 namespace Spora\Settings;
 

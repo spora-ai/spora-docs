@@ -22,7 +22,7 @@ The admin UI is a single-page Vue 3 application. Once you log in, everything hap
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Agents**      | Create and edit agent definitions. Each agent has a system prompt, an LLM config, and a tool allowlist. Agents are the things the user chats with. The **New agent** dialog also lets you start from an agent template — browse the bundled and plugin-supplied ones, or upload a template `.json` someone shared with you — and any agent can be exported back to a template. |
 | **Tools**       | Configure operator-level settings for each tool (API keys, hostnames, model names). Encrypted at rest.                                                                                                                                                                                                                                                                         |
-| **Plugins**     | Install / uninstall / update Composer-based plugins. Gated by **Allow plugin installation** under **General settings → Plugins** (was `SPORA_PLUGIN_INSTALL_ENABLED`; the database now wins over the env var).                                                                                                                                                                 |
+| **Plugins**     | Install / uninstall / update Composer-based plugins. Gated by **Allow plugin installation** under **Settings → Plugins** (was `SPORA_PLUGIN_INSTALL_ENABLED`; the database now wins over the env var).                                                                                                                                                                         |
 | **LLM drivers** | Add / edit LLM configs. Supports Anthropic, OpenAI, custom OpenAI-compatible endpoints (Ollama, LM Studio, vLLM, etc.).                                                                                                                                                                                                                                                        |
 | **Users**       | Admin-only: add or disable user accounts, reset passwords.                                                                                                                                                                                                                                                                                                                     |
 | **My Account**  | Your own display name, email address, password and notification subscriptions — and the interface language of the admin UI, under **Language**. The picker lists the languages the interface ships translations for; each user picks their own, and the instance default (`SPORA_DEFAULT_LANG`) applies only where a user has not chosen.                                      |
@@ -48,12 +48,18 @@ For the full CLI reference, see [Operators → Operations](/start/operators/oper
 
 ## Settings → Runtime settings
 
-Five tabs — General, Mail & Realtime, Worker & Performance, Media & Plugins, and System. What makes
+Five tabs — General, Mail & Realtime, Worker & Performance, Media, and System. What makes
 it worth using rather than editing `.env` is that every field names **where its current value
 actually comes from** — the built-in default, your `.env`, your `config.php`, or the database — so
 you can see what a save here would override. Once a value is stored the source reads **Database** and
 a **Clear** link appears beside it; clearing deletes the row, and the page re-reads afterwards rather
 than guessing which layer the value fell back to.
+
+The plugin system's own settings and the settings each installed plugin contributes are **not** on
+these tabs. They have a tab of their own — **Settings → Plugins**, under **Administration** — which
+only an admin can reach: a plugin's settings are install-wide, and some of them are the OAuth client
+secrets of the whole installation. The tab groups them by where they are stored: the plugin system's
+own settings under **Plugin system**, and one group per plugin that contributed any.
 
 **What you cannot change here.** Settings read before the database is open — the `SPORA_DB_*`
 family, the secret-key and log paths, `SPORA_LOG_LEVEL`, the SQLite busy timeout, the app environment,

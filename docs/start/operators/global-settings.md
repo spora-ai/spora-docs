@@ -19,11 +19,17 @@ It is five tabs, grouped by what an operator is doing rather than by what the co
 | **General**              | General, Access                        |
 | **Mail & Realtime**      | Mail, Realtime                         |
 | **Worker & Performance** | Worker, Timeouts                       |
-| **Media & Plugins**      | Media, Plugins                         |
+| **Media**                | Media                                  |
 | **System**               | every section, file-only settings only |
 
 **System** is the odd one out: it is read-only throughout, because everything on it is read before
 the database opens. The other four are where the editing happens.
+
+The **Plugins** section is not one of these tabs. It has a tab of its own — **Settings → Plugins**,
+under **Administration** — because a plugin's settings are install-wide, and some of them are the
+OAuth client secrets of the whole installation. The tab splits the section into the groups the
+settings are stored under: the plugin system's own settings under **Plugin system**, and one group
+per plugin that contributed any. A plugin that contributes no settings contributes no group.
 
 ## Four layers, last wins
 

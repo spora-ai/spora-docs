@@ -214,6 +214,46 @@ Contract, and the reasons behind each part:
 
 This is one of two discovery registries — `MediaDerivativeProducerDiscovery` and `MediaMimeRefinerDiscovery` — and both share one registration shape through the `DiscoversRegistrations` trait. They have independent storage, which is worth knowing if you extend them: a `private static` property declared on a shared _parent class_ would be inherited by every subclass and silently merge the two lists into one.
 
+### Filing an asset into a folder
+
+An asset is filed in a folder through core's `Spora\Services\MediaArchive\MediaFolderService`, never through a column write:
+
+```php
+use Spora\Models\MediaAsset;
+use Spora\Services\MediaArchive\MediaFolderService;
+
+final class MyFilingTool extends AbstractTool {
+    public function __construct(
+        private readonly MediaFolderService $folders,
+    ) {}
+
+    protected function doWork(ToolContext $ctx, array $args): ToolResult {
+        $asset = MediaAsset::find($args['asset_id']);
+        if ($asset === null) {
+            return new ToolResult(false, 'No such asset.');
+        }
+
+        // A null folder id files the asset back into the root.
+        $this->folders->fileAsset((int) $asset->principal_id, $asset, $args['folder_id'] ?? null);
+
+        return new ToolResult(true, 'Filed.');
+    }
+}
+```
+
+`$asset->fill(['folder_id' => $id]); $asset->save();` does not work. It bypasses the uniqueness rule the service owns and lands on the raw `UNIQUE (folder_id, filename)` index, so the caller gets a driver-level error — a `500` where the rule says `422`.
+
+What the service gives you:
+
+- **`MediaFolderNotFoundException`** — the folder is not the principal's. A folder of another principal is reported as missing, not as forbidden.
+- **`MediaFolderUniquenessException`** — the folder already holds an asset with that filename.
+
+Both are domain errors; catch them and turn them into a message the operator can act on.
+
+`fileTarget($principalId, $folderId, $filename)` is the same check without the write: it returns the folder, or raises the two exceptions above. Its fourth argument, `$exceptAssetId`, exists for the case where the asset already sits in that folder — without it, the asset would conflict with itself.
+
+Deleting a folder does not delete its assets: they fall back to the root, and the subfolders go with it. The service does that move itself, because SQLite cannot add a foreign key to an existing table — the `media_assets.folder_id` constraint only exists on MySQL/MariaDB — so the behaviour has to be the service's on every engine.
+
 ## 6. Derivatives
 
 A **derivative** is a second `media_assets` row linked back to its parent through the `media_derivatives` join table. It is a full asset: its own bytes in the same `AssetStore` the original used, its own UUID, its own `asset_url`, reachable through the same routes and the "Convert to" dropdown in the operator UI.

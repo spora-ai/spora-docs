@@ -85,7 +85,7 @@ The grid can act on more than one asset at a time. The toolbar's **Select** butt
 - **Delete** asks first. The confirmation names the number of assets, and nothing is deleted until it is confirmed.
 - The **X** leaves the selection mode and drops the selection.
 
-A folder belongs to one principal, and the server scopes a folder write by the asset's principal — filing an asset of another principal into a folder is refused with a **422**. So a selection that spans principals cannot be filed into one folder as a whole: the move dialog asks which principal's folders to use, and the assets of the others stay where they are. The dialog says how many those are, and the toast after the move says what happened: how many were filed, how many stayed, and how many the server refused — a filename already taken in the target folder is the usual reason.
+A folder belongs to one principal, and the server scopes a folder write by the asset's principal — filing an asset of another principal into a folder is refused with a **422**. So a selection that spans principals cannot be filed into one folder as a whole: the move dialog asks which principal's folders to use, and the assets of the others stay where they are. The dialog says how many those are, and the toast after the move says what happened: how many were filed, how many stayed, and how many the server refused — a filename already taken in the target folder (`FOLDER_FILENAME_TAKEN`) is the usual reason.
 
 Deleting is per asset as well, one `DELETE /api/v1/media/{id}` each. An asset that is not the caller's to delete is refused with a **403**; the rest are deleted, and the toast counts both.
 
@@ -163,19 +163,19 @@ copy. There are no bytes on this side to hand out, so the download route answers
 
 ## Where the data comes from
 
-| Endpoint                                       | Used for                                                                                                                                 |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/media?principal_id[]=…`           | The grid itself — paginated, filtered, scoped (`?folder_id=`, `?kind=`). Returns `{ data: { assets, page, perPage, total, lastPage } }`. |
-| `GET /api/v1/media/folders?principal_id=…`     | The rail's folder tree — one flat list per principal, each folder with its `asset_count`.                                                |
-| `POST /api/v1/media/folders`                   | Create a folder — `name`, `parent_id`, `principal_id`. A duplicate sibling name is a **422** `NOT_UNIQUE`.                               |
-| `POST /api/v1/media`                           | The upload. Takes the file plus `principal_id`, `folder_id` and `kind`; a `kind` outside the vocabulary is a **400**.                    |
-| `GET /api/v1/principals/me`                    | The list of visible principals (typed: `user` vs `group`). Drives the scope dropdown's options and labels.                               |
-| `GET /api/v1/groups`                           | Friendly group names keyed by `principal_id`. The scope dropdown falls back to `Group #N` if this endpoint is unavailable.               |
-| `GET /api/v1/media/{id}`                       | Detail drawer payload.                                                                                                                   |
-| `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                                      |
-| `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, public sharing — and now `folder_id` and `kind`. Validators are in `MediaArchiveUpdateValidator`. |
-| `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                                       |
-| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                                     |
+| Endpoint                                       | Used for                                                                                                                                                                                                                                            |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/media?principal_id[]=…`           | The grid itself — paginated, filtered, scoped (`?folder_id=`, `?kind=`). Returns `{ data: { assets, page, perPage, total, lastPage } }`.                                                                                                            |
+| `GET /api/v1/media/folders?principal_id=…`     | The rail's folder tree — one flat list per principal, each folder with its `asset_count`.                                                                                                                                                           |
+| `POST /api/v1/media/folders`                   | Create a folder — `name`, `parent_id`, `principal_id`. A duplicate sibling name is a **422** `NOT_UNIQUE`.                                                                                                                                          |
+| `POST /api/v1/media`                           | The upload. Takes the file plus `principal_id`, `folder_id` and `kind`; a `kind` outside the vocabulary is a **400**, a `folder_id` that does not exist is a **404**, and a filename the folder already holds is a **422** `FOLDER_FILENAME_TAKEN`. |
+| `GET /api/v1/principals/me`                    | The list of visible principals (typed: `user` vs `group`). Drives the scope dropdown's options and labels.                                                                                                                                          |
+| `GET /api/v1/groups`                           | Friendly group names keyed by `principal_id`. The scope dropdown falls back to `Group #N` if this endpoint is unavailable.                                                                                                                          |
+| `GET /api/v1/media/{id}`                       | Detail drawer payload.                                                                                                                                                                                                                              |
+| `GET /api/v1/assets/{filename}`                | One-click download — streams the file through `AssetController::show()` (token + ownership checks).                                                                                                                                                 |
+| `PATCH /api/v1/media/{id}`                     | Edit filename, tags, metadata, prompt, public sharing — and now `folder_id` and `kind`. Validators are in `MediaArchiveUpdateValidator`.                                                                                                            |
+| `POST /api/v1/media/{id}/public-token/refresh` | Rotate the public-access token for a shared asset.                                                                                                                                                                                                  |
+| `POST /api/v1/media/{id}/keep`                 | Pin a temp row as permanent so the retention sweep leaves it alone. Idempotent; admin-or-owner auth.                                                                                                                                                |
 
 ## Related
 

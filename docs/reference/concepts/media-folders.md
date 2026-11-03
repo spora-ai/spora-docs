@@ -7,7 +7,7 @@ description: Folders in the Media Archive — the tree, the two uniqueness rules
 
 A **folder** is a named container in the [Media Archive](/reference/concepts/media-assets). It holds assets, it nests, and it belongs to exactly one principal. Folders are how an operator curates a library that has outgrown one flat list — a `Branding` folder for the assets every document uses, a `2026` folder under it for this year's drafts.
 
-The operator creates, renames, moves and deletes folders. The assistant may file an asset into one and search within one; it may not reorganise the tree.
+The operator creates, renames, moves and deletes folders. The assistant may create, rename and delete folders as well, file an asset into one and search within one; it may not re-parent one.
 
 ## What a folder is
 
@@ -33,7 +33,7 @@ The operator creates, renames, moves and deletes folders. The assistant may file
 
 **Filenames are unique within a folder.** The root is not constrained: an asset with no folder has a `NULL` folder, and a SQL unique index does not compare `NULL`s — so two assets in the root may share a filename.
 
-A folder's **name is one path segment**. A name with a `/` in it is refused with a **400**, because the library reads a theme's name as a name and never as a path.
+A folder's **name is one path segment**. A name with a `/` in it is refused with a **422** `VALIDATION_ERROR`, because the library reads a theme's name as a name and never as a path.
 
 ## The kind mark
 
@@ -52,7 +52,9 @@ The listing filter is lenient where the write path is not: `GET /api/v1/media?ki
 | `PATCH /api/v1/media/folders/{id}`  | rename (`name`) and/or move (`parent_id`)                        |
 | `DELETE /api/v1/media/folders/{id}` | delete — subfolders go with it, the assets fall back to the root |
 
-Auth and CSRF are enforced by the route's middleware. A folder that belongs to another principal is a **404**, not a 403: the caller has no business knowing that it exists.
+Auth is enforced by the route's middleware, and CSRF on the writes. A folder that belongs to another principal is a **404**, not a 403: the caller has no business knowing that it exists.
+
+Filing an asset into a folder is a rule the media-folder service owns, so the refusal is a message and not a database error. `POST /api/v1/media` takes a `folder_id`: a folder that does not exist, or one that is not the caller's, is a **404** `NOT_FOUND` — the caller has no business telling the two apart — and a folder that already holds a file with that name is a **422** `FOLDER_FILENAME_TAKEN`. The Media Archive plugin's `PATCH /api/v1/media/{id}` files an existing asset the same way, and answers a **422** for a folder of another principal.
 
 One folder on the wire:
 
@@ -68,7 +70,7 @@ One folder on the wire:
 
 `asset_count` counts the assets filed directly in that folder; a subfolder's assets are counted in the subfolder. The listing arrives as `{"data": {"folders": [...]}}`.
 
-A rename or a move rewrites the folder's path **and the paths of every descendant** — they are recomputed from the names under the new root, so a stale segment cannot survive a move. A folder cannot be moved inside itself (**400**).
+A rename or a move rewrites the folder's path **and the paths of every descendant** — they are recomputed from the names under the new root, so a stale segment cannot survive a move. A folder cannot be moved inside itself (**422** `VALIDATION_ERROR`).
 
 ## The panel's folder surface
 
@@ -106,7 +108,7 @@ The `media` tool carries the folder surface for the agent:
 
 The assistant may shape the tree, not only work inside it: a request that names a folder the tree does not have yet is a `create_folder` followed by a `file_asset`. The three mutations ask for approval, because they change a structure the operator curates.
 
-There is no `move_folder`: re-parenting rewrites the path of a whole subtree, so a new folder's `parent_id` is the way to nest. `file_asset` fails when the folder already holds a file with that name, and every operation is scoped to the calling principal — an asset or a folder of another principal is reported as missing.
+There is no `move_folder`: re-parenting rewrites the path of a whole subtree, so a new folder's `parent_id` is the way to nest. `file_asset` fails when the folder already holds a file with that name. Every operation is scoped to the calling principal, and a foreign folder is never named as forbidden: the answer is an absent folder or an empty listing, and an empty listing is indistinguishable from an empty folder.
 
 ## Themes and templates
 

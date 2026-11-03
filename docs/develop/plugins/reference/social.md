@@ -51,7 +51,7 @@ The imported agent is an ordinary agent afterwards: editing the template file do
 
 The things that have to be true before a post reaches an audience do not show up in the code, and each one fails in a way that does not name its cause.
 
-> **`SPORA_APP_URL` must be a publicly reachable HTTPS address.** Instagram fetches the published media from the internet, so an address only your own network can see fails at the last step of a publish, with an error that never mentions the URL. The plugin checks the address when you start a connection, not when you publish — which is the difference between fixing it now and fixing it after a failed post. See [Environment variables](/start/operators/env-vars#application).
+> **`SPORA_APP_URL` must be a publicly reachable HTTPS address.** Instagram fetches the published media from the internet, so an address only your own network can see fails at the last step of a publish, with an error that never mentions the URL. The plugin checks the address when you start a connection, not when you publish — which is the difference between fixing it now and fixing it after a failed post. On a development install the **Allow a local app URL** switch turns that check off, so you can connect and develop against a real account; the Instagram publish still fails. See [Environment variables](/start/operators/env-vars#application).
 >
 > **Start the Meta app review first.** `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights`, `pages_show_list`, `pages_manage_posts`, `pages_read_engagement` and `read_insights` all need review, and it can take weeks. Nothing in the plugin blocks on it — it runs against a developer-mode app — but the feature is not usable against a real audience until the review lands. Start the review before you write the copy.
 >
@@ -108,6 +108,7 @@ The plugin's settings sit on the **Plugins** tab of the admin settings, under th
 | Meta app secret                                  | `SPORA_SOCIAL_META_APP_SECRET`             | password | Stored encrypted.                                                                                                                                             |
 | Meta configuration id                            | `SPORA_SOCIAL_META_CONFIG_ID`              | text     | The id of the Facebook Login for Business configuration the login dialog uses. Its description carries the redirect URL to register with it.                  |
 | Frontend URL                                     | `SPORA_SOCIAL_FRONTEND_URL`                | text     | Where the browser lands after a connect. Empty by default — the app URL is used. Set it when the SPA runs on another origin, as it does in local development. |
+| Allow a local app URL                            | `SPORA_SOCIAL_ALLOW_LOCAL_APP_URL`         | toggle   | Off by default. Development only — it lets an account be connected when `SPORA_APP_URL` is not reachable from the internet. Instagram still cannot publish.   |
 
 **Meta is one app and one configuration for both networks.** The configuration is the list of permissions and assets your app asks a client for; its id is not a secret, but the login cannot happen without it. A provider whose app id and secret are both set is configured; one whose pair is missing refuses the connection with the reason named, before the browser ever reaches the platform.
 
@@ -143,7 +144,7 @@ The **Accounts** tab shows one card per connection, and the accounts it covers a
 
 Its shape is `{your-spora}/api/v1/plugins/social/oauth/{provider}/callback` — `meta` or `linkedin`. A mismatch is refused by the platform with a redirect-URI error that never mentions Spora's address, so it has to be right before you connect and not after. `SPORA_APP_URL` is what it is built from, so it has to be the address you registered — not the one the request happened to arrive on.
 
-**The setting will not name a `localhost` address.** No platform accepts one, so a setting that named it would be telling the operator to register something that cannot work. The two refusals have different causes: with no address at all the connect says _The instance has no public address, so there is no redirect URI to register. Set SPORA_APP_URL_, and with a `localhost` address it is the reachability check that refuses — _SPORA_APP_URL must be a publicly reachable HTTPS address before an account can be connected_.
+**The setting names a `localhost` address only on a development install.** No platform accepts one, so a production install that named it would be telling the operator to register something that cannot work — it refuses to name it and says there is no redirect URL to register. The two refusals have different causes: with no address at all the connect says _The instance has no public address, so there is no redirect URI to register. Set SPORA_APP_URL in your .env or config.php — the global settings list it read-only_, and with a `localhost` address it is the reachability check that refuses — _SPORA_APP_URL must be a publicly reachable HTTPS address before an account can be connected — the platform fetches published media from the internet. Set it in your .env or config.php; the global settings list it read-only. On a development install, turn on SPORA_SOCIAL_ALLOW_LOCAL_APP_URL in Settings → Plugins_.
 
 **A provider that is not set up cannot be connected.** Pressing Connect on one is refused with the same instruction the setup card carries, in one sentence: _Meta integration needs setup — add the app id, the app secret and the configuration id in Settings → Plugins_, or _LinkedIn integration needs setup — add the client id, the client secret and the requested permissions in Settings → Plugins_. The card splits that instruction in two: a title that names the provider's state, and a body that names the place to go. A provider that **is** set up but has no connection yet shows only its Connect button, because there is nothing left to instruct.
 
@@ -159,6 +160,20 @@ One connection can cover more than one account:
 **The Facebook Pages and `business_management`.** A configuration can name a Facebook Page as an asset, but _listing_ the Pages a token may act for needs `business_management` — a broad permission that grants the whole business portfolio and needs its own review. The plugin does not ask for it. Without it the connection covers the Instagram account alone and the Pages are simply not there.
 
 **Reconnect** runs the provider's sign-in again and replaces the stored token on the same connection. It is what a revoked or expired token needs; a token that merely needs renewing is renewed by itself.
+
+### Connecting on a local install
+
+On a development install the address is a `localhost` one, and Instagram cannot fetch it. Turn on **Allow a local app URL** (`SPORA_SOCIAL_ALLOW_LOCAL_APP_URL`) on the **Plugins** tab and the connect goes through: there is a token, a draft and a schedule to develop against, and LinkedIn and Facebook photos — which upload the bytes — publish.
+
+**It buys nothing for Instagram.** Meta fetches the published media with its own servers, from `{SPORA_APP_URL}/api/v1/public/media/{id}?token=…`, and no setting makes a loopback address reachable from Meta; that publish fails with Meta's own reason, recorded on the target. For an install that publishes to Instagram, put a tunnel in front of it and set `SPORA_APP_URL` to the tunnel's address:
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:8080   # → https://<host>.trycloudflare.com
+```
+
+That address is what the redirect URI is built from, so it has to be the one registered with the app — the address of your API, not the one the request happened to carry. Core never reads `X-Forwarded-*`, and the tunnel ends TLS locally, so the detected origin would be `http://<host>` rather than `https://<host>`: set `SPORA_APP_URL` explicitly. Set `SPORA_SOCIAL_FRONTEND_URL` to the origin the panel runs on when that is not the API's own, so the browser lands back on the panel after the OAuth round trip.
+
+**Leave the switch off in production.** An install that carries it publishes to Instagram and fails with a platform error that says nothing about the address.
 
 ## Checking it against the real platforms
 

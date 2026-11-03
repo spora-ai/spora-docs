@@ -324,6 +324,31 @@ The user dropdown in the navbar exposes a **My Groups →** link (icon: `groups`
 
 Inside a group page, the **Transfer** action on each agent row lets you re-key the agent's `principal_id` from the current group to a different principal you control (typically your user-principal — the "remove from group" flow). The confirmation dialog shows the new owner label and the list of tool settings / LLM configs that move with the agent. **The transfer also updates every inherited task row**: tasks that were attributed to the old principal are now owned by the new principal, so the new owner's "My Tasks" view picks them up immediately. The historical clicker attribution (`trigger_user_id` — who originally pressed "Send" on each task) is preserved across the transfer so the chat history stays intact.
 
+### The group's Developer access section
+
+A group's **Settings** page carries a **Developer access** section, visible to the group's owners and
+admins, and to a global admin. It holds the group's **API keys** — the credentials external tools
+use to drive the group over the [Group API](/reference/group-api): every agent of the group, their
+chats and their media, and nothing outside the group. A personal agent — one a user owns rather
+than a group — is not reachable through a group key.
+
+The section stays on the page even while the **Group API** setting is off in
+[Global Settings](/start/operators/global-settings), so you can always list and revoke keys you
+already minted. A group's key is shown in full exactly once, when it is created; Spora stores only
+a digest and cannot show it again, so a lost key is replaced rather than recovered.
+
+### Settings → Global API keys
+
+A global admin finds **Settings → Global API keys**. It holds the install-wide credentials that
+drive the [Global API](/reference/global-api): every group, every agent a group owns, and their
+chats. A personal agent — one a user owns rather than a group — is not reachable through a global
+key.
+
+The entry is in the settings sidebar whether or not the **Global API** setting is on, so a global
+admin can always list and revoke the keys they already minted — switching the scope off takes the
+API offline, it does not revoke anything. A global key is the widest credential Spora issues: it
+reads every group's chats. Minting one is a global-admin right, not a group-level one.
+
 ### Cross-member run visibility
 
 Every group member can see and act on every other member's runs on the shared agent:

@@ -253,6 +253,8 @@ export default defineUserConfig({
         },
         { text: 'CLI', link: '/reference/cli' },
         { text: 'Agent API', link: '/reference/agent-api' },
+        { text: 'Group API', link: '/reference/group-api' },
+        { text: 'Global API', link: '/reference/global-api' },
         { text: 'Config keys', link: '/reference/config-keys' },
         { text: 'Plugin schema', link: '/reference/plugin-schema' },
         {

@@ -25,6 +25,28 @@ This differs from the [REST API](/reference/api) in two ways that matter. Authen
 bearer key rather than a session cookie, so there is no CSRF token and no login. And scope is
 per-agent rather than per-user: the key is the authorisation.
 
+## Three scopes
+
+There are three API surfaces, and each is a separate switch in Global Settings. This page
+describes the per-agent one.
+
+| Scope    | Surface                | Reaches                                                             | Page                                |
+| -------- | ---------------------- | ------------------------------------------------------------------- | ----------------------------------- |
+| `agent`  | `/api/v1/agent-api/*`  | One agent, its chats and their media.                               | this page                           |
+| `group`  | `/api/v1/group-api/*`  | Every agent of one group, their chats and their media.              | [Group API](/reference/group-api)   |
+| `global` | `/api/v1/global-api/*` | Every group, every agent a group owns, their chats and their media. | [Global API](/reference/global-api) |
+
+The switches are `SPORA_AGENT_API`, `SPORA_GROUP_API` and `SPORA_GLOBAL_API`, and they are
+independent: turning one on does not mount the others. A key is minted for one scope and works
+only on that scope's surface — a group key presented here answers `401`, like a wrong secret.
+
+There is no user-scoped key. A personal agent — one a user owns rather than a group — is
+reachable only through its own per-agent key; neither the group nor the global scope reaches one.
+
+The key format is the same for all three (`spk_<id>_<secret>`), and so is the
+[callback signature](/reference/agent-api#verifying-the-signature): a receiver written against this
+surface verifies a group- or global-scoped callback with the same code.
+
 ## Create an API key
 
 Open the agent in the admin UI and go to **Settings**, then jump to the **API keys** section
@@ -101,8 +123,7 @@ purpose, so a caller cannot tell a bad id from a bad secret. Requests are rate l
 | `GET`  | `/api/v1/agent-api/media/{mediaId}`       | Read a media asset this agent produced |
 
 The per-endpoint reference, including the full status-code list for each, is in the
-[API reference](/reference/api/agent-api). That page is generated from the OpenAPI spec, so it
-gains this surface once the API is present in `spora-core@main`.
+[API reference](/reference/api/agent-api). That page is generated from the OpenAPI spec.
 
 ## Start a chat
 
@@ -441,8 +462,8 @@ otherwise. The [error-handling reference](/reference/concepts/error-handling) is
 | `429`  | Rate limited. Retry after the interval in the `Retry-After` header.                                                                          |
 | `500`  | The upload could not be read off disk.                                                                                                       |
 
-The limit is per key and operator-tunable in Global Settings as **Agent API rate limit**
-(`SPORA_AGENT_API_RATE_LIMIT_MAX`, 60 requests per minute by default).
+The limit is per key and operator-tunable in Global Settings as **API rate limit**
+(`SPORA_API_RATE_LIMIT_MAX`, 60 requests per minute by default) — one limit for every scope.
 
 The counter is consulted **after** the secret verifies, and that ordering is deliberate. If the limiter ran first, a wrong secret against a real key id would eventually answer `429` while an unknown id always answered `401` — and the difference would tell the caller whether the id exists. Counting only verified requests keeps a `401` a `401`.
 
@@ -490,7 +511,8 @@ through it. When a chat settles _blocked_ the loop exits and the answer is empty
   saved in Global Settings the stored value wins. Set it in one place.
 - **`GET /api/v1/config` carries `agent_api_enabled`** — the flag the admin SPA reads to decide
   whether to point the nav pill at the API-keys section. The section itself renders either way, so
-  keys stay revocable when the feature is off; the flag governs only where the nav points.
+  keys stay revocable when the feature is off; the flag governs only where the nav points. Its
+  siblings `group_api_enabled` and `global_api_enabled` gate the other two scopes.
 - **The API is not a worker.** `POST /chats` answers `202` and returns immediately — it queues the
   chat and a worker runs it. Nothing in the HTTP request path drives the agent loop, which is why
   a server-side worker is required; in client-worker mode the API answers `404` on every endpoint.

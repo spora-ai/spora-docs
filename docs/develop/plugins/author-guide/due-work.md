@@ -44,6 +44,8 @@ final class AcmePlugin extends AbstractPlugin
 
 `AbstractPlugin` returns `[]`, so a plugin with no work of its own changes nothing. The registry resolves each class from the container once, when it is first built — PHP-DI autowires anything whose constructor arguments it can satisfy, and your own services are bound from a `ContainerBuildingEvent` subscriber (see [Lifecycle is events, not hooks](/develop/plugins/author-guide/foundations#lifecycle-is-events-not-hooks)).
 
+**A provider class the container cannot resolve is not reported — it takes the worker down.** The registry resolves each class with no guard around it, so a class the container cannot build throws when the registry is first built: the housekeeping endpoint answers `500` and `bin/spora worker:run` fails to start. A provider whose constructor asks for something the container cannot satisfy fails the same way, and nothing in `plugin_problems` mentions it. A _settings_ provider that cannot be resolved is caught and reported instead — see [Plugin settings → When a provider does not contribute](/develop/plugins/author-guide/plugin-settings#when-a-provider-does-not-contribute).
+
 Core ships no provider of its own, so the order the registry consults them in is plugin load order.
 
 ## The interface contract

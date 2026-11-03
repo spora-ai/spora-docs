@@ -218,7 +218,7 @@ final class App extends AbstractExtension
      * Project-level App extension. Discovered by AppLoader via reflection;
      * one per installation, no manifest, no slug.
      *
-     * Override any of SporaExtensionInterface's ten data hooks to wire
+     * Override any of SporaExtensionInterface's data hooks to wire
      * project-local code in — `tools()` is the common one. Lifecycle is not
      * hooks: implement Symfony\Component\EventDispatcher\EventSubscriberInterface
      * and react to Spora\Events\{ContainerBuildingEvent, RoutesRegisteringEvent,
@@ -234,7 +234,7 @@ final class App extends AbstractExtension
 }
 ```
 
-> **Note:** the comment names the ten data hooks of `SporaExtensionInterface` but does not enumerate them — the full list is in [Concepts → App extensions](/reference/concepts/app-extension). Two names the pre-1.0 comment used are gone: `drivers()` and `recipePaths()` had no callers and were dropped (their replacements are `agentTemplatePaths()` and `skillPaths()`). Lifecycle is not a hook at all: `register()`, `routes()`, and `boot()` became PSR-14 events — `ContainerBuildingEvent` (payload `builder()`), `RoutesRegisteringEvent` (payload `routes()`), and `BootingEvent` (payload `container()`) respectively. An App takes part by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface`, exactly as the `make:controller` snippet above does.
+> **Note:** the comment points at `SporaExtensionInterface`'s data hooks without enumerating them — the full list is in [Concepts → App extensions](/reference/concepts/app-extension). Two names the pre-1.0 comment used are gone: `drivers()` and `recipePaths()` had no callers and were dropped (their replacements are `agentTemplatePaths()` and `skillPaths()`). Lifecycle is not a hook at all: `register()`, `routes()`, and `boot()` became PSR-14 events — `ContainerBuildingEvent` (payload `builder()`), `RoutesRegisteringEvent` (payload `routes()`), and `BootingEvent` (payload `container()`) respectively. An App takes part by implementing `Symfony\Component\EventDispatcher\EventSubscriberInterface`, exactly as the `make:controller` snippet above does.
 
 The full hook table and the three lifecycle events are in [Concepts → App extensions](/reference/concepts/app-extension); the same contract from the plugin side is in [Foundations → Available hooks](/develop/plugins/author-guide/foundations#available-hooks).
 

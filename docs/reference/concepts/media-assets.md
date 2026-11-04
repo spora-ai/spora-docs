@@ -392,8 +392,9 @@ row's type either.
 
 The boundary is a helper, not a framework guarantee: `MediaScriptableTypes::headersFor()`
 returns the two headers for a MIME type, and every route that serves archive bytes calls
-it. A plugin that serves its own bytes — the Typst image library does — is covered only
-once it calls the same helper.
+it. A plugin that serves its own bytes is covered by its own policy, not by this one — the
+Typst plugin's image library serves four image types of its own and sandboxes the one that
+is script-capable.
 
 The one route that may run script is `GET /api/v1/media/{id}/embed`, and it is narrow on
 every axis: authenticated only (a public share token does not unlock it), gated on the

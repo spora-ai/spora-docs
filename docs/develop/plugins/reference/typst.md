@@ -5,7 +5,7 @@ description: Compile Typst source to PDF/PNG/SVG from an agent conversation, wit
 
 # Typst Plugin for Spora
 
-Typesets documents from [Typst](https://typst.app) source inside a [Spora](https://github.com/spora-ai/spora) conversation. The agent writes `.typ` markup, runs a read-only inspector pass to catch syntax errors, then compiles to PDF, PNG, or SVG — the output lands in the Media Archive as a proper derivative and renders inline in chat.
+Typesets documents from [Typst](https://typst.app) source inside a [Spora](https://github.com/spora-ai/spora) conversation. The agent writes `.typ` markup, runs a read-only inspector pass to catch syntax errors, then compiles to PDF, PNG, or SVG — the output lands in the Media Archive as a proper derivative and renders inline in chat. The `svg` format is the exception: a browser parses an SVG as a document that can carry script, so the derivative path refuses it unless the operator has enabled `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES` (see [Concepts → Media assets](/reference/concepts/media-assets#the-script-capable-formats-are-the-operators-decision)).
 
 The plugin also ships an admin panel at `/apps/typst` (five tabs: **Fonts**, **Templates**, **Examples**, **Images**, **Editor**) for managing a per-principal resource library, and a `TypstRenderProducer` registered with core's `MediaDerivativeProducerDiscovery` so any admin surface can dispatch a render.
 
@@ -73,7 +73,7 @@ Tier-2 shadows tier-1 on a basename collision, so an operator can override a bun
 | Basename charset                    | `A-Z a-z 0-9 . _ -`, max 128 chars; `/`, `\`, `..` rejected                  | `TypstResourceStore::validateBasename()`                                     |
 | Image MIME allowlist                | `image/png`, `image/jpeg`, `image/webp`, `image/svg+xml`                     | `TypstImageStore::ALLOWED_MIMES`                                             |
 | Source MIME                         | `text/x-typst` (the de-facto convention; ext-typst registers no MIME for it) | `TypstRenderProducer::SUPPORTED_SOURCE_MIMES`                                |
-| Derivative formats                  | `pdf`, `png`, `svg`                                                          | `TypstRenderProducer::SUPPORTED_FORMATS`                                     |
+| Derivative formats                  | `pdf`, `png`, `svg` (`svg` needs `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`)   | `TypstRenderProducer::SUPPORTED_FORMATS`                                     |
 | PNG `ppi`                           | 36–600 on the wire, default 144; operator UI offers 72 / 144 / 288 / 600     | `TypstRenderProducer::MIN_PPI` / `MAX_PPI` / `DEFAULT_PPI` / `SUPPORTED_PPI` |
 | ext-typst world cache               | 64 MiB per `World` allocation                                                | `TypstWorldFactory::CACHE_BYTES`                                             |
 
@@ -191,7 +191,7 @@ Rendered PDF
 Echo the markdown block above verbatim so the chat UI renders the result inline. For raw URLs (e.g. to embed in a follow-up tool call), read ToolResult.data.asset_urls. Do NOT invent or rewrite URLs — `file://` and external domains are unsupported; the data channel is the only authoritative source. ToolResult.data.source_id is the parent .typ row — call media.get_source(source_id) to read it back for the iterate loop; ToolResult.data.preview_id (PDF renders only) is the first-page PNG sibling.
 ```
 
-For `png` and `svg` the markdown block is a single image. For `pdf` it is an `[Open PDF](url)` link **plus** a first-page PNG preview, because PDFs are not image-embedable in the chat sanitiser. The preview is rendered once and persisted as a sibling derivative; if it fails, the PDF render still succeeds.
+For `png` and `svg` the markdown block is a single image — for `svg`, when the operator has enabled `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`; without it the render is refused at the derivative gate. For `pdf` it is an `[Open PDF](url)` link **plus** a first-page PNG preview, because PDFs are not image-embedable in the chat sanitiser. The preview is rendered once and persisted as a sibling derivative; if it fails, the PDF render still succeeds.
 
 | Data field               | What it is                                                                                                                                                            |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

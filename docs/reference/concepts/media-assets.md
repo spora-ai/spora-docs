@@ -362,11 +362,12 @@ That makes the union a **second, parallel allowlist surface**, and it has to sta
 
 ### The script-capable formats are the operator's decision
 
-HTML and SVG are the two formats a browser parses as a _document_ rather than a picture, so both
+HTML and SVG are the formats a browser parses as a _document_ rather than a picture, so both
 can carry script, and both are governed by an explicit operator toggle rather than by the
 static lists. `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES` decides whether they may exist at
 all; `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` decides whether an embedded copy may run
-them.
+them. (The serving boundary also covers XHTML, the XML flavour of HTML; the toggle
+offers HTML and SVG, not XHTML, and the two lists are deliberately separate.)
 
 The reason this is a toggle and not a static rule is the _serving_ side, and it is worth
 being precise about, because the two settings answer different questions:
@@ -374,18 +375,25 @@ being precise about, because the two settings answer different questions:
 - **The gate** (`MediaAllowedTypesService`) governs what may be **created**. `text/html`
   was on the static text list until the toggle existed, which meant any install could
   store a `<script>` payload as HTML.
-- **The serving boundary** governs what happens to the bytes **afterwards**, and it is
-  unconditional. Every media response carries `X-Content-Type-Options: nosniff`, and
-  every script-capable one additionally carries `Content-Security-Policy: sandbox`. The
-  document still renders; it cannot reach the operator's origin, and its script does not
-  run.
+- **The serving boundary** governs what happens to the bytes **afterwards**, and it does
+  not depend on the toggle. Every media response carries `X-Content-Type-Options: nosniff`,
+  and every script-capable one on the download paths additionally carries
+  `Content-Security-Policy: sandbox`. The document still renders; it cannot reach the
+  operator's origin, and its script does not run. The embed route carries its own policy,
+  which is the one exception.
 
 That separation is the whole point, and it is why the gate cannot be the only defence.
 A rule enforced at one choke point does not cover a path that does not pass through it —
 which is exactly how the original SVG ban leaked: `MediaDerivativeService::createNew()`
 wrote the producer's MIME onto the row without consulting the allowlist, so a producer
 emitting SVG created precisely the asset the upload gate refused. The derivative path
-now consults the same policy.
+now consults the same policy — in `create()`, so a re-render cannot rewrite an existing
+row's type either.
+
+The boundary is a helper, not a framework guarantee: `MediaScriptableTypes::headersFor()`
+returns the two headers for a MIME type, and every route that serves archive bytes calls
+it. A plugin that serves its own bytes — the Typst image library does — is covered only
+once it calls the same helper.
 
 The one route that may run script is `GET /api/v1/media/{id}/embed`, and it is narrow on
 every axis: authenticated only (a public share token does not unlock it), gated on the
@@ -405,16 +413,19 @@ It is not neutral for the LLM. `search` is the only way an agent discovers asset
 - `<img>`, `<audio>`, `<video>`, `<source>` are in the allow-list.
 - `<div>`, `<span>` and `class` are in the allow-list too, which is what lets `MediaEmbed::fileCard()` ship a styled download card as raw HTML rather than markdown.
 - `data:` URIs are allowed on `src` of `<audio>`, `<video>`, and `<source>` (via a per-call DOMPurify hook) but blocked on `<a href>` so `data:text/html,…` XSS stays closed.
-- `download` and `aria-hidden` are **not** in the allow-list. `download` is harmless here, since `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` from `media_assets.filename` regardless — but `aria-hidden` being dropped means an icon glyph inside a card cannot be hidden from assistive tech. Use a CSS pseudo-element or a background image instead of an element with a glyph character in it.
+- `download` and `aria-hidden` are **not** in the allow-list. `download` is harmless here, since `AssetStreamer::applyContentDisposition()` forces `Content-Disposition: attachment` from `media_assets.filename` regardless — but `aria-hidden` being dropped means an icon glyph inside a card cannot be hidden from assistive tech. Use a CSS pseudo-element or a background image instead of an element with a glyph character in it.
 - Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`.
 - The download card shows the filename and, when the archive knows it, the size. There is no MIME: the extension on the filename already says what the file is, and a long MIME overflowed the row and squeezed the filename to nothing in a narrow bubble.
 - The one thing that is **not** sanitized is the embed. An HTML or SVG asset the operator
   has permitted is rendered in a real `<iframe>` — a Vue component that owns its own
   element — because the sanitiser's allow-list carries no `iframe` and no `script`, and
   widening it would put every chat bubble in scope. The frame's `sandbox` attribute
-  mirrors the `Content-Security-Policy` the embed route sends, so the two agree; the
-  server's header is the one that counts, since a response header cannot be widened by
-  the page embedding it.
+  mirrors the `Content-Security-Policy` the embed route sends, so the two agree. The
+  header is the ceiling: the browser takes the **union** of the response's forced
+  sandboxing flags and the frame's own attribute, so the attribute can narrow what the
+  header allows, never widen it. The Media Archive's own detail page renders the same
+  frame for a permitted HTML or SVG asset (`spora-plugin-media-archive-frontend`,
+  `src/components/MediaEmbedFrame.vue`), and the same rule applies there.
 
 ### Styling the download card: register your classes
 

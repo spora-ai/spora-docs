@@ -269,6 +269,7 @@ The global guard reads `meta.requiresAdmin` / `meta.requiresAuth` and short-circ
 - **`src/composables/useAdminAuth.ts`** — the canonical admin-gate pattern.
 - **`src/composables/useFeatureEnabled.ts`** — runtime feature flags from `/api/v1/config`.
 - **`src/components/agent/TaskChat/SubAgentToolCall.vue`** — the row widget rendered when a sub-agent op reports the spawned child ids — `sub_agent` and `sub_agent_continue` both do (one row per spawned child, live status from `subTaskCache`).
+- **`src/components/agent/TaskChat/MediaEmbedFrame.vue`** — the framed widget a script-capable media asset renders as. The chat's HTML goes through `renderMarkdown()`, whose DOMPurify allow-list carries no `iframe` and no `script`, so the embed is its own component with its own `<iframe>` rather than markup in the bubble. Its `sandbox` attribute mirrors the `Content-Security-Policy` the embed route sends; the header is the ceiling the browser enforces, and `allow-same-origin` is never present — with it, a same-origin framed document could remove its own sandbox.
 - **`src/composables/useTaskChatCommands.ts`** — the task commands the chat offers, as data.
 - **`src/components/ui/CommandMenu.vue`** — the shared command-menu component those commands render through.
 - **`src/apps/plugins/`** — the template for adding a new top-level app.

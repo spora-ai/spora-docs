@@ -354,11 +354,45 @@ Because the derivative path is a second `MediaAsset::find()` plus a real `file_g
 
 ### The producer union is a second allowlist surface
 
-`MediaAllowedTypesService` builds the upload allowlist from four sources: the static text list, the static audio list, the operator's image config, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-office` registers `OfficeToMarkdownProducer`.
+`MediaAllowedTypesService` builds the upload allowlist from five sources: the static text list, the static audio list, the operator's image config, the operator's script-capable toggle, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-office` registers `OfficeToMarkdownProducer`.
 
 That makes the union a **second, parallel allowlist surface**, and it has to stay in sync with the MIME-refiner chain. Nothing structurally enforces the coupling: a `.docx` that sniffs as `application/zip` is fixed by `OfficeMimeRefiner` _before_ the gate and still works, but no code path asserts that a refiner's target mime is also in some producer's source list. If you ship a refiner that upgrades a format into a mime, confirm a producer claims that mime yourself: not even a test asserts the pairing, and no owner is designated for the invariant.
 
 `supportedSourceFormats()` returns **bare extensions as well as mimes** — `TypstRenderProducer` returns `['text/x-typst', 'typ']`, `MarkdownToOfficeProducer` returns `['text/markdown', 'md', 'markdown']` — and producer resolution checks both. The allowlist union does not: it must filter on entries containing `/`, or `md`, `typ`, and `markdown` leak into the LLM-facing `Allowed: %s` string in `create_media`'s rejection message. The leak is **invisible in the upload UI**: `allowedExtensions()` maps every mime through `extensionForMime()`, and a bare extension yields null there, so it is dropped from the `accept=` attribute rather than surfacing as a bogus name. It only ever surfaces in the LLM contract.
+
+### The script-capable formats are the operator's decision
+
+HTML and SVG are the two formats a browser parses as a _document_ rather than a picture, so both
+can carry script, and both are governed by an explicit operator toggle rather than by the
+static lists. `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES` decides whether they may exist at
+all; `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` decides whether an embedded copy may run
+them.
+
+The reason this is a toggle and not a static rule is the _serving_ side, and it is worth
+being precise about, because the two settings answer different questions:
+
+- **The gate** (`MediaAllowedTypesService`) governs what may be **created**. `text/html`
+  was on the static text list until the toggle existed, which meant any install could
+  store a `<script>` payload as HTML.
+- **The serving boundary** governs what happens to the bytes **afterwards**, and it is
+  unconditional. Every media response carries `X-Content-Type-Options: nosniff`, and
+  every script-capable one additionally carries `Content-Security-Policy: sandbox`. The
+  document still renders; it cannot reach the operator's origin, and its script does not
+  run.
+
+That separation is the whole point, and it is why the gate cannot be the only defence.
+A rule enforced at one choke point does not cover a path that does not pass through it —
+which is exactly how the original SVG ban leaked: `MediaDerivativeService::createNew()`
+wrote the producer's MIME onto the row without consulting the allowlist, so a producer
+emitting SVG created precisely the asset the upload gate refused. The derivative path
+now consults the same policy.
+
+The one route that may run script is `GET /api/v1/media/{id}/embed`, and it is narrow on
+every axis: authenticated only (a public share token does not unlock it), gated on the
+operator's toggle, and serving `sandbox` **without** `allow-same-origin` so the framed
+document gets an opaque origin. It cannot read `document.cookie`, cannot reach
+`localStorage`, cannot touch the parent document, and cannot obtain the `X-CSRF-Token`
+every write requires. There is no bridge from the embedded document back to the app.
 
 ### Discovery: `search` hides derivatives
 
@@ -374,6 +408,13 @@ It is not neutral for the LLM. `search` is the only way an agent discovers asset
 - `download` and `aria-hidden` are **not** in the allow-list. `download` is harmless here, since `AssetController::applyContentDisposition()` forces `Content-Disposition: attachment` from `media_assets.filename` regardless — but `aria-hidden` being dropped means an icon glyph inside a card cannot be hidden from assistive tech. Use a CSS pseudo-element or a background image instead of an element with a glyph character in it.
 - Media elements get a sensible default style in `spora-frontend/src/style.css` under `.chat-bubble-content video` / `.chat-bubble-content audio`.
 - The download card shows the filename and, when the archive knows it, the size. There is no MIME: the extension on the filename already says what the file is, and a long MIME overflowed the row and squeezed the filename to nothing in a narrow bubble.
+- The one thing that is **not** sanitized is the embed. An HTML or SVG asset the operator
+  has permitted is rendered in a real `<iframe>` — a Vue component that owns its own
+  element — because the sanitiser's allow-list carries no `iframe` and no `script`, and
+  widening it would put every chat bubble in scope. The frame's `sandbox` attribute
+  mirrors the `Content-Security-Policy` the embed route sends, so the two agree; the
+  server's header is the one that counts, since a response header cannot be widened by
+  the page embedding it.
 
 ### Styling the download card: register your classes
 

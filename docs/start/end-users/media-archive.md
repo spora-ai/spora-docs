@@ -148,18 +148,43 @@ What ends up in the grid is decided by five settings on the **Media** tab of
 other field, so a value saved there wins over one set in `.env`. See
 [Config keys](/reference/config-keys) for the `config.php` and env-var spellings.
 
-| Setting                                   | Default           | What it decides                                                                                |
-| ----------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
-| `SPORA_MEDIA_ARCHIVE_PROMOTE_EXTERNAL`    | `true`            | When on, a URL an agent was given is downloaded and stored. Turn it off to keep only the link. |
-| `SPORA_MEDIA_ARCHIVE_FETCH_TIMEOUT`       | `30`              | Seconds allowed for the remote media fetch.                                                    |
-| `SPORA_MEDIA_ARCHIVE_MAX_PROMOTE_BYTES`   | `104857600`       | 100 MiB. A larger response is recorded as external rather than downloaded.                     |
-| `SPORA_MEDIA_ARCHIVE_FFPROBE_ENABLED`     | `false`           | Extracts the duration with `ffprobe`. Needs ffprobe on `PATH`, and is slower to ingest.        |
-| `SPORA_MEDIA_ARCHIVE_ALLOWED_IMAGE_TYPES` | `png, jpeg, webp` | The image formats offered as attachments. SVG is always rejected and cannot be enabled here.   |
+| Setting                                   | Default           | What it decides                                                                                           |
+| ----------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------- |
+| `SPORA_MEDIA_ARCHIVE_PROMOTE_EXTERNAL`    | `true`            | When on, a URL an agent was given is downloaded and stored. Turn it off to keep only the link.            |
+| `SPORA_MEDIA_ARCHIVE_FETCH_TIMEOUT`       | `30`              | Seconds allowed for the remote media fetch.                                                               |
+| `SPORA_MEDIA_ARCHIVE_MAX_PROMOTE_BYTES`   | `104857600`       | 100 MiB. A larger response is recorded as external rather than downloaded.                                |
+| `SPORA_MEDIA_ARCHIVE_FFPROBE_ENABLED`     | `false`           | Extracts the duration with `ffprobe`. Needs ffprobe on `PATH`, and is slower to ingest.                   |
+| `SPORA_MEDIA_ARCHIVE_ALLOWED_IMAGE_TYPES` | `png, jpeg, webp` | The raster image formats offered as attachments. SVG is not a raster format — see the two settings below. |
+| `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`  | `false`           | Permits HTML and SVG assets to be created and embedded.                                                   |
+| `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` | `false`           | Lets embedded HTML and SVG run their own scripts.                                                         |
 
 An asset recorded as **external** — because promotion is off, or because the response was over the
 ceiling — still appears in the grid, with the source URL in the detail drawer instead of a stored
 copy. There are no bytes on this side to hand out, so the download route answers
 `404 asset_not_found` for it.
+
+### HTML and SVG
+
+HTML and SVG are the two formats a browser parses as a _document_ rather than a picture, so
+both can carry script. They are off by default and are enabled with
+`SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`.
+
+Two settings, because two different questions are being answered:
+
+- **May these formats exist at all?** `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES` decides it.
+  With it off, an agent cannot create an HTML or SVG asset and one cannot be uploaded.
+- **May an embedded copy run its scripts?** `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS`
+  decides it, and only applies to the embed — the framed preview in the chat and on the
+  detail page. With it off, an embedded HTML or SVG still renders; its scripts just do not
+  run.
+
+Whatever the settings say, a script-capable asset served as a plain download or opened
+directly in a browser **never** runs its script. The serving layer puts every such
+response in a sandbox, so the document renders but cannot reach your session, your data,
+or your dashboard. The embed is the only place script can run, and only if you say so.
+
+Enabling either setting is a decision about who can author content in your installation.
+An agent that can write HTML can put anything in it.
 
 ## Where the data comes from
 

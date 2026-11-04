@@ -177,6 +177,24 @@ revoke one.
 See [Agent API](/reference/agent-api), [Group API](/reference/group-api) and
 [Global API](/reference/global-api).
 
+## Script-capable media
+
+HTML and SVG are the formats a browser parses as a _document_ rather than a picture, so
+both can carry script. Two settings decide what may happen, and both are off by default:
+
+| Setting                                   | Default | What it decides                                                                                                                                           |
+| ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`  | `false` | Whether HTML and SVG assets may exist at all. With it off, neither can be uploaded and an agent cannot create one.                                        |
+| `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` | `false` | Whether an _embedded_ copy may run its scripts. It never widens what may exist — an embed can only exist for a format the first toggle already permitted. |
+
+Three properties hold whatever the settings say:
+
+- **The download path is inert.** Every media response carries `X-Content-Type-Options: nosniff`, and a script-capable one on the download paths additionally carries `Content-Security-Policy: sandbox`. A shared or downloaded HTML or SVG renders as a document, but its script does not run and it cannot reach the operator's origin, the session, or the app's data. The rule is applied where the bytes leave the server, so it covers the public share route and the API-scoped media routes as well as the authenticated one — a path that does not pass through the upload gate cannot escape it.
+- **The embed is the only place script can run.** `GET /api/v1/media/{id}/embed` is authenticated only — a public share token does not unlock it — and it serves `sandbox` **without** `allow-same-origin`, so the framed document gets an opaque origin: it cannot read `document.cookie`, reach `localStorage`, touch the parent document, or obtain the `X-CSRF-Token` every write requires. There is no bridge from the framed document back into the app.
+- **The gate covers every creation path.** Uploads, the `create_media` tool and the derivative path all consult the same policy, so a producer that emits SVG cannot create the asset the upload gate refused.
+
+Enabling either toggle is a decision about who may author content in the installation: an agent that can write HTML can put anything in it. See [Concepts → Media assets](/reference/concepts/media-assets#the-script-capable-formats-are-the-operators-decision) and [End users → Media archive](/start/end-users/media-archive#html-and-svg).
+
 ## Plugin Risks
 
 Plugins are not sandboxed — they run as ordinary PHP code with full access to the application, the database, the file system, and any decrypted credentials. The plugin trust model and lifecycle are documented on the [Plugin system](/reference/concepts/plugins-system) page under [Security](/reference/concepts/plugins-system#security).

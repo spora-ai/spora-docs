@@ -194,7 +194,7 @@ Three properties hold whatever the settings say:
 - **The embed is the only place script can run.** `GET /api/v1/media/{id}/embed` is authenticated only — a public share token does not unlock it — and it serves `sandbox` **without** `allow-same-origin`, so the framed document gets an opaque origin: it cannot read `document.cookie`, reach `localStorage`, touch the parent document, or obtain the `X-CSRF-Token` every write requires. There is no bridge from the framed document back into the app.
 - **The gate covers every creation path.** Uploads, the `create_media` tool and the derivative path all consult the same policy, so a producer that emits SVG cannot create the asset the upload gate refused.
 
-Enabling either toggle is a decision about who may author content in the installation: an agent that can write HTML can put anything in it. See [Concepts → Media assets](/reference/concepts/media-assets#the-script-capable-formats-are-the-operators-decision) and [End users → Media archive](/start/end-users/media-archive#html-and-svg).
+Enabling either toggle is a decision about who may author content in the installation: an agent that can write HTML can put anything in it. See [Concepts → Media assets](/reference/concepts/media-assets#the-script-capable-formats-are-the-operator-s-decision) and [End users → Media archive](/start/end-users/media-archive#html-and-svg).
 
 ## Plugin Risks
 

@@ -51,6 +51,15 @@ cweagans/composer-patches contains a Composer plugin which is blocked by your al
 
 With the entry set to `false` — or with `composer install --no-plugins` — the install succeeds and the two halves fail **differently**. The slides half fails loudly: every deck render raises `MarkdownPresentation\Exception\UnpatchedDependency`, whose message names the plugin and what to do about it. The Word half fails **silently** — it raises nothing, and the `.docx` it writes is not valid Office Open XML until PHPWord's fixes are released upstream. Both halves are patched: the slides half patches `phpoffice/phppresentation`, the Word half patches `phpoffice/phpword`.
 
+**An existing host has to rebuild its lock.** The patches that are applied are the ones in the host's own `patches.lock.json`, and that file is written once and read from then on — a dependency that brings a new patch does not rewrite it. A host whose lock predates the `phpoffice/phpword` patch installs PHPWord unpatched, and the Word half then writes a `.docx` that is not valid Office Open XML, with no message at all. After the upgrade:
+
+```bash
+composer patches-relock
+composer patches-repatch
+```
+
+A fresh install has no lock to be stale: it writes one from the packages' own declarations.
+
 The entry goes away again when the patched parts are released upstream: `markdown-office/markdown-presentation` and `markdown-office/markdown-word` then drop the patches, the plugin and the entry with it. Until then the entry is required.
 
 ### Requires four PHP extensions

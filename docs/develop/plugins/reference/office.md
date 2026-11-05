@@ -149,7 +149,7 @@ Pictures do not come back either. The reverse direction writes no media director
 
 A theme is a [media-library folder](/reference/concepts/media-folders): the folder's name is the theme's name, the folder's files are the library's own (`theme.yml` and, for a deck, `template.pptx`), and the folder's UUID resolves as well as its name. A theme in the media library shadows a built-in theme of the same name.
 
-**A theme is one file.** Its look, its layout roles and its named text styles are sections of its `theme.yml` — `styles:` for the Word half, `layouts:` and `textStyles:` for the slides half — and what the two share is a theme's name, its description, its author and its named text styles. The files of the older format (`styles.yml`, `layouts.yml`, `text-styles.yml`) are **refused** when they sit beside a theme, each with a message saying what to do: move the content into the section it became and delete the file. A folder left over from that format needs the fix before it renders at all.
+**A theme is one file.** Its look, its layout roles and its named text styles are sections of its `theme.yml` — `styles:` for the Word half, `dark:` / `colors:` / `fonts:` / `style:` / `layouts:` for the slides half, and `textStyles:` for the named styles either half may write a word in. What the two share is a theme's name, its description, its author and its named text styles. The files of the older format (`styles.yml`, `layouts.yml`, `text-styles.yml`) are **refused** when they sit beside a theme, each with a message saying what to do: move the content into the section it became and delete the file. A folder left over from that format needs the fix before it renders at all.
 
 A render picks its theme one of two ways:
 

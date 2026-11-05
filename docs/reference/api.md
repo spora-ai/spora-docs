@@ -389,8 +389,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Group-api](/reference/api/group-api) — 17 routes
 - [Tasks](/reference/api/tasks) — 14 routes
 - [Auth](/reference/api/auth) — 12 routes
+- [Media](/reference/api/media) — 12 routes
 - [Agent-api](/reference/api/agent-api) — 11 routes
-- [Media](/reference/api/media) — 11 routes
 - [Speech](/reference/api/speech) — 10 routes
 - [Users](/reference/api/users) — 10 routes
 - [Me](/reference/api/me) — 9 routes
@@ -592,6 +592,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/media`                                             | `cookieAuth` + `csrfToken` | Store MediaUpload                                                        | Media            |
 | `POST`   | `/api/v1/media/{id}/derivatives`                            | `cookieAuth` + `csrfToken` | Create MediaDerivative                                                   | Media            |
 | `GET`    | `/api/v1/media/{id}/derivatives/options`                    | `cookieAuth`               | Index MediaDerivativeOptions                                             | Media            |
+| `GET`    | `/api/v1/media/{id}/embed`                                  | `cookieAuth`               | Fetch a media asset as live, embeddable content                          | Media            |
 | `POST`   | `/api/v1/media/{id}/keep`                                   | `cookieAuth` + `csrfToken` | Keep KeepMedia                                                           | Media            |
 | `GET`    | `/api/v1/media/allowed-types`                               | `cookieAuth`               | Index MediaAllowedTypes                                                  | Media            |
 | `GET`    | `/api/v1/media/folders`                                     | `cookieAuth`               | Index MediaFolder                                                        | Media            |

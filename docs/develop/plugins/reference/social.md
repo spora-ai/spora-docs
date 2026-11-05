@@ -55,7 +55,7 @@ The things that have to be true before a post reaches an audience do not show up
 >
 > **Start the Meta app review first.** `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights`, `pages_show_list`, `pages_manage_posts`, `pages_read_engagement` and `read_insights` all need review, and it can take weeks. Nothing in the plugin blocks on it — it runs against a developer-mode app — but the feature is not usable against a real audience until the review lands. Start the review before you write the copy.
 >
-> **A LinkedIn organisation page needs Community Management API approval.** Posting as a member through `w_member_social` is self-service, so a personal account works from the first day and an organisation page does not. Ship member posting first, and turn on **Ask LinkedIn for organisation pages** only once your app holds the scope: asking for a scope the app does not have fails the whole authorization request, not just the organisation part.
+> **A LinkedIn organisation page is a second app, and it needs a legal entity.** Posting as a member through `w_member_social` is self-service, so a personal account works from the first day and an organisation page does not. The permission that posts to a page, `w_organization_social`, comes only with the **Community Management API**, and LinkedIn's rules for that product are strict: it **has to be the only product on the app** — "Share on LinkedIn" is one of the products that blocks it — so a page needs a second app, and it **has to be asked for by a registered legal organisation**, because the vetting wants a verified business email, a legal name, a registered address, a website and a privacy policy, and personal email addresses do not pass it. [The LinkedIn app, step by step](#the-linkedin-app-step-by-step) has both paths.
 
 **Meta is one login for both networks.** It is the _Instagram API with Unified Login_, built on Facebook Login for Business: one Meta app, one configuration, one redirect URI, and one click connects Instagram and Facebook together. The client picks a business portfolio, the Instagram professional account and the Facebook Page, and the app receives a **Business Integration System User token** that covers every asset they shared and **never expires**.
 
@@ -82,33 +82,69 @@ The things that have to be true before a post reaches an audience do not show up
 
 **LinkedIn** — [developer portal](https://www.linkedin.com/developers/apps)
 
+LinkedIn splits this in two, and the two halves cannot share an app.
+
+#### Posting as yourself
+
+One app, and no review:
+
 1. Create an app and add the **Sign in with LinkedIn** product. It brings OpenID Connect and the member id with it.
 2. Copy the **Client ID** and the **Client Secret** from _Auth_.
 3. Register the redirect URI with the app. **The Accounts tab carries it too** — the provider's **Setup guide** shows it with a copy button — and so does the setting's own description in Settings → Plugins, the _LinkedIn client id_ row ending with _Register this redirect URL with it: {url}_. Its shape is `{your-spora}/api/v1/plugins/social/oauth/linkedin/callback`.
 4. Add the **Share on LinkedIn** product.
 
-Member posting (`w_member_social`) is **self-service**: an app in development mode posts as the member who signed in, and no review is involved. Start there. The organisation permission and the four read permissions are not — see [The LinkedIn permission toggles](#the-linkedin-permission-toggles).
+Member posting (`w_member_social`) is **self-service**: an app in development mode posts as the member who signed in, and no review is involved. The Share on LinkedIn product grants that permission and nothing else — it posts as the signed-in member, never as a page. **This is as far as an individual developer goes.**
+
+#### Posting to a company page
+
+A second app, asked for by a legal organisation.
+
+The permission that posts on behalf of a page — `w_organization_social` — comes only with the **Community Management API**, and LinkedIn's rules for that product are strict on two counts.
+
+**It has to be the only product on the app.** "Share on LinkedIn" is one of the products that blocks it, so the app above can never hold it. The Community Management API app is a **second app**, created with no products at all and verified against the **same company page**.
+
+> "The Community Management API requires that it be the only product associated with a developer application due to legal and security constraints." — [LinkedIn API Partner Support](https://learn.microsoft.com/en-us/linkedin/shared/linkedin-api-partner-support-guide)
+
+**Only a legal organisation can ask for it.** The vetting wants a verified business email, the organisation's legal name and registered address, its website and a privacy policy, and a company page whose super admin verified the app.
+
+> "our Community Management APIs are only available to registered legal organizations for commercial use cases only" — [Community Management app review](https://learn.microsoft.com/en-us/linkedin/marketing/community-management-app-review)
+
+An individual developer without a registered legal entity cannot get it — personal email addresses do not pass the vetting. A sole trader with a registered company is a different case.
+
+The review itself comes in two tiers: Development tier first, with 500 calls a day for the app and 100 a day per member, and then Standard tier, which asks for a screen recording of the app working.
+
+Point the plugin at the **Community Management API app**: it grants `w_member_social` as well, so that one app covers member posting and page posting together. It cannot serve OpenID Connect, so turn **Ask LinkedIn for the member's identity** off — the member is then named by the organisation access-control list, which says who the role belongs to. That list is read with `r_organization_admin`, so **Ask LinkedIn for the administered organisations** has to be on as well — without it there is no list to read, and the connect is refused.
+
+The organisation permission and the four read permissions are not self-service — see [The LinkedIn permission toggles](#the-linkedin-permission-toggles).
+
+#### What the plugin does not set up for you
+
+The Community Management API app is **the operator's work**: the second app, the legal entity, the access-request form, the screen recording for Standard tier. The plugin points at one LinkedIn app and asks it for the scopes the operator says it holds — it does not build the app, and it cannot get one approved.
+
+That is deliberate, and it is also why a project without a legal entity cannot reach a page at all. **Posting as a page is worth the path when there is an organisation behind it.** An open-source project that wants a page of its own needs a registered legal entity to ask with, and that is the part that has to be arranged before any of this works.
 
 ## Settings
 
 The plugin's settings sit on the **Plugins** tab of the admin settings, under the group **Social**. The same keys can be written in `.env` or `config.php`.
 
-| Label                                            | Key                                        | Type     | Notes                                                                                                                                                         |
-| ------------------------------------------------ | ------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| LinkedIn client id                               | `SPORA_SOCIAL_LINKEDIN_CLIENT_ID`          | text     | The client id of your LinkedIn app. Its description carries the redirect URL to register with it.                                                             |
-| LinkedIn client secret                           | `SPORA_SOCIAL_LINKEDIN_CLIENT_SECRET`      | password | Stored encrypted, never returned over the wire.                                                                                                               |
-| Ask LinkedIn for organisation pages              | `SPORA_SOCIAL_LINKEDIN_ORGANIZATION_SCOPE` | toggle   | Off by default. On only once your app holds `w_organization_social`.                                                                                          |
-| Ask LinkedIn for the administered organisations  | `SPORA_SOCIAL_LINKEDIN_READ_ORG_ACLS`      | toggle   | Off by default. On only once your app holds `r_organization_admin`.                                                                                           |
-| Ask LinkedIn for the organisation statistics     | `SPORA_SOCIAL_LINKEDIN_READ_ORG_STATS`     | toggle   | Off by default. On only once your app holds `rw_organization_admin`.                                                                                          |
-| Ask LinkedIn for the member post reactions       | `SPORA_SOCIAL_LINKEDIN_READ_MEMBER_FEED`   | toggle   | Off by default. On only once your app holds `r_member_social_feed`.                                                                                           |
-| Ask LinkedIn for the organisation post reactions | `SPORA_SOCIAL_LINKEDIN_READ_ORG_FEED`      | toggle   | Off by default. On only once your app holds `r_organization_social_feed`.                                                                                     |
-| LinkedIn API version                             | `SPORA_SOCIAL_LINKEDIN_API_VERSION`        | text     | `YYYYMM`. Defaults to `202610`.                                                                                                                               |
-| Meta Graph API version                           | `SPORA_SOCIAL_GRAPH_API_VERSION`           | text     | The version every Meta endpoint carries, written as the URL wants it, e.g. `v26.0`. Defaults to `v26.0`.                                                      |
-| Meta app id                                      | `SPORA_SOCIAL_META_APP_ID`                 | text     | The app id of your Meta app. One app serves both networks.                                                                                                    |
-| Meta app secret                                  | `SPORA_SOCIAL_META_APP_SECRET`             | password | Stored encrypted.                                                                                                                                             |
-| Meta configuration id                            | `SPORA_SOCIAL_META_CONFIG_ID`              | text     | The id of the Facebook Login for Business configuration the login dialog uses. Its description carries the redirect URL to register with it.                  |
-| Frontend URL                                     | `SPORA_SOCIAL_FRONTEND_URL`                | text     | Where the browser lands after a connect. Empty by default — the app URL is used. Set it when the SPA runs on another origin, as it does in local development. |
-| Allow a local app URL                            | `SPORA_SOCIAL_ALLOW_LOCAL_APP_URL`         | toggle   | Off by default. Development only — it lets an account be connected when `SPORA_APP_URL` is not reachable from the internet. Instagram still cannot publish.   |
+| Label                                            | Key                                        | Type     | Notes                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------ | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LinkedIn client id                               | `SPORA_SOCIAL_LINKEDIN_CLIENT_ID`          | text     | The client id of your LinkedIn app. Its description carries the redirect URL to register with it.                                                                                                                                                                       |
+| LinkedIn client secret                           | `SPORA_SOCIAL_LINKEDIN_CLIENT_SECRET`      | password | Stored encrypted, never returned over the wire.                                                                                                                                                                                                                         |
+| Ask LinkedIn for member posting                  | `SPORA_SOCIAL_LINKEDIN_MEMBER_SCOPE`       | toggle   | On by default. Turn it off for an app that cannot post as a member.                                                                                                                                                                                                     |
+| Ask LinkedIn for the member's identity           | `SPORA_SOCIAL_LINKEDIN_SIGN_IN_SCOPE`      | toggle   | On by default. Turn it off for a Community Management API app, which cannot serve OpenID Connect — asking for it refuses the whole request. The member is then named by the access-control list instead, so `SPORA_SOCIAL_LINKEDIN_READ_ORG_ACLS` has to be on as well. |
+| Ask LinkedIn for organisation pages              | `SPORA_SOCIAL_LINKEDIN_ORGANIZATION_SCOPE` | toggle   | Off by default. On only once your app holds `w_organization_social`.                                                                                                                                                                                                    |
+| Ask LinkedIn for the administered organisations  | `SPORA_SOCIAL_LINKEDIN_READ_ORG_ACLS`      | toggle   | Off by default. On only once your app holds `r_organization_admin`. It is also what names the member when **Ask LinkedIn for the member's identity** is off.                                                                                                            |
+| Ask LinkedIn for the organisation statistics     | `SPORA_SOCIAL_LINKEDIN_READ_ORG_STATS`     | toggle   | Off by default. On only once your app holds `rw_organization_admin`.                                                                                                                                                                                                    |
+| Ask LinkedIn for the member post reactions       | `SPORA_SOCIAL_LINKEDIN_READ_MEMBER_FEED`   | toggle   | Off by default. On only once your app holds `r_member_social_feed`.                                                                                                                                                                                                     |
+| Ask LinkedIn for the organisation post reactions | `SPORA_SOCIAL_LINKEDIN_READ_ORG_FEED`      | toggle   | Off by default. On only once your app holds `r_organization_social_feed`.                                                                                                                                                                                               |
+| LinkedIn API version                             | `SPORA_SOCIAL_LINKEDIN_API_VERSION`        | text     | `YYYYMM`. Defaults to `202610`.                                                                                                                                                                                                                                         |
+| Meta Graph API version                           | `SPORA_SOCIAL_GRAPH_API_VERSION`           | text     | The version every Meta endpoint carries, written as the URL wants it, e.g. `v26.0`. Defaults to `v26.0`.                                                                                                                                                                |
+| Meta app id                                      | `SPORA_SOCIAL_META_APP_ID`                 | text     | The app id of your Meta app. One app serves both networks.                                                                                                                                                                                                              |
+| Meta app secret                                  | `SPORA_SOCIAL_META_APP_SECRET`             | password | Stored encrypted.                                                                                                                                                                                                                                                       |
+| Meta configuration id                            | `SPORA_SOCIAL_META_CONFIG_ID`              | text     | The id of the Facebook Login for Business configuration the login dialog uses. Its description carries the redirect URL to register with it.                                                                                                                            |
+| Frontend URL                                     | `SPORA_SOCIAL_FRONTEND_URL`                | text     | Where the browser lands after a connect. Empty by default — the app URL is used. Set it when the SPA runs on another origin, as it does in local development.                                                                                                           |
+| Allow a local app URL                            | `SPORA_SOCIAL_ALLOW_LOCAL_APP_URL`         | toggle   | Off by default. Development only — it lets an account be connected when `SPORA_APP_URL` is not reachable from the internet. Instagram still cannot publish.                                                                                                             |
 
 **Meta is one app and one configuration for both networks.** The configuration is the list of permissions and assets your app asks a client for; its id is not a secret, but the login cannot happen without it. A provider whose app id and secret are both set is configured; one whose pair is missing refuses the connection with the reason named, before the browser ever reaches the platform.
 
@@ -125,6 +161,8 @@ LinkedIn grants `w_organization_social` and the four read permissions to selecte
 | organisation post reactions | `r_organization_social_feed` | an organisation post's reactions         |
 
 With all of them off, the plugin asks for `openid`, `profile`, `email` and `w_member_social` alone — what member posting needs, and what any app may ask for. The posts still go out; the numbers stay empty.
+
+The two member-side toggles are the mirror image: they are **on** by default, because those permissions are open and every app holds them, and they are turned **off** for an app that does not. They are **two permissions, not one**, and a Community Management API app holds only one of them: it holds `w_member_social`, so leave **Ask LinkedIn for member posting** on, and it cannot serve OpenID Connect, so asking for `openid` refuses the whole authorization request — turn **Ask LinkedIn for the member's identity** off. The member is then named by the organisation access-control list instead, which is read with `r_organization_admin`: **Ask LinkedIn for the administered organisations** has to be on as well, and without it there is no list to read and the connect is refused.
 
 ### The API versions
 

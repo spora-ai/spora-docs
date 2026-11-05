@@ -104,7 +104,7 @@ Additional auth endpoints (registration, password change, email verification, et
 
 ### The Agent API
 
-The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is not mounted at all unless the **Agent API** setting is enabled and the instance runs a server-side worker. The key-management endpoints under `/api/v1/agents/{id}/api-keys` are the deliberate exception: they stay mounted either way, so a key minted before the toggle was flipped remains revocable.
+The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is not mounted at all unless the **Agent API** setting is enabled and the instance runs a server-side worker. The key-management endpoints under `/api/v1/agents/{id}/api-keys` are the deliberate exception: listing and revoking stay mounted either way, so a key minted before the toggle was flipped remains revocable. Minting is not the exception — it follows the toggle, so a credential for an API that is not there cannot be created.
 
 Four properties of it are worth stating here rather than only in the integration guide.
 
@@ -164,10 +164,11 @@ Two properties hold across all three:
   presented to the agent surface, does not authenticate: each surface accepts only its own scope,
   so a key cannot be used on a surface it was not minted for.
 
-The key-management endpoints are session-authenticated and CSRF-protected, and they stay mounted
-even when the scope is switched off — so a key can always be revoked. The blast radius of the
-widest scope is therefore a matter of _who can mint one_, which is why a global key is a global
-admin's right and not a group's.
+The key-management endpoints are session-authenticated and CSRF-protected, and listing and revoking
+stay mounted even when the scope is switched off — so a key can always be revoked. Minting follows
+the scope's toggle, so a credential for a surface that does not exist cannot be created. The blast
+radius of the widest scope is therefore a matter of _who can mint one_, which is why a global key
+is a global admin's right and not a group's.
 
 The plaintext secret is shown exactly once, at creation. Spora stores a SHA-256 digest and cannot
 reproduce it, so a lost key is replaced rather than recovered. `last_used_at` records the last
@@ -176,6 +177,24 @@ revoke one.
 
 See [Agent API](/reference/agent-api), [Group API](/reference/group-api) and
 [Global API](/reference/global-api).
+
+## Script-capable media
+
+HTML and SVG are the formats a browser parses as a _document_ rather than a picture, so
+both can carry script. Two settings decide what may happen, and both are off by default:
+
+| Setting                                   | Default | What it decides                                                                                                                                           |
+| ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`  | `false` | Whether HTML and SVG assets may exist at all. With it off, neither can be uploaded and an agent cannot create one.                                        |
+| `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` | `false` | Whether an _embedded_ copy may run its scripts. It never widens what may exist — an embed can only exist for a format the first toggle already permitted. |
+
+Three properties hold whatever the settings say:
+
+- **The download path is inert.** Every media response carries `X-Content-Type-Options: nosniff`, and a script-capable one on the download paths additionally carries `Content-Security-Policy: sandbox`. A shared or downloaded HTML or SVG renders as a document, but its script does not run and it cannot reach the operator's origin, the session, or the app's data. The rule is applied where the bytes leave the server, so it covers the public share route and the API-scoped media routes as well as the authenticated one — a path that does not pass through the upload gate cannot escape it. A plugin that serves bytes of its own applies the same rule itself — the Typst plugin's image library sandboxes the SVG it serves.
+- **The embed is the only place script can run.** `GET /api/v1/media/{id}/embed` is authenticated only — a public share token does not unlock it — and it serves `sandbox` **without** `allow-same-origin`, so the framed document gets an opaque origin: it cannot read `document.cookie`, reach `localStorage`, touch the parent document, or obtain the `X-CSRF-Token` every write requires. There is no bridge from the framed document back into the app.
+- **The gate covers every creation path.** Uploads, the `create_media` tool and the derivative path all consult the same policy, so a producer that emits SVG cannot create the asset the upload gate refused.
+
+Enabling either toggle is a decision about who may author content in the installation: an agent that can write HTML can put anything in it. See [Concepts → Media assets](/reference/concepts/media-assets#the-script-capable-formats-are-the-operator-s-decision) and [End users → Media archive](/start/end-users/media-archive#html-and-svg).
 
 ## Plugin Risks
 

@@ -262,6 +262,11 @@ you can always list and revoke keys you already minted, whether or not the API i
 mounted. When the endpoints are unavailable the section says why (the setting is off, or the
 instance runs in client-worker mode) rather than failing silently.
 
+**New key** is only offered while the API is mounted. Minting follows the same setting the
+endpoints do: a key for an API that is not there would grant nothing, but it would come alive the
+moment the setting was switched on. Switch the **Agent API** on, mint, and switch it back if you
+need to.
+
 ## Approval and tool permissions
 
 Whether a tool call requires human approval is **per-operation and per-agent**, not a single global default. The tool author sets the operation's default via the `#[ToolOperation(requiresApprovalByDefault:)]` attribute; the operator can override that per-agent via the `agent_tool_operation_overrides.default_requires_approval` column (a nullable three-state — `1` = always require, `0` = never require, `null` = use the operation's class default). Read-only / generative operations typically default to `false` (no approval); side-effecting operations (send email, write file, call external API) typically default to `true` (require approval).
@@ -337,6 +342,10 @@ The section stays on the page even while the **Group API** setting is off in
 already minted. A group's key is shown in full exactly once, when it is created; Spora stores only
 a digest and cannot show it again, so a lost key is replaced rather than recovered.
 
+**New key** is only offered while the setting is on. A key for an API that is not there would
+grant nothing, but it would come alive the moment the setting was switched on — to every group
+owner who had minted one in the meantime.
+
 ### Settings → Global API keys
 
 A global admin finds **Settings → Global API keys**. It holds the install-wide credentials that
@@ -348,6 +357,9 @@ The entry is in the settings sidebar whether or not the **Global API** setting i
 admin can always list and revoke the keys they already minted — switching the scope off takes the
 API offline, it does not revoke anything. A global key is the widest credential Spora issues: it
 reads every group's chats. Minting one is a global-admin right, not a group-level one.
+
+**New key** is only offered while the scope is mounted, for the same reason: a key for an API that
+is not there would grant nothing, but it would come alive the moment the setting was switched on.
 
 ### Cross-member run visibility
 

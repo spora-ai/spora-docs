@@ -61,11 +61,17 @@ Keys survive disabling and re-enabling the feature — the toggle takes the API 
 not revoke anything. Changing to client-worker mode also takes the whole surface offline (`404`)
 until you switch back; the key itself is untouched either way.
 
-The key-management endpoints stay mounted either way. `GET`/`POST /api/v1/agents/{id}/api-keys`
-and `DELETE /api/v1/agents/{id}/api-keys/{keyId}` are registered _before_ the feature gate, so a
+Listing and revoking stay mounted either way. `GET /api/v1/agents/{id}/api-keys` and
+`DELETE /api/v1/agents/{id}/api-keys/{keyId}` are registered _before_ the feature gate, so a
 key minted before you flipped the toggle can always be revoked. In the UI the section stays on the
 Settings page for the same reason — only its nav pill is hidden. Deep-link to
 `/agents/<id>/settings#api-keys` to reach it.
+
+Minting follows the toggle, the way the surface the key drives does: with the **Agent API** off,
+`POST /api/v1/agents/{id}/api-keys` is not registered and answers `405`. A credential for an API
+that is not there would grant nothing, but it would come alive the moment the toggle was flipped
+— to every agent owner who had minted one. Switch the toggle on, mint, and switch it back if you
+need to.
 
 ## Revoke a key
 

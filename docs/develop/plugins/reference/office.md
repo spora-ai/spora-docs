@@ -33,7 +33,7 @@ The two cannot both be installed. They register producers for the same (source M
 
 This is the one operator step the plugin adds, and it is not optional.
 
-The PowerPoint half is built on `markdown-office/markdown-presentation`, which **patches** `phpoffice/phppresentation`: the library needs parts of upstream PHPPresentation that no released version carries yet, and it gets them by asking the installer to apply a patch. The patch is applied by the `cweagans/composer-patches` **Composer plugin**, and `allow-plugins` is a **root-project** setting. `spora-ai/installer` routes `spora-plugin` packages into `plugins/{name}/`, so a plugin's dependencies land in the **host's** tree — and the host's setting is the one that governs.
+The two halves are built on `markdown-office/markdown-presentation` and `markdown-office/markdown-word`, and **both** are patched: the slides half patches `phpoffice/phppresentation`, the Word half patches `phpoffice/phpword`. Each library needs parts of its upstream package that no released version carries yet, and gets them by asking the installer to apply a patch. The patch is applied by the `cweagans/composer-patches` **Composer plugin**, and `allow-plugins` is a **root-project** setting. `spora-ai/installer` routes `spora-plugin` packages into `plugins/{name}/`, so a plugin's dependencies land in the **host's** tree — and the host's setting is the one that governs.
 
 The host's `composer.json` therefore needs the entry:
 
@@ -49,9 +49,18 @@ Without the entry the install **aborts**. Composer's own message begins:
 cweagans/composer-patches contains a Composer plugin which is blocked by your allow-plugins config.
 ```
 
-With the entry set to `false` — or with `composer install --no-plugins` — the install succeeds and every **deck** render fails at runtime with `MarkdownPresentation\Exception\UnpatchedDependency`, whose message names the plugin and what to do about it. The Word half is not patched and keeps working.
+With the entry set to `false` — or with `composer install --no-plugins` — the install succeeds and the two halves fail **differently**. The slides half fails loudly: every deck render raises `MarkdownPresentation\Exception\UnpatchedDependency`, whose message names the plugin and what to do about it. The Word half fails **silently** — it raises nothing, and the `.docx` it writes is not valid Office Open XML until PHPWord's fixes are released upstream.
 
-The entry goes away again when the patched parts are released upstream: `markdown-presentation` then drops the patch, the plugin and the entry with it. Until then the entry is required.
+**An existing host has to rebuild its lock.** The patches that are applied are the ones in the host's own `patches.lock.json`, and that file is written once and read from then on — a dependency that brings a new patch does not rewrite it. A host whose lock predates the `phpoffice/phpword` patch installs PHPWord unpatched, and the Word half then writes a `.docx` that is not valid Office Open XML, with no message at all. After the upgrade:
+
+```bash
+composer patches-relock
+composer patches-repatch
+```
+
+A fresh install has no lock to be stale: it writes one from the packages' own declarations.
+
+The entry goes away again when the patched parts are released upstream: `markdown-office/markdown-presentation` and `markdown-office/markdown-word` then drop the patches, the plugin and the entry with it. Until then the entry is required.
 
 ### Requires four PHP extensions
 
@@ -139,7 +148,7 @@ Behind the scenes the reverse direction is tightened for a chat attachment rathe
 
 ## Round-trip limits
 
-A `.docx` is a lower-fidelity form of the Markdown it came from. Five documented losses, all silent: a table's header row returns **bold**; a fenced code block returns **without its language**; a **one-line** fence returns as **inline code** instead of a block; a quote's own line breaks are joined into one line; and the **last line has no trailing newline**.
+A `.docx` is a lower-fidelity form of the Markdown it came from. The documented losses, all silent: a table's header row returns **bold**; a fenced code block returns **without its language**; a **one-line** fence returns as **inline code** instead of a block; a quote's own line breaks are joined into one line; the **last line has no trailing newline**; and a word written in a **named style** (`:brand[Bakery]`) returns as the word — its weight kept, the style and the colour gone.
 
 `options: {"plain": true}` adds one more: the quote comes back as a plain paragraph, because dropping the renderer's quote _style_ is exactly what the reader cannot recognise — and it also drops the code font, so a fenced block returns as bare prose with no fence at all. Nested bullet and ordered lists work at any depth, and remote images are never fetched, so they fall back to their alt text.
 
@@ -147,7 +156,9 @@ Pictures do not come back either. The reverse direction writes no media director
 
 ## Themes
 
-A theme is a [media-library folder](/reference/concepts/media-folders): the folder's name is the theme's name, the folder's files are the library's own (`theme.yml`, `styles.yml`, `layouts.yml`, `text-styles.yml`, `template.pptx`), and the folder's UUID resolves as well as its name. A theme in the media library shadows a built-in theme of the same name.
+A theme is a [media-library folder](/reference/concepts/media-folders): the folder's name is the theme's name, the folder's files are the library's own (`theme.yml` and, for a deck, `template.pptx`), and the folder's UUID resolves as well as its name. A theme in the media library shadows a built-in theme of the same name.
+
+**A theme is one file.** Its look, its layout roles and its named text styles are sections of its `theme.yml` — `styles:` for the Word half, `dark:` / `colors:` / `fonts:` / `style:` / `layouts:` for the slides half, and `textStyles:` for the named styles either half may write a word in. What the two share is a theme's name, its description, its author and its named text styles. The files of the older format (`styles.yml`, `layouts.yml`, `text-styles.yml`) are **refused** when they sit beside a theme, each with a message saying what to do: move the content into the section it became and delete the file. A folder left over from that format needs the fix before it renders at all.
 
 A render picks its theme one of two ways:
 

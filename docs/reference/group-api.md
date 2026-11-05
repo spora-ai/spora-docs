@@ -43,8 +43,14 @@ CSRF-protected, so a bearer key cannot mint or revoke one.
 > lost key must be replaced rather than recovered.
 
 Keys survive disabling and re-enabling the feature — the toggle takes the API offline, it does not
-revoke anything. The key-management endpoints stay mounted either way, so a key minted before you
-flipped the toggle can always be revoked.
+revoke anything. Listing and revoking stay mounted either way, so a key minted before you flipped
+the toggle can always be revoked.
+
+Minting follows the toggle, the way the surface the key drives does: with the **Group API** off,
+`POST /api/v1/groups/{groupId}/api-keys` is not registered and answers `405`. A credential for an
+API that is not there would grant nothing, but it would come alive the moment the toggle was
+flipped — to every group owner who had minted one. Switch the toggle on, mint, and switch it back
+if you need to.
 
 > **Who can mint and revoke.** The key-management endpoints require the _owner_ or _admin_ role on
 > the group, and a global admin can manage any group's keys without holding either. A plain member

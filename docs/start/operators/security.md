@@ -104,7 +104,7 @@ Additional auth endpoints (registration, password change, email verification, et
 
 ### The Agent API
 
-The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is not mounted at all unless the **Agent API** setting is enabled and the instance runs a server-side worker. The key-management endpoints under `/api/v1/agents/{id}/api-keys` are the deliberate exception: they stay mounted either way, so a key minted before the toggle was flipped remains revocable.
+The session above covers the admin UI. External tools use a different mechanism: a per-agent bearer key sent as `Authorization: Bearer spk_<id>_<secret>`, scoped to one agent's chats and media. That surface accepts no session cookie and no CSRF token — the key is the only credential — so it is exempt from the CSRF check by construction rather than by exemption. It is not mounted at all unless the **Agent API** setting is enabled and the instance runs a server-side worker. The key-management endpoints under `/api/v1/agents/{id}/api-keys` are the deliberate exception: listing and revoking stay mounted either way, so a key minted before the toggle was flipped remains revocable. Minting is not the exception — it follows the toggle, so a credential for an API that is not there cannot be created.
 
 Four properties of it are worth stating here rather than only in the integration guide.
 
@@ -164,10 +164,11 @@ Two properties hold across all three:
   presented to the agent surface, does not authenticate: each surface accepts only its own scope,
   so a key cannot be used on a surface it was not minted for.
 
-The key-management endpoints are session-authenticated and CSRF-protected, and they stay mounted
-even when the scope is switched off — so a key can always be revoked. The blast radius of the
-widest scope is therefore a matter of _who can mint one_, which is why a global key is a global
-admin's right and not a group's.
+The key-management endpoints are session-authenticated and CSRF-protected, and listing and revoking
+stay mounted even when the scope is switched off — so a key can always be revoked. Minting follows
+the scope's toggle, so a credential for a surface that does not exist cannot be created. The blast
+radius of the widest scope is therefore a matter of _who can mint one_, which is why a global key
+is a global admin's right and not a group's.
 
 The plaintext secret is shown exactly once, at creation. Spora stores a SHA-256 digest and cannot
 reproduce it, so a lost key is replaced rather than recovered. `last_used_at` records the last

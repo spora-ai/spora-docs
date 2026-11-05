@@ -49,9 +49,14 @@ bearer key cannot mint or revoke one.
 > minting a global key is not a group-level right.
 
 Keys survive disabling and re-enabling the feature — the toggle takes the API offline, it does not
-revoke anything. The key-management endpoints stay mounted either way, so a key minted before you
+revoke anything. Listing and revoking stay mounted either way, so a key minted before you
 flipped the toggle can always be revoked, and the **Settings → Global API keys** page stays in the
 sidebar either way, so it can be revoked from the UI too.
+
+Minting follows the toggle, the way the surface the key drives does: with the **Global API** off,
+`POST /api/v1/global-api-keys` is not registered and answers `405`. A credential for an API that
+is not there would grant nothing, but it would come alive the moment the toggle was flipped.
+Switch the toggle on, mint, and switch it back if you need to.
 
 ## Authentication
 

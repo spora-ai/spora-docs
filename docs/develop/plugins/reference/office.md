@@ -49,9 +49,9 @@ Without the entry the install **aborts**. Composer's own message begins:
 cweagans/composer-patches contains a Composer plugin which is blocked by your allow-plugins config.
 ```
 
-With the entry set to `false` — or with `composer install --no-plugins` — the install succeeds and every **deck** render fails at runtime with `MarkdownPresentation\Exception\UnpatchedDependency`, whose message names the plugin and what to do about it. The Word half is not patched and keeps working.
+With the entry set to `false` — or with `composer install --no-plugins` — the install succeeds and every render fails at runtime with an `UnpatchedDependency` refusal, whose message names the plugin and what to do about it. Both halves are patched: the slides half patches `phpoffice/phppresentation`, the Word half patches `phpoffice/phpword`.
 
-The entry goes away again when the patched parts are released upstream: `markdown-presentation` then drops the patch, the plugin and the entry with it. Until then the entry is required.
+The entry goes away again when the patched parts are released upstream: `markdown-office` then drops the patches, the plugin and the entry with it. Until then the entry is required.
 
 ### Requires four PHP extensions
 
@@ -139,7 +139,7 @@ Behind the scenes the reverse direction is tightened for a chat attachment rathe
 
 ## Round-trip limits
 
-A `.docx` is a lower-fidelity form of the Markdown it came from. Five documented losses, all silent: a table's header row returns **bold**; a fenced code block returns **without its language**; a **one-line** fence returns as **inline code** instead of a block; a quote's own line breaks are joined into one line; and the **last line has no trailing newline**.
+A `.docx` is a lower-fidelity form of the Markdown it came from. Six documented losses, all silent: a table's header row returns **bold**; a fenced code block returns **without its language**; a **one-line** fence returns as **inline code** instead of a block; a quote's own line breaks are joined into one line; the **last line has no trailing newline**; and a word written in a **named style** (`:brand[Bakery]`) returns as the word — its weight kept, the style and the colour gone.
 
 `options: {"plain": true}` adds one more: the quote comes back as a plain paragraph, because dropping the renderer's quote _style_ is exactly what the reader cannot recognise — and it also drops the code font, so a fenced block returns as bare prose with no fence at all. Nested bullet and ordered lists work at any depth, and remote images are never fetched, so they fall back to their alt text.
 
@@ -147,7 +147,9 @@ Pictures do not come back either. The reverse direction writes no media director
 
 ## Themes
 
-A theme is a [media-library folder](/reference/concepts/media-folders): the folder's name is the theme's name, the folder's files are the library's own (`theme.yml`, `styles.yml`, `layouts.yml`, `text-styles.yml`, `template.pptx`), and the folder's UUID resolves as well as its name. A theme in the media library shadows a built-in theme of the same name.
+A theme is a [media-library folder](/reference/concepts/media-folders): the folder's name is the theme's name, the folder's files are the library's own (`theme.yml` and, for a deck, `template.pptx`), and the folder's UUID resolves as well as its name. A theme in the media library shadows a built-in theme of the same name.
+
+**A theme is one file.** Its look, its layout roles and its named text styles are sections of its `theme.yml` — `styles:` for the Word half, `layouts:` and `textStyles:` for the slides half — and what the two share is a theme's name, its description, its author and its named text styles. The files of the older format (`styles.yml`, `layouts.yml`, `text-styles.yml`) are **refused** when they sit beside a theme, each with a message saying what to do: move the content into the section it became and delete the file. A folder left over from that format needs the fix before it renders at all.
 
 A render picks its theme one of two ways:
 

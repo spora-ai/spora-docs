@@ -33,7 +33,7 @@ The two cannot both be installed. They register producers for the same (source M
 
 This is the one operator step the plugin adds, and it is not optional.
 
-The PowerPoint half is built on `markdown-office/markdown-presentation`, which **patches** `phpoffice/phppresentation`: the library needs parts of upstream PHPPresentation that no released version carries yet, and it gets them by asking the installer to apply a patch. The patch is applied by the `cweagans/composer-patches` **Composer plugin**, and `allow-plugins` is a **root-project** setting. `spora-ai/installer` routes `spora-plugin` packages into `plugins/{name}/`, so a plugin's dependencies land in the **host's** tree — and the host's setting is the one that governs.
+The two halves are built on `markdown-office/markdown-presentation` and `markdown-office/markdown-word`, and **both** are patched: the slides half patches `phpoffice/phppresentation`, the Word half patches `phpoffice/phpword`. Each library needs parts of its upstream package that no released version carries yet, and gets them by asking the installer to apply a patch. The patch is applied by the `cweagans/composer-patches` **Composer plugin**, and `allow-plugins` is a **root-project** setting. `spora-ai/installer` routes `spora-plugin` packages into `plugins/{name}/`, so a plugin's dependencies land in the **host's** tree — and the host's setting is the one that governs.
 
 The host's `composer.json` therefore needs the entry:
 

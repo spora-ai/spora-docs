@@ -143,7 +143,7 @@ The retention sweep itself runs server-side (`media:gc --temporary [--older-than
 
 ## What lands in the archive
 
-What ends up in the grid is decided by seven settings on the **Media** tab of
+What ends up in the grid is decided by the settings on the **Media** tab of
 **Settings → Runtime settings**. They are ordinary settings — the same four-layer chain as every
 other field, so a value saved there wins over one set in `.env`. See
 [Config keys](/reference/config-keys) for the `config.php` and env-var spellings.

@@ -148,7 +148,7 @@ Behind the scenes the reverse direction is tightened for a chat attachment rathe
 
 ## Round-trip limits
 
-A `.docx` is a lower-fidelity form of the Markdown it came from. Six documented losses, all silent: a table's header row returns **bold**; a fenced code block returns **without its language**; a **one-line** fence returns as **inline code** instead of a block; a quote's own line breaks are joined into one line; the **last line has no trailing newline**; and a word written in a **named style** (`:brand[Bakery]`) returns as the word — its weight kept, the style and the colour gone.
+A `.docx` is a lower-fidelity form of the Markdown it came from. The documented losses, all silent: a table's header row returns **bold**; a fenced code block returns **without its language**; a **one-line** fence returns as **inline code** instead of a block; a quote's own line breaks are joined into one line; the **last line has no trailing newline**; and a word written in a **named style** (`:brand[Bakery]`) returns as the word — its weight kept, the style and the colour gone.
 
 `options: {"plain": true}` adds one more: the quote comes back as a plain paragraph, because dropping the renderer's quote _style_ is exactly what the reader cannot recognise — and it also drops the code font, so a fenced block returns as bare prose with no fence at all. Nested bullet and ordered lists work at any depth, and remote images are never fetched, so they fall back to their alt text.
 

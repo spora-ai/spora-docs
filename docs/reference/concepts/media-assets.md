@@ -354,7 +354,7 @@ Because the derivative path is a second `MediaAsset::find()` plus a real `file_g
 
 ### The producer union is a second allowlist surface
 
-`MediaAllowedTypesService` builds the upload allowlist from five sources: the static text list, the static audio list, the operator's image config, the operator's script-capable toggle, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-office` registers `OfficeToMarkdownProducer`.
+`MediaAllowedTypesService` builds the upload allowlist from several sources: the static text list, the static audio list, the operator's image config, the operator's script-capable toggle, and — the part worth knowing about — **the union of every registered producer's `supportedSourceFormats()`**. Declaring a source format in your producer is what keeps that format uploadable at all, with one deliberate exception: the union drops `image/*`, because image uploads belong to the agent's `supportsImageInput()` gate and the operator's `allowed_image_types` config, and a thumbnail producer must not route around that policy. It is also the only reason `application/pdf` and the docx mime are allowlisted at all, since neither appears in any static list — the pdf one because core registers `PdfToMarkdownProducer` itself, the docx one because `spora-plugin-office` registers `OfficeToMarkdownProducer`.
 
 That makes the union a **second, parallel allowlist surface**, and it has to stay in sync with the MIME-refiner chain. Nothing structurally enforces the coupling: a `.docx` that sniffs as `application/zip` is fixed by `OfficeMimeRefiner` _before_ the gate and still works, but no code path asserts that a refiner's target mime is also in some producer's source list. If you ship a refiner that upgrades a format into a mime, confirm a producer claims that mime yourself: not even a test asserts the pairing, and no owner is designated for the invariant.
 
@@ -393,7 +393,7 @@ row's type either.
 The boundary is a helper, not a framework guarantee: `MediaScriptableTypes::headersFor()`
 returns the two headers for a MIME type, and every route that serves archive bytes calls
 it. A plugin that serves its own bytes is covered by its own policy, not by this one — the
-Typst plugin's image library serves four image types of its own and sandboxes the one that
+Typst plugin's image library serves image types of its own and sandboxes the one that
 is script-capable.
 
 The one route that may run script is `GET /api/v1/media/{id}/embed`, and it is narrow on

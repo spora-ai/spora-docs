@@ -116,16 +116,15 @@ A **theme** is a media-library folder. Its name is the theme's name, and its fil
 
 ```text
 Corporate/                     ← the folder; "Corporate" is the theme's name
-  theme.yml                    ← the manifest
-  styles.yml                   ← the Word style slots
-  layouts.yml                  ← the slides' layout roles
-  text-styles.yml              ← the slides' named text styles
+  theme.yml                    ← the theme: its identity, its look, its styles
   template.pptx                ← the slides' master (optional)
 ```
 
 - The folder is **top-level**. The library treats a `/` in a theme name as a path, so a theme's name is one segment and the folder's full path is never used as a name.
 - The folder's **UUID resolves as well as its name**, so a document can pin a theme by a value that does not change when the operator renames the folder.
-- The manifest is the **slides** manifest, which is a strict superset of the Word one: `name`, `description`, `author`, and — for a deck — `dark`, `colors`, `fonts`, `style`. The Word half refuses a key it does not know, so it is served a **projection** of the manifest: `name`, `description` and `author`, which is the whole of what it reads. That projection is the one lossy step in the arrangement, and it loses nothing the Word half uses — the Word half's colours come from `styles.yml`, not from the manifest.
+- **A theme is one file.** The look a document is drawn in and the look a deck is drawn in are sections of the same `theme.yml`: `styles:` for the Word half, `dark:` / `colors:` / `fonts:` / `style:` / `layouts:` for the slides half, and `textStyles:` for the named styles either half may write a word in. What the two share is a theme's name, its description, its author and its named text styles.
+- **The files of the older format are refused** when they sit beside a theme — `styles.yml`, `layouts.yml` and `text-styles.yml` — each with a message saying what to do: move the content into the section it became and delete the file. A file that is quietly not read is a theme that looks like the one its author wrote and is not.
+- Each half **refuses a key that is not its own**, so one folder cannot hold one manifest unchanged for both: each is served a **projection** of the manifest — the keys it reads. A key _neither_ half reads is kept, so the library refuses it with a sentence naming the whole vocabulary rather than the manifest being quietly rewritten. That projection is the one lossy step in the arrangement, and it is stated in one place, on purpose.
 - A media theme **shadows a built-in theme of the same name**: the library asks the media library first and falls back to the themes that ship with the package.
 - A folder that lists a `template.pptx` the library cannot serve is refused by name (`MarkdownPresentation\Exception\UnservedTemplate`) rather than drawn without.
 

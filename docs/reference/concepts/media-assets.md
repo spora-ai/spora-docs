@@ -369,6 +369,11 @@ all; `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` decides whether an embedded copy 
 them. (The serving boundary also covers XHTML, the XML flavour of HTML; the toggle
 offers HTML and SVG, not XHTML, and the two lists are deliberately separate.)
 
+Both settings, the gate and the serving boundary need the first spora-core release that
+carries them ([spora-core#315](https://github.com/spora-ai/spora-core/pull/315)); on an
+earlier core neither setting is declared, a script-capable format is created rather than
+refused, and its bytes are served unsandboxed.
+
 The reason this is a toggle and not a static rule is the _serving_ side, and it is worth
 being precise about, because the two settings answer different questions:
 

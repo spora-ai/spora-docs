@@ -54,6 +54,8 @@ Every path is scoped to the **principal** (a user, a team, or an org), not to th
 
 Images live at the principal root rather than an `images/` subdirectory on purpose: `template_dir` is the principal root, so `#image("logo.png")` resolves there. The image listing filters by extension so the shared directory stays clean in the API.
 
+The library is served by the plugin's own route, and the one script-capable type is sandboxed: an SVG in it is served with `Content-Security-Policy: sandbox`, so the document renders and its script does not run; every image response carries `X-Content-Type-Options: nosniff`. Because the library is the plugin's own filesystem store and not the media archive, it accepts an SVG upload whatever the operator's `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES` setting is — that toggle governs the media archive, where a _compiled_ SVG would land.
+
 ### Two resource tiers
 
 Every `list` returns the union of both tiers, deduplicated by basename with tier-2 first. Reads try tier-2, then tier-1. Writes and deletes only ever touch tier-2.

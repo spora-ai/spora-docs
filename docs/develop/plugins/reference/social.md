@@ -312,9 +312,19 @@ Spora publishes to LinkedIn, Facebook and Instagram with its own OAuth and its o
 
 The **Accounts** tab carries one quiet line under the native providers: **Add Zernio**. It opens a small panel with one field — the API key from **Settings → API keys** in the Zernio dashboard — and saves it against the connection.
 
-**The key is written there and nowhere else.** The agent's tools cannot write a credential, and this is where a person sees it, replaces it and revokes it. The key does not expire, so the card says _never expires_; replacing it means pasting a new one, and forgetting it leaves the accounts in Zernio where they are.
+**The key is written in one of two places, and neither of them is the agent.** The Accounts panel is where a person sees it, replaces it and revokes it; the plugin's own routes are the second way in, for a setup that has to run unattended. The agent's tools cannot write a credential — no operation of `social_connections` takes a key. The key does not expire, so the card says _never expires_; replacing it means pasting a new one, and forgetting it leaves the accounts in Zernio where they are.
 
 Saving the key does not bring the accounts in: **Sync now** reads them from Zernio, and they arrive as targets like any other. An account Zernio no longer reports is marked **disconnected** rather than deleted, so a post's history keeps its target.
+
+#### The aggregator's routes
+
+Three routes under `/api/v1/plugins/social/aggregators`, behind the session and the CSRF token like the plugin's other routes. Each one names the principal it acts for, and a principal the caller does not control is refused.
+
+| Route                                                 | What it does                                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/plugins/social/aggregators`             | Store the key. The body names the aggregator and the `api_key`. A key Zernio refuses is not saved. |
+| `DELETE /api/v1/plugins/social/aggregators/{slug}`    | Forget the key. The accounts stay in Zernio, and their rows are marked **disconnected**.           |
+| `POST /api/v1/plugins/social/aggregators/{slug}/sync` | Read the accounts Zernio holds again. This is what **Sync now** calls.                             |
 
 ### What it reaches
 

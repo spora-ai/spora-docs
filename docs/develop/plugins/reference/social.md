@@ -281,6 +281,7 @@ The composer is the landing screen. It has two jobs: writing a post by hand, and
 - **Message** — the body. One message goes to every channel; a channel whose copy has to differ carries its own text, stored in `platform_bodies`.
 - **Publish to** — the accounts.
 - **Platform preview** — a live character counter per targeted channel, and the media badges for that network.
+- **A network reached through both routes** — an amber warning when the post reaches one network through **both** Spora's own login and the aggregator. It names the network and lets the operator go ahead: _The two accounts are different, so the post goes to both._
 
 **Draft with an agent** opens a panel with a prompt and the agents of the principal. The agent needs its `social_post` tool enabled; one that has it off cannot write a post, and the panel says so and links to the agent's own tools.
 

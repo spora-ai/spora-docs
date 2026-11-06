@@ -1,17 +1,17 @@
 ---
 title: Zernio
-description: Social-media scheduling and publishing for Spora agents, powered by the Zernio API — 15+ networks.
+description: Social-media scheduling and publishing for Spora agents, powered by the Zernio API — X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Pinterest, Reddit, Bluesky, Threads, Google Business Profile and Telegram.
 ---
 
 # Zernio Plugin for Spora
 
-Social-media scheduling and publishing for [Spora](https://github.com/spora-ai/spora-core) agents, powered by the [Zernio](https://docs.zernio.com/) API. Lets an agent discover connected social accounts, and draft, schedule, or publish posts across 15+ networks (Twitter/X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Bluesky, Threads, Telegram, Discord, and more), plus manage the recurring posting queue and read analytics.
+Social-media scheduling and publishing for [Spora](https://github.com/spora-ai/spora-core) agents, powered by the [Zernio](https://docs.zernio.com/) API. Lets an agent discover connected social accounts, and draft, schedule, or publish posts to **X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Pinterest, Reddit, Bluesky, Threads, Google Business Profile and Telegram**, plus manage the recurring posting queue and read analytics.
 
 > **Looking for the native version?** The [Social](/develop/plugins/reference/social) plugin publishes to LinkedIn, Facebook and Instagram without a third-party service in between — the plugin holds the tokens and does the posting.
 >
 > **The social plugin publishes through Zernio now.** For the networks it does not connect to natively — X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Pinterest, Reddit, Bluesky, Threads, Google Business Profile and Telegram — it takes a Zernio API key on its Accounts screen and publishes through Zernio, from the same composer, the same drafts and the same calendar. See [Social → An aggregator for the networks Spora does not reach](/develop/plugins/reference/social#an-aggregator-for-the-networks-spora-does-not-reach).
 >
-> **What this plugin keeps.** The social plugin takes over the posting and the per-post numbers. Everything else stays here: the **recurring posting queue**, the **webhook subscriptions**, the **CSV bulk upload**, the **profile management** and the **account management** — rename, move and disconnect. Uninstalling this plugin takes those with it.
+> **What this plugin keeps.** The social plugin takes over the posting, and the numbers of the posts it publishes itself — `zernio_analytics.post_analytics` still reads the per-post numbers of any post. Everything else stays here: the **recurring posting queue**, the **webhook subscriptions**, the **CSV bulk upload**, the **profile management**, the **account management** — rename, move and disconnect — the **media library** and the **pre-flight validation**. Uninstalling this plugin takes those with it.
 
 ## Installation
 
@@ -56,19 +56,19 @@ Use `list_accounts` first to obtain the `account_ids` and platforms to target.
 
 ### `zernio_post` — post lifecycle
 
-| Operation              | Approval | Purpose                                                                                                                       |
-| ---------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `create_post`          | ✅       | Create a draft, schedule, or publish a post.                                                                                  |
-| `list_posts`           | —        | List posts (filter by `status`, `profile_id`).                                                                                |
-| `get_post`             | —        | Get a single post by ID.                                                                                                      |
-| `update_post`          | ✅       | Update a draft, scheduled, or failed post.                                                                                    |
-| `delete_post`          | ✅       | Delete a draft or scheduled post (use `unpublish_post` for published ones).                                                   |
-| `retry_post`           | ✅       | Retry a failed post.                                                                                                          |
-| `unpublish_post`       | ✅       | Unpublish a published post from a specific platform.                                                                          |
-| `edit_post`            | ✅       | Edit the text of an X (Twitter) Premium post (within ~1h, max 5 edits).                                                       |
-| `update_post_metadata` | ✅       | Update YouTube video metadata (title, description, tags, privacy, thumbnail, playlist).                                       |
-| `sync_external_posts`  | —        | Pull the posts an account published outside Zernio into Zernio. Needs the account id.                                         |
-| `bulk_upload`          | ✅       | Schedule a CSV of posts in bulk; the first row is the header. `dry_run` sends the file for validation without creating posts. |
+| Operation              | Approval | Purpose                                                                                                                                                 |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create_post`          | ✅       | Create a draft, schedule, or publish a post.                                                                                                            |
+| `list_posts`           | —        | List posts (filter by `status`, `profile_id`).                                                                                                          |
+| `get_post`             | —        | Get a single post by ID.                                                                                                                                |
+| `update_post`          | ✅       | Update a draft, scheduled, or failed post.                                                                                                              |
+| `delete_post`          | ✅       | Delete a draft or scheduled post (use `unpublish_post` for published ones).                                                                             |
+| `retry_post`           | ✅       | Retry a failed post.                                                                                                                                    |
+| `unpublish_post`       | ✅       | Unpublish a published post from a specific platform. `account_id` names the account — required when the post reached several accounts of that platform. |
+| `edit_post`            | ✅       | Edit the text of an X (Twitter) Premium post (within ~1h, max 5 edits).                                                                                 |
+| `update_post_metadata` | ✅       | Update YouTube video metadata (title, description, tags, privacy, thumbnail, playlist).                                                                 |
+| `sync_external_posts`  | —        | Pull the posts an account published outside Zernio into Zernio. Needs the account id.                                                                   |
+| `bulk_upload`          | ✅       | Schedule a CSV of posts in bulk; the first row is the header. `dry_run` sends the file for validation without creating posts.                           |
 
 `create_post` accepts `publish_now: true` to publish immediately; `scheduled_for` + `timezone` to schedule; neither saves a draft. Pass `platforms` (per-platform targets, preferred) or `account_ids` + `platform`, plus `content` (required unless `media_items` or `customContent` cover every platform) and optional `media_items` ([{url, type (image\|video), thumbnailUrl?, alt?}, …]).
 

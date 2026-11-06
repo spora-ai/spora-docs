@@ -173,6 +173,10 @@ Either way the value is a theme's **name**, or the UUID of a media-library folde
 
 The plugin ships **two** skills: `office-documents` (`skills/office-documents/SKILL.md`) and `office-presentations` (`skills/office-presentations/SKILL.md`). The first teaches the agent the two-call chain, the round-trip limits, the image rules and the idempotency rules; the second the deck dialect, the theme catalogue and what a deck does and does not survive. Each ships an `examples.md` of worked exchanges beside it, which the agent reads with the `skill` tool. Both declare `allowed-tools: media`, and neither is active by default — the operator adds them to an agent's `allowed_skills` allowlist.
 
+Each skill also ships a `reference.md` beside it: the closed vocabulary — every directive, key, attribute and colour, with the rules left in `SKILL.md`. The plugin's suite checks that reference against the library's own constants, so it cannot drift from what the renderer accepts.
+
+**The dialect is not documented on this page.** The deck dialect is what the agent writes, and it is documented where the agent reads it — in the skill — because a copy here would drift from the library the way any other copy would.
+
 ## Licensing
 
 The plugin and the upstream [`markdown-office`](https://github.com/markdown-office) packages are both **MIT**. `phpoffice/phpword`, which does the actual Word writing, and `phpoffice/phppresentation`, which does the actual deck writing, are both **LGPL-3.0** — copyleft licences, dynamically linked through Composer, and not relicensed by this plugin's MIT. Nothing here vendors its source.

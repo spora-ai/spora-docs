@@ -449,27 +449,55 @@ The frame and the markdown are two renderings of the same asset, and they are in
 places — which is worth stating plainly, because "the chat shows a widget" and "the chat
 shows a download button" are both true at the same time.
 
-| surface                       | what it shows                                |
-| ----------------------------- | -------------------------------------------- |
-| the tool's own bubble         | the markdown **and** the frame, side by side |
-| the assistant's message       | the markdown alone                           |
-| the Media Archive detail page | the frame alone, as the preview              |
+| surface                       | what it shows                                                     |
+| ----------------------------- | ----------------------------------------------------------------- |
+| the tool's own bubble         | the markdown **and** the frame, side by side                      |
+| the assistant's message       | the markdown, and the frame wherever the message **asks** for one |
+| the Media Archive detail page | the frame alone, as the preview                                   |
 
-The bubble gets the frame because it reads the tool result's structured data
-(`embed_descriptor`), which the chat never shows the model. The message cannot get it: the
-assistant's message is markdown, it is sanitised before it is rendered, and the allow-list
-carries no `iframe`.
+The bubble gets the frame without being asked: it reads the tool result's structured data
+(`embed_descriptor`), which the chat never shows the model.
 
-So an HTML widget reaches the operator as a **download card in the message**, with the live
-one in the tool bubble above it, and an SVG widget as an **inline picture** in the message —
-a static one, because the markdown path loads it as an image — with the live one in the
-bubble. The bubble is collapsed by default, so the message is what the operator reads
-first; opening the tool call is what shows the widget.
+The message gets the frame by being asked for it. A model shows a widget by linking its
+**embed route**:
+
+```markdown
+[test-dashboard.html](/api/v1/media/<asset_id>/embed)
+```
+
+and the chat renders that link as the live asset, in place, as a block. The model never sees
+the asset's bytes and never writes any markup — a link is the whole request, the way a link
+to a file is a link and not the file.
+
+The route is the point, and it is a **path** rather than a fragment: the server is what
+decides whether the framed document may run script, and it decides by the path it is asked
+for. A fragment never leaves the browser, so it cannot select a policy. The reference is
+also the frame's `src`, so the path the server serves is the path the client frames.
+
+Two neighbouring routes are **not** the embed route, and both stay plain links:
+
+| route                       | what it is                                                            |
+| --------------------------- | --------------------------------------------------------------------- |
+| `/api/v1/assets/<id>.<ext>` | the download path — the bytes, sandboxed, no script                   |
+| `/api/v1/media/<id>/embed`  | the embed path — the bytes, framed, script if the operator permits it |
+
+A share link from `get_public_url` points at the public download path, so it opens the
+asset and is never framed.
+
+The frame is still a Vue component, so the sanitiser's allow-list still carries no `iframe`.
+The chat renders a message as **segments** — the markdown, and the frames it asks for —
+because a component cannot live inside the markup the sanitiser produced. A reference that
+cannot be framed, because the caller cannot see the asset or the operator has not permitted
+the format, stays the link the model wrote.
+
+So an HTML widget reaches the operator as a **download card in the message** unless the model
+asks for the live one, and an SVG widget as an **inline picture** — a static one, because the
+markdown path loads it as an image — unless the model asks for that.
 
 The two bubbles that carry the frame are `spora-frontend`'s
-`src/components/agent/TaskChat/MediaEmbedFrame.vue`, used by the tool stream row, and
-`spora-plugin-media-archive-frontend`'s copy of it, used by the detail page. Both take the
-descriptor from the server and validate that its `url` is a same-origin path.
+`src/components/agent/TaskChat/MediaEmbedFrame.vue`, used by the tool stream row and by the
+message, and `spora-plugin-media-archive-frontend`'s copy of it, used by the detail page.
+Both take the descriptor from the server and validate that its `url` is a same-origin path.
 
 ### Styling the download card: register your classes
 

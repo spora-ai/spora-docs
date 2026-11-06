@@ -165,10 +165,9 @@ copy. There are no bytes on this side to hand out, so the download route answers
 
 ### HTML and SVG
 
-HTML and SVG are the two formats a browser parses as a _document_ rather than a picture, so
-both can carry script. They are off by default and are enabled with
-`SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`. (The serving boundary also covers XHTML,
-which is the XML flavour of HTML — the toggle offers HTML and SVG, not XHTML.)
+HTML and SVG are the two formats that can carry script. They are off by default and are
+enabled with `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`. (The serving boundary also covers
+XHTML, which is the XML flavour of HTML — the toggle offers HTML and SVG, not XHTML.)
 
 Two settings, because two different questions are being answered:
 
@@ -183,6 +182,14 @@ Whatever the settings say, a script-capable asset served as a plain download or 
 directly in a browser **never** runs its script. The serving layer puts every such
 response in a sandbox, so the document renders but cannot reach your session, your data,
 or your dashboard. The embed is the only place script can run, and only if you say so.
+
+Where you see it depends on where you are looking. On the **detail page** the frame is the
+preview — the live asset, with a **Download** button beside it. In the **chat**, the frame
+sits in the tool call that produced the asset, next to its download card; the agent's own
+message carries the card alone, so what you read there is a download button for an HTML
+widget and a picture for an SVG. Open the tool call to see the live one. An SVG in that
+picture is static — a browser does not run an SVG's script inside an image — while the
+framed copy in the tool call does run it, if you allowed scripts.
 
 Enabling either setting is a decision about who can author content in your installation.
 An agent that can write HTML can put anything in it.

@@ -362,12 +362,22 @@ That makes the union a **second, parallel allowlist surface**, and it has to sta
 
 ### The script-capable formats are the operator's decision
 
-HTML and SVG are the formats a browser parses as a _document_ rather than a picture, so both
-can carry script, and both are governed by an explicit operator toggle rather than by the
-static lists. `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES` decides whether they may exist at
-all; `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` decides whether an embedded copy may run
-them. (The serving boundary also covers XHTML, the XML flavour of HTML; the toggle
-offers HTML and SVG, not XHTML, and the two lists are deliberately separate.)
+HTML and SVG are the formats that can carry script, and both are governed by an explicit
+operator toggle rather than by the static lists. `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`
+decides whether they may exist at all; `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` decides
+whether an embedded copy may run them. (The serving boundary also covers XHTML, the XML
+flavour of HTML; the toggle offers HTML and SVG, not XHTML, and the two lists are
+deliberately separate.)
+
+"Embedded" is the load-bearing word, and it is not the same thing as "served". An SVG
+carries script when it is loaded as a **document** — opened directly, or framed — and a
+browser refuses to run it when it is loaded as a **picture**. The archive keeps an SVG as
+`image/svg+xml`, so the chat's own markdown path renders it as an inline `<img>` and the
+script does not run there; the embed route serves it as a document, and its script runs.
+Measured on the same bytes: `SCRIPT LIVE — top level` on the embed route, `initialising…`
+through an `<img>`. HTML has no such split — it is a document wherever it is loaded — but
+its chat markdown is a download card rather than a picture, so the operator sees a link
+where an SVG would show an inline image.
 
 Both settings, the gate and the serving boundary need the first spora-core release that
 carries them ([spora-core#315](https://github.com/spora-ai/spora-core/pull/315)); on an
@@ -432,6 +442,34 @@ It is not neutral for the LLM. `search` is the only way an agent discovers asset
   header allows, never widen it. The Media Archive's own detail page renders the same
   frame for a permitted HTML or SVG asset (`spora-plugin-media-archive-frontend`,
   `src/components/MediaEmbedFrame.vue`), and the same rule applies there.
+
+### Where the frame appears, and where it does not
+
+The frame and the markdown are two renderings of the same asset, and they are in different
+places — which is worth stating plainly, because "the chat shows a widget" and "the chat
+shows a download button" are both true at the same time.
+
+| surface                       | what it shows                                |
+| ----------------------------- | -------------------------------------------- |
+| the tool's own bubble         | the markdown **and** the frame, side by side |
+| the assistant's message       | the markdown alone                           |
+| the Media Archive detail page | the frame alone, as the preview              |
+
+The bubble gets the frame because it reads the tool result's structured data
+(`embed_descriptor`), which the chat never shows the model. The message cannot get it: the
+assistant's message is markdown, it is sanitised before it is rendered, and the allow-list
+carries no `iframe`.
+
+So an HTML widget reaches the operator as a **download card in the message**, with the live
+one in the tool bubble above it, and an SVG widget as an **inline picture** in the message —
+a static one, because the markdown path loads it as an image — with the live one in the
+bubble. The bubble is collapsed by default, so the message is what the operator reads
+first; opening the tool call is what shows the widget.
+
+The two bubbles that carry the frame are `spora-frontend`'s
+`src/components/agent/TaskChat/MediaEmbedFrame.vue`, used by the tool stream row, and
+`spora-plugin-media-archive-frontend`'s copy of it, used by the detail page. Both take the
+descriptor from the server and validate that its `url` is a same-origin path.
 
 ### Styling the download card: register your classes
 

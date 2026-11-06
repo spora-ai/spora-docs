@@ -1,6 +1,6 @@
 ---
 title: Social
-description: Native social publishing for Spora — an agent writes and schedules your LinkedIn, Facebook and Instagram posts, and the numbers come back per network.
+description: Native social publishing for Spora — an agent writes and schedules your LinkedIn, Facebook and Instagram posts, and the numbers come back per network; an aggregator can add the networks Spora does not connect to natively.
 ---
 
 # Social Plugin for Spora
@@ -332,7 +332,7 @@ A post can target these networks through Zernio: **X, Instagram, Facebook, Linke
 
 - **No account connections.** The operator connects, creates, renames, moves and disconnects accounts **in Zernio**. The plugin reads what is there and writes nothing back.
 - **No scheduling through Zernio.** Spora's own scheduler publishes the post at the moment it is due — the aggregator is called with `publishNow: true`, and Zernio's scheduler and its queue are not used. The schedule lives in one place: the calendar you can see.
-- **No deletion of what it did not publish.** The plugin takes down only its own posts, and it does that through Zernio's own unpublish endpoint, with the account named so Zernio's `ambiguous_account` refusal never reaches the operator. A take-down Zernio refuses leaves the target published with the refusal on it — the plugin does not claim to have taken down something that is still there.
+- **Only its own posts come down, through Zernio's unpublish endpoint.** The account is named with the request, so Zernio's `ambiguous_account` refusal never reaches the operator. A take-down Zernio refuses leaves the target published with the refusal on it — the plugin does not claim to have taken down something that is still there.
 
 ### What it costs
 

@@ -39,33 +39,36 @@ Seven grouped multi-operation tools; the LLM selects the operation via the `acti
 
 ### `zernio_accounts` — discovery, profiles, account management
 
-| Operation            | Approval | Purpose                                                                             |
-| -------------------- | -------- | ----------------------------------------------------------------------------------- |
-| `list_accounts`      | —        | List connected social accounts (optionally filter by `profile_id`).                 |
-| `list_profiles`      | —        | List Zernio profiles (brand/project workspaces).                                    |
-| `create_profile`     | ✅       | Create a new Zernio profile.                                                        |
-| `update_profile`     | ✅       | Update a Zernio profile.                                                            |
-| `delete_profile`     | ✅       | Delete a Zernio profile.                                                            |
-| `update_account`     | ✅       | Update a connected social account (username, display name, X capabilities).         |
-| `move_account`       | ✅       | Move a social account to a different profile.                                       |
-| `disconnect_account` | ✅       | Disconnect a social account from Zernio.                                            |
-| `account_health`     | —        | Bulk health snapshot across accounts (token status, posting/analytics permissions). |
+| Operation            | Approval | Purpose                                                                                     |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------- |
+| `list_accounts`      | —        | List connected social accounts (optionally filter by `profile_id`).                         |
+| `list_profiles`      | —        | List Zernio profiles (brand/project workspaces).                                            |
+| `create_profile`     | ✅       | Create a new Zernio profile.                                                                |
+| `update_profile`     | ✅       | Update a Zernio profile.                                                                    |
+| `delete_profile`     | ✅       | Delete a Zernio profile.                                                                    |
+| `update_account`     | ✅       | Update a connected social account (username, display name, X capabilities).                 |
+| `move_account`       | ✅       | Move a social account to a different profile.                                               |
+| `disconnect_account` | ✅       | Disconnect a social account from Zernio.                                                    |
+| `account_health`     | —        | Bulk health snapshot across accounts (token status, posting/analytics permissions).         |
+| `get_account_health` | —        | Health for one account (token, permissions, issues, recommendations). Needs the account id. |
 
 Use `list_accounts` first to obtain the `account_ids` and platforms to target.
 
 ### `zernio_post` — post lifecycle
 
-| Operation              | Approval | Purpose                                                                                 |
-| ---------------------- | -------- | --------------------------------------------------------------------------------------- |
-| `create_post`          | ✅       | Create a draft, schedule, or publish a post.                                            |
-| `list_posts`           | —        | List posts (filter by `status`, `profile_id`).                                          |
-| `get_post`             | —        | Get a single post by ID.                                                                |
-| `update_post`          | ✅       | Update a draft, scheduled, or failed post.                                              |
-| `delete_post`          | ✅       | Delete a draft or scheduled post (use `unpublish_post` for published ones).             |
-| `retry_post`           | ✅       | Retry a failed post.                                                                    |
-| `unpublish_post`       | ✅       | Unpublish a published post from a specific platform.                                    |
-| `edit_post`            | ✅       | Edit the text of an X (Twitter) Premium post (within ~1h, max 5 edits).                 |
-| `update_post_metadata` | ✅       | Update YouTube video metadata (title, description, tags, privacy, thumbnail, playlist). |
+| Operation              | Approval | Purpose                                                                                                                       |
+| ---------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `create_post`          | ✅       | Create a draft, schedule, or publish a post.                                                                                  |
+| `list_posts`           | —        | List posts (filter by `status`, `profile_id`).                                                                                |
+| `get_post`             | —        | Get a single post by ID.                                                                                                      |
+| `update_post`          | ✅       | Update a draft, scheduled, or failed post.                                                                                    |
+| `delete_post`          | ✅       | Delete a draft or scheduled post (use `unpublish_post` for published ones).                                                   |
+| `retry_post`           | ✅       | Retry a failed post.                                                                                                          |
+| `unpublish_post`       | ✅       | Unpublish a published post from a specific platform.                                                                          |
+| `edit_post`            | ✅       | Edit the text of an X (Twitter) Premium post (within ~1h, max 5 edits).                                                       |
+| `update_post_metadata` | ✅       | Update YouTube video metadata (title, description, tags, privacy, thumbnail, playlist).                                       |
+| `sync_external_posts`  | —        | Pull the posts an account published outside Zernio into Zernio. Needs the account id.                                         |
+| `bulk_upload`          | ✅       | Schedule a CSV of posts in bulk; the first row is the header. `dry_run` sends the file for validation without creating posts. |
 
 `create_post` accepts `publish_now: true` to publish immediately; `scheduled_for` + `timezone` to schedule; neither saves a draft. Pass `platforms` (per-platform targets, preferred) or `account_ids` + `platform`, plus `content` (required unless `media_items` or `customContent` cover every platform) and optional `media_items` ([{url, type (image\|video), thumbnailUrl?, alt?}, …]).
 

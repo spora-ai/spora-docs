@@ -8,6 +8,10 @@ description: Social-media scheduling and publishing for Spora agents, powered by
 Social-media scheduling and publishing for [Spora](https://github.com/spora-ai/spora-core) agents, powered by the [Zernio](https://docs.zernio.com/) API. Lets an agent discover connected social accounts, and draft, schedule, or publish posts across 15+ networks (Twitter/X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Bluesky, Threads, Telegram, Discord, and more), plus manage the recurring posting queue and read analytics.
 
 > **Looking for the native version?** The [Social](/develop/plugins/reference/social) plugin publishes to LinkedIn, Facebook and Instagram without a third-party service in between — the plugin holds the tokens and does the posting.
+>
+> **The social plugin publishes through Zernio now.** For the networks it does not connect to natively — X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Pinterest, Reddit, Bluesky, Threads, Google Business Profile and Telegram — it takes a Zernio API key on its Accounts screen and publishes through Zernio, from the same composer, the same drafts and the same calendar. See [Social → An aggregator for the networks Spora does not reach](/develop/plugins/reference/social#an-aggregator-for-the-networks-spora-does-not-reach).
+>
+> **What this plugin keeps.** The social plugin takes over the posting and the per-post numbers. Everything else stays here: the **recurring posting queue**, the **webhook subscriptions**, the **CSV bulk upload**, the **profile management** and the **account management** — rename, move and disconnect. Uninstalling this plugin takes those with it.
 
 ## Installation
 

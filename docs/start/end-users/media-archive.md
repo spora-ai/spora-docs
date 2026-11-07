@@ -185,12 +185,12 @@ or your dashboard. The embed is the only place script can run, and only if you s
 
 Where you see it depends on where you are looking. On the **detail page** the frame is the
 preview — the live asset, with a **Download** button beside it. In the **chat**, the frame
-sits in the tool call that produced the asset, next to its download card; and when the agent
-asks for it — by linking the asset's embed route — the frame renders in the agent's message
-too, in place, as a block. That is the difference between a download button and a widget in
-the conversation: the agent has to ask, and whether the frame may run script is still your
-call. An SVG in the message is static — a browser does not run an SVG's script inside an
-image — while the framed copy runs it, if you allowed scripts.
+sits in the tool call that produced the asset — a collapsed row you expand — and, when the
+agent asks for it, the frame renders in the agent's message too, in place, as a block. That
+is the difference between a download button and a widget in the conversation: the agent has
+to ask, and whether the frame may run script is still your call. An SVG in the message is
+static — a browser does not run an SVG's script inside an image — while the framed copy runs
+it, if you allowed scripts.
 
 Enabling either setting is a decision about who can author content in your installation.
 An agent that can write HTML can put anything in it.

@@ -188,11 +188,12 @@ and both are off by default:
 | `SPORA_MEDIA_ARCHIVE_ALLOW_ACTIVE_TYPES`  | `false` | Whether HTML and SVG assets may exist at all. With it off, neither can be uploaded and an agent cannot create one.                                        |
 | `SPORA_MEDIA_ARCHIVE_ALLOW_EMBED_SCRIPTS` | `false` | Whether an _embedded_ copy may run its scripts. It never widens what may exist — an embed can only exist for a format the first toggle already permitted. |
 
-An SVG carries script when it is loaded as a **document** — framed, or opened directly — and
-a browser refuses to run it when it is loaded as a **picture**. The archive keeps an SVG as
-`image/svg+xml`, so the chat's own markdown renders it as an inline `<img>` and the script
-does not run there; only the embed route serves it as a document. HTML is a document
-wherever it is loaded, but its chat markdown is a download card rather than a picture.
+An SVG carries script when it is loaded as a **document** — framed, or opened from the embed
+route itself — and a browser refuses to run it when it is loaded as a **picture**. The
+archive keeps an SVG as `image/svg+xml`, so the chat's own markdown renders it as an inline
+`<img>` and the script does not run there; only the embed route serves it as a document.
+HTML is a document wherever it is loaded, but its chat markdown is a download card rather
+than a picture.
 
 Three properties hold whatever the settings say:
 
@@ -200,11 +201,16 @@ Three properties hold whatever the settings say:
 - **The embed is the only place script can run.** `GET /api/v1/media/{id}/embed` is authenticated only — a public share token does not unlock it — and it serves `sandbox` **without** `allow-same-origin`, so the framed document gets an opaque origin: it cannot read `document.cookie`, reach `localStorage`, touch the parent document, or obtain the `X-CSRF-Token` every write requires. There is no bridge from the framed document back into the app.
 - **The gate covers every creation path.** Uploads, the `create_media` tool and the derivative path all consult the same policy, so a producer that emits SVG cannot create the asset the upload gate refused.
 
-The frame appears in the **tool bubble** that produced the asset, and as the **preview on the
-asset's detail page**. It does not appear in the agent's own message: that message is
-markdown, it is sanitised before it is rendered, and the allow-list carries no `iframe`. So
-an operator reading the conversation sees a download card for an HTML widget, and has to
-open the tool call to see the live one. See
+The frame appears in the **tool bubble** that produced the asset, as the **preview on the
+asset's detail page**, and — when the agent asks for it — in the **agent's own message**. The
+message is markdown and is sanitised before it is rendered, and the allow-list carries no
+`iframe`; so the agent asks for the frame by linking the asset's embed route
+(`[test-dashboard.html](/api/v1/media/<asset_id>/embed)`) and the chat renders that link as
+the live asset, in place, as a block. An agent that does not ask leaves a download card in
+the message, and the operator has to open the tool call to see the live one. A reference that
+cannot be framed — an asset the caller cannot see, or a format the operator has not
+permitted — stays a plain link, and opening it gives the sandboxed download rather than a
+frame. See
 [Concepts → Media assets](/reference/concepts/media-assets#where-the-frame-appears-and-where-it-does-not).
 
 Enabling either toggle is a decision about who may author content in the installation: an agent that can write HTML can put anything in it. See [Concepts → Media assets](/reference/concepts/media-assets#the-script-capable-formats-are-the-operator-s-decision) and [End users → Media archive](/start/end-users/media-archive#html-and-svg).

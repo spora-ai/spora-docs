@@ -370,14 +370,14 @@ flavour of HTML; the toggle offers HTML and SVG, not XHTML, and the two lists ar
 deliberately separate.)
 
 "Embedded" is the load-bearing word, and it is not the same thing as "served". An SVG
-carries script when it is loaded as a **document** — opened directly, or framed — and a
-browser refuses to run it when it is loaded as a **picture**. The archive keeps an SVG as
-`image/svg+xml`, so the chat's own markdown path renders it as an inline `<img>` and the
-script does not run there; the embed route serves it as a document, and its script runs.
-Measured on the same bytes: `SCRIPT LIVE — top level` on the embed route, `initialising…`
-through an `<img>`. HTML has no such split — it is a document wherever it is loaded — but
-its chat markdown is a download card rather than a picture, so the operator sees a link
-where an SVG would show an inline image.
+carries script when it is loaded as a **document** — framed, or opened from the embed route
+itself — and a browser refuses to run it when it is loaded as a **picture**. The archive
+keeps an SVG as `image/svg+xml`, so the chat's own markdown path renders it as an inline
+`<img>` and the script does not run there; the embed route serves it as a document, and its
+script runs if the operator permitted scripts. Measured on the same bytes: `SCRIPT LIVE —
+top level` on the embed route, `initialising…` through an `<img>`. HTML has no such split —
+it is a document wherever it is loaded — but its chat markdown is a download card rather than
+a picture, so the operator sees a link where an SVG would show an inline image.
 
 Both settings, the gate and the serving boundary need the first spora-core release that
 carries them ([spora-core#315](https://github.com/spora-ai/spora-core/pull/315)); on an
@@ -449,14 +449,17 @@ The frame and the markdown are two renderings of the same asset, and they are in
 places — which is worth stating plainly, because "the chat shows a widget" and "the chat
 shows a download button" are both true at the same time.
 
-| surface                       | what it shows                                                     |
-| ----------------------------- | ----------------------------------------------------------------- |
-| the tool's own bubble         | the markdown **and** the frame, side by side                      |
-| the assistant's message       | the markdown, and the frame wherever the message **asks** for one |
-| the Media Archive detail page | the frame alone, as the preview                                   |
+| surface                       | what it shows                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| the tool's own bubble         | the markdown **and** the frame, in a row that is collapsed until it is expanded |
+| the assistant's message       | the markdown, and the frame wherever the message **asks** for one               |
+| the Media Archive detail page | the frame alone, as the preview                                                 |
 
 The bubble gets the frame without being asked: it reads the tool result's structured data
-(`embed_descriptor`), which the chat never shows the model.
+(`embed_descriptor`), which the chat never shows the model. The tool's markdown also carries
+the line the model is told to echo — `create_media` and `get_media` put it in their result —
+so the bubble shows that reference as a plain link, beside the frame it mounts from the
+descriptor.
 
 The message gets the frame by being asked for it. A model shows a widget by linking its
 **embed route**:
@@ -471,18 +474,19 @@ to a file is a link and not the file.
 
 The route is the point, and it is a **path** rather than a fragment: the server is what
 decides whether the framed document may run script, and it decides by the path it is asked
-for. A fragment never leaves the browser, so it cannot select a policy. The reference is
-also the frame's `src`, so the path the server serves is the path the client frames.
+for. A fragment never leaves the browser, so it cannot select a policy. The reference names
+the asset, and the frame's `src` is the server's own embed URL for it, so the path the
+server serves is the path the client frames.
 
-Two neighbouring routes are **not** the embed route, and both stay plain links:
+Two routes sit next to each other, and only one of them is the embed route:
 
-| route                       | what it is                                                            |
-| --------------------------- | --------------------------------------------------------------------- |
-| `/api/v1/assets/<id>.<ext>` | the download path — the bytes, sandboxed, no script                   |
-| `/api/v1/media/<id>/embed`  | the embed path — the bytes, framed, script if the operator permits it |
+| route                       | what it is                                                            | in the assistant's message |
+| --------------------------- | --------------------------------------------------------------------- | -------------------------- |
+| `/api/v1/assets/<id>.<ext>` | the download path — the bytes, sandboxed, no script                   | a plain link               |
+| `/api/v1/media/<id>/embed`  | the embed path — the bytes, framed, script if the operator permits it | a live frame               |
 
-A share link from `get_public_url` points at the public download path, so it opens the
-asset and is never framed.
+A share link from `get_public_url` points at `/api/v1/public/media/<id>?token=…` — the
+public route, not either of the two above — so it opens the asset and is never framed.
 
 The frame is still a Vue component, so the sanitiser's allow-list still carries no `iframe`.
 The chat renders a message as **segments** — the markdown, and the frames it asks for —
@@ -494,10 +498,17 @@ So an HTML widget reaches the operator as a **download card in the message** unl
 asks for the live one, and an SVG widget as an **inline picture** — a static one, because the
 markdown path loads it as an image — unless the model asks for that.
 
-The two bubbles that carry the frame are `spora-frontend`'s
+The two places that carry the frame are `spora-frontend`'s
 `src/components/agent/TaskChat/MediaEmbedFrame.vue`, used by the tool stream row and by the
 message, and `spora-plugin-media-archive-frontend`'s copy of it, used by the detail page.
-Both take the descriptor from the server and validate that its `url` is a same-origin path.
+Both take the descriptor from the server, and both check that its `url` is a same-origin
+path before it reaches the frame.
+
+The frame in the message needs the spora-frontend release that carries it
+([spora-frontend#214](https://github.com/spora-ai/spora-frontend/pull/214)), and the
+descriptor on the ops that show an existing asset needs the spora-core release that carries
+it ([spora-core#318](https://github.com/spora-ai/spora-core/pull/318)). On an earlier release
+the frame is in the tool bubble only.
 
 ### Styling the download card: register your classes
 

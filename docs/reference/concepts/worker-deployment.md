@@ -49,7 +49,7 @@ php bin/spora worker:run --daemon
 
 The daemon polls both the QUEUED task queue and the `scheduled_runs_next` table every iteration, and sweeps due [Agent API](/reference/agent-api) callbacks alongside them. It runs until `SIGTERM` or `SIGINT`.
 
-Options (defined at `app/Console/Commands/WorkerRunCommand.php:61-68`):
+Options (defined at `app/Console/Commands/WorkerRunCommand.php:123-130`):
 
 | Flag               | Default                                    | Description                                                                                        |
 | ------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
@@ -62,7 +62,7 @@ Options (defined at `app/Console/Commands/WorkerRunCommand.php:61-68`):
 | `--stale-minutes`  | `60` (config)                              | Minutes after which a `RUNNING` task is treated as orphaned (0 = disabled; omit to use config)     |
 | `--workers` / `-w` | `0` (unlimited, config)                    | Max concurrent child processes (0 = unlimited, single-threaded)                                    |
 
-`--daemon`, `--once`, and `--reap-only` are mutually exclusive (`app/Console/Commands/WorkerRunCommand.php:81-92`). If none is given, the command defaults to daemon mode.
+`--daemon`, `--once`, and `--reap-only` are mutually exclusive (`app/Console/Commands/WorkerRunCommand.php:285-309`). If none is given, the command defaults to daemon mode.
 
 ### Daemon + Docker Compose
 
@@ -143,7 +143,7 @@ For multiple workers on the same machine:
 
 ## Single-Instance Enforcement
 
-A `flock()` lock file at `storage/spora-worker.lock` prevents two worker processes (daemon or `--once`) from running against the same database at the same time (`app/Console/Commands/WorkerRunCommand.php:491-640`). If a second worker starts, it exits immediately with an error rather than competing for tasks. `--reap-only` skips the lock so multiple reapers can co-exist.
+A `flock()` lock file at `storage/spora-worker.lock` prevents two worker processes (daemon or `--once`) from running against the same database at the same time (`app/Console/Worker/WorkerLock.php:47-71`, called from `app/Console/Commands/WorkerRunCommand.php:490-521`). If a second worker starts while the first is still running, it exits immediately with an error rather than competing for tasks. `--reap-only` skips the lock so multiple reapers can co-exist.
 
 The worker writes its own pid into the lock file. A worker that finds the lock held by a pid that no longer exists takes it over instead of refusing to start — the lock outlives a crashed daemon because the daemon's `task:run` children inherit the lock descriptor, and a new lock file is a new inode that those children cannot hold.
 

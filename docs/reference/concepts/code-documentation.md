@@ -57,9 +57,8 @@ These patterns provide genuine value:
 
 ```php
 // The scheme allowlist stops file://, ftp:// and gopher:// — it does
-// not stop an http:// URL that points at a private address. The
-// private-range screen is a separate layer, in SsrfGuard, and applies
-// to every operation.
+// not stop an http:// URL pointing at a private address. That screen
+// is a separate layer, in SsrfGuard, and applies to every operation.
 $scheme = strtolower(parse_url($url, PHP_URL_SCHEME) ?? '');
 ```
 
@@ -67,13 +66,23 @@ _(from `app/Tools/ReadUrlTool.php`)_
 
 ```php
 /**
- * Reserved IPv4 space as leading text prefixes: RFC1918, loopback,
+ * Reserved IPv4 space, as network/prefix pairs: RFC1918, loopback,
  * link-local, carrier-grade NAT, `192.0.0.0/24`, benchmarking
  * (`198.18.0.0/15`), multicast and `240.0.0.0/4`.
  *
- * Not exhaustive — the broadcast address is not covered, and matching on
- * text rather than on packed bits means an address written in an unusual
- * numeric form is caught by `inet_pton()` failing to parse it, not here.
+ * Whole ranges, not text prefixes: `100.65.0.0` is inside the
+ * carrier-grade NAT block and `198.19.0.0` is inside the benchmarking
+ * block, and a prefix would have let both through.
+ *
+ * Not exhaustive — the documentation ranges (`192.0.2.0/24`,
+ * `198.51.100.0/24`, `203.0.113.0/24`) are not listed.
+ *
+ * Every address here is a reserved-network constant the guard exists
+ * to refuse, so a hardcoded-address finding on one of them says
+ * nothing: they are the deny list, not a host the deployment talks
+ * to.
+ *
+ * @var list<array{0: string, 1: int}>
  */
 ```
 
@@ -89,7 +98,7 @@ _(from `app/Services/SsrfGuard.php`)_
 'max_redirects' => 0,
 ```
 
-_(from `app/Services/AgentApi/AgentApiCallbackDispatcher.php`)_
+_(from `app/Services/ApiKeys/ApiKeyCallbackDispatcher.php`)_
 
 **Why:** Security decisions often look arbitrary without context. The _why_ prevents future developers from accidentally weakening protections.
 

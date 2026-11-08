@@ -83,6 +83,7 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 ## What the chat timeline shows
 
 - **Your message** (right-aligned, plain text)
+- **Your attachments** — the files you sent with a message, shown as chips **below** the message they belong to.
 - **The agent's "thinking"** — appears when the assistant message contains `content_blocks` entries of type `thinking` (Anthropic with thinking enabled) or `redacted_thinking`. Token counts are surfaced separately in the `usage` panel (`input_tokens`, `output_tokens`, `cache_creation_tokens`, `cache_read_tokens`, …).
 - **Tool calls** — collapsed into a single live pill per user turn (and one per sub-agent boundary). The pill header shows the current tool icon + name and a growing "N tools called" count; click the pill to expand every individual tool call with its arguments and result. Reasoning rows (the LLM's `thinking` blocks) interleave with the tool rows in the same chain.
 - **The final reply** (left-aligned, the agent's actual response)

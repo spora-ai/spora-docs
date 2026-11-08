@@ -31,6 +31,10 @@ Spora keeps two independent sets of secrets, encrypted with the same master key:
 Both use the same key. Losing `SPORA_SECRET_KEY` / `secret.key` makes **every row in both stores**
 undecryptable at once, not just one.
 
+A plugin can hold a credential of its own, outside both stores — the social plugin's aggregator key
+sits on the plugin's own connection row. It uses the same master key, so losing the key loses that
+one as well. See [Plugin Risks](#plugin-risks).
+
 A shared settings group — one credential for every tool of a plugin — lives in
 `tool_configurations` under the group's class rather than under each tool's.
 
@@ -218,6 +222,12 @@ Enabling either toggle is a decision about who may author content in the install
 ## Plugin Risks
 
 Plugins are not sandboxed — they run as ordinary PHP code with full access to the application, the database, the file system, and any decrypted credentials. The plugin trust model and lifecycle are documented on the [Plugin system](/reference/concepts/plugins-system) page under [Security](/reference/concepts/plugins-system#security).
+
+**A plugin may hold a credential of its own, outside the two stores above.** The social plugin's aggregator key — the Zernio API key — is encrypted with the same master key and kept on the plugin's own connection row: it is in neither `tool_configurations` nor `settings`. Three properties follow:
+
+- **It is write-only.** No route returns it; a read gives back the accounts the key reaches and their state, not the key.
+- **It has no refresh grant.** Zernio keys do not expire, so replacing one means pasting a new one.
+- **It is principal-scoped.** It belongs to one principal, and a route that acts for another needs the caller to control that principal.
 
 ## Trusted Proxies & `X-Forwarded-*` Headers
 

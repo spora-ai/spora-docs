@@ -1,11 +1,11 @@
 ---
 title: Social
-description: Native social publishing for Spora — an agent writes and schedules your LinkedIn, Facebook and Instagram posts, and the numbers come back per network.
+description: Native social publishing for Spora — an agent writes and schedules your LinkedIn, Facebook and Instagram posts, and the numbers come back per network; an aggregator can add the networks Spora does not connect to natively.
 ---
 
 # Social Plugin for Spora
 
-Publishes to **LinkedIn**, **Facebook** and **Instagram** from Spora, against accounts you own. **One login per provider:** the Meta login covers Instagram and Facebook together, and the LinkedIn login covers the member and the organisations they administer. The copy is written by an agent that wakes on your schedule, reads what is already going out, and hands each post to you for approval; the worker publishes it when the moment comes. Each network's own numbers come back afterwards. The plugin holds the tokens, does the posting and reads the analytics: it is the native replacement for the [Zernio](/develop/plugins/reference/zernio) plugin, which was a thin proxy to a third-party service that held the accounts and published for you.
+Publishes to **LinkedIn**, **Facebook** and **Instagram** from Spora, against accounts you own. **One login per provider:** the Meta login covers Instagram and Facebook together, and the LinkedIn login covers the member and the organisations they administer. The copy is written by an agent that wakes on your schedule, reads what is already going out, and hands each post to you for approval; the worker publishes it when the moment comes. Each network's own numbers come back afterwards. The plugin holds the tokens, does the posting and reads the analytics: it is the native route. For the networks it cannot reach that way it can publish through [Zernio](#an-aggregator-for-the-networks-spora-does-not-reach) — the third-party service the [Zernio](/develop/plugins/reference/zernio) plugin was a thin proxy to.
 
 ## Installation
 
@@ -34,7 +34,7 @@ It enables the five tools with the approval defaults already set: every read and
 
 ### The skill
 
-`skills/social-poster/SKILL.md` — the operating manual the agent reads: what each tool does, the per-platform rules, the media rules, the approval behaviour, and the worked flow from "the operator asked for a weekly post" to "the post is scheduled". It declares `allowed-tools: social_connections social_post social_media social_analytics social_calendar` and a compatibility floor of `spora>=0.32 spora-plugin-social>=0.1`.
+`skills/social-poster/SKILL.md` — the operating manual the agent reads: what each tool does, the per-platform rules, the aggregator's own rules, the media rules, the approval behaviour, and the worked flow from "the operator asked for a weekly post" to "the post is scheduled". It declares `allowed-tools: social_connections social_post social_media social_analytics social_calendar` and a compatibility floor of `spora>=0.32 spora-plugin-social>=0.1`.
 
 All five tools recommend it through `recommendsSkills`, so on the agent's **Tools** tab each of those tool cards carries a row for it, and turning that row on allowlists the skill in the same move. The imported agent has it already; the row is there to turn it off.
 
@@ -278,9 +278,10 @@ A skipped check is not a passed check: it is a fact about the environment, not a
 The composer is the landing screen. It has two jobs: writing a post by hand, and editing a post an agent wrote. It has an internal title, a message, the accounts to publish to, the media to publish, and what to do with it.
 
 - **Title** — an internal label. It never reaches the network.
-- **Message** — the body. One message goes to every platform; a platform whose copy has to differ carries its own text, stored in `platform_bodies`.
+- **Message** — the body. One message goes to every channel; a channel whose copy has to differ carries its own text, stored in `platform_bodies`.
 - **Publish to** — the accounts.
-- **Platform preview** — a live character counter per targeted network, and the media badges for that network.
+- **Platform preview** — a live character counter per targeted channel, and the media badges for that network.
+- **A network reached through both routes** — an amber warning when the post reaches one network through **both** Spora's own login and the aggregator. It names the network and lets the operator go ahead: _The two accounts are different, so the post goes to both._
 
 **Draft with an agent** opens a panel with a prompt and the agents of the principal. The agent needs its `social_post` tool enabled; one that has it off cannot write a post, and the panel says so and links to the agent's own tools.
 
@@ -304,6 +305,54 @@ The outcome is recorded **per account**, because a post can succeed on one netwo
 
 **Take down** pulls a published post back down, one network at a time. LinkedIn and Facebook can delete a published post; **Instagram cannot** — its API has no delete for published media — so that target stays published and says why.
 
+## An aggregator for the networks Spora does not reach
+
+Spora publishes to LinkedIn, Facebook and Instagram with its own OAuth and its own tokens. Some networks it cannot reach that way, and **the organisation page is the one that bites**: posting to a LinkedIn organisation page needs the Community Management API, which LinkedIn grants to a registered legal organisation and to nobody else, so a second app has to be registered and reviewed before a page can be posted to at all. An aggregator is a way around that. The operator's accounts live in somebody else's service and Spora publishes through them. **The calendar, the drafts and the schedule stay Spora's**: the aggregator publishes and reports, and nothing else.
+
+### Adding Zernio
+
+The **Accounts** tab carries one quiet line under the native providers: **Add Zernio**. It opens a small panel with one field — the API key from **Settings → API keys** in the Zernio dashboard — and saves it against the connection.
+
+**The key is written in one of two places, and neither of them is the agent.** The Accounts panel is where a person sees it, replaces it and revokes it; the plugin's own routes are the second way in, for a setup that has to run unattended. The agent's tools cannot write a credential — no operation of `social_connections` takes a key. The key does not expire, so the card says _never expires_; replacing it means pasting a new one, and forgetting it leaves the accounts in Zernio where they are.
+
+Saving the key does not bring the accounts in: **Sync now** reads them from Zernio, and they arrive as targets like any other. An account Zernio no longer reports is marked **disconnected** rather than deleted, so a post's history keeps its target.
+
+#### The aggregator's routes
+
+Three routes under `/api/v1/plugins/social/aggregators`, behind the session and the CSRF token like the plugin's other routes. Each one names the principal it acts for, and a principal the caller does not control is refused.
+
+| Route                                                 | What it does                                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/plugins/social/aggregators`             | Store the key. The body names the aggregator and the `api_key`. A key Zernio refuses is not saved. |
+| `DELETE /api/v1/plugins/social/aggregators/{slug}`    | Forget the key. The accounts stay in Zernio, and their rows are marked **disconnected**.           |
+| `POST /api/v1/plugins/social/aggregators/{slug}/sync` | Read the accounts Zernio holds again. This is what **Sync now** calls.                             |
+
+### What it reaches
+
+A post can target these networks through Zernio: **X, Instagram, Facebook, LinkedIn, TikTok, YouTube, Pinterest, Reddit, Bluesky, Threads, Google Business Profile and Telegram.**
+
+**Snapchat is not one of them.** Zernio's own documentation lists it under social posting, but its API specification does not accept it as a post target and its platform page says Snap has not approved Zernio's app. An operator reading only Zernio's index would otherwise expect it.
+
+### How a post goes out
+
+**All the aggregator's targets go out in one call.** A post aimed at five networks through Zernio is one cross-post in Zernio and one API call, and the outcome is still recorded per target: a post can succeed on one network and fail on another, and the one that failed carries the reason.
+
+**A failed target may be refused as a duplicate.** Zernio refuses the same content on the same account again within 24 hours, and it says so in its own words — the operator reads that message on the target. The dedup is keyed on the whole content fingerprint, so the way out is the one Zernio names: change the **caption**, the **media** or the **account**, and the post goes out again.
+
+### What it does not do
+
+- **No account connections.** The operator connects, creates, renames, moves and disconnects accounts **in Zernio**. The plugin reads what is there and writes nothing back.
+- **No scheduling through Zernio.** Spora's own scheduler publishes the post at the moment it is due — the aggregator is called with `publishNow: true`, and Zernio's scheduler and its queue are not used. The schedule lives in one place: the calendar you can see.
+- **Only its own posts come down, through Zernio's unpublish endpoint.** The account is named with the request, so Zernio's `ambiguous_account` refusal never reaches the operator. A take-down Zernio refuses leaves the target published with the refusal on it — the plugin does not claim to have taken down something that is still there.
+
+### What it costs
+
+Read this before you paste a key.
+
+- **Publishing is billed per connected account** on a Zernio plan. Zernio's [pricing page](https://docs.zernio.com/pricing) says what a plan costs and what it includes.
+- **X is billed per API call**, and Zernio passes that cost through with no markup — so an account on X costs more than an account on another network, and a team without a payment method cannot connect an X account at all.
+- **Analytics needs the add-on on a legacy plan; a usage-based plan includes it.** Without it the numbers come back empty — Zernio answers `402` — and the target says why, rather than showing a zero that reads as "nobody saw it".
+
 ## Where to see what is going out
 
 The Recurring screen went with the static slot. A fixed slot posted **the same words every week**, and its `{{placeholder}}` syntax only knew date and time variables — `{{headline}}` would have published as the literal string `{{headline}}`. LinkedIn and Meta ship native scheduled posts now, so a third-party static repeater competed on the weakest axis available, and no source-driven recurrence exists yet to replace it.
@@ -312,15 +361,17 @@ What did replace it is where the posts themselves are:
 
 - **The Posts list** — a post the agent wrote is labelled **By an agent**, and one that is still waiting says **The agent will publish this.** Filter the list by status to see only what is **Scheduled**.
 - **The drawer** — the post itself: the media, the message, the targets and what each of them did, the time. A **draft** can be edited from it: the **Edit** button opens the post in the composer, where the copy, the accounts, the media and the time can be changed before it is saved, scheduled or published.
-- **The Calendar** — the month's posts, on the day each one is due or went out.
+- **The Calendar** — the month's posts, on the day each one is due or went out, and the channels each one goes to.
+
+A target is a **channel**: the network and the route to it. A LinkedIn member profile published directly and a LinkedIn organisation page published through Zernio are two channels and not one, so the calendar lists one channel per target with its route beside the network.
 
 The recurrence itself lives in the agent's own **Schedules** tab — the cron expression and the prompt are there, and that is where it is edited.
 
-## The per-platform rules
+## The rules a channel has
 
-Each network takes its own things, and the rules are the reason a post is rejected:
+Each channel takes its own things, and the rules are the reason a post is rejected. A channel is the network and the route to it; the table below is the plugin's own route, and [the networks through an aggregator](#the-networks-through-an-aggregator) are the other one.
 
-| Platform  | Media        | Types                     | Cap    | Body              | Shown                  |
+| Network   | Media        | Types                     | Cap    | Body              | Shown                  |
 | --------- | ------------ | ------------------------- | ------ | ----------------- | ---------------------- |
 | LinkedIn  | optional     | JPEG, PNG, GIF            | 8 MB   | 3,000 characters  | ~200 before _see more_ |
 | Facebook  | optional     | JPEG, PNG, GIF, BMP, MP4  | 1 GB   | 63,206 characters | ~125 in the feed       |
@@ -328,15 +379,44 @@ Each network takes its own things, and the rules are the reason a post is reject
 
 The last column is what a reader sees before the network hides the rest: a post that reads well in full can still say nothing in the first line. The plugin carries the number; the network decides where it cuts.
 
-**Both are enforced, per target.** Before it publishes, the backend checks every attachment against the rules of every target, and counts the text that goes out — the body, with the hashtags under it — against that target's platform's limit. Text over it is refused with the numbers: _Over the limit: 5000 / 2200 characters for Instagram. Shorten the post._
+**Both are enforced, per target.** Before it publishes, the backend checks every attachment against the rules of every target, and counts the text that goes out — the body, with the hashtags under it — against that target's channel's limit. Text over it is refused with the numbers: _Over the limit: 5000 / 2200 characters for Instagram. Shorten the post._
 
-Each platform is judged against **its own** body — `platform_bodies[platform]`, or the shared body when there is none for it — so one post aimed at LinkedIn and Instagram is checked twice, against each platform's limit. A post that is fine for LinkedIn and too long for Instagram fails **only the Instagram target**: the LinkedIn one goes out, and the post ends `partial`.
+Each channel is judged against **its own** body — `platform_bodies[channel]`, or the shared body when there is none for it — so one post aimed at LinkedIn and Instagram is checked twice, against each channel's limit. A post that is fine for LinkedIn and too long for Instagram fails **only the Instagram target**: the LinkedIn one goes out, and the post ends `partial`.
 
 LinkedIn publishes images only in this version: no video, no carousel, no reel.
 
 **Instagram takes no PNG at all** and cannot publish a text-only post. The plugin converts a PNG to a JPEG for you through core's own image producer and leaves the original untouched, so a PNG in the archive is not a reason an Instagram post fails.
 
 **And one thing the plugin cannot check:** if the Instagram account is connected to a Page that requires Page Publishing Authorization, the platform refuses the publish until that authorization is completed. See [Operator prerequisites](#operator-prerequisites).
+
+### The networks through an aggregator
+
+An aggregator target's limits are the aggregator's, not Spora's, and they differ from the native ones for the same network: a LinkedIn post through Zernio may carry a video, where Spora's own LinkedIn route carries images only.
+
+| Network         | Media        | Types and sizes                                                                                     | Body                                   | Shown                  |
+| --------------- | ------------ | --------------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------------- |
+| X               | optional     | JPEG, PNG, WebP or GIF up to 5 MB, or an MP4 or MOV video up to 512 MB                              | 280 characters free, 25,000 on Premium | —                      |
+| Instagram       | **required** | JPEG or PNG up to 8 MB, or an MP4 or MOV video up to 300 MB                                         | 2,200 characters                       | ~125 before _more_     |
+| Facebook        | optional     | JPEG, PNG or GIF up to 4 MB, or an MP4 or MOV video up to 4 GB                                      | 63,206 characters                      | ~480 before _See more_ |
+| LinkedIn        | optional     | JPEG, PNG or GIF up to 8 MB, or an MP4, MOV or AVI video up to 5 GB                                 | 3,000 characters                       | ~200 before _see more_ |
+| TikTok          | **required** | JPEG, PNG or WebP up to 20 MB, or an MP4, MOV or WebM video up to 4 GB                              | 2,200 characters                       | —                      |
+| YouTube         | **required** | an MP4, MOV, AVI, WMV, FLV, 3GP or WebM video up to 256 GB                                          | 5,000 characters                       | —                      |
+| Pinterest       | optional     | JPEG, PNG, WebP or GIF up to 32 MB, or an MP4 or MOV video up to 2 GB                               | 800 characters                         | —                      |
+| Reddit          | optional     | JPEG, PNG or GIF up to 20 MB, or an MP4 video up to 1 GB                                            | 40,000 characters                      | —                      |
+| Bluesky         | optional     | JPEG, PNG, WebP or GIF up to 1 MB, or an MP4 video up to 50 MB                                      | 300 characters                         | —                      |
+| Threads         | optional     | JPEG or PNG up to 8 MB, or an MP4 video up to 1 GB                                                  | 500 characters                         | —                      |
+| Google Business | optional     | JPEG or PNG up to 5 MB. No video.                                                                   | 1,500 characters                       | —                      |
+| Telegram        | optional     | JPEG, PNG, GIF or WebP up to 10 MB, or an MP4 or MOV video up to 50 MB. Up to 10 items in an album. | 4,096 characters                       | —                      |
+
+The **Shown** column is what the plugin records of what a reader sees before the network hides the rest; a dash means it records no shorter threshold for that network.
+
+**The plugin's own rule of one attachment per post still holds.** Zernio takes more than one image on some of these networks, but the publish sends one file, so a second is a file the operator believes is going out and is not.
+
+**And one counting rule that is not a limit.** X counts a URL as 23 characters whatever its length and an emoji as 2, so the number of characters in the body is not the number X counts. The plugin will not stand behind a count it cannot compute: the composer shows that note where the counter would be, and X refuses the post with its own message if the text is over the account's limit.
+
+**The table is a copy of Zernio's own documentation, and it rots.** Zernio changes a limit and the copy is behind until someone reads its changelog. A stale row produces a wrong warning rather than a failed post — the refusal at publish time is Zernio's own error, which the target carries.
+
+**The aggregator takes the original asset's bytes**, not the JPEG derivative Instagram needs: Zernio takes JPEG, PNG, GIF and WebP, and it compresses above a network's limit itself.
 
 ## Media
 
@@ -358,17 +438,17 @@ Five tools, for the agents that write the posts. They are declared as `social_co
 
 | Tool                 | Operations                                                                      | What it is for                                                                    |
 | -------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `social_connections` | `list`, `connect`, `disconnect`, `refresh`, `health`                            | The connections: one login per provider, and the accounts each one covers.        |
+| `social_connections` | `list`, `connect`, `disconnect`, `refresh`, `health`, `sync`                    | The connections: one login per provider, and the accounts each one covers.        |
 | `social_post`        | `create`, `schedule`, `publish`, `list`, `inspect`, `update`, `retry`, `delete` | The posts: draft one, date one, send one, look at what happened, take one down.   |
 | `social_media`       | `list_assets`, `check_fit`, `prepare`, `attach`, `detach`                       | The Media Archive: what is there, whether it fits, and attaching it.              |
-| `social_analytics`   | `post_metrics`, `period_totals`, `top_posts`, `network_comparison`              | What the posts did: one post, a period, the top posts, the networks side by side. |
-| `social_calendar`    | `list_month`                                                                    | The posts of a month with the days they are due.                                  |
+| `social_analytics`   | `post_metrics`, `period_totals`, `top_posts`, `network_comparison`              | What the posts did: one post, a period, the top posts, the channels side by side. |
+| `social_calendar`    | `list_month`                                                                    | The posts of a month with the days they are due and the channels they go to.      |
 
 A **draft** needs no account: the accounts are what name the platforms, and a draft has not been sent anywhere. It cannot go out until one is picked — the publish refuses it and names the way out, and the post carries the warning in the list. A **scheduled** post needs at least one account, because it commits the copy to go out.
 
 Several of them changed shape in the last round, and an agent that still reads them the old way will miss what is already going out:
 
-- **`social_connections` replaced `social_accounts`.** The unit is the connection, not the account: one login per provider, and the accounts it covers ride inside it. `connect` takes a **provider** — `meta` or `linkedin` — and `disconnect`, `refresh` and `health` take a **connection id**.
+- **`social_connections` replaced `social_accounts`.** The unit is the connection, not the account: one login per provider, and the accounts it covers ride inside it. `connect` takes a **provider** — `meta` or `linkedin` — and `disconnect`, `refresh` and `health` take a **connection id**. `sync` takes an **aggregator** — `zernio` — and reads the accounts it holds again; it is a read, so it needs no approval.
 - **`social_post` with `list` takes a `from` / `to` window** — two `YYYY-MM-DD` days. "What is going out this week" is one call: the window matches a post's scheduled date **or** the date it went out. It takes an `account_id` as well, so "what is going to that account" is the same call with one more argument.
 - **`schedule` is the one call that schedules a post.** It creates the post and dates it in the same call, so there is no "create first, then date it" step and no second approval. The time is read in the timezone the post names: `"2026-11-02 09:00"` with `Europe/Berlin` goes out at 08:00 UTC. A value that carries its own offset — or a `Z` — is absolute, and wins over the named zone.
 - **`social_calendar` is one operation.** `list_month` returns the month's posts with their dates.
@@ -379,17 +459,21 @@ A post an agent wrote is written down as such — `source: ai`. In the Posts lis
 
 Reads are free and writes are not, and the line is drawn at what each operation commits:
 
-| Approval           | Operations                                                                                                                                |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Not needed         | Every read: `list`, `inspect`, `health`, `list_assets`, `check_fit`, `prepare`, `list_month`, and all four `social_analytics` operations. |
-| Not needed         | `create` — a draft goes nowhere.                                                                                                          |
-| **The operator's** | `schedule`, `publish`, `update`, `retry`, `attach`, `detach`, `delete`, and the connection operations `connect`, `disconnect`, `refresh`. |
+| Approval           | Operations                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Not needed         | Every read: `list`, `inspect`, `health`, `sync`, `list_assets`, `check_fit`, `prepare`, `list_month`, and all four `social_analytics` operations. |
+| Not needed         | `create` — a draft goes nowhere.                                                                                                                  |
+| **The operator's** | `schedule`, `publish`, `update`, `retry`, `attach`, `detach`, `delete`, and the connection operations `connect`, `disconnect`, `refresh`.         |
 
 `schedule` needs the operator's agreement for one reason: it commits the copy to go out later **without asking again**. The operator sees the copy and the time once, and the worker publishes it when the moment comes. That is why `schedule` is gated and `create` is not.
 
 ## The numbers
 
-Each network reports on its own post, in its own terms, and the plugin keeps the networks **apart**. They count reach differently — Instagram's impressions are not Facebook's impressions — so the rows stay separate and a combined figure is labelled a rough one rather than presented as a fact.
+Each channel reports on its own post, in its own terms, and the plugin keeps the channels **apart**. They count reach differently — Instagram's impressions are not Facebook's impressions — so the rows stay separate and a combined figure is labelled a rough one rather than presented as a fact.
+
+**A channel is the network and the route to it**, so the same network through two routes is two rows: a LinkedIn member profile published directly and a LinkedIn organisation page published through Zernio are counted apart, because they are two accounts with two sets of numbers.
+
+An aggregator's numbers are the aggregator's own. Where it breaks a post down per account, the target carries that account's numbers; where it gives one aggregate for the whole post, the target carries the aggregate and says what it covers. Without the analytics add-on the counts stay empty and the target says why.
 
 > **A LinkedIn member post reports reactions only.** `organizationalEntityShareStatistics` exists for organisation pages; a member post has no impressions and no click count. The reach and impressions columns are **empty by design** for every personal account, and the plugin says why rather than showing a zero that reads as "nobody saw it".
 >

@@ -147,6 +147,8 @@ A `flock()` lock file at `storage/spora-worker.lock` prevents two worker process
 
 The worker writes its own pid into the lock file. A worker that finds the lock held by a pid that no longer exists takes it over instead of refusing to start — the lock outlives a crashed daemon because the daemon's `task:run` children inherit the lock descriptor, and a new lock file is a new inode that those children cannot hold.
 
+Who owns the lock is decided under a second lock file, `storage/spora-worker.lock.takeover`, so two workers starting at the same moment cannot each end up holding a lock.
+
 > **Client mode skips this section.** When `worker_runtime_mode: client`, `bin/spora worker:run` exits with a docs-link error; the per-host `flock` is not used. See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the browser-driven equivalent.
 
 ## PENDING_APPROVAL Tasks

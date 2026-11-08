@@ -169,4 +169,4 @@ Plugins can contribute: tools, agent templates, skill directories and skill prov
 
 SQLite by default (zero config), MySQL/MariaDB supported via `config.php` or env vars (`SPORA_DB_DRIVER=mysql` + `SPORA_DB_HOST/PORT/NAME/USER/PASSWORD`). All schema managed by `DatabaseSchemaInstaller` using Illuminate Schema Builder — versioned, component-aware, with a hot-path stamp cache. See the [Database schema](/reference/concepts/schema) page.
 
-**Runtime artifacts in `storage/`:** `.schema_stamp` (DB installer cache) and `spora-worker.lock` (single-instance worker lock) are runtime state, not data — exclude them from backups. See the [Backups](/start/operators/backups) page for what to back up.
+**Runtime artifacts in `storage/`:** `.schema_stamp` (DB installer cache), `spora-worker.lock` (single-instance worker lock) and `spora-worker.lock.takeover` (the mutex that serialises the decision of who owns that lock) are runtime state, not data — exclude them from backups. See the [Backups](/start/operators/backups) page for what to back up.

@@ -142,7 +142,9 @@ _(from `app/Drivers/LLMDriverInterface.php`)_
 ```php
 /**
  * Singleton. Registered via PHP-DI factory.
- * Loads master key once at construction. Fails immediately if key is invalid.
+ * Holds the master key in memory: the constructor takes the raw key, and
+ * {@see self::fromKeyFile()} is the one that reads a key file. An invalid
+ * key fails immediately.
  */
 final class SecurityManager implements SecurityManagerInterface
 ```

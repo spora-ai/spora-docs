@@ -33,13 +33,14 @@ A reasonable default for a small Spora install:
 
 ## What NOT to back up
 
-| Path                                    | Why not                                                                      |
-| --------------------------------------- | ---------------------------------------------------------------------------- |
-| `public/dist/`                          | Rebuilt from `composer install` (it's the `spora-frontend` Composer package) |
-| `vendor/`                               | Rebuilt from `composer install`                                              |
-| `node_modules/`                         | Rebuilt from `npm install` (only relevant in dev mode)                       |
-| `storage/spora.log`, `storage/php.log`  | Logs are not state; rotate + archive them, but they're not the backup target |
-| `.vuepress/.cache/`, `.vuepress/.temp/` | Build artefacts (docs site only)                                             |
+| Path                                    | Why not                                                                                                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public/dist/`                          | Rebuilt from `composer install` (it's the `spora-frontend` Composer package)                                                                                   |
+| `vendor/`                               | Rebuilt from `composer install`                                                                                                                                |
+| `node_modules/`                         | Rebuilt from `npm install` (only relevant in dev mode)                                                                                                         |
+| `storage/spora.log`, `storage/php.log`  | Logs are not state; rotate + archive them, but they're not the backup target                                                                                   |
+| `storage/spora-worker.lock`             | The single-instance worker lock, and `storage/spora-worker.lock.takeover` beside it — runtime state, and a restored lock points at a pid that no longer exists |
+| `.vuepress/.cache/`, `.vuepress/.temp/` | Build artefacts (docs site only)                                                                                                                               |
 
 ## Restore
 

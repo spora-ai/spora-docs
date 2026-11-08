@@ -39,7 +39,7 @@ anywhere; see [Agent API → Operational notes](/reference/agent-api#operational
 
 **Timezone:** The worker pins `UTC` internally before polling, so the host's `TZ` environment variable or `date.timezone` PHP ini setting has no effect on schedule timing. Deployers on shared hosting do not need to configure their system clock — every `due_at <= $now` comparison happens against UTC. All timestamp columns on `scheduled_runs` and `scheduled_runs_next` are stored in UTC.
 
-**Limitation:** If a task takes longer than one minute, the next cron fire will start a second worker while the first is still running. Both run concurrently — `lockForUpdate` prevents double-claiming the same task, so no data corruption occurs. However, both processes consume memory and CPU, and the LLM provider receives parallel requests. For tasks that regularly exceed 1 minute, use **daemon mode** instead, or flip to [client-worker mode](/deploy/shared-host/client-worker-mode) (`SPORA_WORKER_RUNTIME_MODE=client` in `.env`) and let the browser drive the tasks.
+**Limitation:** A cron fire that lands while the previous worker is still running does not start a second worker — the single-instance lock is held by a live process, so the new invocation exits with _"Another worker instance is already running."_ The entry that fire would have claimed waits for the next one, so a task that regularly takes longer than a minute means most fires are skipped and the backlog drains slower than one entry per minute. For tasks that regularly exceed 1 minute, use **daemon mode** instead, or flip to [client-worker mode](/deploy/shared-host/client-worker-mode) (`SPORA_WORKER_RUNTIME_MODE=client` in `.env`) and let the browser drive the tasks.
 
 ## Daemon Mode (VPS / Docker)
 

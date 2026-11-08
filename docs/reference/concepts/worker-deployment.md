@@ -143,9 +143,9 @@ For multiple workers on the same machine:
 
 ## Single-Instance Enforcement
 
-A `flock()` lock file at `storage/spora-worker.lock` prevents two worker processes (daemon or `--once`) from running against the same database at the same time (`app/Console/Commands/WorkerRunCommand.php:113-117, 429-445`). If a second worker starts, it exits immediately with an error rather than competing for tasks. `--reap-only` skips the lock so multiple reapers can co-exist.
+A `flock()` lock file at `storage/spora-worker.lock` prevents two worker processes (daemon or `--once`) from running against the same database at the same time (`app/Console/Commands/WorkerRunCommand.php:491-640`). If a second worker starts, it exits immediately with an error rather than competing for tasks. `--reap-only` skips the lock so multiple reapers can co-exist.
 
-The lock is automatically released if the process crashes (the OS closes the file descriptor).
+The worker writes its own pid into the lock file. A worker that finds the lock held by a pid that no longer exists takes it over instead of refusing to start — the lock outlives a crashed daemon because the daemon's `task:run` children inherit the lock descriptor, and a new lock file is a new inode that those children cannot hold.
 
 > **Client mode skips this section.** When `worker_runtime_mode: client`, `bin/spora worker:run` exits with a docs-link error; the per-host `flock` is not used. See [Client-worker mode](/deploy/shared-host/client-worker-mode) for the browser-driven equivalent.
 

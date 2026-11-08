@@ -167,9 +167,15 @@ A render picks its theme one of two ways:
 
 Either way the value is a theme's **name**, or the UUID of a media-library folder — never a path. A theme's name is one path segment, so `theme: ../other-tenant` names no folder of yours and resolves to nothing.
 
+**The two halves ship their own built-in themes, and a name is only valid for the half that has it.** The Word half has `default`, `minimal`, `corporate` and `report`; the slides half has `default`, `corporate-dark`, `minimal`, `dense` and `pitch`. A deck naming `corporate` fails with a message listing the five it does have — `corporate-dark` is the deck equivalent. A media-library folder of one name serves both halves, because one `theme.yml` carries a `styles:` section for the Word half and the rest for the slides half.
+
 ## The skills
 
-The plugin ships **two** skills: `office-documents` (`skills/office-documents/SKILL.md`) and `office-presentations` (`skills/office-presentations/SKILL.md`). The first teaches the agent the two-call chain, the round-trip limits, the image rules and the idempotency rules; the second the deck dialect, the theme catalogue and what a deck does and does not survive. Both declare `allowed-tools: media`, and neither is active by default — the operator adds them to an agent's `allowed_skills` allowlist.
+The plugin ships **two** skills: `office-documents` (`skills/office-documents/SKILL.md`) and `office-presentations` (`skills/office-presentations/SKILL.md`). The first teaches the agent the two-call chain, the round-trip limits, the image rules and the idempotency rules; the second the deck dialect, the theme catalogue and what a deck does and does not survive. Each ships an `examples.md` of worked exchanges beside it, which the agent reads with the `skill` tool. Both declare `allowed-tools: media`, and neither is active by default — the operator adds them to an agent's `allowed_skills` allowlist.
+
+Each skill also ships a `reference.md` beside it: the closed vocabulary — every directive, key, attribute and colour, with the rules left in `SKILL.md`. The plugin's suite checks that reference against the library's own constants, so it cannot drift from what the renderer accepts.
+
+**The dialect is not documented on this page.** The deck dialect is what the agent writes, and it is documented where the agent reads it — in the skill — because a copy here would drift from the library the way any other copy would.
 
 ## Licensing
 

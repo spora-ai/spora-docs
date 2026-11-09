@@ -269,6 +269,10 @@ paging with `since_sequence` against it is silently ignored rather than refused.
 The same view the admin UI has: `tool_calls`, the full `history` including reasoning blocks, token
 `totals`, and the task's `data`. Reach for this when you need to know _how_ the agent got there.
 
+What a reasoning block carries depends on the driver. On the Anthropic driver it is the model's
+thinking; on the **OpenAI Responses** driver it is the API's **summary** of the model's reasoning —
+a summary, not the raw chain of thought. Either way the chat renders it in the same bubble.
+
 ## Blocked chats
 
 An agent can stop for a reason only you can resolve — a tool awaiting sign-off, or a question it

@@ -52,10 +52,18 @@ The new **OpenAI Responses** driver speaks `/v1/responses`, the endpoint where a
 can reason _and_ call tools in the same turn. Its effort level travels nested (`reasoning.effort`)
 rather than flat, and it counts output tokens with `max_output_tokens`.
 
-**Retention is off by default.** The Responses API stores a conversation for 30 days unless it is
-told not to, so Spora sends `store: false` unless the operator asks for retention in the driver's
-settings. A self-hosted platform has no business keeping its operators' conversations on somebody
-else's servers.
+**Moving the level mid-chat is free on GPT-6 and later.** There the driver changes the effort with
+a `configuration_update` item rather than by rewriting the request, so the cached prompt prefix
+survives. On an earlier model the same change is a prefix edit, and it costs the cache.
+
+**Your price rows still apply.** The driver is metered under the same provider tag as the Chat
+Completions driver, so the price rows you already have for a model keep matching when you point an
+agent at it.
+
+**Retention is off by default.** The Responses API stores a conversation for at least 30 days unless
+it is told not to, so Spora sends `store: false` unless the operator turns on the driver's **Store
+responses** setting. A self-hosted platform has no business keeping its operators' conversations on
+somebody else's servers.
 
 Choose this driver for OpenAI's own reasoning models. Everything else — vLLM, Ollama, LM Studio,
 Groq, Mistral, DeepSeek — stays on the Chat Completions driver, and their `/v1/responses`

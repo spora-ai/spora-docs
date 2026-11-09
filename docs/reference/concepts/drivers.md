@@ -92,6 +92,8 @@ The key is the canonical level, the value is what goes on the wire. For every dr
 
 `max_tokens` and the flat `reasoning_effort` are absent from the Responses schema and are never sent there; `max_output_tokens` is Responses-only.
 
+The Responses row is the request-level shape. On a model that supports `configuration_update` — GPT-6 and later — the driver sends no request-level `reasoning` at all and carries the level on an input item instead; see [Changing the effort mid-conversation](#changing-the-effort-mid-conversation).
+
 ### The default and the per-message override
 
 `effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: nothing is sent, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale.
@@ -206,21 +208,41 @@ A stored `thinking_budget` is pruned the next time that configuration is saved �
 - The conversation is a list of `input` items: messages, function calls, function-call outputs.
 - Tool definitions are flat — `{"type": "function", "name": …}` — not nested under a `function` object.
 - The token cap is `max_output_tokens`; `max_tokens` is not in the schema and is never sent.
-- The effort level is nested: `reasoning: {"effort": "<level>"}`.
+- The effort level travels nested: `reasoning: {"effort": "<level>"}`.
 
-`getProviderName()` returns **`openai`**. The protocol identifier is `openai_responses`; the provider tag is the pricing and usage tag, and the Responses driver reports `openai` — the tag OpenAI usage rows already carry — so the usage panel resolves the provider without a new entry. The price book matches a model on `(provider, model)` and falls back to the empty-provider row, so a model with no row of its own is unpriced.
+Settings schema (`#[ToolSetting]` attributes on `app/Drivers/Responses/OpenAIResponsesDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `effort` (select), `store` (toggle), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares.
+
+**It is priced like the Chat Completions driver.** `getProviderName()` returns `openai_compatible` — the tag the Chat Completions driver already uses, not a new one — so the price rows an operator already has for a model keep matching when an agent is pointed at this driver. A model with no price row is unpriced: the call is metered as free. The protocol identifier is the separate `openai_responses`; the usage panel reads `openai`, which is the tag both OpenAI protocols report.
+
+Plugin tool names are sanitised for this driver: a plugin tool's name carries a colon, which the API's function-name grammar forbids, so every character outside `[A-Za-z0-9_-]` is replaced with a hyphen and the name the model echoes is mapped back — the tool still resolves. The name is built the same way for every driver, so no other driver is affected.
 
 ### `store`
 
-`store` **defaults to `true` at the provider** — 30 days of retention on OpenAI's side. Spora's default is **off**, and it is an operator setting: a self-hosted platform has no business retaining its operators' conversations on somebody else's servers.
+The **`store`** setting — labelled _Store responses_ — is a toggle, and it is **off** by default. It decides whether the provider keeps the response on its own servers: the Responses API stores one for at least 30 days unless it is told not to, so Spora sends `store: false` until an operator asks otherwise. A self-hosted platform has no business keeping its operators' conversations on somebody else's servers.
 
-With the flag off, the reasoning item comes back carrying `encrypted_content` and Spora replays it verbatim. With it on, the reasoning item is retained server-side and referenced by its id.
+The toggle changes what **Spora** has to replay, not only what the provider retains. **With it off**, the reasoning item comes back carrying its `encrypted_content` — the opaque blob the provider decrypts to restore the chain of thought — and Spora replays that blob itself; the provider keeps nothing. **With it on**, the provider keeps the reasoning item and Spora replays it by its id instead.
+
+> The `store: true` path is the one the shipped driver does not claim to have verified: replaying by id is the API's documented shape, but no live call has exercised it.
+
+### Changing the effort mid-conversation
+
+The chat can change the effort between messages, and the Responses API has a way of doing that which does not cost the prompt cache:
+
+```json
+{ "type": "configuration_update", "reasoning": { "effort": "high" } }
+```
+
+It is an **input item**, not a request-level parameter, so it changes the effort for the responses that follow it without rewriting the request body — and the cached prompt prefix survives. On a model that supports it the request-level `reasoning` is **not sent at all**: the override rides on the item, as the last input item, so it applies to the response generated after it.
+
+**GPT-6 and later support it.** On an earlier model the same change is a request-level `reasoning.effort`, which is a prefix edit — **it invalidates the prompt cache**. An operator on a pre-GPT-6 model should know that moving the level mid-chat costs the cache.
 
 ### The reasoning item
 
 A reasoning item is **opaque** and must be replayed **in position**. OpenAI's own reference is explicit: when function calling with a reasoning model on the Responses API, pass the reasoning items returned with the function calls back along with the tool outputs — that is what keeps the reasoning continuous across the call.
 
 Reasoning is scoped to the model family, so switching families silently drops it.
+
+**What the chat shows is a summary, not the chain of thought.** The API returns a summary of the model's reasoning, and that summary is what the driver stores as the block's text. The chat renders it in the same bubble Anthropic's `thinking` block uses — one bubble, whatever the provider — and a turn that came back with no summary shows no reasoning at all.
 
 ### When to choose it
 

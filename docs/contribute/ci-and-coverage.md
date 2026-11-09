@@ -11,21 +11,38 @@ For the PR workflow itself, see [PR workflow](/contribute/pr-workflow). For the 
 
 ## The pipeline
 
-GitHub Actions runs the following jobs on every PR and push to `main`:
+Each repository runs its own CI. `spora-core` and `spora-frontend` are the
+two that gate merges:
 
-| Job             | Tool             | What it does                                                                  |
-| --------------- | ---------------- | ----------------------------------------------------------------------------- |
-| `php-lint`      | PHPStan          | Static analysis on `spora-core` (level 5, with Larastan + Mockery extensions) |
-| `php-test`      | Pest             | Backend test suite (PHP 8.4, 8.5)                                             |
-| `frontend-lint` | ESLint + vue-tsc | TypeScript type-check + ESLint flat config                                    |
-| `frontend-test` | Vitest           | Frontend unit tests (Vue 3, Pinia, composables)                               |
-| `build-docker`  | Docker buildx    | Builds the multi-stage image from `docker/Dockerfile`                         |
-| `coverage`      | Pest + pcov      | Backend coverage with pcov (replaces Xdebug for CI speed)                     |
-| `sonar`         | SonarCloud       | Uploads coverage + ESLint + PHPStan to SonarCloud for the `new_coverage` gate |
+**`spora-core`** — `.github/workflows/ci.yml`:
 
-PRs require all jobs to be green. A red build blocks merge.
+| Job                            | Tool         | What it does                                                                    |
+| ------------------------------ | ------------ | ------------------------------------------------------------------------------- |
+| `Pest + coverage (PHP 8.4)`    | Pest + pcov  | The backend suite, with coverage for SonarCloud                                 |
+| `Pest (PHP 8.5)`               | Pest         | The suite on the newer PHP                                                      |
+| `Pest (PHP 8.4, MySQL 9.7)`    | Pest         | The suite against a real MySQL engine                                           |
+| `Pest (PHP 8.4, MariaDB 12.3)` | Pest         | The suite against a real MariaDB engine                                         |
+| `PHPStan`                      | PHPStan      | Static analysis (level 5) plus the OpenAPI, translation and merge-marker checks |
+| `php-cs-fixer (dry-run)`       | php-cs-fixer | The formatting check                                                            |
+| `SonarCloud scan`              | SonarCloud   | The `new_coverage` gate                                                         |
 
-The pipeline lives at `.github/workflows/ci.yml` in each repo (spora-core, spora, spora-frontend, plugins). External actions are pinned to full 40-character commit SHAs with `# vX.Y.Z` comments per the project's supply-chain policy.
+**`spora-frontend`** — `.github/workflows/ci.yml`:
+
+| Job              | Tool             | What it does                                |
+| ---------------- | ---------------- | ------------------------------------------- |
+| `lint-and-test`  | ESLint + Vitest  | Lint, the unit suite, coverage, i18n checks |
+| `build-frontend` | `vue-tsc` + Vite | The type-check and the production build     |
+| `sonarqube`      | SonarCloud       | The `new_coverage` gate                     |
+
+**`spora`** (the skeleton template) validates the composer manifest, boots a
+smoke test and builds the operator image.
+
+The MySQL and MariaDB jobs in `spora-core` are advisory rather than gating:
+they carry `continue-on-error` until the SQLite-specific migration tests are
+ported. The gating jobs are the Pest runs, PHPStan, php-cs-fixer and SonarCloud.
+
+External actions are pinned to full 40-character commit SHAs with `# vX.Y.Z`
+comments per the project's supply-chain policy.
 
 ## Per-PR coverage gate
 
@@ -69,12 +86,11 @@ composer format
 composer analyse
 
 # Frontend (JS / Vue)
-cd frontend
+cd /path/to/spora-frontend
 npm run lint
-npm run format
 ```
 
-If your local run passes but CI fails, check that you ran the right tool — Prettier and PHP-CS-Fixer have non-overlapping rule sets.
+If your local run passes but CI fails, check that you ran the right tool — PHP-CS-Fixer and ESLint have non-overlapping rule sets.
 
 ### 2. Tests
 
@@ -84,7 +100,7 @@ composer test                # All
 ./vendor/bin/pest --filter="MyTest"   # One at a time
 
 # Frontend
-cd frontend
+cd /path/to/spora-frontend
 npm test                     # All
 npm run test:watch           # One at a time
 ```
@@ -94,7 +110,8 @@ If a test fails locally with the same error, fix the test. If it fails only in C
 ### 3. Build
 
 ```bash
-composer build               # All VuePress build
+# In spora-frontend
+npm run build              # vue-tsc && vite build
 ```
 
 Build failures are usually TypeScript errors in the Vue app or missing `package-lock.json` entries.
@@ -105,22 +122,23 @@ If coverage dropped below 80%, SonarQube's PR comment shows the uncovered lines.
 
 ## CI environment
 
-CI runs on `ubuntu-latest` with:
+`spora-core`'s CI runs on `ubuntu-latest` with:
 
-- **PHP** 8.4 (the project's minimum)
-- **Node.js** 20 (matches the skeleton's `package.json` engines field)
+- **PHP** 8.4 (the project's minimum), plus a second job on 8.5 and two on real MySQL and MariaDB engines
 - **Composer** 2.x
 - **Xdebug** disabled by default (Pest uses `pcov` for speed on CI)
+
+`spora-frontend`'s CI runs on Node.js **20**.
 
 For local parity, match these versions. If your local is ahead (e.g. PHP 8.5), tests may pass locally but fail on the CI matrix that runs 8.4.
 
 ## Common CI patterns
 
-**For docs-only changes**, the pipeline runs `npm run build` and the lint. No PHP tests are affected. As long as `npm run build` passes locally, the PR will pass.
+**For docs-only changes**, the docs site's pipeline runs `npm run build`, the markdown lint and the Prettier check. No PHP tests are affected. As long as `npm run build` passes locally, the PR will pass.
 
 **For plugin changes**, the plugin's own CI runs. Plugin repos have a smaller pipeline (Pest + PHPStan + php-cs-fixer + coverage) and don't build a Docker image.
 
-**For spora-core changes**, the full pipeline runs including Docker image build and SonarCloud scan. This is the slowest PR (3-5 minutes).
+**For spora-core changes**, the full pipeline runs — the suite on four PHP/engine combinations, PHPStan, php-cs-fixer and the SonarCloud scan. That is the slowest PR.
 
 ## What's next
 

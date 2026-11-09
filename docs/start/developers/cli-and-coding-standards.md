@@ -5,7 +5,7 @@ description: bin/spora commands, Pest + Vitest + PHPStan, code comment policy, a
 
 # CLI & coding standards
 
-The `bin/spora` CLI, the test framework, and the project's hard development rules — all in one place. Drawn from `spora-core/AGENTS.md` and `spora-core/docs/{14,16}_*.md`.
+The `bin/spora` CLI, the test framework, and the project's hard development rules — all in one place. Drawn from `spora-core/AGENTS.md` and the [Code documentation](/reference/concepts/code-documentation) policy.
 
 ## `bin/spora` commands
 
@@ -17,38 +17,41 @@ php bin/spora list
 
 The most-used commands:
 
-| Command                              | Purpose                                                                                                                                                                                                                        |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `spora:install`                      | Initial setup (idempotent migrations). Re-run after any new migration ships.                                                                                                                                                   |
-| `spora:setup`                        | Run migrations and seed a fresh database. Existing installs are skipped — use `db:seed` or `db:repair-admin` for repairs. Used by the Docker entrypoint.                                                                       |
-| `db:reset`                           | Wipe the database (SQLite file or MySQL DROP+CREATE) and clear the schema stamp. Prompts unless `--force`.                                                                                                                     |
-| `db:seed`                            | Run the bootstrap seeder on an existing install. Inserts the admin + sample agent if missing (insert-only) and reconciles mail templates against `email-templates/` (insert missing YAMLs, preserve drifted unless `--force`). |
-| `db:repair-admin [email]`            | Promote an existing admin to `verified=1` + `Role::ADMIN` + `status=1`. Idempotent, refuses to create a missing row.                                                                                                           |
-| `plugin:install <package>`           | Install a plugin from Packagist. Accepts `--path` for sibling-clone dev workflows.                                                                                                                                             |
-| `plugin:uninstall <package>`         | Remove a plugin.                                                                                                                                                                                                               |
-| `plugin:update [<package>]`          | Update one plugin, or all when no argument is given.                                                                                                                                                                           |
-| `plugin:list`                        | List installed plugins with version and path.                                                                                                                                                                                  |
-| `worker:run`                         | Run async worker. Default = daemon; `--once` for cron; `--once --include-queue` for full cron.                                                                                                                                 |
-| `worker:run --scheduled`             | Run only scheduled tasks.                                                                                                                                                                                                      |
-| `worker:run --reap-only`             | Reap orphaned `RUNNING` tasks (no queue work).                                                                                                                                                                                 |
-| `task:run`                           | Run a single task synchronously (debugging).                                                                                                                                                                                   |
-| `media:list` / `media:gc`            | List / garbage-collect archived media.                                                                                                                                                                                         |
-| `assets:gc`                          | Garbage-collect unreferenced assets.                                                                                                                                                                                           |
-| `tool-settings:migrate-encryption`   | One-shot tool settings migration (if you upgrade across a settings-schema change).                                                                                                                                             |
-| `spora:openapi [--output] [--check]` | Generate / drift-check the OpenAPI 3.0 spec from `RouteDefinitions`. Dev-only — gated on `zircote/swagger-php`.                                                                                                                |
-| `spora:audit-operation-overrides`    | Read-only report of `agent_tool_operation_overrides` / `agent_tools` rows whose `tool_class` no longer resolves. No options; exits 1 when orphans are found.                                                                   |
+| Command                              | Purpose                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spora:install`                      | Initial setup (idempotent migrations). Re-run after any new migration ships.                                                                                                                                                                                                                                       |
+| `spora:setup`                        | Run migrations and seed a fresh database. Existing installs are skipped — use `db:seed` or `db:repair-admin` for repairs. Used by the Docker entrypoint.                                                                                                                                                           |
+| `db:reset`                           | Wipe the database (SQLite file or MySQL DROP+CREATE) and clear the schema stamp. Prompts unless `--force`.                                                                                                                                                                                                         |
+| `db:seed`                            | Run the bootstrap seeder on an existing install. Inserts the admin + sample agent if missing (insert-only) and reconciles mail templates against `email-templates/` (insert missing YAMLs, preserve drifted). Takes no options — the reconcile is non-destructive, and `--force` belongs to `mail:templates:sync`. |
+| `db:repair-admin [email]`            | Promote an existing admin to `verified=1` + `Role::ADMIN` + `status=1`. Idempotent, refuses to create a missing row.                                                                                                                                                                                               |
+| `plugin:install <package>`           | Install a plugin from Packagist. Accepts `--path` for sibling-clone dev workflows.                                                                                                                                                                                                                                 |
+| `plugin:uninstall <package>`         | Remove a plugin.                                                                                                                                                                                                                                                                                                   |
+| `plugin:update [<package>]`          | Update one plugin, or all when no argument is given.                                                                                                                                                                                                                                                               |
+| `plugin:list`                        | List installed plugins with version and path.                                                                                                                                                                                                                                                                      |
+| `worker:run`                         | Run async worker. Default = daemon; `--once` for scheduled runs only; `--once --include-queue` for the full cron pass; `--reap-only` for orphan reaping.                                                                                                                                                           |
+| `worker:run --reap-only`             | Reap orphaned `RUNNING` tasks (no queue work).                                                                                                                                                                                                                                                                     |
+| `task:run`                           | Run a single task synchronously (debugging).                                                                                                                                                                                                                                                                       |
+| `media:list` / `media:gc`            | List archived media assets; delete `media_assets` rows whose on-disk file is missing, or `--temporary` rows older than `--older-than-hours`. Not registered in `bin/spora` yet — see the note below.                                                                                                               |
+| `assets:gc`                          | Delete every file in `<storage>/assets/` whose modification time is older than `--max-age-days` (default 7). No reference check. Not registered in `bin/spora` yet.                                                                                                                                                |
+| `tool-settings:migrate-encryption`   | One-shot tool settings migration (if you upgrade across a settings-schema change).                                                                                                                                                                                                                                 |
+| `spora:openapi [--output] [--check]` | Generate / drift-check the OpenAPI 3.0 spec from `RouteDefinitions`. Dev-only — gated on `zircote/swagger-php`.                                                                                                                                                                                                    |
+| `spora:audit-operation-overrides`    | Read-only report of `agent_tool_operation_overrides` / `agent_tools` rows whose `tool_class` no longer resolves. No options; exits 1 when orphans are found.                                                                                                                                                       |
 
-The `spora:` prefix on the install/setup/openapi commands is convention, not an alias — only `spora:install`, `spora:setup`, and `spora:openapi` are registered under it. The plugin namespace is unprefixed: `plugin:install`, not `spora:plugin:install`. The prefixed plugin names existed in an early 0.x release and were renamed; they are not registered today, so `php bin/spora spora:plugin:install …` fails with `Command "spora:plugin:install" is not defined.` Run `php bin/spora list` to see the names this build actually registers.
+The `spora:` prefix on the install/setup/openapi commands is convention, not an alias — `spora:install`, `spora:setup`, `spora:openapi` and `spora:audit-operation-overrides` are registered under it. The plugin namespace is unprefixed: `plugin:install`, not `spora:plugin:install`. The prefixed plugin names existed in an early 0.x release and were renamed; they are not registered today, so `php bin/spora spora:plugin:install …` fails with `There are no commands defined in the "spora:plugin" namespace.` Run `php bin/spora list` to see the names this build actually registers.
+
+`media:list`, `media:gc` and `assets:gc` are the exception to "what `bin/spora list` shows": the classes exist and are container-bound, but the console application never registers them, so the commands do not run yet.
 
 ## `bin/spora-build` — build-time CLI
 
-`bin/spora-build` is the build-time companion to `bin/spora`. It deliberately skips the Kernel / DI / `storage/secret.key` boot because downstream tooling (CI, sibling-repo docs builds) checks out spora-core into a sibling directory and runs this binary without an installed app. New commands land under `app/Build/`; today the binary ships:
+`bin/spora-build` is the build-time companion to `bin/spora`. It deliberately skips the Kernel / DI / `storage/secret.key` boot because downstream tooling (CI, sibling-repo docs builds) checks out spora-core into a sibling directory and runs this binary without an installed app. New commands land under `app/Build/`; today the binary ships the two OpenAPI commands and the two translation-catalogue commands:
 
 ```bash
 php bin/spora-build list                                # show commands
 php bin/spora-build openapi:generate [output]           # emit openapi.json
 composer openapi                                        # alias for openapi:generate
 php bin/spora-build openapi:check [reference]           # exit non-zero on drift
+php bin/spora-build i18n:extract                        # regenerate locales/en.json
+php bin/spora-build i18n:check                          # fail on a stale catalogue
 ```
 
 Why a second binary at all? Because `bin/spora` would refuse to boot without `storage/secret.key`, the DI container, and the database — and build-time tools can't have any of those. Keeping the two binaries separate makes the runtime / build-time boundary explicit; the full rationale lives in `spora-core/AGENTS.md` → "CLI Entry Points".
@@ -70,17 +73,22 @@ tests/
 ├── Pest.php            # Pest bootstrap + shared helpers
 ├── Unit/               # Unit tests (mirrors app/ subpackages)
 ├── Feature/            # HTTP/controller integration tests
-└── Fixtures/           # Test fixtures (plugins, sample data)
+├── Fixtures/           # Test fixtures (plugins, sample data)
+├── Support/            # Shared helpers (fake producers, temp directories)
+└── Concerns/           # Reusable Pest concerns
 ```
 
-**No mocks for integration tests** that already boot the DB via `beforeEach`. Use the in-memory SQLite database fixture (`tests/Fixtures/inmemory-sqlite.php`) or boot `Database::bootDatabaseConnectionOnly()` in `beforeEach`. This is enforced at code review.
+**No mocks for integration tests** that already boot the DB via `beforeEach`. Use the in-memory SQLite database factory (`tests/Support/TestDatabaseFactory.php`) or boot `Database::bootDatabaseConnectionOnly()` in `beforeEach`. This is enforced at code review.
 
 **Cover the happy path, one failure path, and one credential-missing path per tool.** That's the minimum.
 
 ### Frontend — Vitest
 
+The Vue app lives in the separate [`spora-frontend`](https://github.com/spora-ai/spora-frontend) repository — `spora-core` dropped its own `frontend/` tree. Clone it and run its tests there:
+
 ```bash
-cd frontend
+git clone https://github.com/spora-ai/spora-frontend.git
+cd /path/to/spora-frontend
 npm test                    # All unit tests
 npm run test:watch          # Watch mode
 ```
@@ -88,7 +96,7 @@ npm run test:watch          # Watch mode
 Test structure:
 
 ```text
-frontend/tests/
+tests/
 ├── api/                # HTTP client tests
 ├── apps/               # App-shell tests
 ├── components/         # Vue component tests
@@ -97,31 +105,39 @@ frontend/tests/
 ├── composables/        # useFoo() composable tests
 ├── pages/              # Page-level tests
 ├── stores/             # Pinia store tests
-├── unit/               # Misc isolated unit tests
 ├── utils/              # Pure utility tests
+├── a11y/               # Accessibility tests
+├── fixtures/           # Test data
+├── helpers/            # Shared test helpers
+├── integration/        # Multi-module integration tests
+├── lib/                # Plain library tests
+├── router/             # Router tests
+├── scripts/            # Build-script tests
+├── vite/               # Vite plugin tests
+├── workers/            # Web-worker tests
 └── setup.ts            # Vitest global setup (mocks browser APIs)
 ```
 
-E2E tests are **not currently wired up** — no Playwright dep, no `frontend/tests/e2e/` directory.
+E2E tests are **not currently wired up** — no Playwright dep, no `tests/e2e/` directory.
 
 ### CI
 
-`composer test && composer frontend:test` runs on every push to `main` and on PRs. The CI also runs PHPStan, ESLint, and Vue type-check.
+`spora-core`'s CI runs `composer test:parallel` on every push to `main` and on PRs, plus PHPStan, php-cs-fixer, an OpenAPI drift check, a translation-catalogue check and SonarCloud. The frontend's ESLint, Vitest and `vue-tsc` run in `spora-frontend`'s own CI, not here.
 
 ## Static analysis — PHPStan
 
 ```bash
 composer analyse         # PHPStan (level 5, with Larastan + Mockery extensions)
-cd frontend && npm run lint   # ESLint (flat config) + vue-tsc
+cd /path/to/spora-frontend && npm run lint   # ESLint (flat config); vue-tsc runs in npm run build
 ```
 
-PHPStan configuration lives in `phpstan.neon`. Level 5 catches:
+PHPStan configuration lives in `phpstan.neon`. Level 5 checks the types of the arguments passed to methods and functions, and catches:
 
 - Type mismatches
-- Unused parameters
 - Undefined methods
-- Missing return types
 - Mockery annotation mismatches
+
+Unused **constructor** parameters are reported at any level; missing typehints on methods are level 6.
 
 ## Hard development rules
 
@@ -138,7 +154,7 @@ For the full PR flow, see the [Contribute](/contribute/) section.
 
 ## Code comment policy
 
-Drawn from `spora-core/docs/14_code_documentation.md`. Three principles:
+Drawn from the [Code documentation](/reference/concepts/code-documentation) policy. Three principles:
 
 1. **Clarity over ceremony** — comments make code _easier_ to understand. Decorative comments hinder more than help.
 2. **Token efficiency** — every comment burns tokens during AI processing. Make each word count.
@@ -173,16 +189,22 @@ if ($user->isAdmin()) {
 Security rationale (the _why_ prevents future devs from weakening protections):
 
 ```php
-// #1 SSRF guard: allowlist only http/https — blocks file://, ftp://, gopher://,
-// cloud metadata endpoints (http://169.254.169.254), etc.
+// The scheme allowlist stops file://, ftp:// and gopher:// — it does
+// not stop an http:// URL pointing at a private address. That screen
+// is a separate layer, in SsrfGuard, and applies to every operation.
 $scheme = strtolower(parse_url($url, PHP_URL_SCHEME) ?? '');
 ```
 
 Non-obvious algorithms:
 
 ```php
-// Seed schema defaults if no global config AND no agent override exists
-$globalSettings = $this->toolConfig->getGlobalSettings($toolClass);
+// Per-agent ceiling on temp media rows. Migration 0081
+// backfills every pre-existing agent to the schema's default
+// (`5`); new agents get the explicit body value when supplied,
+// falling back to `5` to match the column default so the
+// "voice recordings auto-purge after 5" mental model holds
+// out of the box.
+'voice_message_retention_count' => (int) ($allowed['voice_message_retention_count'] ?? 5),
 ```
 
 Cross-cutting concerns:
@@ -190,7 +212,9 @@ Cross-cutting concerns:
 ```php
 /**
  * Singleton. Registered via PHP-DI factory.
- * Loads master key once at construction. Fails immediately if key is invalid.
+ * Holds the master key in memory: the constructor takes the raw key, and
+ * {@see self::fromKeyFile()} is the one that reads a key file. An invalid
+ * key fails immediately.
  */
 final class SecurityManager implements SecurityManagerInterface
 ```
@@ -204,7 +228,14 @@ PHP attributes (every attribute in `app/Tools/Attributes/` needs a docblock with
  * Marks a class as a Tool the agent can invoke.
  *
  * Usage:
- *   #[Tool(name: 'my_tool', description: 'Does something useful')]
+ *   #[Tool(
+ *       name: 'my_tool',
+ *       description: 'Does something useful',
+ *       displayName: 'My Tool',         // optional — operator-facing UI label
+ *       category: 'general',             // optional; defaults to 'general'
+ *       icon: 'puzzle',                  // optional; bundled icon key
+ *       recommendsSkills: ['git'],       // optional; slugs the tool bundles
+ *   )]
  *   final class MyTool implements ToolInterface { ... }
  */
 #[Attribute(Attribute::TARGET_CLASS)]

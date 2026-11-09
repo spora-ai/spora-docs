@@ -142,9 +142,8 @@ Settings schema (`#[ToolSetting]` attributes on `app/Drivers/OpenAICompatibleDri
 A model id is an OpenAI reasoning model when it matches
 
 ```text
-^gpt-(5|6)(\.\d+)?-     gpt-5, gpt-5.1, gpt-6, gpt-6.1, …
-^gpt-(5|6)(\.\d+)?$     bare gpt-5, gpt-6
-^o(1|3|4)(-|$)          o1, o1-mini, o3, o3-mini, o4-mini
+^gpt-[56](\.\d+)?(-|$)  gpt-5, gpt-5.1, gpt-6, gpt-6.1, …
+^o[134](-|$)            o1, o1-mini, o3, o3-mini, o4-mini
 ```
 
 and does not contain `-chat-` (`gpt-5-chat-latest` and friends are ChatGPT Instant models, not reasoning models) and is not `gpt-oss`. A `provider/` prefix is stripped first, so OpenRouter's `openai/gpt-5.5` is classified the same way.

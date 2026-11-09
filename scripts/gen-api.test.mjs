@@ -71,6 +71,26 @@ describe('request body rendering', () => {
     assert.match(render(JSON_BODY), /One of `user`, `group`\./)
   })
 
+  it('renders an empty enum value as a quoted empty string rather than as nothing', () => {
+    const out = render({
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                effort: { type: 'string', enum: ['none', 'low', ''] },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    assert.match(out, /One of `none`, `low`, `""`\./)
+  })
+
   it('renders a nullable property as nullable', () => {
     assert.match(render(JSON_BODY), /\| `max_steps` \| integer \\\| null \|/)
   })

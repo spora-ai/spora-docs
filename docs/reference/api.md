@@ -250,6 +250,9 @@ reasoning effort for that task.
 The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. A level that is not
 on that scale is a `422 VALIDATION_ERROR`.
 
+The empty string is a value in its own right — the wire value for _the model default_ — rather than
+a missing field, which is why it appears among the accepted values on the endpoint's own page.
+
 The resolved value is stored on the task row, where `NULL` means "send nothing" — the database
 never stores an empty string. See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels)
 for the scale, the wire shapes and the resolution order.

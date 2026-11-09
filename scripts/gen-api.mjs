@@ -90,6 +90,17 @@ function pluralItems(count) {
 }
 
 /**
+ * One enum value as it reads in a table cell.
+ *
+ * Every value keeps its backticks — except the empty string, which would
+ * otherwise render as an empty code span: nothing at all, where the reader
+ * sees a dangling comma and no option. `""` says what the value is.
+ */
+function renderEnumValue(value) {
+  return value === '' ? '`""`' : `\`${value}\``
+}
+
+/**
  * The property's description, plus the constraints the schema carries and the
  * prose does not: the enum, the length and item bounds.
  */
@@ -97,7 +108,7 @@ function renderFieldDescription(schema) {
   const bits = []
   if (schema.description) bits.push(schema.description)
   if (schema.enum?.length) {
-    const values = schema.enum.map((v) => `\`${v}\``).join(', ')
+    const values = schema.enum.map(renderEnumValue).join(', ')
     bits.push(`One of ${values}.`)
   }
   if (schema.minLength !== undefined) bits.push(`At least ${schema.minLength} characters.`)

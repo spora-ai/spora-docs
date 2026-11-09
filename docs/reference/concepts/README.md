@@ -12,11 +12,11 @@ The deep-dive reference for Spora's internals. These pages were migrated from th
 - **[Architecture](/reference/concepts/architecture)** — config priority, orchestrator loop, worker modes, plugin system, database
 - **[Database schema](/reference/concepts/schema)** — tables, columns, version model, migration conventions
 - **[Principals and groups](/reference/concepts/principals)** — who can see which principal, the group's read/write rules, and the existence-hiding that goes with them
-- **[PHP interfaces](/reference/concepts/interfaces)** — `ToolInterface`, `OrchestratorInterface`, `LLMDriverConfigInterface`, `PluginInterface`
+- **[PHP interfaces](/reference/concepts/interfaces)** — `ToolInterface`, `OrchestratorInterface`, `TaskServiceInterface`, `LLMDriverConfigInterface`, `PluginInterface`
 
 ### Tools, drivers, plugins
 
-- **[LLM drivers](/reference/concepts/drivers)** — `LLMDriverConfigInterface`, `OpenAICompatibleDriver`, `AnthropicCompatibleDriver`, `DriverFactory`
+- **[LLM drivers](/reference/concepts/drivers)** — `LLMDriverConfigInterface`, `OpenAICompatibleDriver`, `AnthropicCompatibleDriver`, `OpenAIResponsesDriver`, `DriverFactory`
 - **[Tool system](/reference/concepts/tools)** — `#[Tool]`, `#[ToolOperation]`, `#[ToolParameter]`, `#[ToolSetting]`, settings cascade
 - **[Plugin system](/reference/concepts/plugins-system)** — manifest, auto-discovery, `PluginLoader`, conflicts, security model
 - **[App extensions](/reference/concepts/app-extension)** — `app/App.php`, the `SporaExtensionInterface` hooks

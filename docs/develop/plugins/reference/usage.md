@@ -47,6 +47,12 @@ So a shared agent's bill belongs to the group, and a group member's own usage is
 
 **The ledger snapshots the owner.** Transferring an agent re-points its tasks at the new principal, so a ledger row that followed its principal would silently move a group's March history onto its new owner. The row keeps the owner it had when the spend happened.
 
+### Not yet in the admin API
+
+The **individual scope** is charged — an interactive run is billed to the triggering individual as well as to the owner — and the ledger records both. The admin API covers the **principal** scope only: there is no route that lists, limits or grants against a _user_ scope, so a per-user allowance can only be created by writing the `usage_limits` / `usage_credits` rows directly.
+
+The scope is inert until it is configured — a scope with no limit row and no credit pool never blocks a run — so nothing is stopped invisibly. It is the _configuration_ that is missing, not the enforcement.
+
 ## Credits
 
 Credits are **abstract**. There is no currency, no conversion rate, and no money anywhere in the plugin — a credit is whatever the operator decides one is. A price is a decimal number of credits per token or per call.

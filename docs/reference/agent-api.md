@@ -125,6 +125,8 @@ purpose, so a caller cannot tell a bad id from a bad secret. Requests are rate l
 | `POST` | `/api/v1/agent-api/chats/{id}/approve`    | Approve pending tool calls             |
 | `POST` | `/api/v1/agent-api/chats/{id}/reject`     | Reject pending tool calls              |
 | `POST` | `/api/v1/agent-api/chats/{id}/answer`     | Answer a question the agent asked      |
+| `POST` | `/api/v1/agent-api/transcribe`            | Transcribe an audio asset              |
+| `POST` | `/api/v1/agent-api/transcribe-and-send`   | Transcribe and send to the agent       |
 | `POST` | `/api/v1/agent-api/media`                 | Upload a file for this agent           |
 | `GET`  | `/api/v1/agent-api/media/{mediaId}`       | Read a media asset this agent produced |
 
@@ -452,6 +454,83 @@ tree — which is how a sub-agent's output becomes reachable through its parent 
 that agent's chats attached it. Anything else answers `404`, the same as an id that does not exist,
 so a key cannot probe for media.
 
+## Voice input
+
+Two endpoints turn a recording into a message: `POST /transcribe` reads the recording back as
+text, and `POST /transcribe-and-send` hands that text to the agent. Both name the recording by
+`media_id` — an audio asset this key can read, usually one uploaded through `POST /media` first.
+
+**Which driver answers.** The agent's own. The speech configuration pinned on the agent comes
+first, then the agent principal's preference, then the global default. The agent id is used to
+_choose_ the driver but is not threaded into the driver's own settings lookup, so a per-agent
+tool override cannot swap the API key a recording is sent with. When no driver resolves, the
+answer is `503` and the provider is never called.
+
+### Transcribe
+
+```bash
+curl -X POST https://spora.example.com/api/v1/agent-api/transcribe \
+  -H 'Authorization: Bearer spk_9f2c…_qRt…' \
+  -H 'Content-Type: application/json' \
+  -d '{ "media_id": "…", "language": "en-US" }'
+```
+
+```json
+{
+  "data": {
+    "media_id": "…",
+    "text": "Call me back before Friday.",
+    "language": "en-US",
+    "duration_ms": 4210
+  }
+}
+```
+
+`language` is a BCP-47 hint; omit it to let the driver detect the language. The call is
+**synchronous** — it waits for the driver — unlike `POST /chats`, which only queues.
+
+### Transcribe and send
+
+The same recording, sent to the agent as a message. Without a `chat_id` it starts a new chat;
+with one it continues that chat as a follow-up.
+
+```bash
+curl -X POST https://spora.example.com/api/v1/agent-api/transcribe-and-send \
+  -H 'Authorization: Bearer spk_9f2c…_qRt…' \
+  -H 'Content-Type: application/json' \
+  -d '{ "media_id": "…", "chat_id": 412, "text": "and summarise it" }'
+```
+
+`202` carries the chat and the transcript that was sent:
+
+```json
+{
+  "data": {
+    "chat": { "id": 412, "status": "QUEUED", "…": "…" },
+    "transcription": { "media_id": "…", "text": "…", "language": "en-US", "duration_ms": 4210 }
+  }
+}
+```
+
+`text` is optional and is appended **after** the transcript, separated by a blank line — the
+recording leads, the caller's words frame it. `callback_url` is accepted here as it is on
+`POST /chats`, and is screened the same way before the chat is created — so a private address is
+refused with `422` either way. It is **called** only when a new chat is started: with a `chat_id`
+naming an existing chat, the URL is validated and then nothing is sent to it.
+
+### What to know
+
+- **The audio is not attached to the chat.** Only the transcript travels. Handing a model raw
+  audio with no text on top makes it guess at the bytes and answer "couldn't extract any text
+  from the attached file" — which is why the admin UI's recorder drops it too.
+- **The transcript is cached on the asset.** The recording keeps what was said, so a later read
+  of the same asset does not pay the driver again.
+- **Every call bills the driver.** The cache is for re-renders, not for repeat calls: a second
+  `POST /transcribe` of the same asset transcribes it again.
+- **A recording with no words sends nothing.** `POST /transcribe-and-send` answers `422` and
+  creates no chat, rather than queueing a message with an empty prompt. `POST /transcribe`
+  answers `200` with the empty text — that is the driver's honest answer.
+
 ## Errors and rate limits
 
 Standard Spora envelopes: `{ "data": … }` on success, `{ "error": { "code": "…", "message": "…" } }`
@@ -467,6 +546,8 @@ otherwise. The [error-handling reference](/reference/concepts/error-handling) is
 | `422`  | The request body was not usable — see the endpoint reference.                                                                                |
 | `429`  | Rate limited. Retry after the interval in the `Retry-After` header.                                                                          |
 | `500`  | The upload could not be read off disk.                                                                                                       |
+| `502`  | The speech driver failed — its own upstream error, not yours.                                                                                |
+| `503`  | No speech driver is configured for this agent.                                                                                               |
 
 The limit is per key and operator-tunable in Global Settings as **API rate limit**
 (`SPORA_API_RATE_LIMIT_MAX`, 60 requests per minute by default) — one limit for every scope.
@@ -523,6 +604,9 @@ through it. When a chat settles _blocked_ the loop exits and the answer is empty
   chat and a worker runs it. Nothing in the HTTP request path drives the agent loop, which is why
   a server-side worker is required; in client-worker mode the API answers `404` on every endpoint.
   See [deployment modes](/reference/concepts/deployment-modes) for the three configurations.
+- **Transcription is the exception.** `POST /transcribe` and `POST /transcribe-and-send` wait for
+  the speech driver, so their latency is the driver's, not the worker's. The chat they queue is
+  still a normal queued chat.
 
 ## What's next
 

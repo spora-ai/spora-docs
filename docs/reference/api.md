@@ -241,11 +241,11 @@ for the resolution chain.
 `POST /api/v1/tasks` and `POST /api/v1/tasks/{taskId}/continue` accept an optional `effort` — the
 reasoning effort for that task.
 
-| Body               | Meaning                                              |
-| ------------------ | ---------------------------------------------------- |
-| key absent         | the LLM configuration's default applies              |
-| `"effort": ""`     | explicitly the model's own default — nothing is sent |
-| `"effort": "high"` | that level                                           |
+| Body               | Meaning                                                 |
+| ------------------ | ------------------------------------------------------- |
+| key absent         | the LLM configuration's default applies                 |
+| `"effort": ""`     | explicitly the model's own default — no level asked for |
+| `"effort": "high"` | that level                                              |
 
 The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. A level that is not
 on that scale is a `422 VALIDATION_ERROR`.
@@ -253,9 +253,15 @@ on that scale is a `422 VALIDATION_ERROR`.
 The empty string is a value in its own right — the wire value for _the model default_ — rather than
 a missing field, which is why it appears among the accepted values on the endpoint's own page.
 
-The resolved value is stored on the task row, where `NULL` means "send nothing" — the database
-never stores an empty string. See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels)
-for the scale, the wire shapes and the resolution order.
+The resolved value is stored on the task row, where `NULL` means no level was resolved — the model's
+own default — and the database never stores an empty string. One driver asks for a level anyway: on
+a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"`
+when the agent uses tools and no level resolves, because silence is not a working configuration on
+the models that default to `medium` — see
+[Concepts → LLM drivers](/reference/concepts/drivers#tools-and-effort-on-chat-completions).
+
+See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
+and the resolution order.
 
 ### Plugins (operator, gated by `SPORA_PLUGIN_INSTALL_ENABLED`)
 

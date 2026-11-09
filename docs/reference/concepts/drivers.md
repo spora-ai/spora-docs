@@ -96,25 +96,29 @@ The Responses row is the request-level shape. On a model that supports `configur
 
 ### The default and the per-message override
 
-`effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: nothing is sent, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale.
+`effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: no level is asked for, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale.
+
+**A level the driver does not declare resolves to no level at all.** The Anthropic driver declares neither `none` nor `minimal`, so a request that names one of them falls back to the model's own default rather than reaching the provider.
+
+**One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because silence is not a working configuration on the models that default to `medium`. See [Tools and effort on Chat Completions](#tools-and-effort-on-chat-completions).
 
 A request may carry its own `effort`, and the resolution order is:
 
 ```text
 request effort (authoritative when the key is present)
   → the config default (the `effort` setting on the LLM config)
-  → nothing sent (the model's own default)
+  → no level asked for (the model's own default)
 ```
 
 The three request values mean three different things:
 
-| Request body     | Meaning                                           |
-| ---------------- | ------------------------------------------------- |
-| key absent       | fall back to the config default                   |
-| `effort: ""`     | explicitly the model's own default — send nothing |
-| `effort: "high"` | that level                                        |
+| Request body     | Meaning                                                 |
+| ---------------- | ------------------------------------------------------- |
+| key absent       | fall back to the config default                         |
+| `effort: ""`     | explicitly the model's own default — no level asked for |
+| `effort: "high"` | that level                                              |
 
-The resolved value lands on the task row: `NULL` means "send nothing", and the database never stores an empty string.
+The resolved value lands on the task row: `NULL` means no level was resolved — the model's own default — and the database never stores an empty string.
 
 The driver never reads the settings blob for effort. The resolution happens outside the driver (`LlmConfigResolver` → `TickPhaseRunner` → `LLMRequest::$effort`), and the driver only emits what it is handed. `LLMRequest::$effort` carries the **canonical** level value; the driver maps it.
 
@@ -149,18 +153,36 @@ On a reasoning model the driver sends `max_completion_tokens` instead of `max_to
 
 ### Tools and effort on Chat Completions
 
-**On GPT-5.4 and later, Chat Completions does not support tool calling with `reasoning_effort` values other than `none`.** The model's own default is `medium`, and a request that sends tools without an effort value sits at `medium` — so silence is not a working configuration either.
+**On GPT-5.4 and later, Chat Completions does not support tool calling with `reasoning_effort` values other than `none`.** The API's documented default for the parameter is `medium`, and from GPT-5.5 on that is the model's own default too — so a request that sends tools and no effort value sits at `medium`, where tool calling is a `400`. (GPT-5.4 and GPT-5.2 default to `none`.) Silence is not a configuration to rely on, so **the driver sends `reasoning_effort: "none"` explicitly whenever the agent uses tools and no level resolves.**
 
-| Tools present | Level resolved | Sent                                            |
-| ------------- | -------------- | ----------------------------------------------- |
-| yes           | no             | `reasoning_effort: "none"`                      |
-| yes           | yes            | the resolved level — the provider answers `400` |
-| no            | no             | nothing                                         |
-| no            | yes            | the resolved level                              |
+| Tools present | Level resolved | Sent                                                                              |
+| ------------- | -------------- | --------------------------------------------------------------------------------- |
+| yes           | no             | `reasoning_effort: "none"`                                                        |
+| yes           | yes            | the resolved level — `none` is accepted; the levels the model rejects are a `400` |
+| no            | no             | nothing                                                                           |
+| no            | yes            | the resolved level                                                                |
 
 **An explicit level is never silently overridden.** If the operator chose one, Spora sends it and the provider's own error names the fix — OpenAI's message says to use `/v1/responses` or to set `reasoning_effort` to `none`. For an agent with no tools enabled the level works normally.
 
+**An explicit `none` is not a `400`.** On the models that take tools over Chat Completions, `none` is the one level they accept, and Spora sends it unchanged. The `400` belongs to the explicit levels the model rejects — on those models, every level above `none`. The models that reject `none` itself are the other half of the GPT-6 generation; see [The two GPT-6 families](#the-two-gpt-6-families).
+
 To reason _and_ call tools on a current OpenAI model, use the [`OpenAIResponsesDriver`](#openairesponsesdriver).
+
+### The two GPT-6 families
+
+**"GPT-5.4 and later" is one rule for the driver, but the GPT-6 generation splits in two** — and the advice differs.
+
+| Family                                           | Tools on Chat Completions | `none`                                         |
+| ------------------------------------------------ | ------------------------- | ---------------------------------------------- |
+| GPT-5.4, GPT-5.5, GPT-5.6, GPT-6 Sol, GPT-6 Luna | accepted at `none` only   | accepted — the driver sends it, the agent runs |
+| GPT-6.1 Terra                                    | **not supported at all**  | accepted, but it cannot call tools either      |
+| GPT-6 Astra, GPT-6.1 Sol                         | **not supported at all**  | rejected — a `400`                             |
+
+OpenAI's own documentation draws the line: _"GPT-6 Astra, GPT-6.1 Sol, and GPT-6.1 Terra support Chat Completions, but tool calling requires Responses. GPT-6 Sol and GPT-6 Luna support function calling in Chat Completions only with `reasoning_effort: "none"`."_
+
+**On GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra the Responses driver is the only way to run an agent.** Chat Completions cannot call tools on those models at all, whatever the effort, and the `none` escape hatch does not rescue them: `none` is a `400` on GPT-6 Astra, and GPT-6.1 Sol rejects `none` and `minimal` as well. The driver sends `none` across the whole GPT-5.4+ range, so on those three the request fails at the provider instead of running the agent. That holds even when the operator does not want the model to reason — the choice there is the endpoint, not the level.
+
+**On GPT-6 Sol and GPT-6 Luna the `none` workaround works exactly as it does on GPT-5.4.** The agent runs, the model does not reason, and the Responses driver is the way to have both.
 
 ## `AnthropicCompatibleDriver`
 
@@ -181,7 +203,9 @@ Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatible
 
 The cost, precisely: **Claude 4.7 and later are unaffected** — those models only accept the default, so Spora's `0.7` was never in effect. On **Sonnet 4.6 and earlier** the sample moves from `0.7` to the API default of `1.0`, so the output becomes slightly more varied. For an agent loop that is neutral-to-positive — less repetitive output from step to step — and the models concerned are a generation behind. `effort` is the replacement control: Anthropic's own guidance is that effort shapes the whole response, tool calls included.
 
-**`thinking_budget` is gone, and `effort` replaces it.** The two are the same knob in two generations of the API, and their coverage barely overlaps: `budget_tokens` is a hard `400` on Claude 4.7 and later, and the models that still take it — Opus 4.5, Sonnet 4.5, Haiku 4.5, and (deprecated) Opus 4.6 and Sonnet 4.6 — are covered by `effort` except **Sonnet 4.5 and Haiku 4.5**, which have no `effort` at all. Those two **lose manual extended thinking entirely**: on them Spora sends no `thinking` field at all.
+**`thinking_budget` is gone, and `effort` replaces it.** The two are the same knob in two generations of the API, and their coverage barely overlaps: `budget_tokens` is a hard `400` on Claude 4.7 and later, and the models that still take it — Opus 4.5, Sonnet 4.5, Haiku 4.5, and (deprecated) Opus 4.6 and Sonnet 4.6 — are covered by `effort` except **Sonnet 4.5 and Haiku 4.5**, which have no `effort` at all.
+
+**Opus 4.5, Sonnet 4.5 and Haiku 4.5 lose manual extended thinking entirely**: on them Spora sends no `thinking` field at all. Sonnet 4.5 and Haiku 4.5 have no `effort` to fall back on. Opus 4.5 has `effort`, but adaptive thinking arrived with the 4.6 generation and is a `400` below it — so there is no thinking mode left to turn on there either, and `effort` shapes the response without a thinking block to show.
 
 A stored `thinking_budget` is pruned the next time that configuration is saved — `LLMConfigPersistence::encodeSettings()` drops the keys that are not in the driver's schema — so no data migration is needed.
 
@@ -218,9 +242,11 @@ Plugin tool names are sanitised for this driver: a plugin tool's name carries a 
 
 ### `store`
 
-The **`store`** setting — labelled _Store responses_ — is a toggle, and it is **off** by default. It decides whether the provider keeps the response on its own servers: the Responses API stores one for at least 30 days unless it is told not to, so Spora sends `store: false` until an operator asks otherwise. A self-hosted platform has no business keeping its operators' conversations on somebody else's servers.
+The **`store`** setting — labelled _Store responses_ — is a toggle, and it is **off** by default. It decides whether the provider keeps the response as a retrievable conversation object on its own servers: the Responses API stores one for at least 30 days unless it is told not to, so Spora sends `store: false` until an operator asks otherwise. A self-hosted platform has no business keeping its operators' conversations on somebody else's servers.
 
-The toggle changes what **Spora** has to replay, not only what the provider retains. **With it off**, the reasoning item comes back carrying its `encrypted_content` — the opaque blob the provider decrypts to restore the chain of thought — and Spora replays that blob itself; the provider keeps nothing. **With it on**, the provider keeps the reasoning item and Spora replays it by its id instead.
+**`store: false` is not a promise that the provider retains nothing.** It means the response is not stored as a retrievable conversation object. Prompts and responses still go into the provider's **abuse-monitoring logs**, which are retained for up to 30 days by default. Excluding customer content from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control — granted by OpenAI per organisation or project, subject to prior approval and to the limitations of each — see [OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data). An operator whose conversations carry data they cannot hand to a third party has to arrange that with OpenAI; the toggle does not do it.
+
+The toggle changes what **Spora** has to replay, not only what the provider retains. **With it off**, the reasoning item comes back carrying its `encrypted_content` — the opaque blob the provider decrypts to restore the chain of thought — and Spora replays that blob itself; the provider keeps no stored response to replay from. **With it on**, the provider keeps the reasoning item and Spora replays it by its id instead.
 
 > The `store: true` path is the one the shipped driver does not claim to have verified: replaying by id is the API's documented shape, but no live call has exercised it.
 
@@ -246,7 +272,7 @@ Reasoning is scoped to the model family, so switching families silently drops it
 
 ### When to choose it
 
-**Choose the Responses driver** when you want an OpenAI reasoning model to _think and call tools in the same turn_. Over Chat Completions the two are mutually exclusive on GPT-5.4 and later: the model accepts tools only at `none`, so the agent runs but the model does not reason. The Responses API is the only OpenAI endpoint where a reasoning model can do both — the same combination Anthropic gives through adaptive thinking.
+**Choose the Responses driver** when you want an OpenAI reasoning model to _think and call tools in the same turn_. Over Chat Completions the two are mutually exclusive on GPT-5.4 and later: the model accepts tools only at `none`, so the agent runs but the model does not reason. On GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra it is more than mutual exclusion — Chat Completions cannot call tools on those models at all, so the Responses driver is the only option there, even for an operator who does not want the model to reason. The Responses API is the only OpenAI endpoint where a reasoning model can do both — the same combination Anthropic gives through adaptive thinking.
 
 **Keep the Chat Completions driver** for everything else. vLLM, Ollama, LM Studio, Groq, Mistral and DeepSeek implement `/v1/chat/completions`, and their `/v1/responses` implementations differ per provider — some ignore unsupported parameters, some reject `store: true`, some have no statefulness at all.
 

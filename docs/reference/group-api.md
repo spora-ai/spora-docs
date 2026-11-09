@@ -187,11 +187,16 @@ answers `404`, not `403`. A caller must not be able to probe which chat ids exis
 
 `effort` is accepted on the chat body — the reasoning effort for that message. It is one of
 `none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. Leave it out and the LLM
-configuration's default applies; send `""` to ask for the model's own default, so that nothing is
-sent at all. A level that is not on that scale is a `422`. `POST /chats/{id}/messages` takes the
+configuration's default applies; send `""` to ask for the model's own default, so that no level is
+asked for. A level that is not on that scale is a `422`. `POST /chats/{id}/messages` takes the
 same field, where it applies to that follow-up only. See
 [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
 and the resolution order.
+
+One driver asks for a level anyway: on a GPT-5.4-or-later reasoning model the OpenAI-compatible
+driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because
+silence is not a working configuration on the models that default to `medium` — see
+[Tools and effort on Chat Completions](/reference/concepts/drivers#tools-and-effort-on-chat-completions).
 
 `GET /group-api/chats` lists the chats of all the group's agents, newest first, always paginated
 (25 per page by default, 100 maximum) with `?page=` and `?per_page=`. `?since=<ISO-8601>` narrows

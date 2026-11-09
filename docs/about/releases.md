@@ -27,15 +27,20 @@ levels. Spora now has one vocabulary of its own — `none`, `minimal`, `low`, `m
 
 **A default on the LLM configuration.** The OpenAI-compatible, Anthropic-compatible and OpenAI
 Responses drivers carry a new **Effort** setting. Its first entry is _Model default_, which is the
-default: nothing is sent, and the provider applies whatever it would have applied anyway. Pick a
-level and every task on that configuration starts there.
+default: no level is asked for, and the provider applies whatever it would have applied anyway.
+Pick a level and every task on that configuration starts there.
 
 **An override per message in the chat.** The composer carries a picker, and so does the follow-up
 row, so a single message can think harder or cheaper than the rest of the conversation. The picker
 offers the levels the agent's driver can express and starts on the configuration's default.
 
 The resolution order is: the message's own effort when it carries one, then the configuration's
-default, then nothing sent.
+default, then the model's own default.
+
+**One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible
+driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because
+silence is not a working configuration on the models that default to `medium` — see the OpenAI
+Responses section below.
 
 **The operator configures, the provider validates.** There is no table of levels per model — a
 driver describes the protocol, the model describes the capability. A level the model does not
@@ -45,8 +50,15 @@ accept fails at the provider, with the provider's own error naming the offending
 
 Over OpenAI's Chat Completions API, a reasoning model cannot do two things at once. From GPT-5.4
 onward, Chat Completions does not support tool calling with any `reasoning_effort` value other than
-`none` — and because the model's own default is `medium`, sending nothing is a `400` as well. An
-agent could run, but the model would never think, which is what those models are bought for.
+`none` — and the default is `medium` on the models from GPT-5.5 on, where tools at `medium` is a
+`400`. An agent could run, but the model would never think, which is what those models are bought
+for.
+
+**The GPT-6 generation splits in two.** GPT-6 Sol and GPT-6 Luna accept function calls on Chat
+Completions at `none`, so the workaround holds there. **GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra
+cannot call tools over Chat Completions at all**, and GPT-6 Astra and GPT-6.1 Sol reject `none`
+outright — so on those three the Responses driver is the only way to run an agent, even when you do
+not want the model to reason.
 
 The new **OpenAI Responses** driver speaks `/v1/responses`, the endpoint where a reasoning model
 can reason _and_ call tools in the same turn. Its effort level travels nested (`reasoning.effort`)
@@ -60,10 +72,17 @@ survives. On an earlier model the same change is a prefix edit, and it costs the
 Completions driver, so the price rows you already have for a model keep matching when you point an
 agent at it.
 
-**Retention is off by default.** The Responses API stores a conversation for at least 30 days unless
-it is told not to, so Spora sends `store: false` unless the operator turns on the driver's **Store
-responses** setting. A self-hosted platform has no business keeping its operators' conversations on
-somebody else's servers.
+**Retention is off by default.** The Responses API stores a response as a retrievable conversation
+object for at least 30 days unless it is told not to, so Spora sends `store: false` unless the
+operator turns on the driver's **Store responses** setting. A self-hosted platform has no business
+keeping its operators' conversations on somebody else's servers.
+
+**`store: false` is not a promise that the provider keeps nothing.** It means the response is not
+stored as a retrievable conversation object. Prompts and responses still go into OpenAI's
+abuse-monitoring logs, which are retained for up to 30 days by default. Excluding customer content
+from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control,
+which OpenAI grants per organisation or project — so if your conversations carry data you cannot
+hand to a third party, arrange that with OpenAI first. The toggle does not do it.
 
 Choose this driver for OpenAI's own reasoning models. Everything else — vLLM, Ollama, LM Studio,
 Groq, Mistral, DeepSeek — stays on the Chat Completions driver, and their `/v1/responses`
@@ -85,10 +104,12 @@ guidance is that effort shapes the whole response, tool calls included.
 **`thinking_budget` is gone, and `effort` replaces it.** The two are the same knob in two
 generations of the API. A manual budget is a `400` on Claude 4.7 and later, so keeping it would
 have been a knob that breaks the request the moment the operator upgrades the model. The cost is
-narrow but real: **Sonnet 4.5 and Haiku 4.5 have no `effort`**, so **manual extended thinking is
-no longer configurable on those two models at all**. On every other model `effort` takes over, and
-the reasoning you see in the chat keeps showing — Spora asks for the summarised thinking
-explicitly, because the API's own default stopped returning it.
+narrow but real: **Sonnet 4.5, Haiku 4.5 and Opus 4.5 lose manual extended thinking**. Sonnet 4.5
+and Haiku 4.5 have no `effort` at all, and Opus 4.5 does take `effort` — but adaptive thinking
+arrived with Claude 4.6 and is a `400` below it, and the manual mode is gone with the setting, so
+on Opus 4.5 `effort` shapes the response and no thinking block comes back. On every other model
+`effort` takes over, and the reasoning you see in the chat keeps showing — Spora asks for the
+summarised thinking explicitly, because the API's own default stopped returning it.
 
 A stored `temperature` or `thinking_budget` is pruned the next time that configuration is saved.
 There is no data migration to run.

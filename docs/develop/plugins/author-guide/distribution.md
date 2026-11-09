@@ -72,7 +72,7 @@ If you see _"Plugin manifest … declares class … but the class is not autoloa
 
 ## Testing
 
-The reference plugins use **Pest 4** as the test runner. The skeleton template ships with `composer test`, `composer analyse` (PHPStan), and `composer lint` (PHP-CS-Fixer) wired up.
+The reference plugins use **Pest 5** as the test runner (the skeleton template is still on Pest 4). The skeleton ships with `composer test`, `composer analyse` (PHPStan), and `composer lint` (PHP-CS-Fixer) wired up.
 
 ### Layout
 
@@ -96,7 +96,7 @@ The autoload-dev PSR-4 mapping in `composer.json` exposes the namespace:
 ### Conventions
 
 - Extend the tool's behaviour, not its internals — hit `execute()` end-to-end whenever possible.
-- Use **Mockery** (`mockery/mockery:^1.6`) to stub the HTTP client. The core project ships `phpstan/phpstan-mockery` so Mockery annotations type-check cleanly.
+- Use **Mockery** (`mockery/mockery:^1.6`) to stub the HTTP client. Declare `phpstan/phpstan-mockery` in your own `require-dev` and include its `extension.neon` from your `phpstan.neon` — a plugin does not inherit the framework's dev dependencies.
 - For migrations, **replay them into an in-memory SQLite database** instead of mocking the schema. Boot `new Spora\Core\Database(new Spora\Core\Config(['SPORA_DB_DRIVER' => 'sqlite', 'SPORA_DB_PATH' => ':memory:']))`, then `require` each file in your own `database/migrations/` and call `up()` on it — the host installer only runs plugin migrations behind a `PluginLoader`, which a plugin's own suite does not wire. `spora-plugin-custom-skills/tests/Pest.php` has the working pattern.
 - Cover the happy path, one failure path, and one credential-missing path per tool.
 
@@ -116,7 +116,9 @@ The framework's CI gates on three things — Pest (on PHP 8.4, 8.5, MySQL and Ma
 
 ## Versioning
 
-Plugins follow **SemVer** (`vX.Y.Z` tags, `^X.Y` constraints in `composer.json`).
+Plugins follow **SemVer** (`vX.Y.Z` tags). A plugin's constraint on the
+framework is a range, not a caret — the shipped plugins use
+`>=0.30.0 <2.0.0`.
 
 | Bump  | When                                                                                                       |
 | ----- | ---------------------------------------------------------------------------------------------------------- |
@@ -128,7 +130,7 @@ Plugins follow **SemVer** (`vX.Y.Z` tags, `^X.Y` constraints in `composer.json`)
 
 1. All CI green (`composer test`, `composer analyse`, `composer lint`).
 2. `composer.json` carries `"type": "spora-plugin"` — that field is the load-bearing one; a `keywords` array is a good convention but nothing reads it.
-3. `plugin.json` validates against [plugin.schema.json](https://github.com/spora-ai/spora-core/blob/main/plugin.schema.json).
+3. `plugin.json` validates against [plugin.schema.json](https://docs.spora-ai.com/schemas/plugin.schema.json) — the published schema, which is what editors fetch via the `$schema` key. (The copy in `spora-core`'s repo root is stale and is not the contract.)
 4. `phpstan.neon` and `phpunit.xml` are present (copied from the skeleton template).
 5. Tag format `vX.Y.Z` — never tag from a PR branch, only from `main` after CI is green.
 6. Push the tag, then **create a GitHub Release** so Packagist picks up the version.
@@ -144,4 +146,4 @@ The two canonical starting points:
 
 Other public plugins (`spora-plugin-tavily`, `spora-plugin-serper`, `spora-plugin-semantic-scholar`, `spora-plugin-worldnews`, `spora-plugin-weather`, `spora-plugin-calendar`, `spora-plugin-email`) are minimal single-tool plugins — ideal for studying the **minimum viable plugin** shape before adding tooling.
 
-Per-plugin reference pages (Installation, Configuration, Per-tool parameters, Development) live under [Plugins → Reference](/develop/plugins/reference/) — that index is the maintained list, one entry per plugin.
+Per-plugin reference pages (Installation, Configuration, Per-tool parameters, Development) live under [Plugins → Reference](/develop/plugins/reference/) — that index is the maintained list. Not every published plugin has a page yet.

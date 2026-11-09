@@ -7,7 +7,7 @@ description: Directory tree of spora-core, where things live, and how the layers
 
 Spora follows a vanilla PHP MVC-style layout — no full-stack framework. The codebase ships inside the framework package (`spora-ai/spora-core`) and is consumed by the skeleton (`spora-ai/spora`).
 
-The tree below tracks `spora-core/AGENTS.md` § "Project Structure". The framework's own `AGENTS.md` is stale on two rows: it still lists a `/Recipes` directory and a `/recipes` tree, and neither exists in the code any more — agent templates replaced them.
+The tree below tracks `spora-core/AGENTS.md` § "Project Structure". The framework's own `AGENTS.md` is stale on several rows: it still lists a `/Recipes` directory and a `/recipes` tree (replaced by agent templates), a `/frontend` directory that was removed when the SPA moved to its own repo, and a `composer frontend:test` script that no longer exists.
 
 ## Top-level tree
 
@@ -16,31 +16,47 @@ The tree below tracks `spora-core/AGENTS.md` § "Project Structure". The framewo
 /app               — PHP application code (MVC-style)
   /AgentTemplates  — Agent template scanner, validator, importer, exporter
   /Agents          — Agent models and orchestration logic
-  /Auth            — Authentication (AuthService, AuthController)
+  /Apps            — App extension points
+  /Auth            — Authentication (AuthService, ApiKeyIssuer)
   /Build           — Build-time CLI commands (skips Kernel/DI boot; consumed by CI)
   /Console         — CLI commands (install, worker, etc.)
   /Core            — Kernel, Router, DI container, base classes
   /Drivers         — LLM driver implementations (OpenAI, Anthropic)
+  /Events          — Framework event dispatch
+  /Extensions      — Base interfaces for App extensions and plugins
   /Http            — Controllers, middleware, request/response handling
+  /I18n            — Translation catalogue handling
+  /Mailer          — Mail rendering and transport
   /Models          — Eloquent models
   /OpenApi         — OpenAPI generator (RouteSpecCollector, RouteToOpenApi)
   /Plugins         — Plugin loader and hooks
+  /Scheduling      — Cron expression handling
+  /Search          — Search provider abstractions
+  /Security        — Key handling and request signing
   /Services        — Business logic (ToolConfigService, NotificationService, etc.)
+  /Settings        — Setting declarations (the authority for every setting key)
+  /Skills          — Skill provider registry
+  /Speech          — Speech-to-text provider registry
+  /Todo            — Todo tool state
   /Tools           — Built-in tool implementations
+  /Workers         — Worker runtime (lock, queue, reaper)
+/assets            — Bundled logo and icon assets
 /bin/spora         — Runtime CLI entry point
 /bin/spora-build   — Build-time CLI entry point (companion to bin/spora)
 /config.php        — Application configuration
 /database          — Migrations and seeders
-/plugins           — Installed plugins (auto-discovered)
-/public            — Web root (PHP built-in server)
-/storage           — Runtime files (SQLite DB, logs)
+/email-templates   — Mail template YAML defaults
+/locales           — Translation catalogues
+/recipes           — Reserved (empty; the Recipes feature was replaced by agent templates)
+/skills            — Bundled skill directories
 /tests             — Pest test suites
 ```
 
 The admin SPA is **not** in this tree: it lives in the separate
 [`spora-frontend`](https://github.com/spora-ai/spora-frontend) repository and
 reaches a `spora-core` install as the `spora-ai/spora-frontend` Composer
-package.
+package. `plugins/`, `public/` and `storage/` exist in a working install but
+are gitignored in the framework repo.
 
 ## What lives where
 
@@ -49,7 +65,7 @@ package.
 | `agent-templates/`    | JSON/YAML agent template definitions — project-level overrides on top of the framework's bundled `core-assistant.json` | Operator-authored; scanned depth-0 by `AgentTemplateScanner`        |
 | `app/AgentTemplates`  | Agent template scanning, validation, import, and export                                                                | `AgentTemplateScanner.php`, `AgentTemplateValidator.php`            |
 | `app/Agents`          | The Orchestrator, agent models, tick state machine                                                                     | `Orchestrator.php`, `AgentStateResolver.php`, `TickPhaseRunner.php` |
-| `app/Auth`            | Login, registration, session, password reset                                                                           | `AuthService.php`, `AuthController.php`                             |
+| `app/Auth`            | Login, registration, session, password reset                                                                           | `AuthService.php`, `AuthEmailFlow.php`, `ApiKeyIssuer.php`          |
 | `app/Console`         | `bin/spora` commands — install, db:reset, plugin:_, worker:_, etc.                                                     | Adding a new command = new file here                                |
 | `app/Build`           | `bin/spora-build` commands — build-time tools (no Kernel/DI/secret-key boot)                                           | Adding a new build command = new file here                          |
 | `app/Core`            | The framework: kernel, router, DI container, base classes                                                              | `Kernel.php`, `Router.php`, `ContainerDefinitions.php`              |
@@ -63,7 +79,7 @@ package.
 | `app/Extensions`      | Base interfaces for App extensions and plugins                                                                         | `SporaExtensionInterface.php`, `AbstractExtension.php`              |
 | `bin/spora`           | The runtime CLI entry point — Symfony Console application, boots Kernel/DI                                             | Add a new command → register in `bin/spora`                         |
 | `bin/spora-build`     | The build-time CLI entry point — no Kernel/DI/secret-key boot                                                          | Add a new command → register in `bin/spora-build`                   |
-| `config.php`          | App configuration (env-first, with `config.php` fallbacks)                                                             | `db_*`, `app_*`, `mercure_*` keys                                   |
+| `config.php`          | App configuration (env-first, with `config.php` fallbacks)                                                             | `db_*`, `key_path`, `allow_registration`, `app_env`, `mail.*` keys  |
 | `database/migrations` | Laravel migrations (anonymous-class pattern)                                                                           | Add a new migration with the highest sequence number                |
 | `plugins/`            | Composer-routed `spora-plugin` packages at runtime                                                                     | Operator-installed; rarely edited by hand                           |
 | `public/`             | Web root — `public/index.php` is the entry point                                                                       | `index.php` is the only file you need                               |
@@ -72,7 +88,7 @@ package.
 
 ## Conventions
 
-- **MVC-style** — Controllers in `app/Http/Controllers`, models in `app/Models`, business logic in `app/Services`.
+- **MVC-style** — Controllers in `app/Http/` (flat — there is no `Controllers/` subdirectory), models in `app/Models`, business logic in `app/Services`.
 - **No framework lock-in** — Spora uses Symfony components, Laravel's Eloquent, and PHP-DI, but is not itself Laravel or Symfony. Don't add Laravel-specific patterns (e.g. facades, service providers) outside the explicit pattern documented in the plugin author guide.
 - **No DB calls in constructors** — boot explicitly via `Database::bootDatabaseConnectionOnly()`. This is checked at code review time.
 - **Strict types** — `declare(strict_types=1);` at the top of every PHP file. Enforced by PHPStan.

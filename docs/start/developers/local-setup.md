@@ -11,7 +11,7 @@ The skeleton (`spora-ai/spora`) ships a working local dev environment. The only 
 
 - **PHP 8.4.1+** with `curl`, `dom`, `fileinfo`, `iconv`, `json`, `mbstring`, `openssl`, `pdo`, `pdo_mysql`, `pdo_sqlite`, `simplexml`, `sodium` and `zip`
 - **Composer** (latest 2.x)
-- **Node.js** and **npm** — only for working on the admin SPA in `spora-frontend`; the skeleton ships the prebuilt UI, so a plain install needs neither
+- **Node.js 20.19+ or 22.12+** and **npm** — only for working on the admin SPA in `spora-frontend`; the skeleton ships the prebuilt UI, so a plain install needs neither
 
 ## Install the skeleton
 
@@ -63,11 +63,14 @@ For a production-like local server without the PHP dev server, use the [Docker s
 ## Run tests
 
 ```bash
-composer test                # Backend (Pest) — all tests
+composer test                # Backend (Pest)
 ./vendor/bin/pest --filter="pattern"   # Filter tests by name
 ```
 
-The skeleton has no `composer test:coverage` script — coverage runs in the framework repository. To run the framework's full test suite, check out `spora-ai/spora-core` separately and run its composer scripts.
+The skeleton ships no tests of its own — its `tests/` directory is empty. The
+framework's suite lives in `spora-ai/spora-core`, where the scripts are
+`composer test:parallel`, `composer test:coverage`, `composer analyse` and
+`composer format`.
 
 Frontend unit tests live with the SPA, in `spora-frontend` — clone it and work in its own checkout:
 
@@ -118,8 +121,8 @@ Then re-run `php bin/spora spora:install` to apply the migrations to the new DB.
 
 Two are operationally important in dev:
 
-- **`SPORA_WORKER_RUNTIME_MODE`** — defaults to `server` (in `spora-ai/spora`). The local-dev path runs `composer dev`, which is the PHP built-in server — pair it with `php bin/spora worker:run --daemon` in a second terminal to drain the queue, or set `client` if you only want browser-driven ticks (see [Deployment modes](/reference/concepts/deployment-modes)).
-- **`SPORA_APP_ENV`** — `development` (default) or `production`. Affects error reporting and cache behavior.
+- **`SPORA_WORKER_RUNTIME_MODE`** — defaults to `server` (in `spora-ai/spora`). The local-dev path runs `composer dev`, which is the PHP built-in server — pair it with `php bin/spora worker:run --daemon` in a second terminal to drain the queue, or set `SPORA_WORKER_RUNTIME_MODE=client` if you only want browser-driven ticks (see [Deployment modes](/reference/concepts/deployment-modes)).
+- **`SPORA_APP_ENV`** — `production` (the registry default), `development`, or `local`. The skeleton's `.env.example` ships `development`. Affects error reporting, the debug block in 500 responses, and login throttling.
 
 For the full env-var reference, see [Environment variables](/start/operators/env-vars).
 

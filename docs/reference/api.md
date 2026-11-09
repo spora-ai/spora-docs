@@ -71,6 +71,7 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 | `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                    |
 | `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                    |
 | `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls |
+| `GET`    | `/api/v1/agents/{id}/effort`   | session | The agent's reasoning-effort levels and its configured default  |
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
@@ -89,6 +90,34 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 #### Favourites (per-user, Plan A)
 
 `POST /api/v1/agents/{id}/favorite` and `DELETE /api/v1/agents/{id}/favorite` flip the calling user's per-user favourite flag for the agent. Favourites are stored in the `user_agent_favorites` pivot table (composite PK `user_id, agent_id`, cascade FKs on both sides) and are private to the caller — toggling a favourite in one browser does not affect group peers. Both endpoints are idempotent: POST is a no-op when the row already exists; DELETE is a no-op when no row exists. Both return `404 NOT_FOUND` when the agent is not visible to the caller (visibility = same principal axis as everywhere else in the service). The legacy shared `agents.is_favorite` column was dropped in migration 0079; PATCH no longer accepts `is_favorite` (returns 422).
+
+#### Reasoning effort (`GET /agents/{id}/effort`)
+
+The levels the agent's effective LLM driver can express, and the default that configuration carries.
+It is a separate endpoint rather than a field on the agent resource, because the agent resource is
+built for the list endpoint too.
+
+```json
+{
+  "data": {
+    "supported": true,
+    "levels": [{ "value": "low", "label": "Low" }],
+    "default": "high"
+  }
+}
+```
+
+- `supported` — the effective driver implements the effort contract and declares a non-empty level set. A driver that cannot express effort answers `false` with an empty `levels` array.
+- `levels` — the effective driver's levels, each with the label the driver class uses for it.
+- `default` — the effective configuration's `effort` setting; `null` means the model's own default.
+
+The effective configuration is resolved on the server, through the same three tiers the agent uses —
+the agent's own configuration, the principal's preferred configuration, then the global default — so
+a client never has to re-implement it.
+
+An agent the caller may not see answers `404`, the same as `GET /api/v1/agents/{id}`.
+
+See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale and the resolution order.
 
 ### Groups
 
@@ -206,6 +235,24 @@ both `GET /api/v1/tasks/{taskId}` and the Mercure live-update stream. See
 for the per-tool LLM-facing contract returned by `AgentTool.get_available_tools`,
 and [Concepts → Tools → Icon resolution](/reference/concepts/tools#icon-resolution)
 for the resolution chain.
+
+#### The `effort` field on a task body
+
+`POST /api/v1/tasks` and `POST /api/v1/tasks/{taskId}/continue` accept an optional `effort` — the
+reasoning effort for that task.
+
+| Body               | Meaning                                              |
+| ------------------ | ---------------------------------------------------- |
+| key absent         | the LLM configuration's default applies              |
+| `"effort": ""`     | explicitly the model's own default — nothing is sent |
+| `"effort": "high"` | that level                                           |
+
+The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. A level that is not
+on that scale is a `422 VALIDATION_ERROR`.
+
+The resolved value is stored on the task row, where `NULL` means "send nothing" — the database
+never stores an empty string. See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels)
+for the scale, the wire shapes and the resolution order.
 
 ### Plugins (operator, gated by `SPORA_PLUGIN_INSTALL_ENABLED`)
 

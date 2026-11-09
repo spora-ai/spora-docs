@@ -367,7 +367,12 @@ Spora divides its PHP surface into two zones. Plugins should depend only on the 
 - `Spora\Scheduling\DueWorkProviderInterface` plus its wire type `DueWork` and the `DueWorkProviderRegistry` — the seam a plugin implements to run work of its own on a cadence. Core ships no implementation, so this is the whole due-work surface. See [Due work](#due-work) and [Author guide → Due work](/develop/plugins/author-guide/due-work).
 - `Spora\Settings\PluginSettingsProviderInterface` plus `SettingDefinition` and the `PluginSettingsRegistry` — the seam a plugin implements to contribute operator-facing settings. The host owns the key, the storage group and the section. See [Plugin settings](#plugin-settings) and [Author guide → Plugin settings](/develop/plugins/author-guide/plugin-settings).
 - `Spora\Events\*` (the three lifecycle events) and the PSR-14 `Symfony\Component\EventDispatcher\EventSubscriberInterface` opt-in pattern documented in [Lifecycle Events](#lifecycle-events).
-- The orchestrator and task services: `Spora\Agents\AgentOrchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
+- The orchestrator and task services: `Spora\Agents\Orchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
+  > **Breaking in the next release.** `TaskServiceInterface::startTask()` and `continueTask()` change
+  > signature — each takes the reasoning effort for the task. A plugin that **implements** the
+  > interface outside the framework fatals at class-load, because the interface and its
+  > implementors have to move together. A plugin that only **calls** the service is unaffected:
+  > omitting the effort leaves the task on the configuration's default.
 - The `#[Tool]` attribute and the `ToolInterface` contract for declaring plugin-supplied tools.
 - The two media-archive registration interfaces — `Spora\Services\MediaArchive\MediaDerivativeProducerInterface` and `Spora\Services\MediaArchive\MediaMimeRefinerInterface` — each paired with its registry class in the same namespace (`MediaDerivativeProducerDiscovery`, `MediaMimeRefinerDiscovery`). These are plugin contracts: implement the interface, then register the FQCN with the registry's idempotent `::add()` call (e.g. `MediaMimeRefinerDiscovery::add(MyRefiner::class)`) from a `ContainerBuildingEvent` subscriber — the post-1.0 replacement for the deleted `register(ContainerBuilder)` hook. A producer contributes a derivative format and, through `supportedSourceFormats()`, keeps that source format uploadable; see [The producer union is a second allowlist surface](/reference/concepts/media-assets#the-producer-union-is-a-second-allowlist-surface) for the coupling that creates. `MediaMimeRefinerInterface` is the newer of the two; implement it when a format your plugin handles sniffs as a coarser container type than it really is (an OOXML document libmagic reports as `application/zip`), and return `null` to decline. Refiners must be constructible without arguments — the consumer instantiates them statically and has no container to resolve their collaborators with. Producers are the opposite: the consumer resolves them through the container, so they may take constructor arguments.
 - The `plugin.json` manifest fields documented above. The `slug` field is the only one that must stay stable across releases.
@@ -378,6 +383,7 @@ The driver / history value-object layer is **framework-internal** and may change
 
 - `Spora\Drivers\ValueObjects\LLMResponse`, `Spora\Drivers\ValueObjects\ContentBlock`, `Spora\Drivers\ValueObjects\Usage`
 - `Spora\Agents\ValueObjects\HistoryMessageContext`
+- `Spora\Agents\OrchestratorInterface` — the orchestrator's own interface is framework-internal, because it is not named on the plugin-stable list above. Only the concrete `Spora\Agents\Orchestrator` class is public. The list is the contract: a name that is not on it is not one.
 - Anything else under `Spora\Drivers\` or `Spora\Agents\ValueObjects\`
 
 If your plugin needs a value the orchestrator surface does not already expose, open an issue describing the use case — the fix is to add a stable accessor on `TaskService`, not for plugins to reach into the internal layer.

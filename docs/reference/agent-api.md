@@ -172,6 +172,14 @@ From there, either poll `/status` or supply a `callback_url` and be told.
 `additional_steps` does the same for a follow-up; both are clamped to 1–100, and omitting either
 falls back to the agent's configured limit.
 
+`effort` sets the reasoning effort for that message. It is one of `none`, `minimal`, `low`,
+`medium`, `high`, `xhigh` or `max`. Leave it out and the LLM configuration's default applies; send
+`""` to ask for the model's own default, so that nothing is sent at all. A level that is not on
+that scale is a `422`. The same field is accepted on `POST /chats/{id}/messages`, where it applies
+to that follow-up only — the earlier turns keep the effort they were sent with. See
+[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
+and the resolution order.
+
 `GET /chats` lists this agent's chats newest-first and is **always paginated** — 25 per page by
 default, 100 maximum — with `?page=` and `?per_page=`. The response carries no total and no
 next-page link, so page until a page comes back short. `?since=<ISO-8601>` narrows to chats

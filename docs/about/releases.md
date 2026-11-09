@@ -13,6 +13,117 @@ Versions are `0.x.y` until 1.0. Under the pre-1.0 policy a **minor** bump may ca
 changes, so read the breaking-change section before you upgrade. The [roadmap](/about/roadmap#versioning)
 explains the policy.
 
+## Unreleased
+
+Spora's LLM drivers can now say **how hard the model should think**, and OpenAI's reasoning models
+can finally **think and call tools in the same turn**. Two changes ship together: a per-message
+reasoning effort, and a new driver for OpenAI's Responses API.
+
+### Reasoning effort you can set per message
+
+Every provider that has a reasoning control names it differently and accepts a different subset of
+levels. Spora now has one vocabulary of its own — `none`, `minimal`, `low`, `medium`, `high`,
+`xhigh`, `max` — and each driver maps it onto its provider's own parameter.
+
+**A default on the LLM configuration.** The OpenAI-compatible, Anthropic-compatible and OpenAI
+Responses drivers carry a new **Effort** setting. Its first entry is _Model default_, which is the
+default: nothing is sent, and the provider applies whatever it would have applied anyway. Pick a
+level and every task on that configuration starts there.
+
+**An override per message in the chat.** The composer carries a picker, and so does the follow-up
+row, so a single message can think harder or cheaper than the rest of the conversation. The picker
+offers the levels the agent's driver can express and starts on the configuration's default.
+
+The resolution order is: the message's own effort when it carries one, then the configuration's
+default, then nothing sent.
+
+**The operator configures, the provider validates.** There is no table of levels per model — a
+driver describes the protocol, the model describes the capability. A level the model does not
+accept fails at the provider, with the provider's own error naming the offending value.
+
+### A new "OpenAI Responses" driver
+
+Over OpenAI's Chat Completions API, a reasoning model cannot do two things at once. From GPT-5.4
+onward, Chat Completions does not support tool calling with any `reasoning_effort` value other than
+`none` — and because the model's own default is `medium`, sending nothing is a `400` as well. An
+agent could run, but the model would never think, which is what those models are bought for.
+
+The new **OpenAI Responses** driver speaks `/v1/responses`, the endpoint where a reasoning model
+can reason _and_ call tools in the same turn. Its effort level travels nested (`reasoning.effort`)
+rather than flat, and it counts output tokens with `max_output_tokens`.
+
+**Retention is off by default.** The Responses API stores a conversation for 30 days unless it is
+told not to, so Spora sends `store: false` unless the operator asks for retention in the driver's
+settings. A self-hosted platform has no business keeping its operators' conversations on somebody
+else's servers.
+
+Choose this driver for OpenAI's own reasoning models. Everything else — vLLM, Ollama, LM Studio,
+Groq, Mistral, DeepSeek — stays on the Chat Completions driver, and their `/v1/responses`
+implementations differ per provider.
+
+### Anthropic moves to the 2026-10-21 API
+
+The Anthropic driver now sends `anthropic-version: 2026-10-21`. That version removed the sampling
+parameters, which costs two settings.
+
+**`temperature` is gone.** A request that sends it answers `400` on every model, so the setting
+leaves the configuration form and the driver never sends it. The cost is precise: **Claude 4.7 and
+later are unaffected** — those models only accept the default, so Spora's `0.7` was never in
+effect — while on **Sonnet 4.6 and earlier** the sample moves from `0.7` to the API default of
+`1.0`, so the output becomes slightly more varied. For an agent loop that is neutral-to-positive,
+and those models are a generation behind. `effort` is the replacement control: Anthropic's own
+guidance is that effort shapes the whole response, tool calls included.
+
+**`thinking_budget` is gone, and `effort` replaces it.** The two are the same knob in two
+generations of the API. A manual budget is a `400` on Claude 4.7 and later, so keeping it would
+have been a knob that breaks the request the moment the operator upgrades the model. The cost is
+narrow but real: **Sonnet 4.5 and Haiku 4.5 have no `effort`**, so **manual extended thinking is
+no longer configurable on those two models at all**. On every other model `effort` takes over, and
+the reasoning you see in the chat keeps showing — Spora asks for the summarised thinking
+explicitly, because the API's own default stopped returning it.
+
+A stored `temperature` or `thinking_budget` is pruned the next time that configuration is saved.
+There is no data migration to run.
+
+### One breaking change, for plugin authors
+
+`Spora\Services\TaskServiceInterface::startTask()` and `continueTask()` change signature — each
+takes the reasoning effort for the task.
+
+**If you run an operator's Spora install: nothing to do.** No shipped plugin implements the
+interface.
+
+**If you write a plugin and implement `TaskServiceInterface`: your class will not load.** PHP makes
+an unimplemented interface method fatal at class-load, so the interface and every implementor have
+to move together. A plugin that only _calls_ the service is unaffected.
+
+### What else changed
+
+- **Anthropic's default model** — the driver now defaults to a current Claude generation. The
+  Claude 3.x generation it defaulted to is retired and answers an error on every request.
+- **Image input** — the built-in drivers' image heuristics now cover the current model families
+  (the current Claude ids, `gpt-4.1`, `gpt-5`, `gpt-6`). A configuration that never set the
+  _Allow images_ toggle starts sending images where it previously did not. Set the toggle
+  explicitly if your provider rejects image blocks.
+
+### Upgrading
+
+```bash
+composer update spora-ai/spora-core spora-ai/spora-frontend
+```
+
+**Run the migration before the worker starts.** This release adds a `tasks.effort` column. The web
+path installs the schema itself on the next request, but **the CLI worker does not** — it opens the
+database without running migrations. A worker that fires before the migration has run writes a task
+against a table without the column, and the run fails with a log line and nothing more. So:
+
+```bash
+composer update spora-ai/spora-core
+php bin/spora spora:install
+```
+
+...before any worker starts.
+
 ## v0.15 — 27 October 2026
 
 The headline is **Spora speaks German**, end to end. Underneath that sit two new subsystems an

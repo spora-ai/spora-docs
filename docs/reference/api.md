@@ -430,14 +430,14 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 35 routes
+- [Agents](/reference/api/agents) — 36 routes
 - [Groups](/reference/api/groups) — 25 routes
 - [Global-api](/reference/api/global-api) — 24 routes
 - [Group-api](/reference/api/group-api) — 17 routes
 - [Tasks](/reference/api/tasks) — 14 routes
+- [Agent-api](/reference/api/agent-api) — 13 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Media](/reference/api/media) — 12 routes
-- [Agent-api](/reference/api/agent-api) — 11 routes
 - [Speech](/reference/api/speech) — 10 routes
 - [Users](/reference/api/users) — 10 routes
 - [Me](/reference/api/me) — 9 routes
@@ -489,6 +489,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agent-api/chats/{chatId}/transcript`               | `bearerAuth`               | Everything the admin UI shows                                            | Agent-api        |
 | `POST`   | `/api/v1/agent-api/media`                                   | `bearerAuth`               | Upload a file for this agent                                             | Agent-api        |
 | `GET`    | `/api/v1/agent-api/media/{mediaId}`                         | `bearerAuth`               | Fetch a media asset this agent produced                                  | Agent-api        |
+| `POST`   | `/api/v1/agent-api/transcribe`                              | `bearerAuth`               | Transcribe an audio asset with this agent's driver                       | Agent-api        |
+| `POST`   | `/api/v1/agent-api/transcribe-and-send`                     | `bearerAuth`               | Transcribe an audio asset and send the transcript to this agent          | Agent-api        |
 | `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth`               | Index AgentTemplate                                                      | Agent-templates  |
 | `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                                                       | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/import`                            | `cookieAuth` + `csrfToken` | Import AgentTemplate                                                     | Agent-templates  |
@@ -501,6 +503,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                                                               | Agents           |
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                                                             | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                                                            | Agents           |
+| `GET`    | `/api/v1/agents/{id}/effort`                                | `cookieAuth`               | The reasoning-effort levels this agent can use                           | Agents           |
 | `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate                                                | Agents           |
 | `POST`   | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Favorite Agent                                                           | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Unfavorite Agent                                                         | Agents           |

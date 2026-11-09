@@ -39,7 +39,7 @@ This page is the canonical TOC for the Spora reference material. The user-facing
 | Installation (5 routes)                                 | [/start/operators/install](/start/operators/install)                                           |
 | Environment variables (canonical `SPORA_*` reference)   | [/start/operators/env-vars](/start/operators/env-vars)                                         |
 | Security (encryption, auth, rate limiting, plugin risk) | [/start/operators/security](/start/operators/security)                                         |
-| REST API reference                                      | [/reference/api](/reference/api) — source of record: `spora-core/docs/04_api.md`               |
+| REST API reference                                      | [/reference/api](/reference/api) — generated from `spora-core`'s route definitions             |
 | Plugin install API (`/api/v1/plugins/*`)                | [/develop/plugins/install-api](/develop/plugins/install-api)                                   |
 | Agent API (`/api/v1/agent-api/*`)                       | [/reference/agent-api](/reference/agent-api) — bearer-key API for external tools               |
 | Group API (`/api/v1/group-api/*`)                       | [/reference/group-api](/reference/group-api) — bearer-key API for one group's agents and chats |

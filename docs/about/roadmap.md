@@ -5,7 +5,7 @@ description: What Spora is building next — high/medium/low priority items from
 
 # Roadmap
 
-The Spora roadmap is drawn from the public portion of `spora-core/docs/backlog.md` (the internal backlog has more items that aren't ready for public disclosure). Items below are listed in priority order — the team is free to reorder as priorities shift.
+The Spora roadmap is maintained here. Items below are listed in priority order — the team is free to reorder as priorities shift.
 
 For questions, suggestions, or to flag something as a higher priority, see [Contribute](/contribute/).
 

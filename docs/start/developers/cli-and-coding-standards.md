@@ -84,10 +84,11 @@ tests/
 
 ### Frontend — Vitest
 
-The Vue app lives in the separate [`spora-frontend`](https://github.com/spora-ai/spora-frontend) repository — `spora-core` dropped its own `frontend/` tree. Its tests run there:
+The Vue app lives in the separate [`spora-frontend`](https://github.com/spora-ai/spora-frontend) repository — `spora-core` dropped its own `frontend/` tree. Clone it and run its tests there:
 
 ```bash
-cd ../spora-frontend
+git clone https://github.com/spora-ai/spora-frontend.git
+cd /path/to/spora-frontend
 npm test                    # All unit tests
 npm run test:watch          # Watch mode
 ```
@@ -127,7 +128,7 @@ E2E tests are **not currently wired up** — no Playwright dep, no `tests/e2e/` 
 
 ```bash
 composer analyse         # PHPStan (level 5, with Larastan + Mockery extensions)
-cd ../spora-frontend && npm run lint   # ESLint (flat config); vue-tsc runs in npm run build
+cd /path/to/spora-frontend && npm run lint   # ESLint (flat config); vue-tsc runs in npm run build
 ```
 
 PHPStan configuration lives in `phpstan.neon`. Level 5 checks the types of the arguments passed to methods and functions, and catches:

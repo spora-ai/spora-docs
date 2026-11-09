@@ -89,12 +89,13 @@ _(from `app/Tools/ReadUrlTool.php`)_
 _(from `app/Services/SsrfGuard.php`)_
 
 ```php
-// `SsrfGuard` screened the URL as supplied, once. Following a
-// redirect would re-issue the POST to a host that was never
-// screened — a `302` to the cloud metadata endpoint turns the
-// guard into a comment. A 3xx falls through to
-// `recordFailure()` and is retried, which is the right answer
-// for a receiver that has no reason to redirect.
+// `SsrfGuard` screened the URL as supplied and pinned the
+// address it vetted; following a redirect would re-issue the
+// POST to a host that was never screened — a `302` to the
+// cloud metadata endpoint turns the guard into a comment. A
+// 3xx falls through to `recordFailure()` and is retried,
+// which is the right answer for a receiver that has no reason
+// to redirect.
 'max_redirects' => 0,
 ```
 
@@ -177,7 +178,14 @@ All attributes in `app/Tools/Attributes/` should have docblocks with a usage exa
  * Marks a class as a Tool the agent can invoke.
  *
  * Usage:
- *   #[Tool(name: 'my_tool', description: 'Does something useful')]
+ *   #[Tool(
+ *       name: 'my_tool',
+ *       description: 'Does something useful',
+ *       displayName: 'My Tool',         // optional — operator-facing UI label
+ *       category: 'general',             // optional; defaults to 'general'
+ *       icon: 'puzzle',                  // optional; bundled icon key
+ *       recommendsSkills: ['git'],       // optional; slugs the tool bundles
+ *   )]
  *   final class MyTool implements ToolInterface { ... }
  */
 #[Attribute(Attribute::TARGET_CLASS)]

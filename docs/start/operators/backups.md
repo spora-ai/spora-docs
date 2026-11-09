@@ -67,7 +67,7 @@ composer install
 php bin/spora spora:install
 
 # 6. Verify
-php bin/spora db:seed --check
+php bin/spora db:seed
 ```
 
 If you lose `storage/secret.key`, you will need to **re-enter every tool credential** in the admin UI. The encrypted columns in the database will return errors until you do.

@@ -19,10 +19,10 @@ In server mode, the agent worker is either a long-lived daemon (`php bin/spora w
 
 Each invocation:
 
-1. Claims one due `scheduled_runs_next` entry (atomic `UPDATE ... SET status = 'CLAIMED' WHERE status = 'PENDING' AND due_at <= now` with `LIMIT 1`) and processes it
+1. Claims one due `scheduled_runs_next` entry (a `SELECT … FOR UPDATE` inside a transaction, then an `UPDATE … WHERE id = ?`) and dispatches it — creating a `QUEUED` task, marking the entry `DONE`, and queueing the next occurrence
 2. Claims the oldest `QUEUED` task (`lockForUpdate`)
 3. Sets it to `RUNNING`
-4. Processes it to completion (or `PENDING_APPROVAL`)
+4. Processes it to completion — or parks it at `PENDING_APPROVAL` / `AWAITING_INPUT`, aborts it at max steps, or fails it
 5. Sweeps due [Agent API](/reference/agent-api) callbacks
 6. Exits
 
@@ -60,7 +60,7 @@ Options (defined at `app/Console/Commands/WorkerRunCommand.php:123-130`):
 | `--limit` / `-l`   | `0` (unlimited)                            | Max QUEUED tasks to process per run (0 = unlimited)                                                |
 | `--sleep` / `-s`   | `500000` (μs = 0.5s)                       | Microseconds to sleep when the queue is empty                                                      |
 | `--stale-minutes`  | `60` (config)                              | Minutes after which a `RUNNING` task is treated as orphaned (0 = disabled; omit to use config)     |
-| `--workers` / `-w` | `0` (unlimited, config)                    | Max concurrent child processes (0 = unlimited, single-threaded)                                    |
+| `--workers` / `-w` | `0` (unlimited, config)                    | Max concurrent child processes (0 = unlimited). Daemon mode only                                   |
 
 `--daemon`, `--once`, and `--reap-only` are mutually exclusive (`app/Console/Commands/WorkerRunCommand.php:285-309`). If none is given, the command defaults to daemon mode.
 
@@ -114,7 +114,7 @@ redirect_stderr=true
 stdout_logfile=/var/log/spora-worker.log
 ```
 
-`autorestart=true` handles both crashes and unexpected exits. Set `numprocs` > 1 only if your database supports concurrent write transactions safely (PostgreSQL; **not** SQLite).
+`autorestart=true` handles both crashes and unexpected exits. `numprocs` must stay at `1`: a second daemon on the same host cannot acquire the single-instance lock and exits — see [Concurrent Workers](#concurrent-workers).
 
 ## Stale Task Reaping {#stale-task-reaping}
 
@@ -122,7 +122,7 @@ stdout_logfile=/var/log/spora-worker.log
 
 Tasks can be orphaned in `RUNNING` when a worker process is killed ungracefully (OOM, `SIGKILL`, server crash) between claiming a task and completing it.
 
-The reaper sweeps all `RUNNING` tasks older than `--stale-minutes` and marks them `FAILED`. It runs:
+The reaper sweeps `RUNNING` (and `AWAITING_SUB_AGENTS`) tasks whose lease has expired and whose `updated_at` is older than `--stale-minutes`, and marks them `FAILED`. Retry-chain rows are left alone, and `--stale-minutes 0` disables the sweep entirely. It runs:
 
 - **Daemon mode:** At startup, then every 5 minutes regardless of queue state
 - **Cron mode:** At startup (before the drain loop)
@@ -133,17 +133,17 @@ The `--stale-minutes` value should exceed your worst-case LLM round-trip time. S
 
 ## Concurrent Workers
 
-Only **one worker** can process a given task simultaneously — the `lockForUpdate()` row lock in the claim transaction is the mechanism.
+Only **one worker** can process a given task simultaneously — on MySQL, MariaDB and PostgreSQL the mechanism is the `lockForUpdate()` row lock in the claim transaction. On SQLite that row lock does not exist (the dialect compiles it away), and the exclusion comes from SQLite's own write lock instead.
 
 For multiple workers on the same machine:
 
-- **Daemon mode:** Run multiple daemon processes with a process supervisor (`numprocs=2`). Each process is independent; the row lock handles contention. (Note: the daemon's single-instance `flock` enforces only one daemon per host — the row lock is what allows multiple daemons across hosts to share the queue safely.)
+- **Daemon mode:** Only one daemon can run per storage directory. A second daemon on the same host hits the same `storage/spora-worker.lock`, prints _Another worker instance is already running_, and exits — it does not wait or retry. Multiple daemons therefore need separate `SPORA_STORAGE_DIR` values or separate hosts; across hosts the row lock, not the flock, is what makes them safe.
 - **Cron mode:** Running multiple identical cron entries is safe but wasteful — the `flock` lock file means only one process runs at a time, the others exit immediately. Use a single cron entry instead.
-- **Never run both daemon and cron workers against the same database** — the daemon reaper and cron drain race on the same queue, and the second one will fail to acquire the `flock`. Pick one.
+- **Never run both daemon and cron workers against the same storage directory** — the daemon reaper and cron drain race on the same queue, and the second one will fail to acquire the `flock`. Pick one.
 
 ## Single-Instance Enforcement
 
-A `flock()` lock file at `storage/spora-worker.lock` prevents two worker processes (daemon or `--once`) from running against the same database at the same time (`app/Console/Worker/WorkerLock.php:47-71`, called from `app/Console/Commands/WorkerRunCommand.php:490-521`). If a second worker starts while the first is still running, it exits immediately with an error rather than competing for tasks. `--reap-only` skips the lock so multiple reapers can co-exist.
+A `flock()` lock file at `storage/spora-worker.lock` prevents two worker processes (daemon or `--once`) from running against the same database at the same time (`app/Console/Worker/WorkerLock.php:46-70`, called from `app/Console/Commands/WorkerRunCommand.php:262`). If a second worker starts while the first is still running, it exits immediately with an error rather than competing for tasks. `--reap-only` skips the lock so multiple reapers can co-exist.
 
 The worker writes its own pid into the lock file. A worker that finds the lock held by a pid that no longer exists takes it over instead of refusing to start — the lock outlives a crashed daemon because the daemon's `task:run` children inherit the lock descriptor, and a new lock file is a new inode that those children cannot hold.
 
@@ -155,7 +155,7 @@ Who owns the lock is decided under a second lock file, `storage/spora-worker.loc
 
 Tasks in `PENDING_APPROVAL` status wait for human approval. There is **no automatic timeout** — the task remains paused indefinitely until the user approves or rejects the pending tool calls.
 
-This is intentional: a human should make the decision, and the task can stay paused for as long as needed. If the task must be abandoned, delete it or use the database directly to set its status to `FAILED`.
+This is intentional: a human should make the decision, and the task can stay paused for as long as needed. If the task must be abandoned, delete it or set its status to `FAILED` in the database directly — `POST /abort` is not available in this status and answers `409`. A hand-edited row keeps its `pending_state` and its `PENDING_APPROVAL` tool-call rows, and carries none of the `failure_reason` / `error_code` the reaper would have written.
 
 ## Health Monitoring
 
@@ -183,4 +183,4 @@ failing — check `storage/spora.log` for `Agent API callback sweep failed`.
 
 ## Environment Variables Reference
 
-See [Environment variables](/start/operators/env-vars) for the consolidated reference. Most variables can also be set in `config.php` (gitignored, shared-hosting friendly) using the same `snake_case` config keys, or via `SPORA_*` env vars which take highest priority. Example: `SPORA_WORKER_STALE_MINUTES=90` env var overrides `worker_stale_minutes: 60` in `config.php`.
+See [Environment variables](/start/operators/env-vars) for the consolidated reference. Most variables can also be set in `config.php` (gitignored, shared-hosting friendly) using the same `snake_case` config keys, or via `SPORA_*` env vars, which override `config.php`. A value stored in the settings database overrides both. Example: `SPORA_WORKER_STALE_MINUTES=90` env var overrides `worker_stale_minutes: 60` in `config.php`.

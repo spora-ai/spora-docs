@@ -66,7 +66,7 @@ The LLM is hallucinating, returning stale info, or refusing to answer. This is *
 - **Better system prompt** — add explicit instructions, examples, and boundaries
 - **Different model** — try a larger or more capable model
 - **Tool grounding** — if the agent is making up facts, give it a tool to look them up (web search, knowledge base)
-- **Lower the temperature** — in the LLM config, set `temperature=0.1` (or 0.0) for more deterministic answers
+- **Lower the temperature** — in the LLM config, set `temperature=0.1` (or 0.0) for more deterministic answers. The Anthropic driver has no temperature setting — there, **Effort** is the knob.
 
 ## "Approval required" prompt never appears
 

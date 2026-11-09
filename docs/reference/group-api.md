@@ -185,6 +185,14 @@ Everything else — polling, transcripts, blocked chats, callbacks, media — wo
 the [per-agent surface](/reference/agent-api), with one difference: a chat outside the group
 answers `404`, not `403`. A caller must not be able to probe which chat ids exist.
 
+`effort` is accepted on the chat body — the reasoning effort for that message. It is one of
+`none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. Leave it out and the LLM
+configuration's default applies; send `""` to ask for the model's own default, so that nothing is
+sent at all. A level that is not on that scale is a `422`. `POST /chats/{id}/messages` takes the
+same field, where it applies to that follow-up only. See
+[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
+and the resolution order.
+
 `GET /group-api/chats` lists the chats of all the group's agents, newest first, always paginated
 (25 per page by default, 100 maximum) with `?page=` and `?per_page=`. `?since=<ISO-8601>` narrows
 to chats updated after that instant.

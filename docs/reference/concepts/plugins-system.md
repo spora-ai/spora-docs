@@ -369,10 +369,11 @@ Spora divides its PHP surface into two zones. Plugins should depend only on the 
 - `Spora\Events\*` (the three lifecycle events) and the PSR-14 `Symfony\Component\EventDispatcher\EventSubscriberInterface` opt-in pattern documented in [Lifecycle Events](#lifecycle-events).
 - The orchestrator and task services: `Spora\Agents\Orchestrator`, `Spora\Services\TaskService` (and its `TaskServiceInterface`).
   > **Breaking in the next release.** `TaskServiceInterface::startTask()` and `continueTask()` change
-  > signature — each takes the reasoning effort for the task. A plugin that **implements** the
-  > interface outside the framework fatals at class-load, because the interface and its
-  > implementors have to move together. A plugin that only **calls** the service is unaffected:
-  > omitting the effort leaves the task on the configuration's default.
+  > signature — each takes the reasoning effort for the task as a plain optional
+  > `?string $effort = null`. A plugin that **implements** the interface outside the framework
+  > fatals at class-load, because the interface and its implementors have to move together. A
+  > plugin that only **calls** the service is unaffected: omitting the effort leaves the task on
+  > the configuration's default.
 - The `#[Tool]` attribute and the `ToolInterface` contract for declaring plugin-supplied tools.
 - The two media-archive registration interfaces — `Spora\Services\MediaArchive\MediaDerivativeProducerInterface` and `Spora\Services\MediaArchive\MediaMimeRefinerInterface` — each paired with its registry class in the same namespace (`MediaDerivativeProducerDiscovery`, `MediaMimeRefinerDiscovery`). These are plugin contracts: implement the interface, then register the FQCN with the registry's idempotent `::add()` call (e.g. `MediaMimeRefinerDiscovery::add(MyRefiner::class)`) from a `ContainerBuildingEvent` subscriber — the post-1.0 replacement for the deleted `register(ContainerBuilder)` hook. A producer contributes a derivative format and, through `supportedSourceFormats()`, keeps that source format uploadable; see [The producer union is a second allowlist surface](/reference/concepts/media-assets#the-producer-union-is-a-second-allowlist-surface) for the coupling that creates. `MediaMimeRefinerInterface` is the newer of the two; implement it when a format your plugin handles sniffs as a coarser container type than it really is (an OOXML document libmagic reports as `application/zip`), and return `null` to decline. Refiners must be constructible without arguments — the consumer instantiates them statically and has no container to resolve their collaborators with. Producers are the opposite: the consumer resolves them through the container, so they may take constructor arguments.
 - The `plugin.json` manifest fields documented above. The `slug` field is the only one that must stay stable across releases.

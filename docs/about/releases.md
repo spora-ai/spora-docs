@@ -88,7 +88,7 @@ There is no data migration to run.
 ### One breaking change, for plugin authors
 
 `Spora\Services\TaskServiceInterface::startTask()` and `continueTask()` change signature — each
-takes the reasoning effort for the task.
+takes the reasoning effort for the task, as a plain optional `?string $effort = null`.
 
 **If you run an operator's Spora install: nothing to do.** No shipped plugin implements the
 interface.

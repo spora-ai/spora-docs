@@ -30,6 +30,11 @@
 //      spora-components/src/icons/Icon.vue), so a description that re-widens the
 //      accepted path commands fails here. The accepted leads are derived from
 //      that source, never listed here.
+//   5. Manifest-icon drift — every manifest's `icon` must be a name the
+//      resolver's registry ships, or a string its lead test accepts. A name
+//      the resolver does not know renders as the generic "puzzle", so an
+//      unknown name is indistinguishable from an omitted one: the tile looks
+//      wrong and nothing says why.
 //
 // Manifest discovery, in priority order:
 //
@@ -50,7 +55,7 @@
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { dirname, resolve, relative, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import Ajv2020 from 'ajv/dist/2020.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -336,6 +341,29 @@ function checkIconExamples(icon, lead, registry, rule) {
   return failures
 }
 
+// Every manifest's `icon` must be a name the resolver ships, or a string its
+// lead test accepts. The name is checked against the registry first, so a
+// bundled name that happens to look like path data still passes.
+//
+// Exported so the check can be unit-tested against a fixture registry: the
+// bundled names live in a Vue file in another repository, and a test that
+// needs the real one would only run where that checkout exists.
+export function checkManifestIcons(manifests, lead, registry, rule) {
+  const failures = []
+  for (const { file, doc } of manifests) {
+    const icon = doc?.icon
+    if (typeof icon !== 'string') continue
+    const trimmed = icon.trim()
+    if (registry.has(trimmed) || lead.test(trimmed)) continue
+    failures.push(
+      `${file}: icon ${JSON.stringify(icon)} is neither a bundled name in the ` +
+        `resolver's registry nor a string its lead test accepts (${rule}). It would ` +
+        `render as the "puzzle" fallback.`,
+    )
+  }
+  return failures
+}
+
 function isPermitted(key, schema) {
   if (schema.properties && Object.hasOwn(schema.properties, key)) return true
   for (const pattern of Object.keys(schema.patternProperties ?? {})) {
@@ -507,6 +535,19 @@ function main() {
         `(derived from ${ICON_LEAD_CONST})`,
     )
     failures.push(...checkIconContract(schema, leadTest, registry))
+
+    // The manifests themselves, not just the schema that describes them.
+    const parsed = discovery.manifests
+      .map(({ file }) => ({ file: displayPath(file), ...readManifest(file) }))
+      .filter((m) => m.parseError === undefined)
+    failures.push(
+      ...checkManifestIcons(
+        parsed,
+        leadTest.test,
+        registry,
+        `${ICON_LEAD_CONST} = /${leadTest.source}/`,
+      ),
+    )
   }
 
   if (failures.length > 0) {
@@ -526,9 +567,14 @@ function main() {
   console.log('plugin.schema.json matches the manifests in the tree.')
 }
 
-try {
-  main()
-} catch (err) {
-  console.error(err)
-  process.exit(1)
+// The check is imported by scripts/check-plugin-schema.test.mjs, so the CLI
+// only runs when this file is the entry point — importing it must not exit
+// the process.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  try {
+    main()
+  } catch (err) {
+    console.error(err)
+    process.exit(1)
+  }
 }

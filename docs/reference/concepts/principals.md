@@ -25,6 +25,8 @@ A group's settings surface is split by two predicates.
 
 The asymmetry in the third row is the point of having two predicates. Reading is what keeps a group's existence from outsiders; writing is what lets the operator's own admin panel reach a group it manages. Hiding the group from the admin would break the panel, and letting outsiders read it would undo the hiding.
 
+**The table describes the group row** — `PATCH /api/v1/groups/{id}`, the route that carries the name, the description, the information block and the avatar. The routes _under_ `/api/v1/groups/{id}/` are the group's settings surface, and they are gated on membership for everyone, a global admin included: the locations, the tool settings, the LLM configs and the preferences belong to the people who run the group. A global admin reaches a group's row through the admin panel; the group's settings are for its members.
+
 ## Group information and locations
 
 A group owns more than a name. Its **description** is the short blurb a group list shows; its **information** is the rich, Markdown-formatted block that says how to reach the organisation — an address, a switchboard, a note about which entrance to use. Its **locations** are the addresses a tool can send something to.
@@ -58,17 +60,17 @@ A location is `{ "id": 1, "name": "HQ", "address": "…", "is_default": true }`.
 
 Error semantics on the group routes:
 
-| Situation                                                         | Response               |
-| ----------------------------------------------------------------- | ---------------------- |
-| Not authenticated                                                 | `401`                  |
-| Group missing, or caller is not a member (and not a global admin) | `404 GROUP_NOT_FOUND`  |
-| Member whose role is below `admin`                                | `403 FORBIDDEN`        |
-| Empty `name` / `address`                                          | `422 VALIDATION_ERROR` |
-| Location id not owned by this group's principal                   | `404 NOT_FOUND`        |
+| Situation                                       | Response               |
+| ----------------------------------------------- | ---------------------- |
+| Not authenticated                               | `401`                  |
+| Group missing, or caller is not a member        | `404 GROUP_NOT_FOUND`  |
+| Member whose role is below `admin`              | `403 FORBIDDEN`        |
+| Empty `name` / `address`                        | `422 VALIDATION_ERROR` |
+| Location id not owned by this group's principal | `404 NOT_FOUND`        |
 
 A location id that belongs to another principal answers `404`, never `403`: the row is not the caller's to ask about, and a `403` would confirm that it exists.
 
-The membership `404` belongs to the **read** gate: a caller who is not a member does not learn that the group exists. The **write** gate is the one a global admin passes — the third row of the authorisation table above — so a global admin editing a group it does not belong to is not a `404`.
+The membership `404` is the whole of the gate on these four routes — a global admin that is not a member gets `404` here too, because they are the group's settings rather than its row. The write gate a global admin _does_ pass is the one on `PATCH /api/v1/groups/{id}`, described in the authorisation table above.
 
 ### The same locations, for a person
 

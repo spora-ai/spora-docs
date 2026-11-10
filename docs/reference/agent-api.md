@@ -180,7 +180,9 @@ declare is a `422 EFFORT_LEVEL_UNSUPPORTED`. The same field is accepted on
 `POST /chats/{id}/messages`, where it applies to that follow-up only — the earlier turns keep the
 effort they were sent with. See
 [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
-and the resolution order.
+and the resolution order, and
+[the refusals](/reference/api#the-effort-field-on-a-task-body) for every message the two codes
+answer with.
 
 One driver asks for a level anyway: on a GPT-5.4-or-later reasoning model the OpenAI-compatible
 driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because

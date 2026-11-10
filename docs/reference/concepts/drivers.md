@@ -204,16 +204,18 @@ Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatible
 
 Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the two are not the same list. The driver reads the model id and answers with that model's own set (`ModelFamily::claudeEffortLevels()`):
 
-| Model                                                | Levels it takes                                |
+| Model id                                             | Levels it takes                                |
 | ---------------------------------------------------- | ---------------------------------------------- |
 | Claude 4.7 and later (4.8, the 5.x generation)       | `low`, `medium`, `high`, `xhigh`, `max`        |
 | Claude Opus 4.6, Claude Sonnet 4.6                   | `low`, `medium`, `high`, `max` — no `xhigh`    |
 | Claude Opus 4.5                                      | `low`, `medium`, `high` — no `max`, no `xhigh` |
 | Claude Sonnet 4.5, Claude Haiku 4.5, every 3.x model | none — the model has no effort at all          |
+| A `claude-` id with no version at all                | `low`, `medium`, `high`, `xhigh`, `max`        |
+| An id that is not a `claude-` id at all              | `low`, `medium`, `high`, `xhigh`, `max`        |
 
 A model that takes no level declares none, and the agent gets no picker: `GET /api/v1/agents/{id}/effort` answers `supported: false` with an empty `levels` array, and a request that names a level is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.
 
-A model id that names no Claude — an Anthropic-compatible endpoint with its own model names — keeps the whole set, and so does a Claude id that carries no version at all. The driver does not model another provider's model zoo, and the operator who pointed the agent at that endpoint is the only one who knows what it takes, so the provider has the last word there.
+**The last two rows are the rule's way of not knowing.** A `claude-` id that carries no version names the current generation, so it takes every level. An id that is not a `claude-` id at all belongs to an Anthropic-compatible endpoint with its own model names — Kimi and the like. The driver does not model another provider's model zoo, and the operator who pointed the agent at that endpoint is the only one who knows what it takes, so the provider has the last word there.
 
 ### What the 2026-10-21 API version changed
 
@@ -264,11 +266,13 @@ The **`store`** setting — labelled _Store responses_ — is a toggle, and it i
 
 **`store: false` is not a promise that the provider retains nothing.** It means the response is not stored as a retrievable conversation object. Prompts and responses still go into the provider's **abuse-monitoring logs**, which are retained for up to 30 days by default. Excluding customer content from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control — granted by OpenAI per organisation or project, subject to prior approval and to the limitations of each — see [OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data). An operator whose conversations carry data they cannot hand to a third party has to arrange that with OpenAI; the toggle does not do it.
 
-The toggle changes what **Spora** has to replay, not only what the provider retains. The reasoning item carries an `encrypted_content` blob — the opaque blob the provider decrypts to restore the chain of thought — and **Spora sends that blob whenever it has one, whatever the toggle says**, because the blob resolves the item on the provider's side whether or not the provider stored it. The toggle decides the fallback: **with it off and no blob in the response, Spora drops the reasoning item from the replay** rather than sending an id the provider kept nothing for; **with it on, the item goes out by its id alone**, and the provider resolves it from its own store.
+**The toggle does not decide who replays the reasoning.** Spora always replays the encrypted reasoning itself: the reasoning item carries an `encrypted_content` blob — the opaque blob the provider decrypts to restore the chain of thought — and Spora sends that blob whenever it has one, whatever the toggle says, because the blob resolves the item on the provider's side whether or not the provider stored it.
+
+**What the toggle decides is the fallback**, for the one case the blob does not cover — a reasoning item that arrives without encrypted content. With it off, Spora drops that item from the replay rather than sending an id the provider kept nothing for; with it on, the item goes out by its id alone, which only the provider can resolve if it kept the item.
 
 > The id-only replay is the API's documented shape, and it is the fallback: it is reached only when the response carried no `encrypted_content` to replay. No live call has exercised it.
 
-**Zero Data Retention turns `store: true` into `store: false`.** For an organisation enrolled in OpenAI's Zero Data Retention programme the provider does not retain the response at all, so the reasoning item comes back with its encrypted blob rather than as a reference the provider could resolve. Spora sends the blob, so the replay still resolves — but the toggle buys nothing there, and it stops describing what actually happens. **Leave _Store responses_ off when the organisation is enrolled in Zero Data Retention.** With it on, the driver's own fallback is the id alone, which is exactly the one thing the provider cannot resolve under Zero Data Retention.
+**Zero Data Retention turns `store: true` into `store: false`.** For an organisation enrolled in OpenAI's Zero Data Retention programme the provider keeps nothing, so the reasoning item comes back with its encrypted blob rather than as a reference the provider could resolve. Spora sends that blob either way — the toggle never decided that — so the replay resolves. What the toggle decides there is the fallback, and under Zero Data Retention the fallback the provider could serve is the one the toggle takes away. **Leave _Store responses_ off when the organisation is enrolled in Zero Data Retention**: with it on, a reasoning item that arrives without encrypted content goes out by its id alone, and there is nothing for the provider to resolve that id against.
 
 ### Changing the effort mid-conversation
 

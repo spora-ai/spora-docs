@@ -46,12 +46,13 @@ Next to the composer sits an **Effort** picker, when the agent's driver can expr
 effort at all — a driver that speaks no effort has no picker, and neither does a model that
 takes none. It offers the levels that agent's driver declares, and its first entry is **Model
 default** — the level the model applies when nobody asks for one. Pick a level and the agent
-thinks harder or cheaper for that message: the level travels with the message it is sent with,
-and the turns already sent keep the effort they were sent with.
+thinks harder or cheaper for that message: the level travels with the message it is sent with, and
+the turns already sent keep the effort they were sent with. Your choice stays on the picker for
+the next message — the level belongs to the message it is sent with, not to the conversation.
 
 A level the driver does not offer cannot be picked, and a level the agent's driver stops offering
-is refused by the server with `EFFORT_LEVEL_UNSUPPORTED` — the chat asks for the agent's levels
-again and replaces your choice with one the driver still has.
+is refused by the server with `EFFORT_LEVEL_UNSUPPORTED` — the chat asks for that agent's levels
+again and replaces the choice with one the driver still has.
 
 ## Step 4 — Read the agent's reply
 

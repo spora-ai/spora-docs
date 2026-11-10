@@ -247,7 +247,20 @@ reasoning effort for that task.
 | `"effort": ""`     | explicitly the model's own default — no level asked for |
 | `"effort": "high"` | that level                                              |
 
-The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. **Two refusals, two codes.** A value that is not a string, or not one of those levels, is a `422 INVALID_EFFORT` — the request has to be fixed. A level that is on the scale but that the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for that agent is out of date, and `GET /api/v1/agents/{id}/effort` lists the levels the driver offers.
+The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. **Two codes, six refusals.** A value that is not a string, or not one of those levels, is a `422 INVALID_EFFORT` — the request has to be fixed. A level that is on the scale but that the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for that agent is out of date, and `GET /api/v1/agents/{id}/effort` lists the levels the driver offers.
+
+The code says which kind of refusal it is. **The message says which one**, and it is the only thing that does: `EFFORT_LEVEL_UNSUPPORTED` answers four different situations and the code is the same for all of them.
+
+| Reason                                      | Code                       | Message (English)                                                                                                  |
+| ------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| the field is not a string                   | `INVALID_EFFORT`           | `effort must be a string.`                                                                                         |
+| the field is not on the scale               | `INVALID_EFFORT`           | `effort must be one of: none, minimal, low, medium, high, xhigh, max.`                                             |
+| the agent has no LLM configuration          | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" cannot be sent: this agent has no LLM configuration.`                                            |
+| the agent's driver could not be resolved    | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" cannot be sent: this agent's LLM driver could not be resolved.`                                  |
+| the driver declares no level for this model | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" is not offered by this agent's LLM driver: it cannot express a reasoning effort for this model.` |
+| the driver declares other levels            | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" is not offered by this agent's LLM driver. Supported levels: low, medium, …`                     |
+
+The messages are the framework's own strings and they are **localised**: the router translates every error message it passes through and leaves the code alone. A client that has to tell the four apart therefore matches the message in the locale it asked for; a client that would rather not match prose asks `GET /api/v1/agents/{id}/effort` and only ever sends a level that endpoint lists.
 
 The empty string is a value in its own right — the wire value for _the model default_ — rather than
 a missing field, which is why it appears among the accepted values on the endpoint's own page.

@@ -53,6 +53,30 @@ The **individual scope** is charged — an interactive run is billed to the trig
 
 The scope is inert until it is configured — a scope with no limit row and no credit pool never blocks a run — so nothing is stopped invisibly. It is the _configuration_ that is missing, not the enforcement.
 
+## What is billed
+
+**Only the work the installation pays for.** A principal who runs an agent with their own provider key, or who configures a tool with their own credentials, pays their own provider bill — so the installation does not charge them for it either. The call is still metered and still counted against their limits; it simply costs no credits.
+
+The rule in one line: **a metered event is billed when the configuration that served it was the installation's, and is not billed when the principal had a configuration of their own.**
+
+- **A model** is served by one configuration row, and the row says who owns it — a principal-owned row is that principal's own key, and the global default is the installation's.
+- **A tool** is served by the installation's own configuration unless the principal has one of their own for that tool class.
+
+What the limits see:
+
+| Limit unit                | Counts a call the principal paid for themselves? |
+| ------------------------- | ------------------------------------------------ |
+| `credits`                 | No — there are no credits to count.              |
+| `total_tokens`            | Yes                                              |
+| `output_tokens`           | Yes                                              |
+| `llm_calls`, `tool_calls` | Yes                                              |
+
+The tokens and the call count are facts about the run, so they are counted whatever the price: a cap on tokens is about the principal's own consumption, not about the installation's wallet.
+
+**The rule belongs to the plugin, not to the core.** Core's seam reports what was metered and has no opinion about who pays — another metering plugin may bill every event and be equally right.
+
+A configuration whose scope cannot be resolved is **not** billed. The call is recorded, the operator can see it in the report, and charging a principal for a call whose payer is unknown is the worse mistake.
+
 ## Credits
 
 Credits are **abstract**. There is no currency, no conversion rate, and no money anywhere in the plugin — a credit is whatever the operator decides one is. A price is a decimal number of credits per token or per call.
@@ -102,7 +126,7 @@ One table, two kinds of row:
 | `model` | the provider and the model name                        | per input, output and cached token |
 | `tool`  | the tool's **class name** and optionally its operation | per call                           |
 
-**A model with no price row costs zero credits.** That is the failure mode the admin API exists for: `GET /api/v1/usage/unpriced` lists the models and tools that have been used and are silently free, so a renamed model or a swapped base URL does not quietly stop the charge.
+**A model with no price row costs zero credits.** That is the failure mode the admin API exists for: `GET /api/v1/usage/unpriced` lists the models and tools that have been used and are silently free, so a renamed model or a swapped base URL does not quietly stop the charge. The same endpoint reports the calls that **had** a price and were not billed — the principal paid for those themselves.
 
 Tools are keyed on the **class name**, not the wire name. The wire name comes from the `#[Tool]` attribute and changes between plugin releases; the class does not.
 
@@ -110,18 +134,22 @@ A model's cached tokens are charged at the discounted rate, and the cached count
 
 ## The Usage app
 
-`/apps/usage`, four tabs, and a **scope** above them.
+`/apps/usage`, four tabs.
 
 | Tab          | Who      | What it shows                                                                                                                         |
 | ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | **Overview** | everyone | The caller's own principals: the balance, the limits with what is left of each window, and the spend over time.                       |
-| **Limits**   | admin    | The scoped principal's limit rows — the window, the unit, the cap, the mode, whether it is on — and the spend-to-date in each window. |
-| **Budget**   | admin    | The scoped principal's credit balance and a grant form.                                                                               |
+| **Limits**   | admin    | The picked principal's limit rows — the window, the unit, the cap, the mode, whether it is on — and the spend-to-date in each window. |
+| **Budget**   | admin    | The picked principal's credit balance and a grant form.                                                                               |
 | **Prices**   | admin    | The price book, and the unpriced models and tools.                                                                                    |
 
-**The scope is a dropdown beside the tabs**, and it is what the Limits and Budget tabs are about. It lists every principal on the installation with its balance and its 30-day spend, so the scope is visible from every tab and never hidden behind a trip to another one.
+**The Overview is its own thing** and is about no principal in particular, so nothing above it selects one. A caller sees their own usage; an admin also sees the installation's — what it spent in the last 30 days, who spent it, the credit pools that are empty, the models and tools that are used and cost nothing, and the calls that had a price and were not billed.
 
-The admin tabs and the scope hide themselves for a non-admin — there is nothing there to configure. **The API is the real gate**: every admin route carries the admin middleware, and a 403 means "not an admin", not "try again".
+**The principal is picked inside the tabs that are about one.** Limits and Budget each carry a picker at the top, listing every principal on the installation with its balance and its 30-day spend. Both read the same selection, so moving from Limits to Budget keeps the principal — no re-picking, and no trip to another tab.
+
+The picker is an **admin** control, because the tabs it scopes are admin tabs. A caller who cannot configure anything is not offered a picker that scopes nothing, and the admin listing is not requested for them.
+
+**The API is the real gate**: every admin route carries the admin middleware, and a 403 means "not an admin", not "try again".
 
 **The price book offers what the installation knows.** The model and the tool of a price row are dropdowns, listing the models and the tools the install has used — the price book and the unpriced report together are the whole set. A price for something never used is still enterable: the dropdown is a shortcut that fills the free-text field, not a gate in front of it.
 
@@ -129,17 +157,17 @@ The admin tabs and the scope hide themselves for a non-admin — there is nothin
 
 Base path `/api/v1/usage`. Every admin route carries `[AuthMiddleware, CsrfMiddleware, AdminMiddleware]`.
 
-| Method | Path                                 | Who                | What it does                                                              |
-| ------ | ------------------------------------ | ------------------ | ------------------------------------------------------------------------- |
-| `GET`  | `/me`                                | any signed-in user | The caller's visible principals with their balances and limits.           |
-| `GET`  | `/me/series?window=day\|week\|month` | any signed-in user | The spend over time.                                                      |
-| `GET`  | `/principals`                        | admin              | Every principal.                                                          |
-| `GET`  | `/principals/{id}`                   | admin              | One principal, with its limits and its spend.                             |
-| `PUT`  | `/principals/{id}/limits`            | admin              | Replaces the principal's whole set of limits. An absent limit is deleted. |
-| `PUT`  | `/principals/{id}/credits`           | admin              | Grants credits. A negative amount subtracts.                              |
-| `GET`  | `/prices`                            | admin              | The price book.                                                           |
-| `PUT`  | `/prices`                            | admin              | Replaces the whole price book.                                            |
-| `GET`  | `/unpriced`                          | admin              | The models and tools used without a price row.                            |
+| Method | Path                                 | Who                | What it does                                                                                   |
+| ------ | ------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
+| `GET`  | `/me`                                | any signed-in user | The caller's visible principals with their balances and limits.                                |
+| `GET`  | `/me/series?window=day\|week\|month` | any signed-in user | The spend over time.                                                                           |
+| `GET`  | `/principals`                        | admin              | Every principal.                                                                               |
+| `GET`  | `/principals/{id}`                   | admin              | One principal, with its limits and its spend.                                                  |
+| `PUT`  | `/principals/{id}/limits`            | admin              | Replaces the principal's whole set of limits. An absent limit is deleted.                      |
+| `PUT`  | `/principals/{id}/credits`           | admin              | Grants credits. A negative amount subtracts.                                                   |
+| `GET`  | `/prices`                            | admin              | The price book.                                                                                |
+| `PUT`  | `/prices`                            | admin              | Replaces the whole price book.                                                                 |
+| `GET`  | `/unpriced`                          | admin              | The models and tools used without a price row, and the calls that had one and were not billed. |
 
 Success is `{"data": …}` and failure is `{"error": {"code", "message"}}` — the host's envelope.
 
@@ -159,6 +187,8 @@ The plugin owns six tables, created by `usage_000001_create_usage_tables.php`:
 | `usage_credits`       | the credit balance per owner                                      |
 | `usage_credit_grants` | the grant history                                                 |
 | `usage_prices`        | the price book                                                    |
+
+`usage_000002_add_billed_to_usage_ledger.php` adds the ledger's `billed` column. It tells the two "cost nothing" cases apart: `priced = false` is a gap in the price book, and `priced = true, billed = false` is a call the principal ran with their own configuration and was not charged for.
 
 The ledger and the buckets carry **no foreign keys on purpose**. The ledger's owner is a snapshot, and a cascading key would delete the history of every scope the owner ever paid for; the other tables are keyed on a polymorphic `(owner_type, owner_id)` pair that no single foreign key can express.
 

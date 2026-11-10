@@ -88,15 +88,24 @@ from those logs needs an approved **Zero Data Retention** or **Modified Abuse Mo
 which OpenAI grants per organisation or project — so if your conversations carry data you cannot
 hand to a third party, arrange that with OpenAI first. The toggle does not do it.
 
-**Zero Data Retention makes `store: true` mean `store: false`.** For an organisation enrolled in
-OpenAI's Zero Data Retention programme the provider keeps nothing, so the reasoning item comes
-back with its encrypted blob rather than as a reference the provider could resolve. Spora always
-replays that blob itself — the toggle never decided that — so the conversation still continues.
-What the toggle decides is the fallback for a reasoning item that arrives without encrypted
-content, and under Zero Data Retention the fallback the provider could serve is the one the toggle
-takes away. **Leave _Store responses_ off when the organisation is enrolled in Zero Data
-Retention**: with it on, that item goes out by its id alone, and there is nothing for the provider
-to resolve the id against.
+**The control belongs to the project, not to the organisation.** What decides a request is the
+setting on the **project your API key belongs to**: a project can inherit the organisation's
+setting, can pick the control itself, or can select **None** and switch the controls off for that
+project even though the organisation is enrolled. Some endpoints and capabilities are not eligible
+for Zero Data Retention at all and may still keep application state even when it is enabled — the
+Assistants, Threads, Conversations, Files, Batches, Evals and fine-tuning endpoints among them;
+Spora's two, `/v1/responses` and `/v1/chat/completions`, are eligible. "The organisation is
+enrolled" is not the guarantee; the project's setting is.
+
+**Zero Data Retention makes `store: true` mean `store: false`.** Where the control applies — on
+the project your API key belongs to — the provider treats `store: true` as `store: false` on
+`/v1/responses` and `/v1/chat/completions`, so the reasoning item comes back with its encrypted
+blob rather than as a reference the provider could resolve. Spora always replays that blob itself —
+the toggle never decided that — so the conversation still continues. What the toggle decides is the
+fallback for a reasoning item that arrives without encrypted content, and under Zero Data Retention
+the fallback the provider could serve is the one the toggle takes away. **Leave _Store responses_
+off when Zero Data Retention applies to the project your key belongs to**: with it on, that item
+goes out by its id alone, and there is nothing for the provider to resolve the id against.
 
 Choose this driver for OpenAI's own reasoning models. Everything else — vLLM, Ollama, LM Studio,
 Groq, Mistral, DeepSeek — stays on the Chat Completions driver, and their `/v1/responses`

@@ -133,9 +133,11 @@ configuration starts there; a chat can override it per message, and the picker's
 
 The list the operator sees is the driver's own vocabulary — the same list for every model the
 driver talks to — while the levels a given **model** actually takes can be fewer. A Claude that
-takes no `max` does not run at `max`: the driver knows what each model takes and drops a level
-the model does not offer, so that task runs at the model's own default. The chat's picker never
-offers such a level in the first place; it lists what the agent's driver offers.
+takes no `max` does not run at `max`: the Anthropic driver knows what each Claude takes and drops a
+level the model does not offer, so that task runs at the model's own default, and the chat's picker
+never offers such a level in the first place. **The two OpenAI drivers do not narrow**: they offer
+the whole scale whatever the model takes, so a level the model refuses is one the list still
+offers — the request fails at the provider rather than quietly running at the model's default.
 
 ### Tab 4 — Tools
 

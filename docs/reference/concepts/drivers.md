@@ -80,7 +80,7 @@ The key is the canonical level, the value is what goes on the wire. For every dr
 
 `LLMDriverInterface` does **not** carry the method — it is a published contract, and adding to it breaks every implementor. `AbstractCompatibleDriver` implements the interface returning `[]`, which means the driver cannot express effort and sends no effort parameter at all; `OpenAICompatibleDriver`, `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` override it.
 
-**The driver knows its vocabulary; the model knows its levels.** A driver's `effort` setting lists every level the driver can name, and its `effortLevels()` answers with the levels the agent's model actually takes — a subset of that list, and a test keeps the two in step. The two OpenAI drivers declare the whole canonical scale, so a level their model rejects is the provider's own `400`, naming the offending value. **The Anthropic driver asks the model instead**: Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the driver reads the model id — see [Which levels a Claude model takes](#which-levels-a-claude-model-takes). A level that model does not take is refused at the API boundary, before the provider sees it.
+**The driver knows its vocabulary; the model knows its levels.** A driver's `effort` setting lists every level the driver can name, and its `effortLevels()` answers with the levels the agent's model actually takes — a subset of that list, and a test keeps the two in step. **The Anthropic driver asks the model**: Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the driver reads the model id — see [Which levels a Claude model takes](#which-levels-a-claude-model-takes). A level that model does not take is refused at the API boundary, before the provider sees it. **The two OpenAI drivers do not narrow**: they declare the whole canonical scale, whatever the model takes, so a level the model rejects is sent and comes back as the provider's own `400`, naming the offending value. A declared level is not an accepted one.
 
 ### The wire shapes
 
@@ -96,13 +96,13 @@ The Responses row is the request-level shape. On a model that supports `configur
 
 ### The default and the per-message override
 
-`effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: no level is asked for, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale.
+`effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: no level is asked for, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale, whatever the model takes.
 
 **A level the driver does not declare is refused at the API boundary.** `EffortService::assertLevel()` answers `422 EFFORT_LEVEL_UNSUPPORTED` — the request never reaches the provider, and the task row never carries a level the driver cannot send. The Anthropic driver declares neither `none` nor `minimal`, so a request that names one of them is refused rather than quietly falling back.
 
-**A level that reaches the driver unchecked is dropped, not sent.** The HTTP boundary is what checks a level against the driver's set. A plugin that calls `TaskServiceInterface::startTask()` passes the effort as a plain string, and a level that is not in the driver's set is dropped on the way out: `AbstractCompatibleDriver::resolveEffort()` looks the level up and sends no effort parameter at all when it is not there. The task still runs — at the model's own default.
+**A level that reaches the driver unchecked is dropped, not sent — on the Anthropic driver.** The HTTP boundary is what checks a level against the driver's set. A plugin that calls `TaskServiceInterface::startTask()` passes the effort as a plain string, and a level that is not in the driver's set is dropped on the way out: `AbstractCompatibleDriver::resolveEffort()` looks the level up and sends no effort parameter at all when it is not there. The task still runs — at the model's own default. The two OpenAI drivers declare every canonical level, so there is nothing for them to drop: the level goes out and the model takes it or refuses it.
 
-**The configuration's default is the same story.** The `effort` setting's option list is the driver's own vocabulary, so a configuration can be saved with a level the agent's model does not take; the run then happens at that model's own default, because the driver drops the level. The capability endpoint does not promise the configured default in that case: `GET /api/v1/agents/{id}/effort` answers `default: null`, and the picker shows **Model default**.
+**The configuration's default is the same story.** The `effort` setting's option list is the driver's own vocabulary, so a configuration can be saved with a level the agent's model does not take; on the Anthropic driver the run then happens at that model's own default, because the driver drops the level, and the capability endpoint does not promise the configured default in that case — `GET /api/v1/agents/{id}/effort` answers `default: null`, and the picker shows **Model default**. On the OpenAI drivers every level the setting offers is declared, so the configured default is reported and then sent; a model that rejects it fails the request at the provider.
 
 **One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because silence is not a working configuration on the models that default to `medium`. See [Tools and effort on Chat Completions](#tools-and-effort-on-chat-completions).
 
@@ -204,18 +204,18 @@ Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatible
 
 Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the two are not the same list. The driver reads the model id and answers with that model's own set (`ModelFamily::claudeEffortLevels()`):
 
-| Model id                                             | Levels it takes                                |
-| ---------------------------------------------------- | ---------------------------------------------- |
-| Claude 4.7 and later (4.8, the 5.x generation)       | `low`, `medium`, `high`, `xhigh`, `max`        |
-| Claude Opus 4.6, Claude Sonnet 4.6                   | `low`, `medium`, `high`, `max` — no `xhigh`    |
-| Claude Opus 4.5                                      | `low`, `medium`, `high` — no `max`, no `xhigh` |
-| Claude Sonnet 4.5, Claude Haiku 4.5, every 3.x model | none — the model has no effort at all          |
-| A `claude-` id with no version at all                | `low`, `medium`, `high`, `xhigh`, `max`        |
-| An id that is not a `claude-` id at all              | `low`, `medium`, `high`, `xhigh`, `max`        |
+| Model id                                             | Levels it takes                                          |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| Claude 4.7 and later (4.8, the 5.x generation)       | `low`, `medium`, `high`, `xhigh`, `max`                  |
+| Claude Opus 4.6, Claude Sonnet 4.6                   | `low`, `medium`, `high`, `max` — no `xhigh`              |
+| Claude Opus 4.5                                      | `low`, `medium`, `high` — no `max`, no `xhigh`           |
+| Claude Sonnet 4.5, Claude Haiku 4.5, every 3.x model | none — the model has no effort at all                    |
+| A `claude-` id with no version at all                | all five — the driver's fallback, not the model's answer |
+| An id that is not a `claude-` id at all              | all five — the driver's fallback, not the model's answer |
 
 A model that takes no level declares none, and the agent gets no picker: `GET /api/v1/agents/{id}/effort` answers `supported: false` with an empty `levels` array, and a request that names a level is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.
 
-**The last two rows are the rule's way of not knowing.** A `claude-` id that carries no version names the current generation, so it takes every level. An id that is not a `claude-` id at all belongs to an Anthropic-compatible endpoint with its own model names — Kimi and the like. The driver does not model another provider's model zoo, and the operator who pointed the agent at that endpoint is the only one who knows what it takes, so the provider has the last word there.
+**The last two rows are the rule's way of not knowing, not a statement about the model.** The driver cannot identify the model, so it does not narrow its level set: a `claude-` id that carries no version names the current generation on Anthropic's own API, but a compatible endpoint can use a versionless name such as `claude-legacy` for a model that takes some of the levels or none of them. An id that is not a `claude-` id at all belongs to an Anthropic-compatible endpoint with its own model names — Kimi and the like. The driver does not model another provider's model zoo, and the operator who pointed the agent at that endpoint is the only one who knows what it takes, so the provider has the last word there: a level the model rejects comes back as the provider's own error, not as a silent fall back to the model's default.
 
 ### What the 2026-10-21 API version changed
 
@@ -266,13 +266,15 @@ The **`store`** setting — labelled _Store responses_ — is a toggle, and it i
 
 **`store: false` is not a promise that the provider retains nothing.** It means the response is not stored as a retrievable conversation object. Prompts and responses still go into the provider's **abuse-monitoring logs**, which are retained for up to 30 days by default. Excluding customer content from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control — granted by OpenAI per organisation or project, subject to prior approval and to the limitations of each — see [OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data). An operator whose conversations carry data they cannot hand to a third party has to arrange that with OpenAI; the toggle does not do it.
 
+**The control belongs to the project, not to the organisation.** OpenAI grants Zero Data Retention per organisation or project, and what decides a request is the setting on the **project the API key belongs to**: a project can inherit the organisation's setting, can pick Zero Data Retention or Modified Abuse Monitoring itself, or can select **None** and switch the controls off for that project even though the organisation is enrolled. Some endpoints and capabilities are not eligible for Zero Data Retention at all and may still keep application state even when it is enabled — the Assistants, Threads, Conversations, Files, Batches, Evals and fine-tuning endpoints among them; Spora's two, `/v1/responses` and `/v1/chat/completions`, are eligible. "The organisation is enrolled" is not the guarantee an operator needs; the project's setting is.
+
 **The toggle does not decide who replays the reasoning.** Spora always replays the encrypted reasoning itself: the reasoning item carries an `encrypted_content` blob — the opaque blob the provider decrypts to restore the chain of thought — and Spora sends that blob whenever it has one, whatever the toggle says, because the blob resolves the item on the provider's side whether or not the provider stored it.
 
 **What the toggle decides is the fallback**, for the one case the blob does not cover — a reasoning item that arrives without encrypted content. With it off, Spora drops that item from the replay rather than sending an id the provider kept nothing for; with it on, the item goes out by its id alone, which only the provider can resolve if it kept the item.
 
 > The id-only replay is the API's documented shape, and it is the fallback: it is reached only when the response carried no `encrypted_content` to replay. No live call has exercised it.
 
-**Zero Data Retention turns `store: true` into `store: false`.** For an organisation enrolled in OpenAI's Zero Data Retention programme the provider keeps nothing, so the reasoning item comes back with its encrypted blob rather than as a reference the provider could resolve. Spora sends that blob either way — the toggle never decided that — so the replay resolves. What the toggle decides there is the fallback, and under Zero Data Retention the fallback the provider could serve is the one the toggle takes away. **Leave _Store responses_ off when the organisation is enrolled in Zero Data Retention**: with it on, a reasoning item that arrives without encrypted content goes out by its id alone, and there is nothing for the provider to resolve that id against.
+**Zero Data Retention turns `store: true` into `store: false`.** Where the control applies — on the project the API key belongs to — the provider treats `store: true` as `store: false` on `/v1/responses` and `/v1/chat/completions`, so the reasoning item comes back with its encrypted blob rather than as a reference the provider could resolve. Spora sends that blob either way — the toggle never decided that — so the replay resolves. What the toggle decides there is the fallback, and under Zero Data Retention the fallback the provider could serve is the one the toggle takes away. **Leave _Store responses_ off when Zero Data Retention applies to the project your key belongs to**: with it on, a reasoning item that arrives without encrypted content goes out by its id alone, and there is nothing for the provider to resolve that id against.
 
 ### Changing the effort mid-conversation
 

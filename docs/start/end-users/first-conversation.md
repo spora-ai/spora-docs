@@ -50,6 +50,15 @@ thinks harder or cheaper for that message: the level travels with the message it
 the turns already sent keep the effort they were sent with. Your choice stays on the picker for
 the next message — the level belongs to the message it is sent with, not to the conversation.
 
+**Which levels are on the picker depends on the driver.** On a Claude, the list is the levels that
+model takes, so a Claude that takes no `max` never offers one. On an OpenAI model the list is the
+whole scale whatever the model takes — so a level the model refuses is one the picker still
+offers, and the request fails at the provider instead of quietly running at the model's default.
+
+**Model default is not always "the model thinks as it would".** On a GPT-5.4-or-later model with
+tools enabled, Spora sends `none` explicitly, because silence is not a working configuration
+there. On GPT-5.5 — whose own default is `medium` — that means the model does not reason at all.
+
 A level the driver does not offer cannot be picked, and a level the agent's driver stops offering
 is refused by the server with `EFFORT_LEVEL_UNSUPPORTED` — the chat asks for that agent's levels
 again and replaces the choice with one the driver still has.

@@ -110,17 +110,20 @@ A model's cached tokens are charged at the discounted rate, and the cached count
 
 ## The Usage app
 
-`/apps/usage`, five tabs.
+`/apps/usage`, four tabs, and a **scope** above them.
 
-| Tab            | Who      | What it shows                                                                                                                           |
-| -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Overview**   | everyone | The caller's own principals: the balance, the limits with what is left of each window, and the spend over time.                         |
-| **Principals** | admin    | Every principal, its balance and its 30-day spend.                                                                                      |
-| **Limits**     | admin    | The selected principal's limit rows — the window, the unit, the cap, the mode, whether it is on — and the spend-to-date in each window. |
-| **Budget**     | admin    | The selected principal's credit balance and a grant form.                                                                               |
-| **Prices**     | admin    | The price book, and the unpriced models and tools.                                                                                      |
+| Tab          | Who      | What it shows                                                                                                                         |
+| ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Overview** | everyone | The caller's own principals: the balance, the limits with what is left of each window, and the spend over time.                       |
+| **Limits**   | admin    | The scoped principal's limit rows — the window, the unit, the cap, the mode, whether it is on — and the spend-to-date in each window. |
+| **Budget**   | admin    | The scoped principal's credit balance and a grant form.                                                                               |
+| **Prices**   | admin    | The price book, and the unpriced models and tools.                                                                                    |
 
-The admin tabs hide themselves for a non-admin. **The API is the real gate**: every admin route carries the admin middleware, and a 403 means "not an admin", not "try again".
+**The scope is a dropdown beside the tabs**, and it is what the Limits and Budget tabs are about. It lists every principal on the installation with its balance and its 30-day spend, so the scope is visible from every tab and never hidden behind a trip to another one.
+
+The admin tabs and the scope hide themselves for a non-admin — there is nothing there to configure. **The API is the real gate**: every admin route carries the admin middleware, and a 403 means "not an admin", not "try again".
+
+**The price book offers what the installation knows.** The model and the tool of a price row are dropdowns, listing the models and the tools the install has used — the price book and the unpriced report together are the whole set. A price for something never used is still enterable: the dropdown is a shortcut that fills the free-text field, not a gate in front of it.
 
 ## Admin API surface
 

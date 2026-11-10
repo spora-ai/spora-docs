@@ -25,16 +25,16 @@
       "link": "/reference/api/tasks"
     },
     {
+      "text": "Agent-api",
+      "link": "/reference/api/agent-api"
+    },
+    {
       "text": "Auth",
       "link": "/reference/api/auth"
     },
     {
       "text": "Media",
       "link": "/reference/api/media"
-    },
-    {
-      "text": "Agent-api",
-      "link": "/reference/api/agent-api"
     },
     {
       "text": "Speech",

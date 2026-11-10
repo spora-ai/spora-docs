@@ -12,8 +12,17 @@
 
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 
-import { renderEndpointDetail } from './gen-api.mjs'
+import {
+  checkDrift,
+  driftMessage,
+  renderEndpointDetail,
+  renderReference,
+  specPathFromArgs,
+} from './gen-api.mjs'
 
 function render(op, { path = '/api/v1/things', method = 'post' } = {}) {
   return renderEndpointDetail({ path, method, op })
@@ -224,5 +233,104 @@ describe('the drop that started this', () => {
         assert.match(out, new RegExp(`\\| \`${name}\` \\|`), `${method.toUpperCase()} ${path} lost \`${name}\``)
       }
     }
+  })
+})
+
+describe('the --spec flag', () => {
+  it('names the spec it is given', () => {
+    const path = specPathFromArgs(['--check', '--spec', 'docs/.vuepress/other.json'])
+
+    assert.equal(path, resolve(process.cwd(), 'docs/.vuepress/other.json'))
+  })
+
+  it('is absent when the flag is not passed', () => {
+    assert.equal(specPathFromArgs(['--check']), null)
+  })
+
+  it('refuses a flag without a path', () => {
+    assert.throws(() => specPathFromArgs(['--spec']), /--spec needs the path/)
+  })
+})
+
+describe('the drift check against a named spec', () => {
+  // The CI compares the committed reference against two specs: the one
+  // spora-core@main generates, and the one a declared core ref generates.
+  // The flag is what tells the check which one it is looking at.
+
+  const SPEC = {
+    openapi: '3.0.0',
+    info: { title: 'Spora API', version: '0.0.0' },
+    paths: {
+      '/api/v1/thing': {
+        get: { summary: 'List things', tags: ['Things'], responses: { '200': { description: 'OK' } } },
+      },
+    },
+  }
+
+  const OTHER_SPEC = {
+    openapi: '3.0.0',
+    info: { title: 'Spora API', version: '0.0.0' },
+    paths: {
+      '/api/v1/other': {
+        get: { summary: 'List others', tags: ['Others'], responses: { '200': { description: 'OK' } } },
+      },
+    },
+  }
+
+  const SHELL = [
+    '---',
+    'title: Fixture',
+    '---',
+    '',
+    '# Fixture',
+    '',
+    '<!-- API:GENERATED:START -->',
+    '<!-- API:GENERATED:END -->',
+    '',
+  ].join('\n')
+
+  function fixture() {
+    const dir = mkdtempSync(join(tmpdir(), 'gen-api-'))
+    const targetPath = join(dir, 'api.md')
+    const sidebarPath = join(dir, 'api-sidebar.json')
+    const specPath = join(dir, 'spec.json')
+    const otherSpecPath = join(dir, 'other-spec.json')
+
+    writeFileSync(targetPath, SHELL)
+    writeFileSync(sidebarPath, '{}\n')
+    writeFileSync(specPath, JSON.stringify(SPEC))
+    writeFileSync(otherSpecPath, JSON.stringify(OTHER_SPEC))
+
+    return { targetPath, sidebarPath, specPath, otherSpecPath }
+  }
+
+  it('compares against the spec it was given', async () => {
+    const { targetPath, sidebarPath, specPath, otherSpecPath } = fixture()
+
+    // The reference as the first spec renders it.
+    const { newApiMd, sidebarBody } = await renderReference(SPEC, targetPath)
+    writeFileSync(targetPath, newApiMd)
+    writeFileSync(sidebarPath, sidebarBody)
+
+    const againstItsOwn = await checkDrift({ specPath, targetPath, sidebarPath })
+    assert.deepEqual(againstItsOwn.drift, [])
+
+    // The same reference against a different spec: the check has to see the
+    // difference, or the flag is not doing anything.
+    const againstAnother = await checkDrift({ specPath: otherSpecPath, targetPath, sidebarPath })
+    assert.deepEqual(againstAnother.drift, [targetPath, sidebarPath])
+  })
+
+  it('names the spec it compared against when the reference is out of date', async () => {
+    const { targetPath, sidebarPath, otherSpecPath } = fixture()
+
+    const { drift, specPath } = await checkDrift({ specPath: otherSpecPath, targetPath, sidebarPath })
+    const message = driftMessage({ drift, specPath })
+
+    assert.ok(drift.length > 0)
+    assert.ok(
+      message.includes(`Compared against: ${otherSpecPath}`),
+      `the message does not name the spec it compared against: ${message}`,
+    )
   })
 })

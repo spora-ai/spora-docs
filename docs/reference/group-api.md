@@ -188,8 +188,9 @@ answers `404`, not `403`. A caller must not be able to probe which chat ids exis
 `effort` is accepted on the chat body — the reasoning effort for that message. It is one of
 `none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. Leave it out and the LLM
 configuration's default applies; send `""` to ask for the model's own default, so that no level is
-asked for. A level that is not on that scale is a `422`. `POST /chats/{id}/messages` takes the
-same field, where it applies to that follow-up only. See
+asked for. A value that is not a string, or not on that scale, is a `422 INVALID_EFFORT`; a level
+the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED`.
+`POST /chats/{id}/messages` takes the same field, where it applies to that follow-up only. See
 [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
 and the resolution order.
 

@@ -207,6 +207,25 @@ The surface is not the message list: the chat column is not height-constrained, 
 
 The control that ends the pause is `TaskChatScrollToBottom.vue`, a round button in the lower right corner of the chat. It is `sticky` rather than `absolute`, because the transcript has no box of its own to position against, and it comes after the transcript in the DOM because a sticky element is only pulled up into view when it would otherwise be below the scrollport.
 
+## The reasoning-effort picker
+
+The chat can pick a reasoning effort per message. Five modules carry it, and the split is the point: the capability comes from the server, the cache holds it, and the component renders it.
+
+- **`src/composables/useAgentEffort.ts`** — the capability, the cache and the reconciliation. It asks `GET /agents/{id}/effort` for the agent's driver level set and the configuration's default, and it keeps the operator's choice in step with the level set: a choice the driver no longer offers is replaced by the configuration's default, or by the model default when the driver does not declare that one either.
+- **`src/composables/agentEffortCache.ts`** — the session cache of the capabilities, keyed by agent id. It lives in its own module because the composable that fills it cannot be the one that drops it: `useAgentEffort` imports the agent store, and the agent store is where the LLM configuration changes.
+- **`src/components/EffortSelect.vue`** — the picker, rendered in two places: a labelled select on the initial composer, and an icon-only trigger on the follow-up row.
+- **`src/types/effort.ts`** — the shared vocabulary: the canonical scale, the selection type, and the shape of the endpoint's answer.
+- **`src/utils/effortLevels.ts`** — the label of one level, the fallback for a level the endpoint did not name.
+
+### The cache's invalidation contract
+
+The capability only changes when the agent's effective LLM configuration changes, so it is cached for the session. Four rules keep that cache honest:
+
+- **It is keyed per agent id.** Two agents on one page have two capabilities, and a capability that arrives for one agent never answers for another.
+- **It is dropped wherever the answer can change.** The agent store drops that agent's entry when the agent is pointed at another LLM configuration, and the whole session cache when the signed-in user drifts away — the capability belongs to the user who asked for it. The LLM-config, LLM-preferences and group stores drop the whole session cache when a configuration is created, edited, deleted or made the default: any of those can move any agent's effective configuration, and therefore any agent's level set.
+- **It is epoch-guarded.** Every agent carries a counter, bumped whenever its capability is dropped. An answer that was already on the wire when the drop happened describes a configuration that no longer holds — and, after a sign-out, the previous user's agent — so it is discarded instead of written back.
+- **The selection lives in the agent store, not in the composer draft.** The initial composer and the follow-up row are two component trees that have to agree on the level the operator picked, and the composer's draft is not shared between them.
+
 ## The `apps/` directory — extending the frontend
 
 Each "app" is a self-contained bundle of pages, components, types, stores, and an API client. The pattern keeps feature work isolated — adding a new top-level page (e.g. **Plugins**) does **not** touch the rest of the app.
@@ -273,6 +292,8 @@ The global guard reads `meta.requiresAdmin` / `meta.requiresAuth` and short-circ
 - **`src/components/agent/TaskChat/MessageContent.vue`** — one assistant message, rendered. A message may ask for a live frame by linking an asset's embed route, and the chat renders the message as **segments** (`renderMarkdownSegments()` in `src/composables/useMarkdown.ts`) because a Vue component cannot live inside the markup the sanitiser produced — so the reference is a segment and the frame is mounted where it stood. A reference that cannot be framed stays the link the model wrote.
 - **`src/composables/useMessageEmbeds.ts`** — resolves the references in a message to descriptors from the server (`POST /api/v1/media/resolve`) and hands the frame its `url`, `mime` and `scripts`. The descriptor's `url` is checked to be a same-origin path before it reaches the frame.
 - **`src/composables/useTaskChatCommands.ts`** — the task commands the chat offers, as data.
+- **`src/composables/useAgentEffort.ts`** — the agent's reasoning-effort capability, and the reconciliation that keeps the picked level in step with it.
+- **`src/components/EffortSelect.vue`** — the effort picker, rendered in the composer and on the follow-up row.
 - **`src/components/ui/CommandMenu.vue`** — the shared command-menu component those commands render through.
 - **`src/apps/plugins/`** — the template for adding a new top-level app.
 - **`src/stores/auth.ts`** — session, login, CSRF token.

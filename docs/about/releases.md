@@ -42,9 +42,13 @@ driver sends `reasoning_effort: "none"` when the agent uses tools and no level r
 silence is not a working configuration on the models that default to `medium` — see the OpenAI
 Responses section below.
 
-**The operator configures, the provider validates.** There is no table of levels per model — a
-driver describes the protocol, the model describes the capability. A level the model does not
-accept fails at the provider, with the provider's own error naming the offending value.
+**The driver knows its vocabulary; the model knows its levels.** The two OpenAI drivers offer the
+whole scale, so a level their model rejects fails at the provider, with the provider's own error
+naming the offending value. **The Anthropic driver asks the model instead**: Anthropic publishes
+which Claude models take `output_config.effort` and which of the five levels each of them takes,
+and the driver reads the model id. A Claude that takes no level at all — Sonnet 4.5, Haiku 4.5 and
+every 3.x model — declares none, and a request that names a level the model does not take is
+refused by the API with `422 EFFORT_LEVEL_UNSUPPORTED` before it ever reaches the provider.
 
 ### A new "OpenAI Responses" driver
 
@@ -83,6 +87,14 @@ abuse-monitoring logs, which are retained for up to 30 days by default. Excludin
 from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control,
 which OpenAI grants per organisation or project — so if your conversations carry data you cannot
 hand to a third party, arrange that with OpenAI first. The toggle does not do it.
+
+**Zero Data Retention makes `store: true` mean `store: false`.** For an organisation enrolled in
+OpenAI's Zero Data Retention programme the provider retains nothing at all, so the reasoning item
+comes back with its encrypted blob rather than as a reference the provider could resolve. Spora
+replays that blob itself, so the conversation still continues — but the toggle buys nothing
+there. **Leave _Store responses_ off when the organisation is enrolled in Zero Data Retention**:
+with it on, Spora's own fallback is the reasoning item's id alone, which is the one thing the
+provider cannot resolve under Zero Data Retention.
 
 Choose this driver for OpenAI's own reasoning models. Everything else — vLLM, Ollama, LM Studio,
 Groq, Mistral, DeepSeek — stays on the Chat Completions driver, and their `/v1/responses`

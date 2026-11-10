@@ -174,9 +174,11 @@ falls back to the agent's configured limit.
 
 `effort` sets the reasoning effort for that message. It is one of `none`, `minimal`, `low`,
 `medium`, `high`, `xhigh` or `max`. Leave it out and the LLM configuration's default applies; send
-`""` to ask for the model's own default, so that no level is asked for. A level that is not on
-that scale is a `422`. The same field is accepted on `POST /chats/{id}/messages`, where it applies
-to that follow-up only — the earlier turns keep the effort they were sent with. See
+`""` to ask for the model's own default, so that no level is asked for. A value that is not a
+string, or not on that scale, is a `422 INVALID_EFFORT`; a level the agent's driver does not
+declare is a `422 EFFORT_LEVEL_UNSUPPORTED`. The same field is accepted on
+`POST /chats/{id}/messages`, where it applies to that follow-up only — the earlier turns keep the
+effort they were sent with. See
 [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
 and the resolution order.
 

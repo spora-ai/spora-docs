@@ -107,9 +107,9 @@ built for the list endpoint too.
 }
 ```
 
-- `supported` — the effective driver implements the effort contract and declares a non-empty level set. A driver that cannot express effort answers `false` with an empty `levels` array.
-- `levels` — the effective driver's levels, each with the label the driver class uses for it.
-- `default` — the effective configuration's `effort` setting; `null` means the model's own default.
+- `supported` — the effective driver implements the effort contract and declares a non-empty level set. A driver that cannot express effort, and a model that takes no level at all, answer `false` with an empty `levels` array.
+- `levels` — the effective driver's levels, each with the label the driver class uses for it. The Anthropic driver answers with the levels the agent's _model_ takes, which can be fewer than the driver's whole vocabulary.
+- `default` — the effective configuration's `effort` setting; `null` means the model's own default. It is `null` when the configuration names a level the model does not take, because such a level is never sent.
 
 The effective configuration is resolved on the server, through the same three tiers the agent uses —
 the agent's own configuration, the principal's preferred configuration, then the global default — so
@@ -247,8 +247,7 @@ reasoning effort for that task.
 | `"effort": ""`     | explicitly the model's own default — no level asked for |
 | `"effort": "high"` | that level                                              |
 
-The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. A level that is not
-on that scale is a `422 VALIDATION_ERROR`.
+The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. **Two refusals, two codes.** A value that is not a string, or not one of those levels, is a `422 INVALID_EFFORT` — the request has to be fixed. A level that is on the scale but that the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for that agent is out of date, and `GET /api/v1/agents/{id}/effort` lists the levels the driver offers.
 
 The empty string is a value in its own right — the wire value for _the model default_ — rather than
 a missing field, which is why it appears among the accepted values on the endpoint's own page.

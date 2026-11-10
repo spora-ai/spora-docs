@@ -80,7 +80,7 @@ The key is the canonical level, the value is what goes on the wire. For every dr
 
 `LLMDriverInterface` does **not** carry the method — it is a published contract, and adding to it breaks every implementor. `AbstractCompatibleDriver` implements the interface returning `[]`, which means the driver cannot express effort and sends no effort parameter at all; `OpenAICompatibleDriver`, `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` override it.
 
-**The operator configures, the provider validates.** There is no per-model level table: a driver describes the protocol, the model describes the capability, and a level the model does not accept is the provider's own `400`, naming the offending value. The option keys of a driver's `effort` setting and the keys of its `effortLevels()` are the same set — a test keeps the two in step.
+**The driver knows its vocabulary; the model knows its levels.** A driver's `effort` setting lists every level the driver can name, and its `effortLevels()` answers with the levels the agent's model actually takes — a subset of that list, and a test keeps the two in step. The two OpenAI drivers declare the whole canonical scale, so a level their model rejects is the provider's own `400`, naming the offending value. **The Anthropic driver asks the model instead**: Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the driver reads the model id — see [Which levels a Claude model takes](#which-levels-a-claude-model-takes). A level that model does not take is refused at the API boundary, before the provider sees it.
 
 ### The wire shapes
 
@@ -98,7 +98,11 @@ The Responses row is the request-level shape. On a model that supports `configur
 
 `effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: no level is asked for, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale.
 
-**A level the driver does not declare resolves to no level at all.** The Anthropic driver declares neither `none` nor `minimal`, so a request that names one of them falls back to the model's own default rather than reaching the provider.
+**A level the driver does not declare is refused at the API boundary.** `EffortService::assertLevel()` answers `422 EFFORT_LEVEL_UNSUPPORTED` — the request never reaches the provider, and the task row never carries a level the driver cannot send. The Anthropic driver declares neither `none` nor `minimal`, so a request that names one of them is refused rather than quietly falling back.
+
+**A level that reaches the driver unchecked is dropped, not sent.** The HTTP boundary is what checks a level against the driver's set. A plugin that calls `TaskServiceInterface::startTask()` passes the effort as a plain string, and a level that is not in the driver's set is dropped on the way out: `AbstractCompatibleDriver::resolveEffort()` looks the level up and sends no effort parameter at all when it is not there. The task still runs — at the model's own default.
+
+**The configuration's default is the same story.** The `effort` setting's option list is the driver's own vocabulary, so a configuration can be saved with a level the agent's model does not take; the run then happens at that model's own default, because the driver drops the level. The capability endpoint does not promise the configured default in that case: `GET /api/v1/agents/{id}/effort` answers `default: null`, and the picker shows **Model default**.
 
 **One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because silence is not a working configuration on the models that default to `medium`. See [Tools and effort on Chat Completions](#tools-and-effort-on-chat-completions).
 
@@ -196,6 +200,21 @@ OpenAI's own documentation draws the line: _"GPT-6 Astra, GPT-6.1 Sol, and GPT-6
 
 Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatibleDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `enable_prompt_caching` (toggle), `effort` (select), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares. As with the OpenAI driver, `context_window` and `max_tokens_output` are table columns rather than settings-schema fields.
 
+### Which levels a Claude model takes
+
+Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the two are not the same list. The driver reads the model id and answers with that model's own set (`ModelFamily::claudeEffortLevels()`):
+
+| Model                                                | Levels it takes                                |
+| ---------------------------------------------------- | ---------------------------------------------- |
+| Claude 4.7 and later (4.8, the 5.x generation)       | `low`, `medium`, `high`, `xhigh`, `max`        |
+| Claude Opus 4.6, Claude Sonnet 4.6                   | `low`, `medium`, `high`, `max` — no `xhigh`    |
+| Claude Opus 4.5                                      | `low`, `medium`, `high` — no `max`, no `xhigh` |
+| Claude Sonnet 4.5, Claude Haiku 4.5, every 3.x model | none — the model has no effort at all          |
+
+A model that takes no level declares none, and the agent gets no picker: `GET /api/v1/agents/{id}/effort` answers `supported: false` with an empty `levels` array, and a request that names a level is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.
+
+A model id that names no Claude — an Anthropic-compatible endpoint with its own model names — keeps the whole set, and so does a Claude id that carries no version at all. The driver does not model another provider's model zoo, and the operator who pointed the agent at that endpoint is the only one who knows what it takes, so the provider has the last word there.
+
 ### What the 2026-10-21 API version changed
 
 **`temperature` is no longer sent, and the setting is gone.** That API version removed the sampling parameters: a request that sends any of them answers `400` on every model.
@@ -245,9 +264,11 @@ The **`store`** setting — labelled _Store responses_ — is a toggle, and it i
 
 **`store: false` is not a promise that the provider retains nothing.** It means the response is not stored as a retrievable conversation object. Prompts and responses still go into the provider's **abuse-monitoring logs**, which are retained for up to 30 days by default. Excluding customer content from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control — granted by OpenAI per organisation or project, subject to prior approval and to the limitations of each — see [OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data). An operator whose conversations carry data they cannot hand to a third party has to arrange that with OpenAI; the toggle does not do it.
 
-The toggle changes what **Spora** has to replay, not only what the provider retains. **With it off**, the reasoning item comes back carrying its `encrypted_content` — the opaque blob the provider decrypts to restore the chain of thought — and Spora replays that blob itself; the provider keeps no stored response to replay from. **With it on**, the provider keeps the reasoning item and Spora replays it by its id instead.
+The toggle changes what **Spora** has to replay, not only what the provider retains. The reasoning item carries an `encrypted_content` blob — the opaque blob the provider decrypts to restore the chain of thought — and **Spora sends that blob whenever it has one, whatever the toggle says**, because the blob resolves the item on the provider's side whether or not the provider stored it. The toggle decides the fallback: **with it off and no blob in the response, Spora drops the reasoning item from the replay** rather than sending an id the provider kept nothing for; **with it on, the item goes out by its id alone**, and the provider resolves it from its own store.
 
-> The `store: true` path is the one the shipped driver does not claim to have verified: replaying by id is the API's documented shape, but no live call has exercised it.
+> The id-only replay is the API's documented shape, and it is the fallback: it is reached only when the response carried no `encrypted_content` to replay. No live call has exercised it.
+
+**Zero Data Retention turns `store: true` into `store: false`.** For an organisation enrolled in OpenAI's Zero Data Retention programme the provider does not retain the response at all, so the reasoning item comes back with its encrypted blob rather than as a reference the provider could resolve. Spora sends the blob, so the replay still resolves — but the toggle buys nothing there, and it stops describing what actually happens. **Leave _Store responses_ off when the organisation is enrolled in Zero Data Retention.** With it on, the driver's own fallback is the id alone, which is exactly the one thing the provider cannot resolve under Zero Data Retention.
 
 ### Changing the effort mid-conversation
 
@@ -298,7 +319,26 @@ Reasoning is scoped to the model family, so switching families silently drops it
 - `tests/Unit/Drivers/OpenAICompatibleDriverTest.php`
 - `tests/Unit/Drivers/AnthropicCompatibleDriverTest.php`
 - `tests/Unit/Drivers/LLMProviderExceptionTest.php`
+- `tests/Unit/Drivers/EffortLevelTest.php` — the canonical scale and its order
+- `tests/Unit/Drivers/AnthropicEffortLevelsTest.php` — the levels each Claude model takes, and what the driver sends for them
+- `tests/Unit/Drivers/EffortLevelsMatchSettingsOptionsTest.php` — the levels a driver declares are among the options its `effort` setting offers
+- `tests/Unit/Drivers/ModelFamilyTest.php` — the model-name parse, pinned against every current model id
+- `tests/Unit/Services/LlmConfigSchemaValidatorSelectTest.php` — a `select` setting accepts only the values its option list names
+- `tests/Unit/Drivers/ResponsesRequestBuilderTest.php` — the Responses wire shape, including the reasoning replay
+- `tests/Unit/Drivers/ResponsesResponseParserTest.php`
+- `tests/Unit/Drivers/ResponsesUsageTest.php`
+- `tests/Feature/Drivers/ResponsesConfigurationUpdateTest.php` — the effort carried on a `configuration_update` item
+- `tests/Feature/Drivers/ResponsesDriverSettingsPropagationTest.php` — the settings blob reaching the wire, including the `store` flag
+- `tests/Feature/Drivers/ResponsesReasoningReplayTest.php` — a reasoning item surviving the round trip through `task_history`
+- `tests/Feature/Drivers/ResponsesToolNameTest.php` — the plugin tool names the Responses grammar accepts
+- `tests/Unit/Http/TaskEffortRequestValidatorTest.php` — the three states the `effort` field has
+- `tests/Unit/Agents/TaskEffortTickTest.php` — the effort the tick sends
+- `tests/Feature/Services/EffortServiceTest.php` — what the agent's driver can express
+- `tests/Feature/Http/AgentEffortEndpointTest.php` — `GET /api/v1/agents/{id}/effort`
+- `tests/Feature/Http/TaskEffortTest.php` — the effort on a task body
+- `tests/Feature/AgentApi/AgentApiEffortTest.php` — the effort on the per-agent chat body
+- `tests/Feature/Database/AddEffortToTasksMigrationTest.php` — the `tasks.effort` column
 
 Both driver test suites use `Symfony\Component\HttpClient\MockHttpClient` and cover: tool call parsing, text response parsing, error handling, and rate-limit exception propagation.
 
-The wire contract has its own suite: one test per driver and per mode pins the **exact** set of top-level keys the request body carries — no more, no fewer. A JSON-Schema check would not catch the mistakes that matter here, because the providers' request schemas do not forbid extra properties; the key-set assertion does, and it fails on a missing field as well as an extra one.
+The wire contract has its own suite — `tests/Unit/Drivers/WireContractTest.php` — with one row per driver and per mode: it pins the **exact** set of top-level keys the request body carries — no more, no fewer. A JSON-Schema check would not catch the mistakes that matter here, because the providers' request schemas do not forbid extra properties; the key-set assertion does, and it fails on a missing field as well as an extra one.

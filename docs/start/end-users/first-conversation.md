@@ -40,6 +40,19 @@ Press Enter (or click Send). The page shows:
 
 For a simple "what's the capital" question with no tools enabled, the agent replies directly without calling anything. The reply is the LLM's plain text output.
 
+### The effort picker
+
+Next to the composer sits an **Effort** picker, when the agent's driver can express a reasoning
+effort at all — a driver that speaks no effort has no picker, and neither does a model that
+takes none. It offers the levels that agent's driver declares, and its first entry is **Model
+default** — the level the model applies when nobody asks for one. Pick a level and the agent
+thinks harder or cheaper for that message: the level travels with the message it is sent with,
+and the turns already sent keep the effort they were sent with.
+
+A level the driver does not offer cannot be picked, and a level the agent's driver stops offering
+is refused by the server with `EFFORT_LEVEL_UNSUPPORTED` — the chat asks for the agent's levels
+again and replaces your choice with one the driver still has.
+
 ## Step 4 — Read the agent's reply
 
 The reply bubble shows:
@@ -84,11 +97,12 @@ For details, see [Concepts → Agent loop and async mode](/reference/concepts/ag
 
 - **Your message** (right-aligned, plain text)
 - **Your attachments** — the files you sent with a message, shown as chips **below** the message they belong to.
-- **The agent's "thinking"** — appears when the assistant message contains `content_blocks` entries of type `thinking` (Anthropic with thinking enabled) or `redacted_thinking`. Token counts are surfaced separately in the `usage` panel (`input_tokens`, `output_tokens`, `cache_creation_tokens`, `cache_read_tokens`, …).
+- **The agent's "thinking"** — appears when the assistant message contains `content_blocks` entries of type `thinking` (Anthropic with thinking enabled) or `redacted_thinking`. On the OpenAI Responses driver the block is of type `reasoning`, and what it shows is the API's **summary** of the model's reasoning — not the raw chain of thought, which never leaves the provider. Token counts are surfaced separately in the `usage` panel (`input_tokens`, `output_tokens`, `cache_creation_tokens`, `cache_read_tokens`, …).
 - **Tool calls** — collapsed into a single live pill per user turn (and one per sub-agent boundary). The pill header shows the current tool icon + name and a growing "N tools called" count; click the pill to expand every individual tool call with its arguments and result. Reasoning rows (the LLM's `thinking` blocks) interleave with the tool rows in the same chain.
 - **The final reply** (left-aligned, the agent's actual response)
 - **Aborted at HH:MM** — a faint horizontal divider the chat inserts after the last assistant turn when the agent loop was halted. Renders only when the task carries a `system` history row with `kind: abort_marker`. The timestamp matches the wall-clock stamp the ABORTED banner displays.
 - **The follow-up input** — when the task is `COMPLETED`, `FAILED` or `ABORTED` and the agent allows followup, the chat shows a single-line composer at the bottom; press Enter to send a new instruction.
+- **The effort trigger** — the same effort picker as the composer, as an icon button on the follow-up row. It chooses the level the next message is sent with, and that message only; the first entry is **Model default**, and the picker is there only when the agent's driver can express an effort.
 - **The command button** — a shell-prompt button next to the attach buttons opens the conversation commands. It is there for the things you ask for rather than type, today only **Compact conversation**. It sits on the follow-up bar, so it appears once the conversation has finished.
 - **The compacted turns** — when a conversation has been compacted, a collapsed **N messages compacted** marker stands where the compaction happened: after the last turn of the conversation at that moment. Click it to read what the model was told. The turns it stands in for stay in the transcript, where they were.
 - **The jump-to-newest button** — a round button in the lower right corner of the chat, shown while you are reading above the newest message. Click it to go back to the newest message.

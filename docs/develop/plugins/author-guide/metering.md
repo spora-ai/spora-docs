@@ -14,6 +14,8 @@ Two things to know before you start:
 - **The meter is asked before the call leaves, not after.** A meter that only observes sees the bill after it has been paid. Only a meter that is consulted _before_ the provider request and _before_ the tool execution can stop it.
 - **A meter that throws never stops a run.** The meter is plugin code in the hot path, so core wraps every call to it: an exception is logged at ERROR and the call proceeds. Only a decision you deliberately _return_ stops anything.
 
+> **The seam is not in a released core yet.** `Spora\Metering\UsageMeterInterface` is an open core pull request ([spora-core#323](https://github.com/spora-ai/spora-core/pull/323)), and a released core has no `Spora\Metering\` namespace at all — so a plugin cannot bind the seam until the release that carries it is published. Everything below describes the seam as it will be.
+
 ## The seam
 
 Core owns the two moments that matter — the provider request is about to leave, and the tool is about to run — and asks the meter before each one. That is the whole extension point:
@@ -27,8 +29,8 @@ interface UsageMeterInterface
      * Consulted before every provider request and every tool execution.
      *
      * @return UsageDecision|null  Null allows the call. A hard decision
-     *                              stops the task; a soft decision is
-     *                              recorded and the call proceeds.
+     *                              stops the task; a soft decision lets
+     *                              the call proceed.
      */
     public function evaluate(MeteringContext $context, MeteringSubject $subject): ?UsageDecision;
 
@@ -105,6 +107,11 @@ final readonly class LlmSubject implements MeteringSubject
         public string $provider,   // the driver's protocol name: 'openai_compatible', 'anthropic'
         public string $model,      // the configured model
     ) {}
+
+    public function kind(): string
+    {
+        return self::KIND_LLM;
+    }
 }
 
 final readonly class ToolSubject implements MeteringSubject
@@ -114,8 +121,15 @@ final readonly class ToolSubject implements MeteringSubject
         public string $toolClass,  // the fully-qualified class name
         public ?string $operation, // the operation the call dispatches to
     ) {}
+
+    public function kind(): string
+    {
+        return self::KIND_TOOL;
+    }
 }
 ```
+
+`kind()` is the one method the interface requires, and it is how the core tells a provider request from a tool execution — the failure log names it when the meter throws.
 
 `toolClass` is the stable key. The wire name comes from the `#[Tool]` attribute and changes between plugin releases; the class does not. `operation` narrows a multi-operation tool down to the operation the call actually dispatches to — the same resolver the runtime uses, so the two cannot disagree.
 
@@ -139,7 +153,7 @@ final readonly class UsageDecision
 
 `scope` is **opaque**. Core passes it through without interpreting it, so the vocabulary of windows and units stays with the meter that owns the price book. A meter that has no opinion leaves it empty. A meter that does might use `month:credits`, `rolling:total_tokens` and `credits:balance` — but core does not know those words, and a meter is free to use others.
 
-`mode` is the whole difference between a limit and a warning. A **hard** decision stops the task: it fails with `error_code = USAGE_LIMIT_REACHED`, and it is never retried — a retry would spend the very budget the decision refused. A **soft** decision is recorded and the call proceeds.
+`mode` is the whole difference between a limit and a warning. A **hard** decision stops the task: it fails with `error_code = USAGE_LIMIT_REACHED`, and it is never retried — a retry would spend the very budget the decision refused. A **soft** decision lets the call proceed, and **core keeps no record of it**: it reads the decision, sees that it is not hard, and moves on. There is no core-side ledger of decisions to write to, so a meter that wants a soft breach to be visible — in the log, in its own table — has to write it down itself, in its own `evaluate()`.
 
 ## What the meter is told afterwards
 

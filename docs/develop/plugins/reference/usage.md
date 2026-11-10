@@ -11,13 +11,15 @@ Spora meters nothing on its own. Token counters exist per assistant turn, tool c
 
 Nothing to authenticate against. The plugin has no API key, no third-party service and no external call — it reads the host's own task and principal rows and writes its own tables.
 
+> **Pre-release notice.** The plugin is not released yet: `spora-ai/spora-plugin-usage` publishes the skeleton — the manifest, the tooling and the CI, but not the plugin's own code — and the metering seam it binds into, `Spora\Metering\UsageMeterInterface`, is still an open core pull request ([spora-core#323](https://github.com/spora-ai/spora-core/pull/323)). The command below installs a working plugin only once a core release ships the seam and the plugin is tagged; the tag will be cut **after** that release.
+
 ## Installation
 
 ```bash
 php bin/spora plugin:install spora-ai/spora-plugin-usage
 ```
 
-Requires `spora-core >= 0.33.0` — the metering seam the plugin binds into lands in that release. On an older core the plugin installs but meters nothing, because the platform never asks a meter.
+Requires `spora-core >= 0.33.0`, the release that carries the metering seam the plugin binds into. That release has not been published yet; against an older core the platform never asks a meter, so the plugin meters nothing.
 
 The **Usage** tile appears in the admin panel's Apps dropdown at `/apps/usage`.
 
@@ -108,6 +110,8 @@ Two independent mechanisms, presented as two sections in the app:
 - **Budget** — a credit pool per owner. An admin grants credits; every metered event debits the pool; at zero the run is blocked.
 - **Limits** — window ceilings in any unit. A monthly cap of 10 000 credits, a rolling five-hour cap of 2 000 000 tokens, a daily cap of 500 tool calls.
 
+**Enforcement fails open.** Core asks the meter before every call and lets the call proceed when the meter throws — a metering plugin is code in the hot path, and it must not be able to take the platform down. So a meter that breaks while **checking** a limit lets the call through: the run is not blocked, and the breach is not seen. A limit whose spend cannot be read counts as not breached, for the same reason. A meter that breaks while **recording** leaves the usage out of the ledger: the call happened and cost something, but no row says so. Both failures are logged at ERROR — a broken meter is invisible in the task transcript, not in the log.
+
 An owner with **no** credit pool has no budget — only its window limits apply. That is deliberate: minting a pool on the first charge would give an unbudgeted owner a negative balance and block it.
 
 ### The windows
@@ -119,9 +123,11 @@ An owner with **no** credit pool has no budget — only its window limits apply.
 | `week`    | the last 7 days                                    |
 | `month`   | the last 30 days                                   |
 | `rolling` | the last _N_ **hours** — this is the five-hour cap |
-| `total`   | everything ever recorded                           |
+| `total`   | all usage in retained buckets                      |
 
 All of them are **rolling**, never a calendar boundary. A daily cap is the last 24 hours, so a run at 23:59 and one at 00:01 are treated alike and the boundary never moves under the operator's feet.
+
+A window is a sum over the bucket rows that are still there, so the `total` window and any rolling window longer than the retention cover only the retained buckets. The retention is the **retention days** setting, 90 days by default — so a `total` cap counts from whatever the retention still holds, and a cap can pass again once the older buckets are gone.
 
 The units are `credits`, `total_tokens`, `output_tokens`, `llm_calls` and `tool_calls`. A token or call cap works with no price book at all.
 
@@ -137,7 +143,7 @@ A limit that is reached **fails the task**. The task lands on `FAILED` with `err
 
 The refusal is not reported to the model as a tool error. A tool error reads as "that call failed", and the model tries something else — which is exactly what the limit exists to prevent.
 
-A limit in **soft** mode records the breach and lets the call through.
+A limit in **soft** mode lets the call through: the run is not stopped, and the call is metered as usual. The **breach** is recorded nowhere — core reads the decision, sees that it is not hard, and moves on.
 
 ## The price book
 
@@ -148,7 +154,7 @@ One table, two kinds of row:
 | `model` | the provider and the model name                        | per input, output and cached token |
 | `tool`  | the tool's **class name** and optionally its operation | per call                           |
 
-**A model with no price row costs zero credits.** That is the failure mode the admin API exists for: `GET /api/v1/usage/unpriced` lists the models and tools that have been used and are silently free, so a renamed model or a swapped base URL does not quietly stop the charge. The same endpoint reports the calls that **had** a price and were not billed — the principal paid for those themselves.
+**A model with no price row costs zero credits.** That is the failure mode the admin API exists for: `GET /api/v1/usage/unpriced` lists the models and tools that have been used and are silently free, so a renamed model or a swapped base URL does not quietly stop the charge. The same endpoint reports the calls that **had** a price and were not billed — because the principal ran them with their own configuration, or because the configuration that served them could not be resolved.
 
 Tools are keyed on the **class name**, not the wire name. The wire name comes from the `#[Tool]` attribute and changes between plugin releases; the class does not.
 
@@ -174,7 +180,7 @@ A model's cached tokens are charged at the discounted rate, and the cached count
 
 The picker is an **admin** control, because the tabs it scopes are admin tabs. A caller who cannot configure anything is not offered a picker that scopes nothing, and the admin listing is not requested for them.
 
-**The API is the real gate**: every admin route carries the admin middleware, and a 403 means "not an admin", not "try again".
+**The API is the real gate**: every admin route carries the admin middleware. A non-admin receives `403 FORBIDDEN`. A write can also receive `403 CSRF_TOKEN_MISSING` or `403 CSRF_INVALID` — the token is missing or wrong, not the caller unauthorised.
 
 **The price book offers what the installation knows.** The model and the tool of a price row are dropdowns, listing the models and the tools the install has used — the price book and the unpriced report together are the whole set. A price for something never used is still enterable: the dropdown is a shortcut that fills the free-text field, not a gate in front of it.
 
@@ -215,7 +221,7 @@ The plugin owns seven tables, created by `usage_000001_create_usage_tables.php`:
 | `usage_credit_grants` | the grant history                                                 |
 | `usage_prices`        | the price book                                                    |
 
-`usage_000002_add_billed_to_usage_ledger.php` adds the ledger's `billed` column. It tells the two "cost nothing" cases apart: `priced = false` is a gap in the price book, and `priced = true, billed = false` is a call the principal ran with their own configuration and was not charged for.
+`usage_000002_add_billed_to_usage_ledger.php` adds the ledger's `billed` column. It tells the two "cost nothing" cases apart: `priced = false` is a gap in the price book, and `priced = true, billed = false` is a call that was not charged for — the principal ran it with their own configuration, or the configuration that served it could not be resolved.
 
 `usage_000003_create_usage_default_limits_table.php` adds the default limit sets — the same shape as a limit row, with a `scope` that says who the set covers.
 

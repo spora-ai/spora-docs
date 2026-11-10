@@ -83,10 +83,13 @@ keeping its operators' conversations on somebody else's servers.
 
 **`store: false` is not a promise that the provider keeps nothing.** It means the response is not
 stored as a retrievable conversation object. Prompts and responses still go into OpenAI's
-abuse-monitoring logs, which are retained for up to 30 days by default. Excluding customer content
-from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control,
-which OpenAI grants per organisation or project — so if your conversations carry data you cannot
-hand to a third party, arrange that with OpenAI first. The toggle does not do it.
+**abuse-monitoring logs**, which are retained for up to 30 days by default — unless a longer
+retention is required by law, or is reasonably necessary to protect OpenAI's services or a third
+party from harm. Excluding customer content from those logs needs an approved **Zero Data
+Retention** or **Modified Abuse Monitoring** control, which OpenAI grants per organisation or
+project, subject to prior approval and to the limitations of each — see [OpenAI's data
+controls](https://developers.openai.com/api/docs/guides/your-data). If your conversations carry
+data you cannot hand to a third party, arrange that with OpenAI first. The toggle does not do it.
 
 **The control belongs to the project, not to the organisation.** What decides a request is the
 setting on the **project your API key belongs to**: a project can inherit the organisation's
@@ -96,6 +99,14 @@ for Zero Data Retention at all and may still keep application state even when it
 Assistants, Threads, Conversations, Files, Batches, Evals and fine-tuning endpoints among them;
 Spora's two, `/v1/responses` and `/v1/chat/completions`, are eligible. "The organisation is
 enrolled" is not the guarantee; the project's setting is.
+
+**The control has documented exceptions.** Image and file inputs are scanned for CSAM content on
+submission, and an image the classifier flags is retained for manual review — even with Zero Data
+Retention, Modified Abuse Monitoring or Private Retention with Private Safety Processing enabled.
+OpenAI also reserves the right to retain content for a specific customer, notified in writing: in
+encrypted abuse-monitoring logs under Private Retention with Private Safety Processing, and for
+human review under Safety Retention. The endpoint table and the rest of the exceptions are in
+[OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data).
 
 **Zero Data Retention makes `store: true` mean `store: false`.** Where the control applies — on
 the project your API key belongs to — the provider treats `store: true` as `store: false` on

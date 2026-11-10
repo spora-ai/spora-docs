@@ -388,13 +388,13 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 ### Browse by resource
 
 - [Agents](/reference/api/agents) — 35 routes
-- [Groups](/reference/api/groups) — 25 routes
+- [Groups](/reference/api/groups) — 29 routes
 - [Global-api](/reference/api/global-api) — 24 routes
 - [Group-api](/reference/api/group-api) — 17 routes
 - [Tasks](/reference/api/tasks) — 14 routes
+- [Agent-api](/reference/api/agent-api) — 13 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Media](/reference/api/media) — 12 routes
-- [Agent-api](/reference/api/agent-api) — 11 routes
 - [Speech](/reference/api/speech) — 10 routes
 - [Users](/reference/api/users) — 10 routes
 - [Me](/reference/api/me) — 9 routes
@@ -446,6 +446,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agent-api/chats/{chatId}/transcript`               | `bearerAuth`               | Everything the admin UI shows                                            | Agent-api        |
 | `POST`   | `/api/v1/agent-api/media`                                   | `bearerAuth`               | Upload a file for this agent                                             | Agent-api        |
 | `GET`    | `/api/v1/agent-api/media/{mediaId}`                         | `bearerAuth`               | Fetch a media asset this agent produced                                  | Agent-api        |
+| `POST`   | `/api/v1/agent-api/transcribe`                              | `bearerAuth`               | Transcribe an audio asset with this agent's driver                       | Agent-api        |
+| `POST`   | `/api/v1/agent-api/transcribe-and-send`                     | `bearerAuth`               | Transcribe an audio asset and send the transcript to this agent          | Agent-api        |
 | `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth`               | Index AgentTemplate                                                      | Agent-templates  |
 | `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                                                       | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/import`                            | `cookieAuth` + `csrfToken` | Import AgentTemplate                                                     | Agent-templates  |
@@ -555,6 +557,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Update GroupLlmConfigs                                                   | Groups           |
 | `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Destroy GroupLlmConfigs                                                  | Groups           |
 | `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default`         | `cookieAuth` + `csrfToken` | SetDefault GroupLlmConfigs                                               | Groups           |
+| `GET`    | `/api/v1/groups/{id}/locations`                             | `cookieAuth`               | List a group's saved locations                                           | Groups           |
+| `POST`   | `/api/v1/groups/{id}/locations`                             | `cookieAuth` + `csrfToken` | Save a location for a group                                              | Groups           |
+| `PATCH`  | `/api/v1/groups/{id}/locations/{locationId}`                | `cookieAuth` + `csrfToken` | Edit one of a group's saved locations                                    | Groups           |
+| `DELETE` | `/api/v1/groups/{id}/locations/{locationId}`                | `cookieAuth` + `csrfToken` | Delete one of a group's saved locations                                  | Groups           |
 | `GET`    | `/api/v1/groups/{id}/members`                               | `cookieAuth`               | Index GroupMember                                                        | Groups           |
 | `POST`   | `/api/v1/groups/{id}/members`                               | `cookieAuth` + `csrfToken` | Store GroupMember                                                        | Groups           |
 | `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                         | `cookieAuth` + `csrfToken` | Update GroupMember                                                       | Groups           |

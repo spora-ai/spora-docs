@@ -77,6 +77,26 @@ The tokens and the call count are facts about the run, so they are counted whate
 
 A configuration whose scope cannot be resolved is **not** billed. The call is recorded, the operator can see it in the report, and charging a principal for a call whose payer is unknown is the worse mistake.
 
+## Default limits
+
+**A principal with no limits of their own is held to the default.** A limit set on one principal says nothing about the next one, so an operator who forgets to configure somebody leaves them unlimited. The defaults are the answer to that.
+
+Three sets, and each one is optional:
+
+| Scope   | Who it holds                                          |
+| ------- | ----------------------------------------------------- |
+| `all`   | every principal that has no limits of their own       |
+| `user`  | the principals of a user — replaces `all` for users   |
+| `group` | the principals of a group — replaces `all` for groups |
+
+**The type's set replaces the general one.** A principal of type `user` uses the `user` set when there is one, and the `all` set otherwise. An operator who wants users held to a tighter rule can say so without losing the rule that holds everybody else.
+
+**An individual is a user, and a user is a principal of type `user`.** The individual scope — the person charged additionally for an interactive run — is held to the default for users. It has no limits of its own and no route to give it any, so before the defaults existed it was the one scope that could never be capped.
+
+**A limit row of the owner's own — even a switched-off one — is a configuration**, so the default does not stand in for it. A principal with a generous limit of their own is not held to the default; a principal with no row at all is.
+
+The cap is measured against the owner's **own** spend, as every limit is: a default of 1 000 credits a month holds each principal to 1 000 credits of their own.
+
 ## Credits
 
 Credits are **abstract**. There is no currency, no conversion rate, and no money anywhere in the plugin — a credit is whatever the operator decides one is. A price is a decimal number of credits per token or per call.
@@ -134,16 +154,19 @@ A model's cached tokens are charged at the discounted rate, and the cached count
 
 ## The Usage app
 
-`/apps/usage`, four tabs.
+`/apps/usage`, five tabs.
 
 | Tab          | Who      | What it shows                                                                                                                         |
 | ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | **Overview** | everyone | The caller's own principals: the balance, the limits with what is left of each window, and the spend over time.                       |
 | **Limits**   | admin    | The picked principal's limit rows — the window, the unit, the cap, the mode, whether it is on — and the spend-to-date in each window. |
+| **Defaults** | admin    | The default limit sets: everyone, users, groups.                                                                                      |
 | **Budget**   | admin    | The picked principal's credit balance and a grant form.                                                                               |
 | **Prices**   | admin    | The price book, and the unpriced models and tools.                                                                                    |
 
 **The Overview is its own thing** and is about no principal in particular, so nothing above it selects one. A caller sees their own usage; an admin also sees the installation's — what it spent in the last 30 days, who spent it, the credit pools that are empty, the models and tools that are used and cost nothing, and the calls that had a price and were not billed.
+
+**The Limits panel says which limits govern the principal it is showing.** A principal with rows of their own is held to them; a principal with none is held to the default; a principal with neither is unlimited, and the panel says so. That is the half of the default that cannot be forgotten.
 
 **The principal is picked inside the tabs that are about one.** Limits and Budget each carry a picker at the top, listing every principal on the installation with its balance and its 30-day spend. Both read the same selection, so moving from Limits to Budget keeps the principal — no re-picking, and no trip to another tab.
 
@@ -157,17 +180,19 @@ The picker is an **admin** control, because the tabs it scopes are admin tabs. A
 
 Base path `/api/v1/usage`. Every admin route carries `[AuthMiddleware, CsrfMiddleware, AdminMiddleware]`.
 
-| Method | Path                                 | Who                | What it does                                                                                   |
-| ------ | ------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
-| `GET`  | `/me`                                | any signed-in user | The caller's visible principals with their balances and limits.                                |
-| `GET`  | `/me/series?window=day\|week\|month` | any signed-in user | The spend over time.                                                                           |
-| `GET`  | `/principals`                        | admin              | Every principal.                                                                               |
-| `GET`  | `/principals/{id}`                   | admin              | One principal, with its limits and its spend.                                                  |
-| `PUT`  | `/principals/{id}/limits`            | admin              | Replaces the principal's whole set of limits. An absent limit is deleted.                      |
-| `PUT`  | `/principals/{id}/credits`           | admin              | Grants credits. A negative amount subtracts.                                                   |
-| `GET`  | `/prices`                            | admin              | The price book.                                                                                |
-| `PUT`  | `/prices`                            | admin              | Replaces the whole price book.                                                                 |
-| `GET`  | `/unpriced`                          | admin              | The models and tools used without a price row, and the calls that had one and were not billed. |
+| Method | Path                                 | Who                | What it does                                                                                            |
+| ------ | ------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/me`                                | any signed-in user | The caller's visible principals with their balances and limits.                                         |
+| `GET`  | `/me/series?window=day\|week\|month` | any signed-in user | The spend over time.                                                                                    |
+| `GET`  | `/principals`                        | admin              | Every principal.                                                                                        |
+| `GET`  | `/principals/{id}`                   | admin              | One principal, with its limits and its spend.                                                           |
+| `PUT`  | `/principals/{id}/limits`            | admin              | Replaces the principal's whole set of limits. An absent limit is deleted.                               |
+| `PUT`  | `/principals/{id}/credits`           | admin              | Grants credits. A negative amount subtracts.                                                            |
+| `GET`  | `/prices`                            | admin              | The price book.                                                                                         |
+| `PUT`  | `/prices`                            | admin              | Replaces the whole price book.                                                                          |
+| `GET`  | `/defaults`                          | admin              | The default limit sets, one per scope.                                                                  |
+| `PUT`  | `/defaults`                          | admin              | Replaces the default sets that are in the payload. A scope that is not in the payload is left as it is. |
+| `GET`  | `/unpriced`                          | admin              | The models and tools used without a price row, and the calls that had one and were not billed.          |
 
 Success is `{"data": …}` and failure is `{"error": {"code", "message"}}` — the host's envelope.
 
@@ -177,7 +202,7 @@ One plugin setting: **retention days** (default 90), how long the ledger rows an
 
 ## Schema and migrations
 
-The plugin owns six tables, created by `usage_000001_create_usage_tables.php`:
+The plugin owns seven tables, created by `usage_000001_create_usage_tables.php`:
 
 | Table                 | What it holds                                                     |
 | --------------------- | ----------------------------------------------------------------- |
@@ -189,6 +214,8 @@ The plugin owns six tables, created by `usage_000001_create_usage_tables.php`:
 | `usage_prices`        | the price book                                                    |
 
 `usage_000002_add_billed_to_usage_ledger.php` adds the ledger's `billed` column. It tells the two "cost nothing" cases apart: `priced = false` is a gap in the price book, and `priced = true, billed = false` is a call the principal ran with their own configuration and was not charged for.
+
+`usage_000003_create_usage_default_limits_table.php` adds the default limit sets — the same shape as a limit row, with a `scope` that says who the set covers.
 
 The ledger and the buckets carry **no foreign keys on purpose**. The ledger's owner is a snapshot, and a cascading key would delete the history of every scope the owner ever paid for; the other tables are keyed on a polymorphic `(owner_type, owner_id)` pair that no single foreign key can express.
 

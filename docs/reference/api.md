@@ -384,7 +384,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 ### Browse by resource
 
 - [Agents](/reference/api/agents) — 35 routes
-- [Groups](/reference/api/groups) — 25 routes
+- [Groups](/reference/api/groups) — 29 routes
 - [Global-api](/reference/api/global-api) — 24 routes
 - [Group-api](/reference/api/group-api) — 17 routes
 - [Tasks](/reference/api/tasks) — 14 routes
@@ -553,6 +553,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Update GroupLlmConfigs                                                   | Groups           |
 | `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Destroy GroupLlmConfigs                                                  | Groups           |
 | `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default`         | `cookieAuth` + `csrfToken` | SetDefault GroupLlmConfigs                                               | Groups           |
+| `GET`    | `/api/v1/groups/{id}/locations`                             | `cookieAuth`               | List a group's saved locations                                           | Groups           |
+| `POST`   | `/api/v1/groups/{id}/locations`                             | `cookieAuth` + `csrfToken` | Save a location for a group                                              | Groups           |
+| `PATCH`  | `/api/v1/groups/{id}/locations/{locationId}`                | `cookieAuth` + `csrfToken` | Edit one of a group's saved locations                                    | Groups           |
+| `DELETE` | `/api/v1/groups/{id}/locations/{locationId}`                | `cookieAuth` + `csrfToken` | Delete one of a group's saved locations                                  | Groups           |
 | `GET`    | `/api/v1/groups/{id}/members`                               | `cookieAuth`               | Index GroupMember                                                        | Groups           |
 | `POST`   | `/api/v1/groups/{id}/members`                               | `cookieAuth` + `csrfToken` | Store GroupMember                                                        | Groups           |
 | `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                         | `cookieAuth` + `csrfToken` | Update GroupMember                                                       | Groups           |

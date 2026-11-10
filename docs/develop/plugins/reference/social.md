@@ -391,6 +391,8 @@ LinkedIn publishes images only in this version: no video, no carousel, no reel.
 
 The **fit check** judges the converted file, so the operator is not told to convert a file the plugin has already converted for them. A remedy appears for a file the plugin **cannot** fix: an SVG, or a video where a network wants an image. The remedy rides on the channel: an image names _Convert to JPEG_, a video names _Convert the file to MP4_ — on Facebook a video names _Convert to JPEG_ as well.
 
+**One remedy does not make the file fit.** LinkedIn publishes images only in this version, and the plugin names _Convert the file to MP4_ for a video on the direct LinkedIn route — a conversion that leaves a video a video. Attach a still image, or publish the video through the aggregator, which does take one.
+
 The aggregator's own channels are the exception: one post goes to the aggregator as **one** file for a group of networks, so a file converted for one of them would not fit the others. The operator's file has to satisfy all of them. The fit check reports mismatches against the rules it holds, and it can miss an image-size limit: the byte cap it compares against is the video's, where the network takes a video. Compare image sizes with the limits in the table below.
 
 **And one thing the plugin cannot check:** if the Instagram account is connected to a Page that requires Page Publishing Authorization, the platform refuses the publish until that authorization is completed. See [Operator prerequisites](#operator-prerequisites).

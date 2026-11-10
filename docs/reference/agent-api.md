@@ -125,6 +125,8 @@ purpose, so a caller cannot tell a bad id from a bad secret. Requests are rate l
 | `POST` | `/api/v1/agent-api/chats/{id}/approve`    | Approve pending tool calls             |
 | `POST` | `/api/v1/agent-api/chats/{id}/reject`     | Reject pending tool calls              |
 | `POST` | `/api/v1/agent-api/chats/{id}/answer`     | Answer a question the agent asked      |
+| `POST` | `/api/v1/agent-api/transcribe`            | Transcribe an audio asset              |
+| `POST` | `/api/v1/agent-api/transcribe-and-send`   | Transcribe and send to the agent       |
 | `POST` | `/api/v1/agent-api/media`                 | Upload a file for this agent           |
 | `GET`  | `/api/v1/agent-api/media/{mediaId}`       | Read a media asset this agent produced |
 

@@ -113,14 +113,22 @@ jobs:
     # valid plugin, and no existing check noticed.
     #
     # Scope — read this before trusting a green run: CI checks out spora-core
-    # only, so this validates spora-core's committed manifest fixtures
-    # (tests/Fixtures/**), NOT the ~20 shipped plugin repos, which are only
-    # visible in a local sibling-checkout layout. Between them the fixtures
-    # exercise the full key surface ($schema, accent, autoload, class,
-    # description, icon, name, slug), so the check is meaningful here rather
-    # than vacuous — and the script prints the manifest count and source, and
-    # fails outright on zero, so that claim is auditable from this job's log and
-    # cannot silently decay into a no-op.
+    # and the plugin repos it names, so this validates spora-core's committed
+    # manifest fixtures (tests/Fixtures/**) and the *shipped* manifests of the
+    # checked-out plugins — but NOT the ~20 shipped plugin repos, which are
+    # only visible in a local sibling-checkout layout. The fixtures exercise
+    # the full key surface ($schema, accent, autoload, class, description,
+    # icon, name, slug), so the check is meaningful here rather than
+    # vacuous — and the script prints the manifest count and source, and
+    # fails outright on zero, so that claim is auditable from this job's log
+    # and cannot silently decay into a no-op.
+    #
+    # spora-plugin-usage is checked out so the icon contract is asserted
+    # against a manifest that actually ships, not only against a fixture. Its
+    # shipped manifest names "chart", which the host does not bundle, and
+    # every manifest this job could see before passed — so the job goes red
+    # until that manifest carries a bundled name. That is the check working:
+    # it turns green by itself once the plugin's main does.
     #
     # A separate job rather than a step inside `lint-schemas` on purpose: the
     # two guard different failure modes and have different fixes (re-run
@@ -156,6 +164,13 @@ jobs:
           repository: spora-ai/spora-components
           ref: main
           path: spora-components
+
+      - name: Checkout spora-plugin-usage
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: spora-ai/spora-plugin-usage
+          ref: main
+          path: spora-plugin-usage
 
       - name: Install
         run: npm ci --ignore-scripts

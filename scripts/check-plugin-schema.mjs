@@ -42,11 +42,15 @@
 //   2. ./spora-core             — CI layout (see ci-docs.yml `Checkout spora-core`).
 //   3. ../spora-core            — sibling checkout used by local dev.
 //   4. ../spora-plugin-*        — sibling plugin repos, the real shipped manifests.
+//   5. ./spora-plugin-*         — plugin repos checked out into the workspace,
+//                                 the CI layout (see ci-docs.yml `Checkout
+//                                 spora-plugin-usage`).
 //
-// CI's only manifest source is spora-core's committed fixtures; between them they
-// exercise the full key surface, so the check is meaningful there rather than
-// vacuous. Zero manifests found is a hard failure, so a discovery regression
-// cannot turn this into a green no-op.
+// CI's manifest sources are spora-core's committed fixtures and the plugin
+// repos it checks out; between them they exercise the full key surface, so
+// the check is meaningful there rather than vacuous. Zero manifests found is a
+// hard failure, so a discovery regression cannot turn this into a green
+// no-op.
 //
 // The icon check needs a spora-components checkout (./spora-components in CI,
 // ../spora-components locally). Without it the icon check is reported as
@@ -106,21 +110,25 @@ function searchRoots() {
     }
   }
   const roots = [resolve(ROOT, 'spora-core'), resolve(ROOT, '..', 'spora-core')]
-  const sibling = resolve(ROOT, '..')
-  for (const dir of siblingPluginDirs(sibling)) {
-    roots.push(dir)
+  // A plugin checkout can sit beside the docs repo (local dev) or inside it
+  // (CI: `actions/checkout` cannot write outside the workspace), so both
+  // parents are scanned.
+  for (const parent of [resolve(ROOT, '..'), ROOT]) {
+    for (const dir of pluginDirs(parent)) {
+      roots.push(dir)
+    }
   }
   return { roots, source: 'auto-discovery' }
 }
 
-// Sibling plugin repos — the manifests that actually ship. Sorted so the
-// output order is stable between runs.
-function siblingPluginDirs(sibling) {
-  const entries = existsSync(sibling) ? readdirSync(sibling) : []
+// Plugin repos — the manifests that actually ship. Sorted so the output
+// order is stable between runs.
+function pluginDirs(parent) {
+  const entries = existsSync(parent) ? readdirSync(parent) : []
   const dirs = []
   for (const entry of entries.sort((a, b) => a.localeCompare(b))) {
     if (!entry.startsWith('spora-plugin-') || entry.includes('worktree')) continue
-    const dir = resolve(sibling, entry)
+    const dir = resolve(parent, entry)
     try {
       if (statSync(dir).isDirectory()) dirs.push(dir)
     } catch {

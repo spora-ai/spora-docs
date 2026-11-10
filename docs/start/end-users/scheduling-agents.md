@@ -56,7 +56,7 @@ Four more placeholders describe the principal itself, so a template can address 
 
 Two rules make them safe to leave in a template:
 
-- **An identity field falls back rather than going empty.** A user's display name is optional, so `{{principal_name}}` falls back to the username, and only then to the literal `principal_name` — the same shape `{{user_name}}` already uses.
+- **An identity field falls back rather than going empty.** A user's display name is optional, so `{{principal_name}}` falls back to the username, and only then to the literal `principal_name` — the same shape `{{user_name}}` already uses. `{{principal_type}}` falls back the same way, to the literal `principal_type`, when the agent's principal cannot be resolved at all.
 - **A content field resolves to an empty string.** `{{principal_description}}` and `{{principal_information}}` are prose, and "nothing to say" is a legitimate value for prose; a raw `{{principal_description}}` left in a scheduled prompt is not. The empty string is the answer — the placeholder never survives into the prompt the agent reads.
 
 The principal is resolved once per agent and then branched on its type, so one template serves both kinds of owner.

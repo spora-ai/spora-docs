@@ -12,9 +12,11 @@
 
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   checkDrift,
@@ -23,6 +25,9 @@ import {
   renderReference,
   specPathFromArgs,
 } from './gen-api.mjs'
+
+const SCRIPT = fileURLToPath(new URL('./gen-api.mjs', import.meta.url))
+const ROOT = resolve(dirname(SCRIPT), '..')
 
 function render(op, { path = '/api/v1/things', method = 'post' } = {}) {
   return renderEndpointDetail({ path, method, op })
@@ -250,6 +255,21 @@ describe('the --spec flag', () => {
   it('refuses a flag without a path', () => {
     assert.throws(() => specPathFromArgs(['--spec']), /--spec needs the path/)
   })
+
+  it('reads the joined form as well as the spaced one', () => {
+    // `--spec=path` is what a person types, and a flag that reads one
+    // spelling and ignores the other is a flag that can do nothing: the
+    // check would fall back to the default spec and report the reference
+    // as up to date.
+    const spaced = specPathFromArgs(['--check', '--spec', 'docs/.vuepress/other.json'])
+    const joined = specPathFromArgs(['--check', '--spec=docs/.vuepress/other.json'])
+
+    assert.equal(joined, spaced)
+  })
+
+  it('refuses the joined form with no path', () => {
+    assert.throws(() => specPathFromArgs(['--spec=']), /--spec needs the path/)
+  })
 })
 
 describe('the drift check against a named spec', () => {
@@ -331,6 +351,46 @@ describe('the drift check against a named spec', () => {
     assert.ok(
       message.includes(`Compared against: ${otherSpecPath}`),
       `the message does not name the spec it compared against: ${message}`,
+    )
+  })
+
+  it('compares against the spec the joined form names, not the default', async () => {
+    const { targetPath, sidebarPath, otherSpecPath } = fixture()
+
+    // The reference as the first spec renders it.
+    const { newApiMd, sidebarBody } = await renderReference(SPEC, targetPath)
+    writeFileSync(targetPath, newApiMd)
+    writeFileSync(sidebarPath, sidebarBody)
+
+    // The joined form resolves to the other spec — and to nothing else.
+    const named = specPathFromArgs([`--spec=${otherSpecPath}`])
+    assert.equal(named, otherSpecPath)
+
+    // The check against it has to see the difference. A silent fall back to
+    // the default spec would find no drift and report the reference as up
+    // to date, which is the whole thing the flag exists to prevent.
+    const { drift, specPath } = await checkDrift({ specPath: named, targetPath, sidebarPath })
+
+    assert.deepEqual(drift, [targetPath, sidebarPath])
+    assert.equal(specPath, otherSpecPath)
+  })
+
+  it('compares against the spec the joined form names on the command line', () => {
+    // The unit tests above cover the pieces; this one covers the wiring —
+    // the CLI has to hand the spec the flag names to the check, or the
+    // whole flag is decoration.
+    const { otherSpecPath } = fixture()
+
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT, '--check', `--spec=${otherSpecPath}`],
+      { cwd: ROOT, encoding: 'utf8' },
+    )
+
+    assert.notEqual(result.status, 0, 'the check should have found drift against the named spec')
+    assert.ok(
+      result.stderr.includes(`Compared against: ${otherSpecPath}`),
+      `the check did not name the spec it compared against: ${result.stderr}`,
     )
   })
 })

@@ -11,10 +11,10 @@
 // `gen:api:check` validates the committed artifacts only — api.md and
 // api-sidebar.json.
 //
-// `--spec <path>` points the renderer at a different OpenAPI spec. The
-// default is `docs/.vuepress/openapi.json`; the CI drift check uses the
-// flag to compare the committed reference against a second spec — one
-// generated from a spora-core ref other than main.
+// `--spec <path>` (or `--spec=<path>`) points the renderer at a different
+// OpenAPI spec. The default is `docs/.vuepress/openapi.json`; the CI drift
+// check uses the flag to compare the committed reference against a second
+// spec — one generated from a spora-core ref other than main.
 //
 // Tag → slug: lowercased tag, with hyphens preserved (Agent-templates →
 // agent-templates). Untagged endpoints land on the "health" page.
@@ -40,21 +40,38 @@ const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'tr
 /**
  * The spec a `--spec` flag names, or null when there is none.
  *
+ * Both spellings are read: `--spec <path>` and `--spec=<path>`. The joined
+ * one is what a person types, and a flag that reads one spelling and ignores
+ * the other is a flag that can do nothing at all — the drift check would
+ * fall back to the default spec and report the reference as up to date.
+ *
  * The path is resolved against the working directory, the way every other
  * command-line path is.
  */
 export function specPathFromArgs(argv) {
-  const index = argv.indexOf('--spec')
-  if (index === -1) {
-    return null
+  for (let index = 0; index < argv.length; index++) {
+    const arg = argv[index]
+
+    if (arg === '--spec') {
+      const value = argv[index + 1]
+      if (!value || value.startsWith('--')) {
+        throw new Error('--spec needs the path of an OpenAPI spec.')
+      }
+
+      return resolve(process.cwd(), value)
+    }
+
+    if (arg.startsWith('--spec=')) {
+      const value = arg.slice('--spec='.length)
+      if (value === '') {
+        throw new Error('--spec needs the path of an OpenAPI spec.')
+      }
+
+      return resolve(process.cwd(), value)
+    }
   }
 
-  const value = argv[index + 1]
-  if (!value || value.startsWith('--')) {
-    throw new Error('--spec needs the path of an OpenAPI spec.')
-  }
-
-  return resolve(process.cwd(), value)
+  return null
 }
 
 /**

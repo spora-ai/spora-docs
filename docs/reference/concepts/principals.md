@@ -25,7 +25,10 @@ A group's settings surface is split by two predicates.
 
 The asymmetry in the third row is the point of having two predicates. Reading is what keeps a group's existence from outsiders; writing is what lets the operator's own admin panel reach a group it manages. Hiding the group from the admin would break the panel, and letting outsiders read it would undo the hiding.
 
-**The table describes the group row** — `PATCH /api/v1/groups/{id}`, the route that carries the name, the description, the information block and the avatar. The routes _under_ `/api/v1/groups/{id}/` are the group's settings surface, and they are gated on membership for everyone, a global admin included: the locations, the tool settings, the LLM configs and the preferences belong to the people who run the group. A global admin reaches a group's row through the admin panel; the group's settings are for its members.
+**The table describes the group row** — `PATCH /api/v1/groups/{id}`, the route that carries the name, the description, the information block and the avatar. The routes _under_ `/api/v1/groups/{id}/` are not one surface, and they do not all gate the same way:
+
+- **Membership-gated, a global admin included** — the group's agents (`/agents`), its locations (`/locations`), its tool settings (`/tools`), its LLM configs (`/llm-configs`) and its preferences (`/preferences`). These belong to the people who run the group, so a global admin that is not a member gets `404 GROUP_NOT_FOUND` on every one of them.
+- **Open to a global admin that is not a member** — the member routes (`/members`) and the picture routes (`/picture/image`). A global admin may read a group's membership, add and remove members, and upload or clear the group's avatar without belonging to it. These two carry an explicit global-admin bypass; every other route under `/api/v1/groups/{id}/` resolves the caller through `callerCanSeeGroup()`, which is membership-only.
 
 ## Group information and locations
 
@@ -70,7 +73,7 @@ Error semantics on the group routes:
 
 A location id that belongs to another principal answers `404`, never `403`: the row is not the caller's to ask about, and a `403` would confirm that it exists.
 
-The membership `404` is the whole of the gate on these four routes — a global admin that is not a member gets `404` here too, because they are the group's settings rather than its row. The write gate a global admin _does_ pass is the one on `PATCH /api/v1/groups/{id}`, described in the authorisation table above.
+The membership `404` is the whole of the gate on these four routes — a global admin that is not a member gets `404` here too, because they are the group's settings rather than its row. The write gate a global admin _does_ pass is the one on `PATCH /api/v1/groups/{id}`, described in the authorisation table above; the member and picture routes are the other two that carry an admin bypass.
 
 ### The same locations, for a person
 

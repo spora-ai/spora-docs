@@ -806,7 +806,9 @@ With nothing saved, the answer is `No locations saved.`
 Health data is only available for user principals. This agent belongs to a group.
 ```
 
-Height and weight belong to a body, and a group has none. An empty answer would read to the model as "nothing was recorded", which is a different claim from "this data does not exist". The operation stays in the tool's list either way, so the refusal tells the model what it cannot have rather than leaving it to wonder whether the tool was missing.
+Height and weight belong to a body, and a group has none. An empty answer would read to the model as "nothing was recorded", which is a different claim from "this data does not exist".
+
+The refusal only reaches an agent that asks for it. The operation is **disabled by default** and needs **operator approval**, and an operation that is switched off is filtered out of the schema handed to the model — so a group agent on the default configuration never sees `get_health_data` and is never told about the refusal. The operation stays in the agent's tool manifest, which is what `read_agent` returns and what the **Tools** tab shows, but that manifest is not the model's callable schema. Switch the operation on for the agent, approve the call, and the refusal above is what comes back.
 
 When the principal cannot be resolved at all, the call fails with `Principal not found.`
 

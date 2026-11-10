@@ -68,7 +68,9 @@ There is no stored `body_text` field after migration 0065. Plain text is derived
 
 **Migrations 0068 / 0069 are also forward-only** (creating / backfilling `group_pictures`); both have no-op `down()` methods.
 
-**Locations belong to the principal, not to the user** — `principal_locations` is keyed on `principal_id`, so a group's saved addresses are the group's and not the first owner's. Migration 0099 copied the `user_locations` rows into the table and dropped the old one; that copy is a one-way door for an external consumer, and `down()` restores the old shape for a local rollback.
+**Locations belong to the principal, not to the user** — `principal_locations` is keyed on `principal_id`, so a group's saved addresses are the group's and not the first owner's. Migration 0099 copied the `user_locations` rows into the table and dropped the old one; that copy is a one-way door for an external consumer.
+
+**Rolling migration 0099 back deletes every group location.** Its `down()` recreates `user_locations`, copies back only the rows whose principal is a _user_ principal, and then drops `principal_locations` — a group's saved addresses have no user-scoped home, so they are gone. Take a backup before rolling this migration back; nothing recovers them afterwards.
 
 **`groups.information` is not `groups.description`** — `description` is the short blurb a group list shows and that is set at creation; `information` is the rich Markdown block that says how to reach the organisation. An agent can read both, and folding them into one column would have thrown away the longer of the two.
 

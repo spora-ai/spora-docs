@@ -97,6 +97,8 @@ Three sets, and each one is optional:
 
 The cap is measured against the owner's **own** spend, as every limit is: a default of 1 000 credits a month holds each principal to 1 000 credits of their own.
 
+**A summary reports the limits that govern a principal**, and every limit row says where it came from: `source` is `principal` for a row of their own and `default` for the operator's default that stands in for them. The overview of a principal nobody configured therefore does not claim it has no limits — it says which default holds it.
+
 ## Credits
 
 Credits are **abstract**. There is no currency, no conversion rate, and no money anywhere in the plugin — a credit is whatever the operator decides one is. A price is a decimal number of credits per token or per call.
@@ -182,7 +184,7 @@ Base path `/api/v1/usage`. Every admin route carries `[AuthMiddleware, CsrfMiddl
 
 | Method | Path                                 | Who                | What it does                                                                                            |
 | ------ | ------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/me`                                | any signed-in user | The caller's visible principals with their balances and limits.                                         |
+| `GET`  | `/me`                                | any signed-in user | The caller's visible principals with their balances and the limits that govern them.                    |
 | `GET`  | `/me/series?window=day\|week\|month` | any signed-in user | The spend over time.                                                                                    |
 | `GET`  | `/principals`                        | admin              | Every principal.                                                                                        |
 | `GET`  | `/principals/{id}`                   | admin              | One principal, with its limits and its spend.                                                           |

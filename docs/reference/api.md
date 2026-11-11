@@ -389,7 +389,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 35 routes
+- [Agents](/reference/api/agents) — 36 routes
 - [Groups](/reference/api/groups) — 29 routes
 - [Global-api](/reference/api/global-api) — 24 routes
 - [Group-api](/reference/api/group-api) — 17 routes
@@ -462,6 +462,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                                                               | Agents           |
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                                                             | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                                                            | Agents           |
+| `GET`    | `/api/v1/agents/{id}/effort`                                | `cookieAuth`               | The reasoning-effort levels this agent can use                           | Agents           |
 | `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate                                                | Agents           |
 | `POST`   | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Favorite Agent                                                           | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Unfavorite Agent                                                         | Agents           |

@@ -1,6 +1,6 @@
 ---
 title: PHP interfaces
-description: PHP interface contracts — ToolInterface, OrchestratorInterface, LLMDriverConfigInterface, PluginInterface.
+description: PHP interface contracts — ToolInterface, OrchestratorInterface, TaskServiceInterface, LLMDriverConfigInterface, PluginInterface.
 ---
 
 # Spora: PHP Interface Contracts
@@ -41,25 +41,63 @@ The Orchestrator pauses the loop on tool turns that resolve to `requiresApproval
 
 ## `OrchestratorInterface` (`app/Agents/OrchestratorInterface.php`)
 
-- `start(agentId, userPrompt, maxSteps = 10, parentTaskId = null, runId = null): Task` — creates a `Task` with `status: QUEUED`, appends `user` history. The worker (server daemon or browser `SharedWorker`) drives the resulting task — see [Deployment modes](/reference/concepts/deployment-modes).
+> **Framework-internal.** The plugin-stable surface is the concrete `Spora\Agents\Orchestrator`
+> class, not this interface — a name that is not on the
+> [stability contract's plugin-stable list](/reference/concepts/plugins-system#plugin-stable-depend-freely)
+> is not a contract. The interface changes with the orchestrator.
+
+- `start(agentId, userPrompt, maxSteps = 10, parentTaskId = null, ?TaskStartOptions $options = null): Task` — creates a `Task` with `status: QUEUED`, appends `user` history. The trailing optional arguments travel together in one `Spora\Agents\TaskStartOptions` value object (`app/Agents/TaskStartOptions.php`) — a `final readonly` class whose `runId`, `mediaIds`, `userId` and `effort` fields are all optional and all defaulted. They are bundled because the constructor sits at the framework's seven-parameter ceiling, not because they belong together. The worker (server daemon or browser `SharedWorker`) drives the resulting task — see [Deployment modes](/reference/concepts/deployment-modes).
 - `tick(taskId, ?OrchestratorConfig $config = null): void` — one loop iteration: short claim transaction (lock, max-step check, status read) → LLM call (outside transaction) → write results. Recurses via `tick()` when a tool turn completes without requiring approval. When `$config->leaseOwner !== null`, the orchestrator extends the lease on every step boundary (used by both `/tick` in client mode and the housekeeping synchronous tick).
 - `resume(taskId, decisions): void` — `decisions` is a `list<array{provider_call_id: string, decision: 'approve'|'reject', arguments?: array<string, mixed>, reason?: string}>` (PR #173). In a `lockForUpdate()` transaction: load task + `AgentState`, split the batch via `AgentDecisionProcessor::splitDecisions()`. Approved entries are handed to `ApprovedBatchExecutor` (partial-approval semantics preserved — undecided rows stay `PENDING_APPROVAL`); rejected entries are stamped `REJECTED` with `rejected_at` / `rejected_by` / `reject_reason` and a `role:'tool'` history row is appended carrying `toolCallId` + `toolName` so the LLM sees the rejection in its next round-trip. The task transitions back to `QUEUED` only when the batch leaves no `PENDING_APPROVAL` rows. The next worker pickup (server daemon's `task:run` or browser's `/tick`) drives the next `tick()` so the LLM round-trip does not hold the lock open.
 - `reject(taskId, reason): void` — task-level bulk reject. In a `lockForUpdate()` transaction: load task, assert `PENDING_APPROVAL`, clear `pending_state`. Then outside the transaction: mark `PENDING_APPROVAL` tool calls `REJECTED`, append `Action rejected by user: {reason}` history rows, set task status to `QUEUED`. The bulk path does not write `rejected_at` / `rejected_by` / `reject_reason` — those columns are reserved for per-call rejection via `resume()`.
-- `continue(taskId, newPrompt, additionalSteps = null): Task` — append a new user message, reset `step_count`, optionally override `max_steps`, re-enter the loop. Accepted sources: `COMPLETED`, `FAILED`, `ABORTED`, and `RUNNING` (added in spora-core PR #207 — a `RUNNING` source first flips the task to `ABORTED` with an `abort_marker` history row, then re-prompts with the new message; the abort happens inside the same transaction so the worker that owned the previous loop is forced to bail). The `ABORTED` source clears `data.aborted_at` on resume (added in spora-core PR #266: also clears `data.max_steps_reached` so a subsequent manual abort does not inherit the step-cap flag and mislabel itself in the chat banner).
+- `continue(taskId, newPrompt, additionalSteps = null, mediaIds = [], userId = null, effort = null): Task` — append a new user message, reset `step_count`, optionally override `max_steps`, re-enter the loop. `effort` is the reasoning effort for that turn: `null` leaves the choice to the LLM configuration's default, an empty string asks for the model default. Accepted sources: `COMPLETED`, `FAILED`, `ABORTED`, and `RUNNING` (added in spora-core PR #207 — a `RUNNING` source first flips the task to `ABORTED` with an `abort_marker` history row, then re-prompts with the new message; the abort happens inside the same transaction so the worker that owned the previous loop is forced to bail). The `ABORTED` source clears `data.aborted_at` on resume (added in spora-core PR #266: also clears `data.max_steps_reached` so a subsequent manual abort does not inherit the step-cap flag and mislabel itself in the chat banner).
 - `abort(taskId): Task` — user-initiated quiescent halt (added in spora-core PR #207). In a `lockForUpdate()` transaction: load task, allow only `RUNNING` / `AWAITING_SUB_AGENTS` / `ABORTED` (idempotent — already-`ABORTED` returns the row without rewriting), stamp `ABORTED` via `TaskStatusWriter::abortTransition` which writes the `data.aborted_at` timestamp. Throws `InvalidTaskTransitionException` for any other source status; the controller surfaces this as **HTTP 409 `INVALID_STATE`** (not 400) — the source exists but is not in a state that allows the operation. After commit the implementation publishes via Mercure on the user-scoped task topic.
 - `appendHistory(taskId, role, content, context?)` — write a single row into `task_history`. Used by extracted services (e.g. `SubAgentService`) that pre-existed the interface but need to write back into the orchestrator's history stream without a direct coupling. `context` is a `HistoryMessageContext` (carries `toolCallId`, `toolName`, `toolCallPayload`, `inputTokens`, `outputTokens`, `contentBlocks`, `usage`); defaults to an empty context. Promoted from the implementation to the interface in spora-core PR #196.
 
 The transaction boundary in `resume()` and `reject()` is intentional: the LLM round-trip never holds a `lockForUpdate()` open during network I/O. The legacy `WorkerMode::Sync` enum case was removed in 0.19.0 (the `WorkerMode` enum is single-case `Worker`); the runtime mode that gates which worker drains the queue is the separate `WorkerRuntimeMode` enum (`server` / `client`).
 
+## `TaskServiceInterface` (`app/Services/TaskServiceInterface.php`)
+
+The task service is **plugin-stable** — a plugin may depend on it, and its signatures change only
+with a breaking release. The interface covers the whole task lifecycle: listing, reading,
+approving, compacting, retrying, continuing and aborting. The two methods that start a task are
+the ones this release changes:
+
+- `startTask(userId, agentId, prompt, maxSteps = null, parentTaskId = null, mediaIds = [], effort = null): array` — creates a task and queues it. `effort` is the reasoning effort for that task; `null` leaves the task on the LLM configuration's default.
+- `continueTask(taskId, userId, prompt, additionalSteps = null, mediaIds = [], effort = null): array` — continues a task with a new user message. `effort` applies to that follow-up only.
+
+Both are **breaking changes**: a plugin that _implements_ the interface has to move with it, or
+the class does not load. A plugin that only _calls_ the service is unaffected — omitting the
+effort leaves the task on the configuration's default. See
+[Plugin system → Stability contract](/reference/concepts/plugins-system#plugin-stable-depend-freely).
+
+**The interface takes the effort as a plain string and does not check it against the agent's
+driver.** The HTTP boundary is what checks it: a task started through the API is refused with
+`422 EFFORT_LEVEL_UNSUPPORTED` when the level is not one the agent's effective driver declares. A
+task started from a plugin skips that check — and what happens then depends on the driver. On the
+Anthropic driver a level the driver does not declare is dropped on the way to the provider, and the
+task runs at the model's own default. On the two OpenAI drivers every canonical level is declared,
+so there is nothing to drop: the level is sent, and a model that does not take it rejects the
+request with the provider's own error. See
+[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels).
+
+**An empty effort is not always "no effort".** On a GPT-5.4-or-later model with tools enabled, an
+empty effort resolves to nothing and the OpenAI-compatible driver sends `reasoning_effort: "none"`
+— on GPT-5.5, whose own default is `medium`, that **disables reasoning** rather than letting the
+model think as it would. See
+[Tools and effort on Chat Completions](/reference/concepts/drivers#tools-and-effort-on-chat-completions).
+
 ## `LLMDriverConfigInterface` (`app/Drivers/LLMDriverConfigInterface.php`)
 
 Drivers are resolved per-request by `DriverFactory::makeFromAgent()` (`app/Drivers/DriverFactory.php:51-61`), which delegates three-tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()` (`app/Services/LLMConfigPreferences.php:81-97`): the agent's own `llm_driver_config_id` FK → the **principal's** preferred config (`principal_preferences.preferred_llm_config_id`, looked up through the agent's `principal_id` at `app/Services/LLMConfigPreferences.php:90`) → the global default (`is_global = true AND is_default = true`).
 
-- `static getName(): string` — snake_case identifier, e.g. `"openai_compatible"`, `"anthropic_compatible"`.
+- `static getName(): string` — snake_case identifier, e.g. `"openai_compatible"`, `"anthropic_compatible"`, `"openai_responses"`.
 - `static getDisplayName(): string` — human-readable, e.g. `"OpenAI Compatible"`.
 - `static getDefaultTools(): list<class-string>` — default tool list for this driver.
 
 Settings are stored encrypted in `LLMDriverConfiguration.settings` (JSON blob) and discovered per-driver via `#[ToolSetting]` attribute reflection — no hardcoded field lists. The interface itself does not expose a `getSettingsSchema()` method; discovery happens in `LLMConfigSchemaInspector::buildSchemaFromClass()` (`app/Services/LLMConfigSchemaInspector.php:55-70`) via `ToolSettingSchema::collect()`, not in the controller or `ToolConfigService` (those handle the tool settings path). Implementations must be registered in the container under `llm_driver_classes`.
+
+The reasoning-effort capability is a **separate, optional** interface — `Spora\Drivers\EffortAwareDriverInterface` — because adding a method to `LLMDriverInterface` would break every implementor of a published contract. A driver that cannot express an effort level declares none. See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels).
 
 ## `PluginInterface` (`app/Plugins/PluginInterface.php`)
 

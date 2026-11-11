@@ -1,6 +1,6 @@
 ---
 title: LLM drivers
-description: LLM driver system — LLMDriverConfigInterface, LLMDriverConfiguration model, DriverFactory.
+description: LLM driver system — LLMDriverConfigInterface, LLMDriverConfiguration model, DriverFactory, and the reasoning-effort levels each driver can express.
 ---
 
 # LLM Drivers
@@ -19,7 +19,7 @@ Every driver must implement (all methods are `static`):
 
 The settings schema is **not** a method on the interface. It is discovered at runtime by `LLMConfigSchemaInspector::buildSchemaFromClass()` (`app/Services/LLMConfigSchemaInspector.php:55-70`) by collecting the driver class's `#[ToolSetting(key: ..., type: ...)]` PHP attributes through `ToolSettingSchema::collect()`. Driver classes therefore declare their UI fields as attributes — no hardcoded field lists.
 
-Driver classes are listed in the PHP-DI container under the `'llm_driver_classes'` array key, which is a **static two-entry list** of `OpenAICompatibleDriver` and `AnthropicCompatibleDriver` (`app/Core/ContainerDefinitions.php:801-804`). There is no extension hook on this key: the plugin/App `drivers()` hook was removed in 1.0, and `PluginLoader` has no driver-collection method. The `'llm_driver_classes_merged'` alias is kept alongside it for back-compatibility, but it is now identical to the static list (`app/Core/ContainerDefinitions.php:806-812`), and `LLMConfigService` is handed the merged entry via constructor injection. `spora-core/tests/Unit/Core/ContainerDefinitionsTest.php:769` pins this: the merged view equals the core list, with no plugin or App contributions. To add a driver, add the class to the `llm_driver_classes` list in `app/Core/ContainerDefinitions.php` and point an `llm_driver_configurations.driver_class` row at it.
+Driver classes are listed in the PHP-DI container under the `'llm_driver_classes'` array key, which is a **static list** of `OpenAICompatibleDriver`, `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` (`app/Core/ContainerDefinitions.php`). There is no extension hook on this key: the plugin/App `drivers()` hook was removed in 1.0, and `PluginLoader` has no driver-collection method. The `'llm_driver_classes_merged'` alias is kept alongside it for back-compatibility, but it is now identical to the static list (`app/Core/ContainerDefinitions.php`), and `LLMConfigService` is handed the merged entry via constructor injection. `spora-core/tests/Unit/Core/ContainerDefinitionsTest.php` pins this: the merged view equals the core list, with no plugin or App contributions. To add a driver, add the class to the `llm_driver_classes` list in `app/Core/ContainerDefinitions.php` and point an `llm_driver_configurations.driver_class` row at it.
 
 ## `LLMDriverConfiguration` (Model)
 
@@ -43,6 +43,91 @@ Ownership is principal-scoped, not user-scoped: migration `0067_introduce_princi
 
 Password-typed settings (per the `#[ToolSetting]` schema) are encrypted at rest using `SecurityManager` (`app/Core/SecurityManager.php`) — only `type: 'password'` fields are encrypted; the rest of the settings JSON is stored as plain text. The UI always receives masked values (`***`) for password fields, applied by `LLMConfigService::maskForApi()`.
 
+## Effort levels
+
+Every provider that has a reasoning control names it differently, exposes a different subset of levels, and rejects the control outright on models that do not support it. Spora therefore has its own vocabulary, and each driver maps it onto its provider's wire shape.
+
+### The canonical scale
+
+`Spora\Drivers\EffortLevel` is a backed enum of seven levels, ascending:
+
+| Level     | Value     |
+| --------- | --------- |
+| `None`    | `none`    |
+| `Minimal` | `minimal` |
+| `Low`     | `low`     |
+| `Medium`  | `medium`  |
+| `High`    | `high`    |
+| `XHigh`   | `xhigh`   |
+| `Max`     | `max`     |
+
+A driver declares the levels it can express in `Spora\Drivers\EffortAwareDriverInterface`:
+
+```php
+interface EffortAwareDriverInterface
+{
+    /**
+     * The canonical effort levels this driver can express, mapped to the
+     * value the provider expects.
+     *
+     * @return array<string, string> canonical level value => provider wire value
+     */
+    public function effortLevels(): array;
+}
+```
+
+The key is the canonical level, the value is what goes on the wire. For every driver today the two are the same string; the indirection is the seam for a provider that renames a level.
+
+`LLMDriverInterface` does **not** carry the method — it is a published contract, and adding to it breaks every implementor. `AbstractCompatibleDriver` implements the interface returning `[]`, which means the driver cannot express effort and sends no effort parameter at all; `OpenAICompatibleDriver`, `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` override it.
+
+**The driver knows its vocabulary; the model knows its levels.** A driver's `effort` setting lists every level the driver can name, and its `effortLevels()` answers with the levels the agent's model actually takes — a subset of that list, and a test keeps the two in step. **The Anthropic driver asks the model**: Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the driver reads the model id — see [Which levels a Claude model takes](#which-levels-a-claude-model-takes). A level that model does not take is refused at the API boundary, before the provider sees it. **The two OpenAI drivers do not narrow**: they declare the whole canonical scale, whatever the model takes, so a level the model rejects is sent and comes back as the provider's own `400`, naming the offending value. A declared level is not an accepted one.
+
+### The wire shapes
+
+| Driver                 | Parameter              | Shape                              |
+| ---------------------- | ---------------------- | ---------------------------------- |
+| `openai_compatible`    | `reasoning_effort`     | flat, top level                    |
+| `anthropic_compatible` | `output_config.effort` | a top-level `output_config` object |
+| `openai_responses`     | `reasoning.effort`     | a nested `reasoning` object        |
+
+`max_tokens` and the flat `reasoning_effort` are absent from the Responses schema and are never sent there; `max_output_tokens` is Responses-only.
+
+The Responses row is the request-level shape. On a model that supports `configuration_update` — GPT-6 and later — the driver sends no request-level `reasoning` at all and carries the level on an input item instead; see [Changing the effort mid-conversation](#changing-the-effort-mid-conversation).
+
+### The default and the per-message override
+
+`effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: no level is asked for, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale, whatever the model takes.
+
+**A level the driver does not declare is refused at the API boundary.** `EffortService::assertLevel()` answers `422 EFFORT_LEVEL_UNSUPPORTED` — the request never reaches the provider, and the task row never carries a level the driver cannot send. The Anthropic driver declares neither `none` nor `minimal`, so a request that names one of them is refused rather than quietly falling back.
+
+**A level that reaches the driver unchecked is dropped, not sent — on the Anthropic driver.** The HTTP boundary is what checks a level against the driver's set. A plugin that calls `TaskServiceInterface::startTask()` passes the effort as a plain string, and a level that is not in the driver's set is dropped on the way out: `AbstractCompatibleDriver::resolveEffort()` looks the level up and sends no effort parameter at all when it is not there. The task still runs — at the model's own default. The two OpenAI drivers declare every canonical level, so there is nothing for them to drop: the level goes out and the model takes it or refuses it.
+
+**The configuration's default is the same story.** The `effort` setting's option list is the driver's own vocabulary, so a configuration can be saved with a level the agent's model does not take; on the Anthropic driver the run then happens at that model's own default, because the driver drops the level, and the capability endpoint does not promise the configured default in that case — `GET /api/v1/agents/{id}/effort` answers `default: null`, and the picker shows **Model default**. On the OpenAI drivers every level the setting offers is declared, so the configured default is reported and then sent; a model that rejects it fails the request at the provider.
+
+**One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because silence is not a working configuration on the models that default to `medium`. See [Tools and effort on Chat Completions](#tools-and-effort-on-chat-completions).
+
+A request may carry its own `effort`, and the resolution order is:
+
+```text
+request effort (authoritative when the key is present)
+  → the config default (the `effort` setting on the LLM config)
+  → no level asked for (the model's own default)
+```
+
+The three request values mean three different things:
+
+| Request body     | Meaning                                                 |
+| ---------------- | ------------------------------------------------------- |
+| key absent       | fall back to the config default                         |
+| `effort: ""`     | explicitly the model's own default — no level asked for |
+| `effort: "high"` | that level                                              |
+
+The resolved value lands on the task row: `NULL` means no level was resolved — the model's own default — and the database never stores an empty string.
+
+The driver never reads the settings blob for effort. The resolution happens outside the driver (`LlmConfigResolver` → `TickPhaseRunner` → `LLMRequest::$effort`), and the driver only emits what it is handed. `LLMRequest::$effort` carries the **canonical** level value; the driver maps it.
+
+The chat overrides the default per message, and learns the vocabulary from `GET /api/v1/agents/{id}/effort` — see the [REST API reference](/reference/api).
+
 ## `OpenAICompatibleDriver`
 
 **File:** `app/Drivers/OpenAICompatibleDriver.php`
@@ -52,8 +137,55 @@ Password-typed settings (per the `#[ToolSetting]` schema) are encrypted at rest 
 - `base_url` defaults to `https://api.openai.com/v1`; can be overridden for Ollama, Groq, LM Studio, Azure, etc.
 - Reads settings from `LLMDriverConfiguration.settings` (decrypted per-field via `LLMConfigService::decodeSettings()`).
 - Dispatches on `finish_reason: tool_calls`; otherwise returns the text content.
+- Sends the effort level as a flat `reasoning_effort` — see [Effort levels](#effort-levels).
 
-Settings schema (`#[ToolSetting]` attributes on `app/Drivers/OpenAICompatibleDriver.php:21-25`): `api_key` (password), `base_url` (text), `model` (text), `temperature` (text), `timeout` (text). `context_window` and `max_tokens_output` are not settings-schema fields — they are columns on the `llm_driver_configurations` row.
+Settings schema (`#[ToolSetting]` attributes on `app/Drivers/OpenAICompatibleDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `temperature` (text), `effort` (select), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares. `context_window` and `max_tokens_output` are not settings-schema fields — they are columns on the `llm_driver_configurations` row.
+
+### Reasoning models
+
+A model id is an OpenAI reasoning model when it matches
+
+```text
+^gpt-[56](\.\d+)?(-|$)  gpt-5, gpt-5.1, gpt-6, gpt-6.1, …
+^o[134](-|$)            o1, o1-mini, o3, o3-mini, o4-mini
+```
+
+and does not contain `-chat-` (`gpt-5-chat-latest` and friends are ChatGPT Instant models, not reasoning models) and is not `gpt-oss`. A `provider/` prefix is stripped first, so OpenRouter's `openai/gpt-5.5` is classified the same way.
+
+On a reasoning model the driver sends `max_completion_tokens` instead of `max_tokens`, omits `temperature`, and uses `role: "developer"` instead of `role: "system"`. `max_tokens` is rejected by every current reasoning model, and `temperature` is rejected with any effort other than `none`.
+
+### Tools and effort on Chat Completions
+
+**On GPT-5.4 and later, Chat Completions does not support tool calling with `reasoning_effort` values other than `none`.** The API's documented default for the parameter is `medium`, and from GPT-5.5 on that is the model's own default too — so a request that sends tools and no effort value sits at `medium`, where tool calling is a `400`. (GPT-5.4 and GPT-5.2 default to `none`.) Silence is not a configuration to rely on, so **the driver sends `reasoning_effort: "none"` explicitly whenever the agent uses tools and no level resolves.**
+
+| Tools present | Level resolved | Sent                                                                              |
+| ------------- | -------------- | --------------------------------------------------------------------------------- |
+| yes           | no             | `reasoning_effort: "none"`                                                        |
+| yes           | yes            | the resolved level — `none` is accepted; the levels the model rejects are a `400` |
+| no            | no             | nothing                                                                           |
+| no            | yes            | the resolved level                                                                |
+
+**An explicit level is never silently overridden.** If the operator chose one, Spora sends it and the provider's own error names the fix — OpenAI's message says to use `/v1/responses` or to set `reasoning_effort` to `none`. For an agent with no tools enabled the level works normally.
+
+**An explicit `none` is not a `400`.** On the models that take tools over Chat Completions, `none` is the one level they accept, and Spora sends it unchanged. The `400` belongs to the explicit levels the model rejects — on those models, every level above `none`. The models that reject `none` itself are the other half of the GPT-6 generation; see [The two GPT-6 families](#the-two-gpt-6-families).
+
+To reason _and_ call tools on a current OpenAI model, use the [`OpenAIResponsesDriver`](#openairesponsesdriver).
+
+### The two GPT-6 families
+
+**"GPT-5.4 and later" is one rule for the driver, but the GPT-6 generation splits in two** — and the advice differs.
+
+| Family                                           | Tools on Chat Completions | `none`                                         |
+| ------------------------------------------------ | ------------------------- | ---------------------------------------------- |
+| GPT-5.4, GPT-5.5, GPT-5.6, GPT-6 Sol, GPT-6 Luna | accepted at `none` only   | accepted — the driver sends it, the agent runs |
+| GPT-6.1 Terra                                    | **not supported at all**  | accepted, but it cannot call tools either      |
+| GPT-6 Astra, GPT-6.1 Sol                         | **not supported at all**  | rejected — a `400`                             |
+
+OpenAI's own documentation draws the line: _"GPT-6 Astra, GPT-6.1 Sol, and GPT-6.1 Terra support Chat Completions, but tool calling requires Responses. GPT-6 Sol and GPT-6 Luna support function calling in Chat Completions only with `reasoning_effort: "none"`."_
+
+**On GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra the Responses driver is the only way to run an agent.** Chat Completions cannot call tools on those models at all, whatever the effort, and the `none` escape hatch does not rescue them: `none` is a `400` on GPT-6 Astra, and GPT-6.1 Sol rejects `none` and `minimal` as well. The driver sends `none` across the whole GPT-5.4+ range, so on those three the request fails at the provider instead of running the agent. That holds even when the operator does not want the model to reason — the choice there is the endpoint, not the level.
+
+**On GPT-6 Sol and GPT-6 Luna the `none` workaround works exactly as it does on GPT-5.4.** The agent runs, the model does not reason, and the Responses driver is the way to have both.
 
 ## `AnthropicCompatibleDriver`
 
@@ -63,9 +195,114 @@ Settings schema (`#[ToolSetting]` attributes on `app/Drivers/OpenAICompatibleDri
 - Calls `POST {base_url}/v1/messages` using Anthropic's `messages` API. Default `base_url` is `https://api.anthropic.com` (the driver appends `/v1/messages`).
 - Uses Anthropic's request format: `system` prompt is a top-level field; `tools` array uses the Anthropic schema (not OpenAI schema).
 - Dispatches on `stop_reason: tool_use`; otherwise returns text content blocks.
-- Sends `anthropic-version: 2023-06-01` header and `x-api-key` for auth.
+- Sends `anthropic-version: 2026-10-21` header and `x-api-key` for auth.
+- Sends the effort level as `output_config: {effort: "<level>"}` — see [Effort levels](#effort-levels).
 
-Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatibleDriver.php:19-25`): `api_key` (password), `base_url` (text), `model` (text), `enable_prompt_caching` (toggle), `temperature` (text), `thinking_budget` (text), `timeout` (text). As with the OpenAI driver, `context_window` and `max_tokens_output` are table columns rather than settings-schema fields.
+Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatibleDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `enable_prompt_caching` (toggle), `effort` (select), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares. As with the OpenAI driver, `context_window` and `max_tokens_output` are table columns rather than settings-schema fields.
+
+### Which levels a Claude model takes
+
+Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the two are not the same list. The driver reads the model id and answers with that model's own set (`ModelFamily::claudeEffortLevels()`):
+
+| Model id                                             | Levels it takes                                          |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| Claude 4.7 and later (4.8, the 5.x generation)       | `low`, `medium`, `high`, `xhigh`, `max`                  |
+| Claude Opus 4.6, Claude Sonnet 4.6                   | `low`, `medium`, `high`, `max` — no `xhigh`              |
+| Claude Opus 4.5                                      | `low`, `medium`, `high` — no `max`, no `xhigh`           |
+| Claude Sonnet 4.5, Claude Haiku 4.5, every 3.x model | none — the model has no effort at all                    |
+| A `claude-` id with no version at all                | all five — the driver's fallback, not the model's answer |
+| An id that is not a `claude-` id at all              | all five — the driver's fallback, not the model's answer |
+
+A model that takes no level declares none, and the agent gets no picker: `GET /api/v1/agents/{id}/effort` answers `supported: false` with an empty `levels` array, and a request that names a level is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.
+
+**The last two rows are the rule's way of not knowing, not a statement about the model.** The driver cannot identify the model, so it does not narrow its level set: a `claude-` id that carries no version names the current generation on Anthropic's own API, but a compatible endpoint can use a versionless name such as `claude-legacy` for a model that takes some of the levels or none of them. An id that is not a `claude-` id at all belongs to an Anthropic-compatible endpoint with its own model names — Kimi and the like. The driver does not model another provider's model zoo, and the operator who pointed the agent at that endpoint is the only one who knows what it takes, so the provider has the last word there: a level the model rejects comes back as the provider's own error, not as a silent fall back to the model's default.
+
+### What the 2026-10-21 API version changed
+
+**`temperature` is no longer sent, and the setting is gone.** That API version removed the sampling parameters: a request that sends any of them answers `400` on every model.
+
+The cost, precisely: **Claude 4.7 and later are unaffected** — those models only accept the default, so Spora's `0.7` was never in effect. On **Sonnet 4.6 and earlier** the sample moves from `0.7` to the API default of `1.0`, so the output becomes slightly more varied. For an agent loop that is neutral-to-positive — less repetitive output from step to step — and the models concerned are a generation behind. `effort` is the replacement control: Anthropic's own guidance is that effort shapes the whole response, tool calls included.
+
+**`thinking_budget` is gone, and `effort` replaces it.** The two are the same knob in two generations of the API, and their coverage barely overlaps: `budget_tokens` is a hard `400` on Claude 4.7 and later, and the models that still take it — Opus 4.5, Sonnet 4.5, Haiku 4.5, and (deprecated) Opus 4.6 and Sonnet 4.6 — are covered by `effort` except **Sonnet 4.5 and Haiku 4.5**, which have no `effort` at all.
+
+**Opus 4.5, Sonnet 4.5 and Haiku 4.5 lose manual extended thinking entirely**: on them Spora sends no `thinking` field at all. Sonnet 4.5 and Haiku 4.5 have no `effort` to fall back on. Opus 4.5 has `effort`, but adaptive thinking arrived with the 4.6 generation and is a `400` below it — so there is no thinking mode left to turn on there either, and `effort` shapes the response without a thinking block to show.
+
+A stored `thinking_budget` is pruned the next time that configuration is saved — `LLMConfigPersistence::encodeSettings()` drops the keys that are not in the driver's schema — so no data migration is needed.
+
+### The `thinking` field
+
+| Model family    | Effort configured | `thinking` field                                |
+| --------------- | ----------------- | ----------------------------------------------- |
+| 4.6 and later   | yes               | `{"type": "adaptive", "display": "summarized"}` |
+| 4.6 and later   | no                | omitted                                         |
+| 4.5 and earlier | any               | omitted                                         |
+
+**Effort turns on adaptive thinking wherever adaptive thinking exists; below 4.6 there is no thinking mode, so effort shapes the response only.** Claude 3.x has no thinking mode at all.
+
+`display: "summarized"` is sent only with `type: "adaptive"`, because that is where the default flipped to `"omitted"` — without it the model would return an empty reasoning block and the chat would show no reasoning at all. Neither `thinking: {"type": "disabled"}` nor `thinking: {"type": "enabled", "budget_tokens": N}` is ever sent.
+
+## `OpenAIResponsesDriver`
+
+**File:** `app/Drivers/Responses/OpenAIResponsesDriver.php`
+**Driver name:** `openai_responses`
+**Display name:** `OpenAI Responses`
+
+- Calls `POST {base_url}/responses` — OpenAI's Responses API, not Chat Completions.
+- The system prompt is the top-level `instructions` field, not a `system` message.
+- The conversation is a list of `input` items: messages, function calls, function-call outputs.
+- Tool definitions are flat — `{"type": "function", "name": …}` — not nested under a `function` object.
+- The token cap is `max_output_tokens`; `max_tokens` is not in the schema and is never sent.
+- The effort level travels nested: `reasoning: {"effort": "<level>"}`.
+
+Settings schema (`#[ToolSetting]` attributes on `app/Drivers/Responses/OpenAIResponsesDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `effort` (select), `store` (toggle), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares.
+
+**It is priced like the Chat Completions driver.** `getProviderName()` returns `openai_compatible` — the tag the Chat Completions driver already uses, not a new one — so the price rows an operator already has for a model keep matching when an agent is pointed at this driver. A model with no price row is unpriced: the call is metered as free. The protocol identifier is the separate `openai_responses`; the usage panel reads `openai`, which is the tag both OpenAI protocols report.
+
+Plugin tool names are sanitised for this driver: a plugin tool's name carries a colon, which the API's function-name grammar forbids, so every character outside `[A-Za-z0-9_-]` is replaced with a hyphen and the name the model echoes is mapped back — the tool still resolves. The name is built the same way for every driver, so no other driver is affected.
+
+### `store`
+
+The **`store`** setting — labelled _Store responses_ — is a toggle, and it is **off** by default. It decides whether the provider keeps the response as a retrievable conversation object on its own servers: the Responses API stores one for at least 30 days unless it is told not to, so Spora sends `store: false` until an operator asks otherwise. A self-hosted platform has no business keeping its operators' conversations on somebody else's servers.
+
+**`store: false` is not a promise that the provider retains nothing.** It means the response is not stored as a retrievable conversation object. Prompts and responses still go into OpenAI's **abuse-monitoring logs**, which are retained for up to 30 days by default — unless a longer retention is required by law, or is reasonably necessary to protect OpenAI's services or a third party from harm. Excluding customer content from those logs needs an approved **Zero Data Retention** or **Modified Abuse Monitoring** control — granted by OpenAI per organisation or project, subject to prior approval and to the limitations of each — see [OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data). An operator whose conversations carry data they cannot hand to a third party has to arrange that with OpenAI; the toggle does not do it.
+
+**The control belongs to the project, not to the organisation.** OpenAI grants Zero Data Retention per organisation or project, and what decides a request is the setting on the **project the API key belongs to**: a project can inherit the organisation's setting, can pick Zero Data Retention or Modified Abuse Monitoring itself, or can select **None** and switch the controls off for that project even though the organisation is enrolled. Some endpoints and capabilities are not eligible for Zero Data Retention at all and may still keep application state even when it is enabled — the Assistants, Threads, Conversations, Files, Batches, Evals and fine-tuning endpoints among them; Spora's two, `/v1/responses` and `/v1/chat/completions`, are eligible. "The organisation is enrolled" is not the guarantee an operator needs; the project's setting is.
+
+**The control has documented exceptions.** Image and file inputs are scanned for CSAM content on submission, and an image the classifier flags is retained for manual review — even with Zero Data Retention, Modified Abuse Monitoring or Private Retention with Private Safety Processing enabled. OpenAI also reserves the right to retain content for a specific customer, notified in writing: in encrypted abuse-monitoring logs under Private Retention with Private Safety Processing, and for human review under Safety Retention. The endpoint table and the rest of the exceptions are in [OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data).
+
+**The toggle does not decide who replays the reasoning.** Spora always replays the encrypted reasoning itself: the reasoning item carries an `encrypted_content` blob — the opaque blob the provider decrypts to restore the chain of thought — and Spora sends that blob whenever it has one, whatever the toggle says, because the blob resolves the item on the provider's side whether or not the provider stored it.
+
+**What the toggle decides is the fallback**, for the one case the blob does not cover — a reasoning item that arrives without encrypted content. With it off, Spora drops that item from the replay rather than sending an id the provider kept nothing for; with it on, the item goes out by its id alone, which only the provider can resolve if it kept the item.
+
+> The id-only replay is the API's documented shape, and it is the fallback: it is reached only when the response carried no `encrypted_content` to replay. No live call has exercised it.
+
+**Zero Data Retention turns `store: true` into `store: false`.** Where the control applies — on the project the API key belongs to — the provider treats `store: true` as `store: false` on `/v1/responses` and `/v1/chat/completions`, so the reasoning item comes back with its encrypted blob rather than as a reference the provider could resolve. Spora sends that blob either way — the toggle never decided that — so the replay resolves. What the toggle decides there is the fallback, and under Zero Data Retention the fallback the provider could serve is the one the toggle takes away. **Leave _Store responses_ off when Zero Data Retention applies to the project your key belongs to**: with it on, a reasoning item that arrives without encrypted content goes out by its id alone, and there is nothing for the provider to resolve that id against.
+
+### Changing the effort mid-conversation
+
+The chat can change the effort between messages, and the Responses API has a way of doing that which does not cost the prompt cache:
+
+```json
+{ "type": "configuration_update", "reasoning": { "effort": "high" } }
+```
+
+It is an **input item**, not a request-level parameter, so it changes the effort for the responses that follow it without rewriting the request body — and the cached prompt prefix survives. On a model that supports it the request-level `reasoning` is **not sent at all**: the override rides on the item, as the last input item, so it applies to the response generated after it.
+
+**GPT-6 and later support it.** On an earlier model the same change is a request-level `reasoning.effort`, which is a prefix edit — **it invalidates the prompt cache**. An operator on a pre-GPT-6 model should know that moving the level mid-chat costs the cache.
+
+### The reasoning item
+
+A reasoning item is **opaque** and must be replayed **in position**. OpenAI's own reference is explicit: when function calling with a reasoning model on the Responses API, pass the reasoning items returned with the function calls back along with the tool outputs — that is what keeps the reasoning continuous across the call.
+
+Reasoning is scoped to the model family, so switching families silently drops it.
+
+**What the chat shows is a summary, not the chain of thought.** The API returns a summary of the model's reasoning, and that summary is what the driver stores as the block's text. The chat renders it in the same bubble Anthropic's `thinking` block uses — one bubble, whatever the provider — and a turn that came back with no summary shows no reasoning at all.
+
+### When to choose it
+
+**Choose the Responses driver** when you want an OpenAI reasoning model to _think and call tools in the same turn_. Over Chat Completions the two are mutually exclusive on GPT-5.4 and later: the model accepts tools only at `none`, so the agent runs but the model does not reason. On GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra it is more than mutual exclusion — Chat Completions cannot call tools on those models at all, so the Responses driver is the only option there, even for an operator who does not want the model to reason. The Responses API is the only OpenAI endpoint where a reasoning model can do both — the same combination Anthropic gives through adaptive thinking.
+
+**Keep the Chat Completions driver** for everything else. vLLM, Ollama, LM Studio, Groq, Mistral and DeepSeek implement `/v1/chat/completions`, and their `/v1/responses` implementations differ per provider — some ignore unsupported parameters, some reject `store: true`, some have no statefulness at all.
 
 ## `DriverFactory`
 
@@ -73,7 +310,7 @@ Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatible
 
 - Calls `LLMConfigPreferences::getEffectiveConfigForAgent($agent)`, which performs three-tier resolution: agent-specific (`agent.llm_driver_config_id`) → principal preferred (`principal_preferences.preferred_llm_config_id`) → global default (`is_global = true AND is_default = true`). See `app/Services/LLMConfigPreferences.php:75-98`. Preference writes are principal-scoped: `setPrincipalPreferredConfig()` only accepts a global config or one owned by that same principal, and an agent resolves tier 2 through `agent.principal_id` (`app/Services/LLMConfigPreferences.php:100-145`).
 - Instantiates the `driver_class` column's FQCN with the decrypted settings plus an HTTP client, logger, and timeout. `timeout` is read from the per-config setting when present, otherwise it falls back to the container-wide `llm_timeout` (`app/Drivers/DriverFactory.php:82-85`).
-- `AnthropicCompatibleDriver` is constructed with an `AnthropicDriverOptions` value object carrying `thinking_budget`, `supports_image_input`, and `enable_prompt_caching` rather than loose scalars (`app/Drivers/DriverFactory.php:99-112`).
+- `AnthropicCompatibleDriver` is constructed with an `AnthropicDriverOptions` value object carrying `supports_image_input` and `enable_prompt_caching` rather than loose scalars. A driver that needs more than the abstract driver's seven constructor arguments implements `Spora\Drivers\DriverOptionsAwareInterface` and is built from the decoded settings itself — `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` do. The factory asks the capability rather than comparing class names.
 - If no config resolves, it **throws** `LlmConfigurationMissingException` (`app/Drivers/DriverFactory.php:55-61`). There is no silent fallback driver: the previous empty-key `OpenAICompatibleDriver` punted the request to `api.openai.com` and surfaced as an upstream 401, hiding the operator-visible "no LLM configured" error. `ErrorClassifier` turns the exception into a `NO_LLM_CONFIGURATION` message on the task row.
 - The factory does not merge plugin drivers — there is no such hook. Adding a driver means adding the class to the `llm_driver_classes` list in `app/Core/ContainerDefinitions.php` and referencing it from `llm_driver_configurations.driver_class`.
 
@@ -90,5 +327,26 @@ Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatible
 - `tests/Unit/Drivers/OpenAICompatibleDriverTest.php`
 - `tests/Unit/Drivers/AnthropicCompatibleDriverTest.php`
 - `tests/Unit/Drivers/LLMProviderExceptionTest.php`
+- `tests/Unit/Drivers/EffortLevelTest.php` — the canonical scale and its order
+- `tests/Unit/Drivers/AnthropicEffortLevelsTest.php` — the levels each Claude model takes, and what the driver sends for them
+- `tests/Unit/Drivers/EffortLevelsMatchSettingsOptionsTest.php` — the levels a driver declares are among the options its `effort` setting offers
+- `tests/Unit/Drivers/ModelFamilyTest.php` — the model-name parse, pinned against every current model id
+- `tests/Unit/Services/LlmConfigSchemaValidatorSelectTest.php` — a `select` setting accepts only the values its option list names
+- `tests/Unit/Drivers/ResponsesRequestBuilderTest.php` — the Responses wire shape, including the reasoning replay
+- `tests/Unit/Drivers/ResponsesResponseParserTest.php`
+- `tests/Unit/Drivers/ResponsesUsageTest.php`
+- `tests/Feature/Drivers/ResponsesConfigurationUpdateTest.php` — the effort carried on a `configuration_update` item
+- `tests/Feature/Drivers/ResponsesDriverSettingsPropagationTest.php` — the settings blob reaching the wire, including the `store` flag
+- `tests/Feature/Drivers/ResponsesReasoningReplayTest.php` — a reasoning item surviving the round trip through `task_history`
+- `tests/Feature/Drivers/ResponsesToolNameTest.php` — the plugin tool names the Responses grammar accepts
+- `tests/Unit/Http/TaskEffortRequestValidatorTest.php` — the three states the `effort` field has
+- `tests/Unit/Agents/TaskEffortTickTest.php` — the effort the tick sends
+- `tests/Feature/Services/EffortServiceTest.php` — what the agent's driver can express
+- `tests/Feature/Http/AgentEffortEndpointTest.php` — `GET /api/v1/agents/{id}/effort`
+- `tests/Feature/Http/TaskEffortTest.php` — the effort on a task body
+- `tests/Feature/AgentApi/AgentApiEffortTest.php` — the effort on the per-agent chat body
+- `tests/Feature/Database/AddEffortToTasksMigrationTest.php` — the `tasks.effort` column
 
 Both driver test suites use `Symfony\Component\HttpClient\MockHttpClient` and cover: tool call parsing, text response parsing, error handling, and rate-limit exception propagation.
+
+The wire contract has its own suite — `tests/Unit/Drivers/WireContractTest.php` — with one row per driver and per mode: it pins the **exact** set of top-level keys the request body carries — no more, no fewer. A JSON-Schema check would not catch the mistakes that matter here, because the providers' request schemas do not forbid extra properties; the key-set assertion does, and it fails on a missing field as well as an extra one.

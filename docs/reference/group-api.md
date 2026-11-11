@@ -185,6 +185,24 @@ Everything else — polling, transcripts, blocked chats, callbacks, media — wo
 the [per-agent surface](/reference/agent-api), with one difference: a chat outside the group
 answers `404`, not `403`. A caller must not be able to probe which chat ids exist.
 
+`effort` is accepted on the chat body — the reasoning effort for that message. It is one of
+`none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. Leave it out and the LLM
+configuration's default applies; send `""` to ask for the model's own default, so that no level is
+asked for. A `null` is read as an omitted field, so it applies the configuration's default too —
+it is not a `422 INVALID_EFFORT`. A value that is a string but not on that scale, or a value that is
+neither a string nor `null`, is a `422 INVALID_EFFORT`; a level
+the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED`.
+`POST /chats/{id}/messages` takes the same field, where it applies to that follow-up only. See
+[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
+and the resolution order, and
+[the refusals](/reference/api#the-effort-field-on-a-task-body) for every message the two codes
+answer with.
+
+One driver asks for a level anyway: on a GPT-5.4-or-later reasoning model the OpenAI-compatible
+driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because
+silence is not a working configuration on the models that default to `medium` — see
+[Tools and effort on Chat Completions](/reference/concepts/drivers#tools-and-effort-on-chat-completions).
+
 `GET /group-api/chats` lists the chats of all the group's agents, newest first, always paginated
 (25 per page by default, 100 maximum) with `?page=` and `?per_page=`. `?since=<ISO-8601>` narrows
 to chats updated after that instant.

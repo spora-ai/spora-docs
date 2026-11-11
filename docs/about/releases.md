@@ -13,6 +13,180 @@ Versions are `0.x.y` until 1.0. Under the pre-1.0 policy a **minor** bump may ca
 changes, so read the breaking-change section before you upgrade. The [roadmap](/about/roadmap#versioning)
 explains the policy.
 
+## Unreleased
+
+Spora's LLM drivers can now say **how hard the model should think**, and OpenAI's reasoning models
+can finally **think and call tools in the same turn**. Two changes ship together: a per-message
+reasoning effort, and a new driver for OpenAI's Responses API.
+
+### Reasoning effort you can set per message
+
+Every provider that has a reasoning control names it differently and accepts a different subset of
+levels. Spora now has one vocabulary of its own — `none`, `minimal`, `low`, `medium`, `high`,
+`xhigh`, `max` — and each driver maps it onto its provider's own parameter.
+
+**A default on the LLM configuration.** The OpenAI-compatible, Anthropic-compatible and OpenAI
+Responses drivers carry a new **Effort** setting. Its first entry is _Model default_, which is the
+default: no level is asked for, and the provider applies whatever it would have applied anyway.
+Pick a level and every task on that configuration starts there.
+
+**An override per message in the chat.** The composer carries a picker, and so does the follow-up
+row, so a single message can think harder or cheaper than the rest of the conversation. The picker
+offers the levels the agent's driver can express and starts on the configuration's default.
+
+The resolution order is: the message's own effort when it carries one, then the configuration's
+default, then the model's own default.
+
+**One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible
+driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because
+silence is not a working configuration on the models that default to `medium` — see the OpenAI
+Responses section below.
+
+**The driver knows its vocabulary; the model knows its levels.** The two OpenAI drivers offer the
+whole scale, so a level their model rejects fails at the provider, with the provider's own error
+naming the offending value. **The Anthropic driver asks the model instead**: Anthropic publishes
+which Claude models take `output_config.effort` and which of the five levels each of them takes,
+and the driver reads the model id. A Claude that takes no level at all — Sonnet 4.5, Haiku 4.5 and
+every 3.x model — declares none, and a request that names a level the model does not take is
+refused by the API with `422 EFFORT_LEVEL_UNSUPPORTED` before it ever reaches the provider.
+
+### A new "OpenAI Responses" driver
+
+Over OpenAI's Chat Completions API, a reasoning model cannot do two things at once. From GPT-5.4
+onward, Chat Completions does not support tool calling with any `reasoning_effort` value other than
+`none` — and the default is `medium` on the models from GPT-5.5 on, where tools at `medium` is a
+`400`. An agent could run, but the model would never think, which is what those models are bought
+for.
+
+**The GPT-6 generation splits in two.** GPT-6 Sol and GPT-6 Luna accept function calls on Chat
+Completions at `none`, so the workaround holds there. **GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra
+cannot call tools over Chat Completions at all**, and GPT-6 Astra and GPT-6.1 Sol reject `none`
+outright — so on those three the Responses driver is the only way to run an agent, even when you do
+not want the model to reason.
+
+The new **OpenAI Responses** driver speaks `/v1/responses`, the endpoint where a reasoning model
+can reason _and_ call tools in the same turn. Its effort level travels nested (`reasoning.effort`)
+rather than flat, and it counts output tokens with `max_output_tokens`.
+
+**Moving the level mid-chat is free on GPT-6 and later.** There the driver changes the effort with
+a `configuration_update` item rather than by rewriting the request, so the cached prompt prefix
+survives. On an earlier model the same change is a prefix edit, and it costs the cache.
+
+**Your price rows still apply.** The driver is metered under the same provider tag as the Chat
+Completions driver, so the price rows you already have for a model keep matching when you point an
+agent at it.
+
+**Retention is off by default.** The Responses API stores a response as a retrievable conversation
+object for at least 30 days unless it is told not to, so Spora sends `store: false` unless the
+operator turns on the driver's **Store responses** setting. A self-hosted platform has no business
+keeping its operators' conversations on somebody else's servers.
+
+**`store: false` is not a promise that the provider keeps nothing.** It means the response is not
+stored as a retrievable conversation object. Prompts and responses still go into OpenAI's
+**abuse-monitoring logs**, which are retained for up to 30 days by default — unless a longer
+retention is required by law, or is reasonably necessary to protect OpenAI's services or a third
+party from harm. Excluding customer content from those logs needs an approved **Zero Data
+Retention** or **Modified Abuse Monitoring** control, which OpenAI grants per organisation or
+project, subject to prior approval and to the limitations of each — see [OpenAI's data
+controls](https://developers.openai.com/api/docs/guides/your-data). If your conversations carry
+data you cannot hand to a third party, arrange that with OpenAI first. The toggle does not do it.
+
+**The control belongs to the project, not to the organisation.** What decides a request is the
+setting on the **project your API key belongs to**: a project can inherit the organisation's
+setting, can pick the control itself, or can select **None** and switch the controls off for that
+project even though the organisation is enrolled. Some endpoints and capabilities are not eligible
+for Zero Data Retention at all and may still keep application state even when it is enabled — the
+Assistants, Threads, Conversations, Files, Batches, Evals and fine-tuning endpoints among them;
+Spora's two, `/v1/responses` and `/v1/chat/completions`, are eligible. "The organisation is
+enrolled" is not the guarantee; the project's setting is.
+
+**The control has documented exceptions.** Image and file inputs are scanned for CSAM content on
+submission, and an image the classifier flags is retained for manual review — even with Zero Data
+Retention, Modified Abuse Monitoring or Private Retention with Private Safety Processing enabled.
+OpenAI also reserves the right to retain content for a specific customer, notified in writing: in
+encrypted abuse-monitoring logs under Private Retention with Private Safety Processing, and for
+human review under Safety Retention. The endpoint table and the rest of the exceptions are in
+[OpenAI's data controls](https://developers.openai.com/api/docs/guides/your-data).
+
+**Zero Data Retention makes `store: true` mean `store: false`.** Where the control applies — on
+the project your API key belongs to — the provider treats `store: true` as `store: false` on
+`/v1/responses` and `/v1/chat/completions`, so the reasoning item comes back with its encrypted
+blob rather than as a reference the provider could resolve. Spora always replays that blob itself —
+the toggle never decided that — so the conversation still continues. What the toggle decides is the
+fallback for a reasoning item that arrives without encrypted content, and under Zero Data Retention
+the fallback the provider could serve is the one the toggle takes away. **Leave _Store responses_
+off when Zero Data Retention applies to the project your key belongs to**: with it on, that item
+goes out by its id alone, and there is nothing for the provider to resolve the id against.
+
+Choose this driver for OpenAI's own reasoning models. Everything else — vLLM, Ollama, LM Studio,
+Groq, Mistral, DeepSeek — stays on the Chat Completions driver, and their `/v1/responses`
+implementations differ per provider.
+
+### Anthropic moves to the 2026-10-21 API
+
+The Anthropic driver now sends `anthropic-version: 2026-10-21`. That version removed the sampling
+parameters, which costs two settings.
+
+**`temperature` is gone.** A request that sends it answers `400` on every model, so the setting
+leaves the configuration form and the driver never sends it. The cost is precise: **Claude 4.7 and
+later are unaffected** — those models only accept the default, so Spora's `0.7` was never in
+effect — while on **Sonnet 4.6 and earlier** the sample moves from `0.7` to the API default of
+`1.0`, so the output becomes slightly more varied. For an agent loop that is neutral-to-positive,
+and those models are a generation behind. `effort` is the replacement control: Anthropic's own
+guidance is that effort shapes the whole response, tool calls included.
+
+**`thinking_budget` is gone, and `effort` replaces it.** The two are the same knob in two
+generations of the API. A manual budget is a `400` on Claude 4.7 and later, so keeping it would
+have been a knob that breaks the request the moment the operator upgrades the model. The cost is
+narrow but real: **Sonnet 4.5, Haiku 4.5 and Opus 4.5 lose manual extended thinking**. Sonnet 4.5
+and Haiku 4.5 have no `effort` at all, and Opus 4.5 does take `effort` — but adaptive thinking
+arrived with Claude 4.6 and is a `400` below it, and the manual mode is gone with the setting, so
+on Opus 4.5 `effort` shapes the response and no thinking block comes back. On every other model
+`effort` takes over, and the reasoning you see in the chat keeps showing — Spora asks for the
+summarised thinking explicitly, because the API's own default stopped returning it.
+
+A stored `temperature` or `thinking_budget` is pruned the next time that configuration is saved.
+There is no data migration to run.
+
+### One breaking change, for plugin authors
+
+`Spora\Services\TaskServiceInterface::startTask()` and `continueTask()` change signature — each
+takes the reasoning effort for the task, as a plain optional `?string $effort = null`.
+
+**If you run an operator's Spora install: nothing to do.** No shipped plugin implements the
+interface.
+
+**If you write a plugin and implement `TaskServiceInterface`: your class will not load.** PHP makes
+an unimplemented interface method fatal at class-load, so the interface and every implementor have
+to move together. A plugin that only _calls_ the service is unaffected.
+
+### What else changed
+
+- **Anthropic's default model** — the driver now defaults to a current Claude generation. The
+  Claude 3.x generation it defaulted to is retired and answers an error on every request.
+- **Image input** — the built-in drivers' image heuristics now cover the current model families
+  (the current Claude ids, `gpt-4.1`, `gpt-5`, `gpt-6`). A configuration that never set the
+  _Allow images_ toggle starts sending images where it previously did not. Set the toggle
+  explicitly if your provider rejects image blocks.
+
+### Upgrading
+
+```bash
+composer update spora-ai/spora-core spora-ai/spora-frontend
+```
+
+**Run the migration before the worker starts.** This release adds a `tasks.effort` column. The web
+path installs the schema itself on the next request, but **the CLI worker does not** — it opens the
+database without running migrations. A worker that fires before the migration has run writes a task
+against a table without the column, and the run fails with a log line and nothing more. So:
+
+```bash
+composer update spora-ai/spora-core
+php bin/spora spora:install
+```
+
+...before any worker starts.
+
 ## v0.15 — 27 October 2026
 
 The headline is **Spora speaks German**, end to end. Underneath that sit two new subsystems an

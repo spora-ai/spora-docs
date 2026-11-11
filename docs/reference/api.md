@@ -71,6 +71,7 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 | `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                    |
 | `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                    |
 | `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls |
+| `GET`    | `/api/v1/agents/{id}/effort`   | session | The agent's reasoning-effort levels and its configured default  |
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
@@ -89,6 +90,39 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 #### Favourites (per-user, Plan A)
 
 `POST /api/v1/agents/{id}/favorite` and `DELETE /api/v1/agents/{id}/favorite` flip the calling user's per-user favourite flag for the agent. Favourites are stored in the `user_agent_favorites` pivot table (composite PK `user_id, agent_id`, cascade FKs on both sides) and are private to the caller — toggling a favourite in one browser does not affect group peers. Both endpoints are idempotent: POST is a no-op when the row already exists; DELETE is a no-op when no row exists. Both return `404 NOT_FOUND` when the agent is not visible to the caller (visibility = same principal axis as everywhere else in the service). The legacy shared `agents.is_favorite` column was dropped in migration 0079; PATCH no longer accepts `is_favorite` (returns 422).
+
+#### Reasoning effort (`GET /agents/{id}/effort`)
+
+The levels the agent's effective LLM driver can express, and the default that configuration carries.
+It is a separate endpoint rather than a field on the agent resource, because the agent resource is
+built for the list endpoint too.
+
+```json
+{
+  "data": {
+    "supported": true,
+    "levels": [{ "value": "low", "label": "Low" }],
+    "default": "high"
+  }
+}
+```
+
+- `supported` — the effective driver implements the effort contract and declares a non-empty level set. A driver that cannot express effort, and a model that takes no level at all, answer `false` with an empty `levels` array.
+- `levels` — the effective driver's levels, each with the label the driver class uses for it. The Anthropic driver answers with the levels the agent's _model_ takes, which can be fewer than the driver's whole vocabulary; the OpenAI drivers answer with the whole canonical scale, whatever the model takes.
+- `default` — the effective configuration's `effort` setting; `null` means the model's own default. The endpoint guarantees the default is **driver-declared**, not **model-accepted**: on the Anthropic driver it is `null` when the configuration names a level the model does not take, because such a level is never sent; on the OpenAI drivers, which declare every canonical level, it can report a default the model then rejects — `default: "none"` for a model that refuses `none` is a real answer, and such a request fails at the provider.
+
+The effective configuration is resolved on the server, through the same three tiers the agent uses —
+the agent's own configuration, the principal's preferred configuration, then the global default — so
+a client never has to re-implement it.
+
+An agent the caller may not see answers `404`, the same as `GET /api/v1/agents/{id}`.
+
+**The endpoint is a session endpoint.** It takes the session cookie and no bearer key: a caller on
+one of the bearer-key surfaces — the agent, group and global APIs — cannot read the levels the
+driver offers. Such a caller reads the message the refusal carries, which names the supported
+levels where the driver has any, or asks the operator.
+
+See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale and the resolution order.
 
 ### Groups
 
@@ -212,6 +246,51 @@ both `GET /api/v1/tasks/{taskId}` and the Mercure live-update stream. See
 for the per-tool LLM-facing contract returned by `AgentTool.get_available_tools`,
 and [Concepts → Tools → Icon resolution](/reference/concepts/tools#icon-resolution)
 for the resolution chain.
+
+#### The `effort` field on a task body
+
+`POST /api/v1/tasks` and `POST /api/v1/tasks/{taskId}/continue` accept an optional `effort` — the
+reasoning effort for that task.
+
+| Body               | Meaning                                                 |
+| ------------------ | ------------------------------------------------------- |
+| key absent         | the LLM configuration's default applies                 |
+| `"effort": null`   | the same — a `null` is read as an omitted field         |
+| `"effort": ""`     | explicitly the model's own default — no level asked for |
+| `"effort": "high"` | that level                                              |
+
+**A `null` is not a value the validator refuses.** `TaskEffortRequestValidator::parse()` reads the
+body with a null-coalescing lookup, so an explicit `"effort": null` falls out exactly as an absent
+key does: the configuration's default applies and the request is not a `422 INVALID_EFFORT`. The
+value that is refused for not being a string is the one that is neither a string nor `null`.
+
+The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. **Two codes, six refusals.** A value that is a string but not one of those levels, or a value that is neither a string nor `null`, is a `422 INVALID_EFFORT` — the request has to be fixed. A level that is on the scale but that the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for that agent is out of date, and `GET /api/v1/agents/{id}/effort` lists the levels the driver offers. That endpoint takes a **session**, not a bearer key, so a caller on the agent, group or global API cannot read it and has to read the refusal's message or ask the operator.
+
+The code says which kind of refusal it is. **The message says which one**, and it is the only thing that does: `EFFORT_LEVEL_UNSUPPORTED` answers four different situations and the code is the same for all of them.
+
+| Reason                                      | Code                       | Message (English)                                                                                                  |
+| ------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| the field is neither a string nor `null`    | `INVALID_EFFORT`           | `effort must be a string.`                                                                                         |
+| the field is not on the scale               | `INVALID_EFFORT`           | `effort must be one of: none, minimal, low, medium, high, xhigh, max.`                                             |
+| the agent has no LLM configuration          | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" cannot be sent: this agent has no LLM configuration.`                                            |
+| the agent's driver could not be resolved    | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" cannot be sent: this agent's LLM driver could not be resolved.`                                  |
+| the driver declares no level for this model | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" is not offered by this agent's LLM driver: it cannot express a reasoning effort for this model.` |
+| the driver declares other levels            | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" is not offered by this agent's LLM driver. Supported levels: low, medium, …`                     |
+
+The messages are the framework's own strings and they are **localised**: the router translates every error message it passes through and leaves the code alone. **The server picks the locale, not the client** — `Accept-Language` is never consulted, and the chain is the caller's stored locale → the instance default → English. A client that asked for one language can therefore be answered in another, so **match on the code and display the message rather than matching localised prose**; a client that would rather not read prose at all asks `GET /api/v1/agents/{id}/effort` — with a session — and only ever sends a level that endpoint lists.
+
+The empty string is a value in its own right — the wire value for _the model default_ — rather than
+a missing field, which is why it appears among the accepted values on the endpoint's own page.
+
+The resolved value is stored on the task row, where `NULL` means no level was resolved — the model's
+own default — and the database never stores an empty string. One driver asks for a level anyway: on
+a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"`
+when the agent uses tools and no level resolves, because silence is not a working configuration on
+the models that default to `medium` — see
+[Concepts → LLM drivers](/reference/concepts/drivers#tools-and-effort-on-chat-completions).
+
+See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
+and the resolution order.
 
 ### Plugins (operator, gated by `SPORA_PLUGIN_INSTALL_ENABLED`)
 

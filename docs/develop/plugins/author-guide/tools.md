@@ -80,6 +80,28 @@ final class AcmeSearchTool extends AbstractTool
 
 The contract is `Spora\Tools\ToolInterface`. Read [Concepts → Tool system](/reference/concepts/tools) for the full attribute surface and the settings-key convention.
 
+## Starting a task from a tool
+
+A tool that hands work to an agent — a research run of your own, a second pass over the same question — starts a task through `Spora\Services\TaskServiceInterface`. The interface is **plugin-stable**, so depending on it is safe:
+
+```php
+public function startTask(
+    int $userId,
+    int $agentId,
+    string $prompt,
+    ?int $maxSteps = null,
+    ?int $parentTaskId = null,
+    array $mediaIds = [],
+    ?string $effort = null,
+): array;
+```
+
+`effort` is the reasoning effort for that task: `null` leaves the task on the LLM configuration's default, an empty string asks for the model's own default, and a canonical level (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`) asks for that level.
+
+**The interface takes the effort as a plain string and does not check it against the agent's driver.** The HTTP boundary is what checks it: a task started through the API is refused with `422 EFFORT_LEVEL_UNSUPPORTED` when the level is not one the agent's effective driver declares, and `GET /api/v1/agents/{id}/effort` lists the levels that driver offers. A task started from a plugin skips that check — and what happens then depends on the driver. On the Anthropic driver a level the driver does not declare is dropped on the way to the provider, and the task runs at the model's own default. On the two OpenAI drivers every canonical level is declared, so there is nothing to drop: the level is sent, and a model that does not take it rejects the request with the provider's own error. See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels).
+
+**An empty effort is not always "no effort".** On a GPT-5.4-or-later model with tools enabled, an empty effort resolves to nothing and the OpenAI-compatible driver sends `reasoning_effort: "none"` — on GPT-5.5, whose own default is `medium`, that **disables reasoning** rather than letting the model think as it would. See [Tools and effort on Chat Completions](/reference/concepts/drivers#tools-and-effort-on-chat-completions).
+
 ## Convention reminders
 
 - Use `final` on the tool class.

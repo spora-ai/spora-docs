@@ -172,6 +172,25 @@ From there, either poll `/status` or supply a `callback_url` and be told.
 `additional_steps` does the same for a follow-up; both are clamped to 1–100, and omitting either
 falls back to the agent's configured limit.
 
+`effort` sets the reasoning effort for that message. It is one of `none`, `minimal`, `low`,
+`medium`, `high`, `xhigh` or `max`. Leave it out and the LLM configuration's default applies; send
+`""` to ask for the model's own default, so that no level is asked for. A `null` is read as an
+omitted field, so it applies the configuration's default too — it is not a `422 INVALID_EFFORT`. A
+value that is a string but not on that scale, or a value that is neither a string nor `null`, is a
+`422 INVALID_EFFORT`; a level the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED`.
+The same field is accepted on
+`POST /chats/{id}/messages`, where it applies to that follow-up only — the earlier turns keep the
+effort they were sent with. See
+[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
+and the resolution order, and
+[the refusals](/reference/api#the-effort-field-on-a-task-body) for every message the two codes
+answer with.
+
+One driver asks for a level anyway: on a GPT-5.4-or-later reasoning model the OpenAI-compatible
+driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because
+silence is not a working configuration on the models that default to `medium` — see
+[Tools and effort on Chat Completions](/reference/concepts/drivers#tools-and-effort-on-chat-completions).
+
 `GET /chats` lists this agent's chats newest-first and is **always paginated** — 25 per page by
 default, 100 maximum — with `?page=` and `?per_page=`. The response carries no total and no
 next-page link, so page until a page comes back short. `?since=<ISO-8601>` narrows to chats
@@ -260,6 +279,10 @@ paging with `since_sequence` against it is silently ignored rather than refused.
 
 The same view the admin UI has: `tool_calls`, the full `history` including reasoning blocks, token
 `totals`, and the task's `data`. Reach for this when you need to know _how_ the agent got there.
+
+What a reasoning block carries depends on the driver. On the Anthropic driver it is the model's
+thinking; on the **OpenAI Responses** driver it is the API's **summary** of the model's reasoning —
+a summary, not the raw chain of thought. Either way the chat renders it in the same bubble.
 
 ## Blocked chats
 

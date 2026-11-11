@@ -14,7 +14,7 @@ Two things to know before you start:
 - **The meter is asked before the call leaves, not after.** A meter that only observes sees the bill after it has been paid. Only a meter that is consulted _before_ the provider request and _before_ the tool execution can stop it.
 - **A meter that throws never stops a run.** The meter is plugin code in the hot path, so core wraps every call to it: an exception is logged at ERROR and the call proceeds. Only a decision you deliberately _return_ stops anything.
 
-> **The seam is not in a released core yet.** `Spora\Metering\UsageMeterInterface` is an open core pull request ([spora-core#323](https://github.com/spora-ai/spora-core/pull/323)), and a released core has no `Spora\Metering\` namespace at all — so a plugin cannot bind the seam until the release that carries it is published. Everything below describes the seam as it will be.
+> **The seam is not in a released core yet.** `Spora\Metering\UsageMeterInterface` has merged into the core's `main` ([spora-core#323](https://github.com/spora-ai/spora-core/pull/323)), but no core release carries it — a released core has no `Spora\Metering\` namespace at all — so a plugin cannot bind the seam until the release that carries it is published. Everything below describes the seam as it will be.
 
 ## The seam
 

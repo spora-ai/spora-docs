@@ -11,7 +11,7 @@ Spora meters nothing on its own. Token counters exist per assistant turn, tool c
 
 Nothing to authenticate against. The plugin has no API key, no third-party service and no external call — it reads the host's own task and principal rows and writes its own tables.
 
-> **Pre-release notice.** The plugin is not released yet: `spora-ai/spora-plugin-usage` publishes the skeleton — the manifest, the tooling and the CI, but not the plugin's own code — and the metering seam it binds into, `Spora\Metering\UsageMeterInterface`, is still an open core pull request ([spora-core#323](https://github.com/spora-ai/spora-core/pull/323)). The command below installs a working plugin only once a core release ships the seam and the plugin is tagged; the tag will be cut **after** that release.
+> **Pre-release notice.** The plugin is not released yet: `spora-ai/spora-plugin-usage` publishes the plugin's own code, but the repository carries no tag, so there is nothing to install yet. The metering seam it binds into, `Spora\Metering\UsageMeterInterface`, has merged into the core's `main` ([spora-core#323](https://github.com/spora-ai/spora-core/pull/323)), but no core release carries it. The command below installs a working plugin only once a core release ships the seam and the plugin is tagged; the tag will be cut **after** that release.
 
 ## Installation
 

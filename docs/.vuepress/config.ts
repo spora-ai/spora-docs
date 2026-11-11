@@ -138,6 +138,7 @@ export default defineUserConfig({
             { text: 'Overview', link: '/start/end-users/' },
             { text: 'First conversation', link: '/start/end-users/first-conversation' },
             { text: 'Managing agents', link: '/start/end-users/managing-agents' },
+            { text: 'Groups', link: '/start/end-users/groups' },
             { text: 'Scheduling agents', link: '/start/end-users/scheduling-agents' },
             { text: 'Browsing the Media Archive', link: '/start/end-users/media-archive' },
             { text: 'Troubleshooting', link: '/start/end-users/troubleshooting' },

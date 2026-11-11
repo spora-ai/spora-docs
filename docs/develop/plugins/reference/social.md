@@ -387,6 +387,14 @@ LinkedIn publishes images only in this version: no video, no carousel, no reel.
 
 **Instagram takes no PNG at all** and cannot publish a text-only post. The plugin converts a PNG to a JPEG for you through core's own image producer and leaves the original untouched, so a PNG in the archive is not a reason an Instagram post fails.
 
+**A file the network will not take is converted, not refused** — and that holds for every network the plugin publishes itself, not only Instagram. A WebP on its way to LinkedIn becomes a JPEG on the way there, because the archive can re-encode an image and the first type the network accepts is the one it gets. The original stays in the library and the conversion is a row beside it, so nothing is lost and nothing is re-uploaded.
+
+The **fit check** judges the converted file, so the operator is not told to convert a file the plugin has already converted for them. A remedy appears for a file the plugin **cannot** fix: an SVG, or a video where a network wants an image. The remedy rides on the channel: an image names _Convert to JPEG_, a video names _Convert the file to MP4_ — on Facebook a video names _Convert to JPEG_ as well.
+
+**One remedy does not make the file fit.** LinkedIn publishes images only in this version, and the plugin names _Convert the file to MP4_ for a video on the direct LinkedIn route — a conversion that leaves a video a video. Attach a still image, or publish the video through the aggregator, which does take one.
+
+The aggregator's own channels are the exception: one post goes to the aggregator as **one** file for a group of networks, so a file converted for one of them would not fit the others. The operator's file has to satisfy all of them. The fit check reports mismatches against the rules it holds, and it can miss an image-size limit: the byte cap it compares against is the video's, where the network takes a video. Compare image sizes with the limits in the table below.
+
 **And one thing the plugin cannot check:** if the Instagram account is connected to a Page that requires Page Publishing Authorization, the platform refuses the publish until that authorization is completed. See [Operator prerequisites](#operator-prerequisites).
 
 ### The networks through an aggregator
@@ -426,9 +434,9 @@ A post carries **one** attachment, and the backend refuses a second: the publish
 
 Every attachment carries its fit state **for the networks the post currently targets**, with the remedy named — _Convert to JPEG_, _Compress_, _Attach a JPEG image or an MP4 video_ — because the operator can act on that and not on a platform's error text. The same rules are checked again at publish time, against the media the platform will actually receive.
 
-An agent does the same through the tools: `social_media` with `list_assets` to see the library, `check_fit` to ask whether an asset fits a network, and `attach` to put it on a post. Attach the **original** asset id — the backend converts for Instagram and publishes the bytes for LinkedIn and Facebook.
+An agent does the same through the tools: `social_media` with `list_assets` to see the library, `check_fit` to ask whether an asset fits a network, and `attach` to put it on a post. Attach the **original** asset id — on the plugin's own route the backend converts what the network will not take and publishes the bytes; an aggregator target receives the original file.
 
-`check_fit` judges the asset the way the publish does, against **the media the platform will actually receive**: a PNG fits Instagram, because the backend converts it to a JPEG before it publishes. A media the platform cannot take at all — a Markdown file on Instagram — is refused with the remedy named.
+`check_fit` judges the asset the way the publish does, against **the media the platform will actually receive**: on the plugin's own route a PNG fits Instagram and a WebP fits LinkedIn, because the backend converts both before it publishes. An aggregator target receives the original file, so the same WebP does not fit `zernio:linkedin` — the aggregator's rules are Zernio's own. A media the platform cannot take at all — a Markdown file on Instagram — is refused with the remedy named.
 
 Every read answers with the rows and not with a count: the account ids a post can go to, the asset ids that can be attached, the post ids and the days they are due. The model reads the answer, so an id that is not in it does not exist for the agent.
 

@@ -297,6 +297,7 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
 - **A `settings` write replaces the value at that key wholesale — it does not merge and it does not append.** Sending `allowed_skills: ["time-arithmetic"]` over an existing `["time-arithmetic", "agent-creation"]` leaves you with exactly `["time-arithmetic"]`. Always send the complete list you want to end up with. (Other keys on the same tool are untouched — it is per-key replacement, not a whole-object overwrite.)
 - **A `settings` write lands at the AGENT level, and that breaks inheritance.** The value is written to `agent_tool_overrides`, which is the last-wins layer of the cascade, so the agent stops inheriting whatever the group or user scope holds for that key. To go back to inheriting, send `null` or `""` for the key — an empty value drops the agent-level row entirely and the cascade resumes from the layer below.
 - **`allowed_skills` is `string[]` of skill names; `allowed_target_agents` is `int[]` of agent ids.** The shape follows the setting's `resolveAs`: `SkillTool::allowed_skills` declares `resolveAs: 'skill'` and stores names, while `SubAgentTool::allowed_target_agents` uses the default `resolveAs: 'agent'` and stores integer ids. Send a string where an id is expected (or vice versa) and the entry is refused — read `skills.visible[].name` for the first and `GET /api/v1/agents` for the second.
+- **A list may arrive wrapped, and it is unwrapped before it is judged.** Some OpenAI-compatible providers hand over an array nested inside a `tools[]` entry as `{"item": [...]}` rather than as a plain JSON array; MiniMax's tool-call channel does this, and the model cannot produce the flat shape on request, so a retry gets the same wrapper. `configure_tools` unwraps that envelope before it validates — both the `{item: [...]}` and the one-element `{item: x}` form. The unwrapped list must still pass validation before the write can succeed. A refusal that names the shape it received (`got an object with the key(s) item, other`) means the value arrived as an object with those keys — the plain `{item: [...]}` envelope is unwrapped first and so is judged as the list it stands for.
 
 Two flags on a tool entry behave differently from the same flag on an operation:
 
@@ -307,7 +308,7 @@ Refusals are whole-call and happen before any write, so a rejected payload canno
 
 | Refused                                     | Why                                                                                                                                                                                                                                      |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| An unknown `settings` key                   | Dropped silently, a misspelling like `allowed_sklls` would leave the model believing a list landed — and it would then read a skill it still cannot.                                                                                     |
+| An unknown `settings` key                   | Refused, whole call. Dropping it silently would leave the model believing a list landed — and it would then read a skill it still cannot. The refusal lists the valid keys.                                                              |
 | A `type: 'password'` setting                | A credential is the one thing a tool call must not be able to write: the value would land in the call's own recorded arguments, so the agent could read back the key it just set. Credentials stay operator-only, in the settings panel. |
 | An operation name the tool does not declare | A dead override row is invisible in the manifest and reads as "nothing landed". The refusal names the available operations.                                                                                                              |
 | A skill name outside `skills.visible`       | Refuses the whole call — see the note above.                                                                                                                                                                                             |
@@ -605,7 +606,7 @@ Existing operator-defaults `allowed_target_agents` rows written before this chan
 
 "LLM Exposed ✓" means `exposeToLlm: true` — the setting's effective value is included in the tool definition sent to the LLM.
 
-The remaining tools (`Calculator`, `CurrentTime`, `AgentMemory`, `GlobalMemory`, `ReadUrl`, `UserInfo`) declare no `#[ToolSetting]` attributes — they take their inputs entirely from the LLM's arguments and have no infrastructure configuration to expose.
+The remaining tools (`Calculator`, `CurrentTime`, `AgentMemory`, `GlobalMemory`, `ReadUrl`, `PrincipalInfo`) declare no `#[ToolSetting]` attributes — they take their inputs entirely from the LLM's arguments and have no infrastructure configuration to expose.
 
 ### Sub-Agent tool
 
@@ -756,3 +757,60 @@ share link is never framed. See [Media assets → Where the frame appears, and w
 Text extraction from a binary document is an `md` derivative, not a column on the asset. A PDF or docx gets one minted at ingest, and again at attach time for any task that references it, so by the time an agent sees the attachment the `md` row usually exists. The rule the attachment path follows is: **a text-ish source within the 512 KB inline budget is its own text; anything else gets an `md` derivative, and if it still doesn't fit, the LLM is told where to read it** — the metadata-only fallback block names `get_source` rather than reporting "no extractable text". `get_source` reads the `md` derivative for binary mimes and does nothing else; `create_derivative` is how the LLM mints one when it is missing. See [Media assets → 6. Derivatives](/reference/concepts/media-assets#_6-derivatives) for the `MediaDerivativeService` contract, the producer's field-inheritance rules, and why `list_derivatives` rather than `search` is the discovery path for an `md` render.
 
 Admin users bypass `scope` and see every asset.
+
+### `principal_info` — `PrincipalInfoTool`
+
+The `principal_info` tool answers the question an agent asks first: _who is this agent talking to?_ The answer is the **principal** the agent belongs to — the person who owns it, or the group that owns it. It is deliberately not the person who triggered the run, and for a group-owned agent it is not the group's first owner either: the answer is the group itself, with its own name, description, information block and saved locations.
+
+| Operation         | Default enabled | Default approval | Purpose                                                           |
+| ----------------- | --------------- | ---------------- | ----------------------------------------------------------------- |
+| `get_base_data`   | yes             | auto             | The principal's name, description and the fields that go with it. |
+| `get_locations`   | yes             | auto             | The principal's saved locations.                                  |
+| `get_health_data` | no              | required         | The principal's height and weight — a user principal only.        |
+
+`get_base_data` answers for a user principal:
+
+```text
+Principal Type: user
+Name: Alice
+Description: Hello world
+Date of Birth: 1990-05-15
+```
+
+and for a group principal:
+
+```text
+Principal Type: group
+Name: Acme Corp
+Description: We build things
+Information:
+## Address
+Musterstraße 1, 10115 Berlin
+```
+
+`Description` is the principal's short blurb — a user's `about_me`, a group's `description`. `Information` is the group's rich Markdown block, and it is omitted for a user principal entirely. `Date of Birth` is a user field; a group has none.
+
+`get_locations` answers with the principal's saved locations — the same rows for a person and for a group:
+
+```text
+Locations:
+
+— HQ (default)
+  Address: Musterstraße 1, 10115 Berlin
+```
+
+With nothing saved, the answer is `No locations saved.`
+
+`get_health_data` is **refused for a group**, and it fails rather than answering with an empty field:
+
+```text
+Health data is only available for user principals. This agent belongs to a group.
+```
+
+Height and weight belong to a body, and a group has none. An empty answer would read to the model as "nothing was recorded", which is a different claim from "this data does not exist".
+
+The refusal only reaches an agent that asks for it. The operation is **disabled by default** and needs **operator approval**, and an operation that is switched off is filtered out of the schema handed to the model — so a group agent on the default configuration never sees `get_health_data` and is never told about the refusal. The operation stays in the agent's tool manifest, which is what `read_agent` returns and what the **Tools** tab shows, but that manifest is not the model's callable schema. Switch the operation on for the agent, approve the call, and the refusal above is what comes back.
+
+When the principal cannot be resolved at all, the call fails with `Principal not found.`
+
+The tool reports the principal and never the task's initiator. A group agent can be run by any member, and a member is not the group's identity — attaching the person who pressed the button would answer a different question than the one the agent is asking, and would put an individual's details into a shared group's transcript.

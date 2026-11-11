@@ -107,12 +107,9 @@ Tips:
 - **Define the tool usage** — "use tavily_search for any current-events question", "use the calculator for any math"
 - **Avoid roleplay** — "you are an expert in X" is fine; "pretend you are a pirate" is not (LLMs are easily jailbroken by it)
 
-The system prompt supports Markdown. It also supports a few template variables (filled at task creation time):
+The system prompt supports Markdown. It is handed to the model exactly as you typed it: placeholders in it are **not** substituted, so `{{user_name}}` reaches the model as those literal characters rather than as a name.
 
-- `{{user_name}}` — the user's name
-- `{{user_email}}` — the user's email
-- `{{date}}` — current date (ISO 8601)
-- `{{time}}` — current time (HH:MM)
+Template variables belong to the other surface — the prompt templates a **schedule** fires. `{{date}}`, `{{time}}`, `{{user_name}}` and the principal placeholders are substituted there, at fire time. See [Scheduling agents → Prompt source](/start/end-users/scheduling-agents#prompt-source).
 
 ### Tab 3 — LLM config
 

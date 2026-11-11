@@ -27,13 +27,45 @@ Example: a daily summary at 07:00 in the user's local time. Cron expression `0 7
 
 ### Prompt source
 
-Both modes accept either a **template** (from the agent's **Templates** tab) or a free-form **raw prompt**. A template supports `{{variable}}` placeholders that are substituted at fire time using the template's declared variables plus a few built-ins — for example, `{{date}}`, `{{time}}`, `{{day_of_week}}`, `{{month}}`, `{{year}}`, `{{agent_name}}`, `{{user_name}}`. See the agent's template editor for the full list of available built-ins on your version.
+Both modes accept either a **template** (from the agent's **Templates** tab) or a free-form **raw prompt**, and both are expanded when the trigger fires. A template's placeholders resolve against the variables the template declares; a raw prompt has no declared variables, but the built-ins below are available to it as well.
+
+| Placeholder       | Value                                                 |
+| ----------------- | ----------------------------------------------------- |
+| `{{date}}`        | The current date (ISO 8601), in the process timezone. |
+| `{{time}}`        | The current time (HH:MM), in the process timezone.    |
+| `{{day_of_week}}` | The current weekday, spelled out.                     |
+| `{{month}}`       | The current month, spelled out.                       |
+| `{{year}}`        | The current year.                                     |
+| `{{agent_name}}`  | The name of the agent the schedule fires.             |
+| `{{user_name}}`   | The username of the principal's owner user.           |
+
+The date and time built-ins expand in the **PHP process timezone**, not in the schedule's timezone. The worker pins that process to UTC, so `{{date}}` and `{{time}}` are UTC values: a schedule set to `Europe/Berlin` that fires at 00:30 in July expands to the **previous** day's date, because that moment is still 22:30 UTC the day before. (In client-worker mode the expansion runs inside the web request instead, so it follows the host's PHP `date.timezone`.) There is no timezone-aware date placeholder — a template that has to name the local date needs the offset applied in the prompt text.
+
+`{{user_name}}` is the **owner's** username, not the principal's display name: for a group-owned agent that is the username of the group's first `owner`. The system prompt is a different surface and takes no placeholders at all — see [Managing agents → Tab 2 — System prompt](/start/end-users/managing-agents#tab-2-—-system-prompt).
+
+#### Principal placeholders
+
+Four more placeholders describe the principal itself, so a template can address the group it belongs to rather than the person who happens to fire it:
+
+| Placeholder                 | User principal                                  | Group principal                      |
+| --------------------------- | ----------------------------------------------- | ------------------------------------ |
+| `{{principal_type}}`        | `user`                                          | `group`                              |
+| `{{principal_name}}`        | the user's `name`, falling back to the username | the group's `name`                   |
+| `{{principal_description}}` | the user's `about_me`                           | the group's `description`            |
+| `{{principal_information}}` | the user's `about_me`                           | the group's `information` (Markdown) |
+
+Two rules make them safe to leave in a template:
+
+- **An identity field falls back rather than going empty.** A user's display name is optional, so `{{principal_name}}` falls back to the username, and only then to the literal `principal_name` — the same shape `{{user_name}}` already uses. `{{principal_type}}` falls back the same way, to the literal `principal_type`, when the agent's principal cannot be resolved at all.
+- **A content field resolves to an empty string.** `{{principal_description}}` and `{{principal_information}}` are prose, and "nothing to say" is a legitimate value for prose; a raw `{{principal_description}}` left in a scheduled prompt is not. The empty string is the answer — the placeholder never survives into the prompt the agent reads.
+
+The principal is resolved once per agent and then branched on its type, so one template serves both kinds of owner.
 
 ## Timezone selection
 
 The form's **Timezone** dropdown is pre-filled with the browser's IANA zone — for example, `Europe/Berlin` if the browser is configured for Berlin, or `America/New_York` for the US East Coast. The dropdown is populated from the IANA tz database, so anything `Intl.DateTimeFormat` recognises is offered.
 
-Why this matters: the schedule's `timezone` is the **reference frame** the backend uses to evaluate cron expressions and to anchor offset-less timestamps in one-shot mode. It is **not** a storage format — every timestamp on `scheduled_runs` and `scheduled_runs_next` is stored in UTC, and the worker pins UTC internally before comparing against `due_at`. You do not need to configure the PHP process or the host OS to match the schedule's timezone. See [Concepts → Worker deployment → Timezone](/reference/concepts/worker-deployment#cron-mode) for the deployment-side detail.
+Why this matters: the schedule's `timezone` is the **reference frame** the backend uses to evaluate cron expressions and to anchor offset-less timestamps in one-shot mode. It is **not** a storage format — every timestamp on `scheduled_runs` and `scheduled_runs_next` is stored in UTC, and the worker pins UTC internally before comparing against `due_at`. You do not need to configure the PHP process or the host OS to match the schedule's timezone. The dropdown does not reach the `{{date}}` / `{{time}}` built-ins either — those expand in the PHP process timezone, not in the schedule's timezone (see [Prompt source](#prompt-source)). See [Concepts → Worker deployment → Timezone](/reference/concepts/worker-deployment#cron-mode) for the deployment-side detail.
 
 If you switch the dropdown after creating a schedule, existing fires already on the queue are unaffected — the new timezone only governs future cron evaluations and any unanchored one-shot inputs.
 
@@ -77,5 +109,5 @@ This matters when reading agent traces: a model that emits `"cron_expression":"n
 - [Concepts → Worker deployment](/reference/concepts/worker-deployment) — cron and daemon modes, single-instance lock, reaper.
 - [Concepts → Database schema → scheduled_runs](/reference/concepts/schema) — wire-level column reference.
 - [REST API → Agents → Scheduled runs](/reference/api#scheduled-runs) — request body and error contract for `POST /api/v1/agents/{id}/scheduled-runs`.
-- [Managing agents](/start/end-users/managing-agents) — the agent edit form, tool allowlist, system prompt templates.
+- [Managing agents](/start/end-users/managing-agents) — the agent edit form and the tool allowlist.
 - [Troubleshooting](/start/end-users/troubleshooting) — when a scheduled fire does not run.

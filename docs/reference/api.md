@@ -92,30 +92,36 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 ### Groups
 
-| Method   | Path                                                | Auth         | Purpose                                                                      |
-| -------- | --------------------------------------------------- | ------------ | ---------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/groups`                                    | session      | List groups (members see their own; admins see every group)                  |
-| `POST`   | `/api/v1/groups`                                    | admin + CSRF | Create a group (creator becomes `role: owner`; group-principal materialises) |
-| `GET`    | `/api/v1/groups/{id}`                               | session      | Get one group (members only; 404 hides existence)                            |
-| `PATCH`  | `/api/v1/groups/{id}`                               | admin + CSRF | Update name / description / `profile_picture`                                |
-| `DELETE` | `/api/v1/groups/{id}`                               | admin + CSRF | Delete a group (409 if agents still reference its principal)                 |
-| `GET`    | `/api/v1/groups/{id}/members`                       | session      | List members                                                                 |
-| `POST`   | `/api/v1/groups/{id}/members`                       | + CSRF       | Add a member (accepts `user_id` OR `email`; admin/owner only)                |
-| `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                 | + CSRF       | Change a member's role                                                       |
-| `DELETE` | `/api/v1/groups/{id}/members/{uid}`                 | + CSRF       | Remove a member                                                              |
-| `GET`    | `/api/v1/groups/{id}/agents`                        | session      | List agents owned by the group's principal                                   |
-| `GET`    | `/api/v1/groups/{id}/preferences`                   | session      | Get the group's principal preference                                         |
-| `PUT`    | `/api/v1/groups/{id}/preferences`                   | + CSRF       | Upsert the group's principal preference                                      |
-| `GET`    | `/api/v1/groups/{id}/tools`                         | session      | List tool settings scoped to the group principal                             |
-| `POST`   | `/api/v1/groups/{id}/tools/{toolClass}`             | + CSRF       | Upsert tool settings for the group principal                                 |
-| `DELETE` | `/api/v1/groups/{id}/tools/{toolClass}`             | + CSRF       | Delete tool settings for the group principal                                 |
-| `GET`    | `/api/v1/groups/{id}/llm-configs`                   | session      | List LLM configs scoped to the group principal                               |
-| `POST`   | `/api/v1/groups/{id}/llm-configs`                   | + CSRF       | Create an LLM config under the group principal                               |
-| `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`             | + CSRF       | Update an LLM config under the group principal                               |
-| `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`             | + CSRF       | Delete an LLM config under the group principal                               |
-| `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default` | + CSRF       | Promote an LLM config to default for the group                               |
-| `POST`   | `/api/v1/groups/{id}/picture/image`                 | + CSRF       | Multipart avatar upload for the group                                        |
-| `DELETE` | `/api/v1/groups/{id}/picture/image`                 | + CSRF       | Clear the group's avatar and reset to default archetype                      |
+| Method   | Path                                                | Auth                                  | Purpose                                                                       |
+| -------- | --------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/groups`                                    | session                               | List groups (members see their own; admins see every group)                   |
+| `POST`   | `/api/v1/groups`                                    | session + CSRF                        | Create a group (creator becomes `role: owner`; group-principal materialises)  |
+| `GET`    | `/api/v1/groups/{id}`                               | session                               | Get one group (members only; 404 hides existence)                             |
+| `PATCH`  | `/api/v1/groups/{id}`                               | owner/group-admin/global-admin + CSRF | Update name / description / `information` / `profile_picture`                 |
+| `DELETE` | `/api/v1/groups/{id}`                               | owner/global-admin + CSRF             | Delete a group (409 if agents still reference its principal)                  |
+| `GET`    | `/api/v1/groups/{id}/members`                       | session                               | List members                                                                  |
+| `POST`   | `/api/v1/groups/{id}/members`                       | + CSRF                                | Add a member (accepts `user_id` OR `email`; global admin or group owner only) |
+| `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                 | + CSRF                                | Change a member's role                                                        |
+| `DELETE` | `/api/v1/groups/{id}/members/{uid}`                 | + CSRF                                | Remove a member                                                               |
+| `GET`    | `/api/v1/groups/{id}/agents`                        | session                               | List agents owned by the group's principal                                    |
+| `GET`    | `/api/v1/groups/{id}/preferences`                   | session                               | Get the group's principal preference                                          |
+| `PUT`    | `/api/v1/groups/{id}/preferences`                   | + CSRF                                | Upsert the group's principal preference                                       |
+| `GET`    | `/api/v1/groups/{id}/tools`                         | session                               | List tool settings scoped to the group principal                              |
+| `POST`   | `/api/v1/groups/{id}/tools/{toolClass}`             | + CSRF                                | Upsert tool settings for the group principal                                  |
+| `DELETE` | `/api/v1/groups/{id}/tools/{toolClass}`             | + CSRF                                | Delete tool settings for the group principal                                  |
+| `GET`    | `/api/v1/groups/{id}/llm-configs`                   | session                               | List LLM configs scoped to the group principal                                |
+| `POST`   | `/api/v1/groups/{id}/llm-configs`                   | + CSRF                                | Create an LLM config under the group principal                                |
+| `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`             | + CSRF                                | Update an LLM config under the group principal                                |
+| `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`             | + CSRF                                | Delete an LLM config under the group principal                                |
+| `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default` | + CSRF                                | Promote an LLM config to default for the group                                |
+| `POST`   | `/api/v1/groups/{id}/picture/image`                 | + CSRF                                | Multipart avatar upload for the group                                         |
+| `DELETE` | `/api/v1/groups/{id}/picture/image`                 | + CSRF                                | Clear the group's avatar and reset to default archetype                       |
+| `GET`    | `/api/v1/groups/{id}/locations`                     | session                               | List the group's saved locations (members may read)                           |
+| `POST`   | `/api/v1/groups/{id}/locations`                     | + CSRF                                | Create a location for the group (group owner/admin only)                      |
+| `PATCH`  | `/api/v1/groups/{id}/locations/{locationId}`        | + CSRF                                | Update one of the group's locations (group owner/admin only)                  |
+| `DELETE` | `/api/v1/groups/{id}/locations/{locationId}`        | + CSRF                                | Delete one of the group's locations (group owner/admin only)                  |
+
+A global admin usually does not belong to the groups it administers, and the group routes do not all treat that the same way. The **group row** answers a global admin that is not a member — `PATCH` and `DELETE` both do — and so do the **member routes** and the **picture routes**: a global admin may read a group's membership, add and remove members, and replace the group's avatar without belonging to it. The routes that hold the group's **settings** — the agents, the locations, the tool settings, the LLM configs and the preferences — are gated on membership for everyone, a global admin included, so a non-member gets `404 GROUP_NOT_FOUND` on every one of them. Group creation is the other way round: it is open to every signed-in user unless the operator turns `allow_group_creation` off, in which case it is global-admin only. See [Principals and groups → Group authorisation](/reference/concepts/principals#group-authorisation) for the full table.
 
 ### Principals
 
@@ -383,14 +389,14 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 ### Browse by resource
 
-- [Agents](/reference/api/agents) — 35 routes
-- [Groups](/reference/api/groups) — 25 routes
+- [Agents](/reference/api/agents) — 36 routes
+- [Groups](/reference/api/groups) — 29 routes
 - [Global-api](/reference/api/global-api) — 24 routes
 - [Group-api](/reference/api/group-api) — 17 routes
 - [Tasks](/reference/api/tasks) — 14 routes
+- [Agent-api](/reference/api/agent-api) — 13 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Media](/reference/api/media) — 12 routes
-- [Agent-api](/reference/api/agent-api) — 11 routes
 - [Speech](/reference/api/speech) — 10 routes
 - [Users](/reference/api/users) — 10 routes
 - [Me](/reference/api/me) — 9 routes
@@ -442,6 +448,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agent-api/chats/{chatId}/transcript`               | `bearerAuth`               | Everything the admin UI shows                                            | Agent-api        |
 | `POST`   | `/api/v1/agent-api/media`                                   | `bearerAuth`               | Upload a file for this agent                                             | Agent-api        |
 | `GET`    | `/api/v1/agent-api/media/{mediaId}`                         | `bearerAuth`               | Fetch a media asset this agent produced                                  | Agent-api        |
+| `POST`   | `/api/v1/agent-api/transcribe`                              | `bearerAuth`               | Transcribe an audio asset with this agent's driver                       | Agent-api        |
+| `POST`   | `/api/v1/agent-api/transcribe-and-send`                     | `bearerAuth`               | Transcribe an audio asset and send the transcript to this agent          | Agent-api        |
 | `GET`    | `/api/v1/agent-templates`                                   | `cookieAuth`               | Index AgentTemplate                                                      | Agent-templates  |
 | `GET`    | `/api/v1/agent-templates/{id}`                              | `cookieAuth`               | Show AgentTemplate                                                       | Agent-templates  |
 | `POST`   | `/api/v1/agent-templates/import`                            | `cookieAuth` + `csrfToken` | Import AgentTemplate                                                     | Agent-templates  |
@@ -454,6 +462,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/agents/{id}`                                       | `cookieAuth`               | Show Agent                                                               | Agents           |
 | `PATCH`  | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Update Agent                                                             | Agents           |
 | `DELETE` | `/api/v1/agents/{id}`                                       | `cookieAuth` + `csrfToken` | Destroy Agent                                                            | Agents           |
+| `GET`    | `/api/v1/agents/{id}/effort`                                | `cookieAuth`               | The reasoning-effort levels this agent can use                           | Agents           |
 | `GET`    | `/api/v1/agents/{id}/export`                                | `cookieAuth`               | ExportAgent AgentTemplate                                                | Agents           |
 | `POST`   | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Favorite Agent                                                           | Agents           |
 | `DELETE` | `/api/v1/agents/{id}/favorite`                              | `cookieAuth` + `csrfToken` | Unfavorite Agent                                                         | Agents           |
@@ -551,6 +560,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PATCH`  | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Update GroupLlmConfigs                                                   | Groups           |
 | `DELETE` | `/api/v1/groups/{id}/llm-configs/{cid}`                     | `cookieAuth` + `csrfToken` | Destroy GroupLlmConfigs                                                  | Groups           |
 | `POST`   | `/api/v1/groups/{id}/llm-configs/{cid}/set-default`         | `cookieAuth` + `csrfToken` | SetDefault GroupLlmConfigs                                               | Groups           |
+| `GET`    | `/api/v1/groups/{id}/locations`                             | `cookieAuth`               | List a group's saved locations                                           | Groups           |
+| `POST`   | `/api/v1/groups/{id}/locations`                             | `cookieAuth` + `csrfToken` | Save a location for a group                                              | Groups           |
+| `PATCH`  | `/api/v1/groups/{id}/locations/{locationId}`                | `cookieAuth` + `csrfToken` | Edit one of a group's saved locations                                    | Groups           |
+| `DELETE` | `/api/v1/groups/{id}/locations/{locationId}`                | `cookieAuth` + `csrfToken` | Delete one of a group's saved locations                                  | Groups           |
 | `GET`    | `/api/v1/groups/{id}/members`                               | `cookieAuth`               | Index GroupMember                                                        | Groups           |
 | `POST`   | `/api/v1/groups/{id}/members`                               | `cookieAuth` + `csrfToken` | Store GroupMember                                                        | Groups           |
 | `PATCH`  | `/api/v1/groups/{id}/members/{uid}`                         | `cookieAuth` + `csrfToken` | Update GroupMember                                                       | Groups           |

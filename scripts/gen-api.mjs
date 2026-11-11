@@ -11,11 +11,16 @@
 // `gen:api:check` validates the committed artifacts only — api.md and
 // api-sidebar.json.
 //
+// `--spec <path>` (or `--spec=<path>`) points the renderer at a different
+// OpenAPI spec. The default is `docs/.vuepress/openapi.json`; the CI drift
+// check uses the flag to compare the committed reference against a second
+// spec — one generated from a spora-core ref other than main.
+//
 // Tag → slug: lowercased tag, with hyphens preserved (Agent-templates →
 // agent-templates). Untagged endpoints land on the "health" page.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { dirname, resolve, basename } from 'node:path'
+import { dirname, resolve, basename, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import prettier from 'prettier'
 
@@ -31,6 +36,52 @@ const MARKER_END = '<!-- API:GENERATED:END -->'
 const checkOnly = process.argv.includes('--check')
 
 const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']
+
+/**
+ * The spec a `--spec` flag names, or null when there is none.
+ *
+ * Both spellings are read: `--spec <path>` and `--spec=<path>`. The joined
+ * one is what a person types, and a flag that reads one spelling and ignores
+ * the other is a flag that can do nothing at all — the drift check would
+ * fall back to the default spec and report the reference as up to date.
+ *
+ * The path is resolved against the working directory, the way every other
+ * command-line path is.
+ */
+export function specPathFromArgs(argv) {
+  for (let index = 0; index < argv.length; index++) {
+    const arg = argv[index]
+
+    if (arg === '--spec') {
+      const value = argv[index + 1]
+      if (!value || value.startsWith('--')) {
+        throw new Error('--spec needs the path of an OpenAPI spec.')
+      }
+
+      return resolve(process.cwd(), value)
+    }
+
+    if (arg.startsWith('--spec=')) {
+      const value = arg.slice('--spec='.length)
+      if (value === '') {
+        throw new Error('--spec needs the path of an OpenAPI spec.')
+      }
+
+      return resolve(process.cwd(), value)
+    }
+  }
+
+  return null
+}
+
+/**
+ * A path as it reads in a message: repo-relative when it is inside the
+ * repo, absolute otherwise.
+ */
+function displayPath(path) {
+  const rel = relative(ROOT, path)
+  return rel.startsWith('..') ? path : rel
+}
 
 // Markdown pipe-escape used in table cells — String.raw avoids the double-escape
 // the regex form needs in a JS string literal.
@@ -90,6 +141,17 @@ function pluralItems(count) {
 }
 
 /**
+ * One enum value as it reads in a table cell.
+ *
+ * Every value keeps its backticks — except the empty string, which would
+ * otherwise render as an empty code span: nothing at all, where the reader
+ * sees a dangling comma and no option. `""` says what the value is.
+ */
+function renderEnumValue(value) {
+  return value === '' ? '`""`' : `\`${value}\``
+}
+
+/**
  * The property's description, plus the constraints the schema carries and the
  * prose does not: the enum, the length and item bounds.
  */
@@ -97,7 +159,7 @@ function renderFieldDescription(schema) {
   const bits = []
   if (schema.description) bits.push(schema.description)
   if (schema.enum?.length) {
-    const values = schema.enum.map((v) => `\`${v}\``).join(', ')
+    const values = schema.enum.map(renderEnumValue).join(', ')
     bits.push(`One of ${values}.`)
   }
   if (schema.minLength !== undefined) bits.push(`At least ${schema.minLength} characters.`)
@@ -318,20 +380,43 @@ async function format(body) {
   })
 }
 
-async function main() {
-  const spec = JSON.parse(readFileSync(SPEC, 'utf8'))
+/**
+ * The sidebar manifest: { overview, items } for docs/.vuepress/config.ts to
+ * import. Items ordered by route count desc, alphabetical on ties.
+ */
+function renderSidebar(perTag, endpoints) {
+  const sidebarItems = [...perTag.entries()].map(([slug]) => {
+    const displayTag = perTag.get(slug).match(/^# (.+)$/m)?.[1] ?? slug
+    const count = endpoints.filter((ep) => tagSlug(ep.tag) === slug).length
+    return { text: displayTag, link: `/reference/api/${slug}`, routes: count }
+  })
+  sidebarItems.sort((a, b) =>
+    b.routes !== a.routes ? b.routes - a.routes : a.text.localeCompare(b.text),
+  )
+  const sidebarManifest = {
+    overview: { text: 'Overview', link: '/reference/api' },
+    items: sidebarItems.map(({ text, link }) => ({ text, link })),
+  }
+  return JSON.stringify(sidebarManifest, null, 2) + '\n'
+}
+
+/**
+ * The reference as one spec renders it: the api.md the markers surround,
+ * the per-tag pages, and the sidebar manifest.
+ */
+export async function renderReference(spec, targetPath = TARGET) {
   const schemes = spec.components?.securitySchemes ?? {}
   const endpoints = collectEndpoints(spec)
 
   const overview = renderOverviewBody(spec, endpoints, schemes)
   const perTag = renderPerTagPages(endpoints)
 
-  const target = readFileSync(TARGET, 'utf8')
+  const target = readFileSync(targetPath, 'utf8')
   const start = target.indexOf(MARKER_START)
   const end = target.indexOf(MARKER_END)
   if (start === -1 || end === -1 || end <= start) {
     throw new Error(
-      `Markers ${MARKER_START} / ${MARKER_END} not found or out of order in ${TARGET}. ` +
+      `Markers ${MARKER_START} / ${MARKER_END} not found or out of order in ${targetPath}. ` +
         `The gen script writes only between them; both must be present in the page.`,
     )
   }
@@ -347,46 +432,54 @@ async function main() {
     tagFiles.set(`${API_DIR}/${slug}.md`, await format(body))
   }
 
-  // Sidebar manifest: { overview, items } for docs/.vuepress/config.ts to import.
-  // Items ordered by route count desc, alphabetical on ties.
-  const sidebarItems = [...perTag.entries()].map(([slug]) => {
-    const displayTag = perTag.get(slug).match(/^# (.+)$/m)?.[1] ?? slug
-    const count = endpoints.filter((ep) => tagSlug(ep.tag) === slug).length
-    return { text: displayTag, link: `/reference/api/${slug}`, routes: count }
-  })
-  sidebarItems.sort((a, b) =>
-    b.routes !== a.routes ? b.routes - a.routes : a.text.localeCompare(b.text),
-  )
-  const sidebarManifest = {
-    overview: { text: 'Overview', link: '/reference/api' },
-    items: sidebarItems.map(({ text, link }) => ({ text, link })),
-  }
-  const sidebarBody = JSON.stringify(sidebarManifest, null, 2) + '\n'
+  return { newApiMd, tagFiles, sidebarBody: renderSidebar(perTag, endpoints) }
+}
 
-  if (checkOnly) {
-    // The per-tag pages are gitignored and regenerated on every `npm run gen:api`
-    // (called by predev/prebuild hooks and by the build CI job), so they cannot
-    // be drift-checked. A per-tag page with a dead link fails the build instead
-    // — that is the safety net for them.
-    const drift = []
-    if (newApiMd !== target) {
-      drift.push('docs/reference/api.md')
-    }
-    const sidebarOnDisk = existsSync(SIDEBAR) ? readFileSync(SIDEBAR, 'utf8') : null
-    if (sidebarOnDisk !== sidebarBody) {
-      drift.push(SIDEBAR)
-    }
-    if (drift.length > 0) {
-      console.error(
-        `API reference is out of date. Regenerate with \`npm run gen:api\`.\n` +
-          `Out of date:\n` +
-          drift.map((p) => `  - ${p}`).join('\n'),
-      )
-      process.exit(1)
-    }
-    console.log('API reference is up to date.')
-    return
+/**
+ * The committed artefacts that do not match the given spec.
+ *
+ * The per-tag pages are gitignored and regenerated on every `npm run gen:api`
+ * (called by predev/prebuild hooks and by the build CI job), so they cannot
+ * be drift-checked. A per-tag page with a dead link fails the build instead
+ * — that is the safety net for them.
+ */
+export async function checkDrift({ specPath = SPEC, targetPath = TARGET, sidebarPath = SIDEBAR } = {}) {
+  const spec = JSON.parse(readFileSync(specPath, 'utf8'))
+  const { newApiMd, sidebarBody } = await renderReference(spec, targetPath)
+
+  const target = readFileSync(targetPath, 'utf8')
+  const sidebarOnDisk = existsSync(sidebarPath) ? readFileSync(sidebarPath, 'utf8') : null
+
+  const drift = []
+  if (newApiMd !== target) {
+    drift.push(displayPath(targetPath))
   }
+  if (sidebarOnDisk !== sidebarBody) {
+    drift.push(displayPath(sidebarPath))
+  }
+
+  return { drift, specPath }
+}
+
+/**
+ * What a failed check says.
+ *
+ * The spec is named because the CI compares the reference against two of
+ * them — spora-core@main and the ref the docs repo declares — and a reader
+ * must never have to guess which one the block was compared against.
+ */
+export function driftMessage({ drift, specPath }) {
+  return (
+    `API reference is out of date. Regenerate with \`npm run gen:api\`.\n` +
+    `Compared against: ${displayPath(specPath)}\n` +
+    `Out of date:\n` +
+    drift.map((p) => `  - ${p}`).join('\n')
+  )
+}
+
+async function main(specPath) {
+  const spec = JSON.parse(readFileSync(specPath, 'utf8'))
+  const { newApiMd, tagFiles, sidebarBody } = await renderReference(spec, TARGET)
 
   writeFileSync(TARGET, newApiMd)
   console.log(`Wrote ${basename(TARGET)}.`)
@@ -406,13 +499,30 @@ async function main() {
 // The renderer is imported by scripts/gen-api.test.mjs, so the CLI only runs
 // when this file is the entry point — importing it must not write anything.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  if (!existsSync(SPEC)) {
-    console.error(`Missing OpenAPI spec at ${SPEC}.`)
+  let specPath
+  try {
+    specPath = specPathFromArgs(process.argv.slice(2)) ?? SPEC
+  } catch (err) {
+    console.error(err.message)
+    process.exit(1)
+  }
+
+  if (!existsSync(specPath)) {
+    console.error(`Missing OpenAPI spec at ${displayPath(specPath)}.`)
     process.exit(1)
   }
 
   try {
-    await main()
+    if (checkOnly) {
+      const { drift, specPath: compared } = await checkDrift({ specPath })
+      if (drift.length > 0) {
+        console.error(driftMessage({ drift, specPath: compared }))
+        process.exit(1)
+      }
+      console.log(`API reference is up to date (compared against ${displayPath(compared)}).`)
+    } else {
+      await main(specPath)
+    }
   } catch (err) {
     console.error(err)
     process.exit(1)

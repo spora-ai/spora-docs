@@ -186,6 +186,10 @@ export default defineUserConfig({
                   link: '/develop/plugins/author-guide/due-work',
                 },
                 {
+                  text: 'Usage metering',
+                  link: '/develop/plugins/author-guide/metering',
+                },
+                {
                   text: 'Plugin settings',
                   link: '/develop/plugins/author-guide/plugin-settings',
                 },
@@ -213,6 +217,7 @@ export default defineUserConfig({
                 { text: 'Tavily', link: '/develop/plugins/reference/tavily' },
                 { text: 'Team Graph', link: '/develop/plugins/reference/team-graph' },
                 { text: 'Typst', link: '/develop/plugins/reference/typst' },
+                { text: 'Usage', link: '/develop/plugins/reference/usage' },
                 { text: 'Weather', link: '/develop/plugins/reference/weather' },
                 { text: 'World News', link: '/develop/plugins/reference/worldnews' },
                 { text: 'Zernio', link: '/develop/plugins/reference/zernio' },

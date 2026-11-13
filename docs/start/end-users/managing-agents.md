@@ -124,9 +124,11 @@ For details on creating LLM configs, see **Settings → LLM drivers** (or, progr
 #### The configuration's Effort setting
 
 Each LLM config carries an **Effort** setting: the reasoning effort every task on that
-configuration starts from. Leave it empty and nothing is asked for — the model applies whatever it
-would have applied anyway. Set a level and every task on that configuration starts there; a chat
-can override it per message, and an agent can carry a default of its own.
+configuration starts from. Leave it empty and nothing is asked for — the model runs at its own
+default, except on a GPT-5.4-or-later model that uses tools, where the driver sends `none` itself
+(see [Concepts → LLM drivers](/reference/concepts/drivers#tools-and-effort-on-chat-completions)). Set
+a level and every task on that configuration starts there; a chat can override it per message, and
+an agent can carry a default of its own.
 
 **The Effort setting is a name, not a choice from a list.** The levels a configuration may name are
 the ones its endpoint accepts, and that set is yours to state — the **Effort levels** setting on

@@ -45,11 +45,11 @@ For a simple "what's the capital" question with no tools enabled, the agent repl
 Next to the composer sits an **Effort** picker, when the agent's LLM configuration can express a
 reasoning effort at all — an endpoint with no effort parameter has no picker, and neither does a
 model that takes no level. It offers the levels that configuration offers, and its first entry is
-**Model default** — no level is asked for, and the model applies whatever it would have applied
-anyway. Pick a level and the agent thinks harder or cheaper for that message: the level travels
-with the message it is sent with, and the turns already sent keep the effort they were sent with.
-Your choice stays on the picker for the next message — the level belongs to the message it is sent
-with, not to the conversation.
+**Model default** — no level is asked for, and the model runs at its own default, with the
+exception noted below. Pick a level and the agent thinks harder or cheaper for that message: the
+level travels with the message it is sent with, and the turns already sent keep the effort they were
+sent with. Your choice stays on the picker for the next message — the level belongs to the message
+it is sent with, not to the conversation.
 
 **Which levels are on the picker is the operator's call.** The list comes from the agent's LLM
 configuration: when the operator names the levels their endpoint accepts, that is the list, and

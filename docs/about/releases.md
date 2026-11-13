@@ -27,8 +27,8 @@ list on top of them — and each driver maps a level onto its provider's own par
 
 **A default on the LLM configuration.** The OpenAI-compatible, Anthropic-compatible and OpenAI
 Responses drivers carry an **Effort** setting. Leave it empty and nothing is asked for — the
-provider applies whatever it would have applied anyway. Set a level and every task on that
-configuration starts there.
+provider applies its own default, except where the driver asks for a level of its own, which one
+driver does (see below). Set a level and every task on that configuration starts there.
 
 **An override per message in the chat.** The composer carries a picker, and so does the follow-up
 row, so a single message can think harder or cheaper than the rest of the conversation. The picker

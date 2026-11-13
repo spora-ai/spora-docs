@@ -93,7 +93,7 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 #### Reasoning effort (`GET /agents/{id}/effort`)
 
-The levels the agent's effective LLM driver can express, and the default that configuration carries.
+The levels the agent's effective LLM configuration offers, and the default the agent runs with.
 It is a separate endpoint rather than a field on the agent resource, because the agent resource is
 built for the list endpoint too.
 
@@ -107,9 +107,9 @@ built for the list endpoint too.
 }
 ```
 
-- `supported` — the effective driver implements the effort contract and declares a non-empty level set. A driver that cannot express effort, and a model that takes no level at all, answer `false` with an empty `levels` array.
-- `levels` — the effective driver's levels, each with the label the driver class uses for it. The Anthropic driver answers with the levels the agent's _model_ takes, which can be fewer than the driver's whole vocabulary; the OpenAI drivers answer with the whole canonical scale, whatever the model takes.
-- `default` — the effective configuration's `effort` setting; `null` means the model's own default. The endpoint guarantees the default is **driver-declared**, not **model-accepted**: on the Anthropic driver it is `null` when the configuration names a level the model does not take, because such a level is never sent; on the OpenAI drivers, which declare every canonical level, it can report a default the model then rejects — `default: "none"` for a model that refuses `none` is a real answer, and such a request fails at the provider.
+- `supported` — the effective configuration offers a non-empty level set. A driver that cannot express effort, and an operator who turned the capability off for the endpoint, answer `false` with an empty `levels` array.
+- `levels` — the levels the configuration offers, each with a label. A configuration that names its own list in `effort_levels` offers exactly that list; a configuration that names none offers the model's own set. The Anthropic driver answers with the levels the agent's _model_ takes, which can be fewer than the driver's whole vocabulary; the OpenAI drivers answer with the whole canonical scale, whatever the model takes.
+- `default` — the level this agent runs with when nobody names one: the agent's own `default_effort`, then the effective configuration's `effort` setting, then `null` for the model's own default. A default the configuration does not offer is never reported, because it would never be sent.
 
 The effective configuration is resolved on the server, through the same three tiers the agent uses —
 the agent's own configuration, the principal's preferred configuration, then the global default — so
@@ -117,10 +117,10 @@ a client never has to re-implement it.
 
 An agent the caller may not see answers `404`, the same as `GET /api/v1/agents/{id}`.
 
-**The endpoint is a session endpoint.** It takes the session cookie and no bearer key: a caller on
-one of the bearer-key surfaces — the agent, group and global APIs — cannot read the levels the
-driver offers. Such a caller reads the message the refusal carries, which names the supported
-levels where the driver has any, or asks the operator.
+**This endpoint takes the session cookie and no bearer key.** The bearer-key surfaces have their own
+counterparts, one per key type: `GET /api/v1/agent-api/effort` (the key pins one agent, so the path
+carries no id), `GET /api/v1/group-api/agents/{agentId}/effort` and
+`GET /api/v1/global-api/agents/{agentId}/effort`. All four answer with the same envelope.
 
 See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale and the resolution order.
 
@@ -175,6 +175,7 @@ Schedules live under the owning agent. The full route set is listed in the auto-
 | `template_id`        | integer \| null     | optional        | FK to `agent_prompt_templates.id`. When set, `prompt_template` + its `variables` drive the prompt at fire time (template variables can be referenced via `{{var}}`).                                                                             |
 | `raw_prompt`         | string              | optional        | Free-form prompt used when no template is attached. Same `{{var}}` substitution applies.                                                                                                                                                         |
 | `max_steps_override` | integer \| null     | optional        | Override the agent's `max_steps` for this schedule only. Falls back to the template, then the agent.                                                                                                                                             |
+| `effort_override`    | string \| null      | optional        | Override the reasoning effort for this schedule only. `null` inherits the template's, then the agent's, then the LLM configuration's. A level the agent's LLM configuration does not offer is a `422 EFFORT_LEVEL_UNSUPPORTED`.                  |
 | `is_active`          | boolean             | optional        | Default `true`. Set `false` to pause without deleting.                                                                                                                                                                                           |
 
 Error contract:
@@ -193,23 +194,24 @@ Manual trigger: `POST /api/v1/agents/{id}/scheduled-runs/{runId}/trigger` enqueu
 
 Every `GET` and `PATCH` response (and each entry of `GET /api/v1/agents`) carries an `agent` object with the following wire-format fields. Fields introduced in this release are marked **(new)**.
 
-| Field                   | Type                             | Notes                                                                                                                                                                                                                                                                                             |
-| ----------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                    | integer                          | Owning agent id.                                                                                                                                                                                                                                                                                  |
-| `name`                  | string                           | Display name.                                                                                                                                                                                                                                                                                     |
-| `description`           | string \| null                   | Short summary, up to 2000 chars.                                                                                                                                                                                                                                                                  |
-| `system_prompt`         | string \| null                   | System prompt (Markdown allowed).                                                                                                                                                                                                                                                                 |
-| `llm_driver_config_id`  | integer \| null                  | Bound LLM config; `null` means inherit the global default.                                                                                                                                                                                                                                        |
-| `max_steps`             | integer                          | Max LLM turns per task (1-100). Default `10`.                                                                                                                                                                                                                                                     |
-| `is_active`             | boolean                          | Whether the agent accepts new tasks.                                                                                                                                                                                                                                                              |
-| `allow_followup`        | boolean                          | Whether the agent can be re-engaged in the same task.                                                                                                                                                                                                                                             |
-| `retry_after_minutes`   | integer                          | Delay between scheduled retries (≥ 0).                                                                                                                                                                                                                                                            |
-| `max_retries`           | integer                          | Max retries per task (≥ 0).                                                                                                                                                                                                                                                                       |
-| `is_pinned` **(new)**   | boolean                          | `true` keeps the agent at the top of the dashboard list. Default `false`.                                                                                                                                                                                                                         |
-| `is_archived` **(new)** | boolean                          | `true` hides the agent from the default view; row + tasks are retained. Default `false`.                                                                                                                                                                                                          |
-| `created_at` **(new)**  | string \| null (ATOM / ISO 8601) | When the agent row was created. `null` for stub/test fixtures.                                                                                                                                                                                                                                    |
-| `tools`                 | array                            | See [Tool allowlist](#tool-allowlist-on-an-agent).                                                                                                                                                                                                                                                |
-| `icon` **(new)**        | string \| null                   | Resolved icon key for the dashboard's `<Icon>` component (e.g. `'calendar'`, `'mail'`, `'search'`). Server-side 3-layer resolution: the `*Tool` class's `#[Tool(icon: ...)]` argument wins, then the owning plugin's `plugin.json` `icon` field, then `null` (frontend falls back to `'puzzle'`). |
+| Field                      | Type                             | Notes                                                                                                                                                                                                                                                                                             |
+| -------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                       | integer                          | Owning agent id.                                                                                                                                                                                                                                                                                  |
+| `name`                     | string                           | Display name.                                                                                                                                                                                                                                                                                     |
+| `description`              | string \| null                   | Short summary, up to 2000 chars.                                                                                                                                                                                                                                                                  |
+| `system_prompt`            | string \| null                   | System prompt (Markdown allowed).                                                                                                                                                                                                                                                                 |
+| `llm_driver_config_id`     | integer \| null                  | Bound LLM config; `null` means inherit the global default.                                                                                                                                                                                                                                        |
+| `max_steps`                | integer                          | Max LLM turns per task (1-100). Default `10`.                                                                                                                                                                                                                                                     |
+| `default_effort` **(new)** | string \| null                   | The reasoning effort this agent runs with when a message names none. `null` inherits the LLM configuration's default. A level the agent's LLM configuration does not offer is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.                                                                        |
+| `is_active`                | boolean                          | Whether the agent accepts new tasks.                                                                                                                                                                                                                                                              |
+| `allow_followup`           | boolean                          | Whether the agent can be re-engaged in the same task.                                                                                                                                                                                                                                             |
+| `retry_after_minutes`      | integer                          | Delay between scheduled retries (≥ 0).                                                                                                                                                                                                                                                            |
+| `max_retries`              | integer                          | Max retries per task (≥ 0).                                                                                                                                                                                                                                                                       |
+| `is_pinned` **(new)**      | boolean                          | `true` keeps the agent at the top of the dashboard list. Default `false`.                                                                                                                                                                                                                         |
+| `is_archived` **(new)**    | boolean                          | `true` hides the agent from the default view; row + tasks are retained. Default `false`.                                                                                                                                                                                                          |
+| `created_at` **(new)**     | string \| null (ATOM / ISO 8601) | When the agent row was created. `null` for stub/test fixtures.                                                                                                                                                                                                                                    |
+| `tools`                    | array                            | See [Tool allowlist](#tool-allowlist-on-an-agent).                                                                                                                                                                                                                                                |
+| `icon` **(new)**           | string \| null                   | Resolved icon key for the dashboard's `<Icon>` component (e.g. `'calendar'`, `'mail'`, `'search'`). Server-side 3-layer resolution: the `*Tool` class's `#[Tool(icon: ...)]` argument wins, then the owning plugin's `plugin.json` `icon` field, then `null` (frontend falls back to `'puzzle'`). |
 
 `PATCH /api/v1/agents/{id}` accepts any subset of the fields above. `is_pinned` and `is_archived` accept JSON booleans or the strings `"true"` / `"false"` — both are coerced via `FILTER_VALIDATE_BOOLEAN` server-side, so the form layer and curl both work.
 
@@ -254,30 +256,35 @@ reasoning effort for that task.
 
 | Body               | Meaning                                                 |
 | ------------------ | ------------------------------------------------------- |
-| key absent         | the LLM configuration's default applies                 |
+| key absent         | the agent's default applies, then the configuration's   |
 | `"effort": null`   | the same — a `null` is read as an omitted field         |
 | `"effort": ""`     | explicitly the model's own default — no level asked for |
 | `"effort": "high"` | that level                                              |
 
 **A `null` is not a value the validator refuses.** `TaskEffortRequestValidator::parse()` reads the
 body with a null-coalescing lookup, so an explicit `"effort": null` falls out exactly as an absent
-key does: the configuration's default applies and the request is not a `422 INVALID_EFFORT`. The
+key does: the agent's default applies and the request is not a `422 INVALID_EFFORT`. The
 value that is refused for not being a string is the one that is neither a string nor `null`.
 
-The levels are `none`, `minimal`, `low`, `medium`, `high`, `xhigh` and `max`. **Two codes, six refusals.** A value that is a string but not one of those levels, or a value that is neither a string nor `null`, is a `422 INVALID_EFFORT` — the request has to be fixed. A level that is on the scale but that the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for that agent is out of date, and `GET /api/v1/agents/{id}/effort` lists the levels the driver offers. That endpoint takes a **session**, not a bearer key, so a caller on the agent, group or global API cannot read it and has to read the refusal's message or ask the operator.
+**The levels are not a fixed scale.** A configuration names the levels its endpoint takes, in
+`effort_levels`, and a configuration that names none offers the model's own set — so the seven
+canonical names (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`) are the default
+vocabulary, not the only names that exist. **Two codes, five refusals.** A value that is neither a
+string nor `null` is a `422 INVALID_EFFORT` — the request has to be fixed. A level the agent's LLM
+configuration does not offer is a `422 EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for
+that agent is out of date, and the effort endpoints list the levels the configuration offers.
 
 The code says which kind of refusal it is. **The message says which one**, and it is the only thing that does: `EFFORT_LEVEL_UNSUPPORTED` answers four different situations and the code is the same for all of them.
 
 | Reason                                      | Code                       | Message (English)                                                                                                  |
 | ------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | the field is neither a string nor `null`    | `INVALID_EFFORT`           | `effort must be a string.`                                                                                         |
-| the field is not on the scale               | `INVALID_EFFORT`           | `effort must be one of: none, minimal, low, medium, high, xhigh, max.`                                             |
 | the agent has no LLM configuration          | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" cannot be sent: this agent has no LLM configuration.`                                            |
 | the agent's driver could not be resolved    | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" cannot be sent: this agent's LLM driver could not be resolved.`                                  |
 | the driver declares no level for this model | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" is not offered by this agent's LLM driver: it cannot express a reasoning effort for this model.` |
 | the driver declares other levels            | `EFFORT_LEVEL_UNSUPPORTED` | `effort "<level>" is not offered by this agent's LLM driver. Supported levels: low, medium, …`                     |
 
-The messages are the framework's own strings and they are **localised**: the router translates every error message it passes through and leaves the code alone. **The server picks the locale, not the client** — `Accept-Language` is never consulted, and the chain is the caller's stored locale → the instance default → English. A client that asked for one language can therefore be answered in another, so **match on the code and display the message rather than matching localised prose**; a client that would rather not read prose at all asks `GET /api/v1/agents/{id}/effort` — with a session — and only ever sends a level that endpoint lists.
+The messages are the framework's own strings and they are **localised**: the router translates every error message it passes through and leaves the code alone. **The server picks the locale, not the client** — `Accept-Language` is never consulted, and the chain is the caller's stored locale → the instance default → English. A client that asked for one language can therefore be answered in another, so **match on the code and display the message rather than matching localised prose**; a client that would rather not read prose at all asks the effort endpoint for its key type and only ever sends a level that endpoint lists.
 
 The empty string is a value in its own right — the wire value for _the model default_ — rather than
 a missing field, which is why it appears among the accepted values on the endpoint's own page.
@@ -470,10 +477,10 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 
 - [Agents](/reference/api/agents) — 36 routes
 - [Groups](/reference/api/groups) — 29 routes
-- [Global-api](/reference/api/global-api) — 24 routes
-- [Group-api](/reference/api/group-api) — 17 routes
+- [Global-api](/reference/api/global-api) — 25 routes
+- [Group-api](/reference/api/group-api) — 18 routes
+- [Agent-api](/reference/api/agent-api) — 14 routes
 - [Tasks](/reference/api/tasks) — 14 routes
-- [Agent-api](/reference/api/agent-api) — 13 routes
 - [Auth](/reference/api/auth) — 12 routes
 - [Media](/reference/api/media) — 12 routes
 - [Speech](/reference/api/speech) — 10 routes
@@ -525,6 +532,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `POST`   | `/api/v1/agent-api/chats/{chatId}/reject`                   | `bearerAuth`               | Reject pending tool calls                                                | Agent-api        |
 | `GET`    | `/api/v1/agent-api/chats/{chatId}/status`                   | `bearerAuth`               | Status and final answer                                                  | Agent-api        |
 | `GET`    | `/api/v1/agent-api/chats/{chatId}/transcript`               | `bearerAuth`               | Everything the admin UI shows                                            | Agent-api        |
+| `GET`    | `/api/v1/agent-api/effort`                                  | `bearerAuth`               | The reasoning-effort levels this agent's LLM configuration offers        | Agent-api        |
 | `POST`   | `/api/v1/agent-api/media`                                   | `bearerAuth`               | Upload a file for this agent                                             | Agent-api        |
 | `GET`    | `/api/v1/agent-api/media/{mediaId}`                         | `bearerAuth`               | Fetch a media asset this agent produced                                  | Agent-api        |
 | `POST`   | `/api/v1/agent-api/transcribe`                              | `bearerAuth`               | Transcribe an audio asset with this agent's driver                       | Agent-api        |
@@ -592,6 +600,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/global-api/agents/{agentId}`                       | `bearerAuth`               | Read an agent in the import format                                       | Global-api       |
 | `PATCH`  | `/api/v1/global-api/agents/{agentId}`                       | `bearerAuth`               | Update an agent from the import format                                   | Global-api       |
 | `DELETE` | `/api/v1/global-api/agents/{agentId}`                       | `bearerAuth`               | Delete an agent                                                          | Global-api       |
+| `GET`    | `/api/v1/global-api/agents/{agentId}/effort`                | `bearerAuth`               | The reasoning-effort levels an agent's LLM configuration offers          | Global-api       |
 | `GET`    | `/api/v1/global-api/chats`                                  | `bearerAuth`               | List the chats this key may reach                                        | Global-api       |
 | `POST`   | `/api/v1/global-api/chats`                                  | `bearerAuth`               | Start a chat with one of the agents this key reaches                     | Global-api       |
 | `POST`   | `/api/v1/global-api/chats/{chatId}/answer`                  | `bearerAuth`               | Answer the agent's question                                              | Global-api       |
@@ -613,6 +622,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `GET`    | `/api/v1/group-api/agents/{agentId}`                        | `bearerAuth`               | Read an agent in the import format                                       | Group-api        |
 | `PATCH`  | `/api/v1/group-api/agents/{agentId}`                        | `bearerAuth`               | Update an agent from the import format                                   | Group-api        |
 | `DELETE` | `/api/v1/group-api/agents/{agentId}`                        | `bearerAuth`               | Delete an agent                                                          | Group-api        |
+| `GET`    | `/api/v1/group-api/agents/{agentId}/effort`                 | `bearerAuth`               | The reasoning-effort levels an agent's LLM configuration offers          | Group-api        |
 | `GET`    | `/api/v1/group-api/chats`                                   | `bearerAuth`               | List the chats this key may reach                                        | Group-api        |
 | `POST`   | `/api/v1/group-api/chats`                                   | `bearerAuth`               | Start a chat with one of the agents this key reaches                     | Group-api        |
 | `POST`   | `/api/v1/group-api/chats/{chatId}/answer`                   | `bearerAuth`               | Answer the agent's question                                              | Group-api        |

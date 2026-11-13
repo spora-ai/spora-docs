@@ -221,12 +221,12 @@ Everything else — polling, transcripts, blocked chats, callbacks, media — wo
 `effort` is accepted on the chat body — the reasoning effort for that message. It is a **level name
 from the set the agent's LLM configuration offers**, not a fixed scale; read the set from
 [`GET /agents/{agentId}/effort`](#the-reasoning-effort-levels) and send the name back unchanged.
-Leave it out and the agent's own default applies — its `default_effort` if it has one, the LLM
-configuration's default otherwise. Send `""` to ask for the model's own default, so that no level is
-asked for. A `null` is read as an omitted field, so it applies the default too — it is not a
-`422 INVALID_EFFORT`. A value that is neither a string nor `null` is a `422 INVALID_EFFORT`; a
-string the configuration does not offer is a `422 EFFORT_LEVEL_UNSUPPORTED`, and the message names
-the levels it does offer.
+Leave it out and the agent's own default applies — its `default_effort` while the configuration
+still offers that level, the LLM configuration's default otherwise. Send `""` to ask for the
+model's own default, so that no level is asked for. A `null` is read as an omitted field, so it
+applies the default too — it is not a `422 INVALID_EFFORT`. A value that is neither a string nor
+`null` is a `422 INVALID_EFFORT`; a string the configuration does not offer is a
+`422 EFFORT_LEVEL_UNSUPPORTED`, and the message names the levels it does offer.
 `POST /chats/{id}/messages` takes the same field, where it applies to that follow-up only. See
 [Concepts → Reasoning effort](/reference/concepts/reasoning-effort) for the level set and the
 default chain, [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the wire

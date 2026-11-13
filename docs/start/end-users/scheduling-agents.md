@@ -68,8 +68,9 @@ each is set in the form that owns it — the **Schedules** tab for a schedule, t
 for a saved prompt.
 
 The levels on offer are the ones the agent's LLM configuration offers, so a schedule can only be
-given a level the agent's endpoint actually takes. Leave the field unset and the schedule
-inherits, and the chain runs:
+given a level that configuration names — which is not the same as a level the model accepts. A
+level the configuration offers can still be refused by the provider, and a run that uses it fails
+when it fires. Leave the field unset and the schedule inherits, and the chain runs:
 
 ```text
 the schedule's own effort

@@ -43,7 +43,7 @@ the message's effort
       → the model default (null)
 ```
 
-The **model default** is not a level. It is the absence of one: no effort parameter reaches the provider, and the provider applies whatever it would have applied anyway.
+The **model default** is not a level. It is the absence of one: no level was resolved, so the driver sends no effort parameter and the provider applies whatever it would have applied anyway. One driver breaks that rule for itself — on a GPT-5.4-or-later reasoning model that uses tools, the OpenAI-compatible driver sends `reasoning_effort: "none"` rather than nothing; see [Tools and effort on Chat Completions](/reference/concepts/drivers#tools-and-effort-on-chat-completions) and [Schema](/reference/concepts/schema#key-decisions).
 
 `EffortService::defaultFor()` owns the whole chain and is the only place that walks it. `LlmConfigResolver::resolveEffortDefault()` delegates to it, so the runtime and the endpoint that reports the default cannot drift apart.
 
@@ -53,11 +53,11 @@ The **model default** is not a level. It is the absence of one: no effort parame
 
 **The message's effort** has three states, and all three survive to the write:
 
-| Request body     | Meaning                                           |
-| ---------------- | ------------------------------------------------- |
-| key absent       | walk the chain from the agent's default           |
-| `effort: ""`     | explicitly the model default — no level asked for |
-| `effort: "high"` | that level, whatever the chain would have said    |
+| Request body     | Meaning                                          |
+| ---------------- | ------------------------------------------------ |
+| key absent       | walk the chain from the agent's default          |
+| `effort: ""`     | explicitly the model default — no level resolved |
+| `effort: "high"` | that level, whatever the chain would have said   |
 
 The resolved value lands on the task row. `NULL` means no level was resolved, and the database never stores an empty string.
 
@@ -82,7 +82,7 @@ The level set is a **per-configuration** property. The default chain reaches fur
 | A scheduled run         | `effort_override` | inherit the template's, then the agent's |
 | A chat or task body     | `effort`          | the model default                        |
 
-The two empty meanings are deliberately different. A **message** that names no level asks for the model's own default, because the message is the last word on the turn it belongs to. A **template, a run or an agent default** that names no level inherits, because they are defaults and a default that overrode the thing it defaults to would be a loop.
+The two empty meanings are deliberately different. A **message** whose `effort` is the empty string asks for the model's own default, because the message is the last word on the turn it belongs to. A **template, a run or an agent default** that names no level inherits, because they are defaults and a default that overrode the thing it defaults to would be a loop.
 
 **A level is checked against the level set where it is written.** A configuration's `effort` is refused at save time when the configuration does not offer it, with a message naming the levels it does offer, and narrowing the list under a saved default is refused too — the operator fixes both in the same submission rather than losing the default silently. A template's `effort` and a run's `effort_override` are refused the same way, with `422 EFFORT_LEVEL_UNSUPPORTED`, and an agent's `default_effort` is refused on write too.
 

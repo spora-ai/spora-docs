@@ -116,11 +116,11 @@ public function effortLevels(): array
 Three settings decide what a configuration offers and what it defaults to. The drivers each declare
 `effort_levels` and `supports_effort`; `effort` was already there.
 
-| Setting           | Type     | What it decides                                                  |
-| ----------------- | -------- | ---------------------------------------------------------------- |
-| `effort_levels`   | textarea | the level set — comma-separated, empty means the model's own set |
-| `supports_effort` | toggle   | whether the endpoint has an effort parameter at all              |
-| `effort`          | text     | the configuration's default — empty means the model default      |
+| Setting           | Type     | What it decides                                                   |
+| ----------------- | -------- | ----------------------------------------------------------------- |
+| `effort_levels`   | textarea | the level set — comma-separated, empty means the driver's own set |
+| `supports_effort` | toggle   | whether the endpoint has an effort parameter at all               |
+| `effort`          | text     | the configuration's default — empty means the model default       |
 
 `effort` was a `select` with a static option map and is free text now. A level the configuration does not offer is refused when the configuration is saved, with a message naming the levels it does offer.
 

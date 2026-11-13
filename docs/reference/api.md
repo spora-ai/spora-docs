@@ -108,7 +108,7 @@ built for the list endpoint too.
 ```
 
 - `supported` — the effective configuration offers a non-empty level set. A driver that cannot express effort, and an operator who turned the capability off for the endpoint, answer `false` with an empty `levels` array.
-- `levels` — the levels the configuration offers, each with a label. A configuration that names its own list in `effort_levels` offers exactly that list; a configuration that names none offers the model's own set. The Anthropic driver answers with the levels the agent's _model_ takes, which can be fewer than the driver's whole vocabulary; the OpenAI drivers answer with the whole canonical scale, whatever the model takes.
+- `levels` — the levels the configuration offers, each with a label. A configuration that names its own list in `effort_levels` offers exactly that list; a configuration that names none falls back to its driver's own set, and that fallback is driver-dependent: the Anthropic driver answers with the levels the agent's _model_ takes, while the two OpenAI drivers answer with the whole canonical scale, whatever the model takes. **An offered level is not an accepted one** — a level the configuration offers can still be refused by the provider.
 - `default` — the level this agent runs with when nobody names one: the agent's own `default_effort`, then the effective configuration's `effort` setting, then `null` for the model's own default. A default the configuration does not offer is never reported, because it would never be sent.
 
 The effective configuration is resolved on the server, through the same three tiers the agent uses —
@@ -267,12 +267,15 @@ key does: the agent's default applies and the request is not a `422 INVALID_EFFO
 value that is refused for not being a string is the one that is neither a string nor `null`.
 
 **The levels are not a fixed scale.** A configuration names the levels its endpoint takes, in
-`effort_levels`, and a configuration that names none offers the model's own set — so the seven
-canonical names (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`) are the default
-vocabulary, not the only names that exist. **Two codes, five refusals.** A value that is neither a
-string nor `null` is a `422 INVALID_EFFORT` — the request has to be fixed. A level the agent's LLM
-configuration does not offer is a `422 EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for
-that agent is out of date, and the effort endpoints list the levels the configuration offers.
+`effort_levels`, and a configuration that names none falls back to its driver's own set — the
+levels the model takes on the Anthropic driver, the whole canonical scale on the two OpenAI
+drivers — so the seven canonical names (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`)
+are the default vocabulary, not the only names that exist. **An offered level is not an accepted
+one**: a level the configuration offers can still be refused by the provider. **Two codes, five
+refusals.** A value that is neither a string nor `null` is a `422 INVALID_EFFORT` — the request
+has to be fixed. A level the agent's LLM configuration does not offer is a `422
+EFFORT_LEVEL_UNSUPPORTED` — the client's cached capability for that agent is out of date, and the
+effort endpoints list the levels the configuration offers.
 
 The code says which kind of refusal it is. **The message says which one**, and it is the only thing that does: `EFFORT_LEVEL_UNSUPPORTED` answers four different situations and the code is the same for all of them.
 

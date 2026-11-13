@@ -221,12 +221,12 @@ falls back to the agent's configured limit.
 LLM configuration offers** — not a fixed scale. Read the set from
 [`GET /api/v1/agent-api/effort`](#the-reasoning-effort-levels) and send the name back unchanged.
 
-Leave the field out and the agent's own default applies: its `default_effort` if it has one, the
-LLM configuration's default otherwise. Send `""` to ask for the model's own default, so that no
-level is asked for. A `null` is read as an omitted field, so it applies the default too — it is
-not a `422 INVALID_EFFORT`. A value that is neither a string nor `null` is a `422 INVALID_EFFORT`;
-a string the configuration does not offer is a `422 EFFORT_LEVEL_UNSUPPORTED`, and the message names
-the levels it does offer.
+Leave the field out and the agent's own default applies: its `default_effort` while the
+configuration still offers that level, the LLM configuration's default otherwise. Send `""` to ask
+for the model's own default, so that no level is asked for. A `null` is read as an omitted field,
+so it applies the default too — it is not a `422 INVALID_EFFORT`. A value that is neither a string
+nor `null` is a `422 INVALID_EFFORT`; a string the configuration does not offer is a
+`422 EFFORT_LEVEL_UNSUPPORTED`, and the message names the levels it does offer.
 
 The same field is accepted on `POST /chats/{id}/messages`, where it applies to that follow-up only
 — the earlier turns keep the effort they were sent with. See

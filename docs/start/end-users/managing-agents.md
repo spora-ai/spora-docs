@@ -87,7 +87,7 @@ Authorisation for cross-principal agent creation is enforced server-side via `Ag
 - **Enabled** — toggle to disable the agent without deleting it
 - **Max steps** — the max number of LLM turns per task. Default 10. Higher = longer reasoning chains; lower = bounded cost.
 - **Allow followup** — whether the agent can be re-engaged in the same task (continues the conversation thread) or each message creates a new task.
-- **Default effort** — the reasoning effort this agent runs with when a message does not name one. Leave it unset and the LLM configuration's default applies. The list is the one the agent's configuration offers, so an agent can only be given a level its own endpoint takes.
+- **Default effort** — the reasoning effort this agent runs with when a message does not name one. Leave it unset and the LLM configuration's default applies. The list is the one the agent's configuration offers, so an agent can only be given a level that configuration names — which is not the same as a level the model accepts: the two OpenAI drivers offer the whole scale whatever the model takes, and a level the model refuses is the provider's error.
 
 ### Tab 2 — System prompt
 
@@ -144,9 +144,10 @@ the levels it does offer.
 #### The agent's own effort default
 
 An agent can carry a **default effort** of its own, set on the agent's Identity tab. It sits
-between the message and the configuration: a message that names no level runs at the agent's
-default, and one that does names its own. Leave the agent's default unset and the configuration's
-default applies, as before.
+between the message and the configuration: a message that names a level runs at that level, and a
+message that leaves the field out runs at the agent's default — then the configuration's, then the
+model's own default. A message that sends `effort: ""` asks for the model's own default instead.
+Leave the agent's default unset and the configuration's default applies, as before.
 
 This is what lets one agent in a group run at a different depth than its siblings while they all
 share one LLM configuration.

@@ -1,0 +1,11 @@
+# The spora-core ref the committed API reference was generated from.
+#
+# The drift check compares docs/reference/api.md against spora-core@main and
+# against this ref, and passes when it matches either. Name the branch of the
+# core PR that a docs PR documents while that core PR is unmerged: the
+# reference then describes a core that main does not carry yet, and the check
+# says so instead of reporting drift.
+#
+# Delete this file — or point it at `main` — once the core PR has merged and
+# the reference has been regenerated from spora-core@main.
+feat/effort-levels

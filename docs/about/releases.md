@@ -16,39 +16,68 @@ explains the policy.
 ## Unreleased
 
 Spora's LLM drivers can now say **how hard the model should think**, and OpenAI's reasoning models
-can finally **think and call tools in the same turn**. Two changes ship together: a per-message
-reasoning effort, and a new driver for OpenAI's Responses API.
+can finally **think and call tools in the same turn**. Three changes ship together: a per-message
+reasoning effort, a configurable set of effort levels, and a new driver for OpenAI's Responses API.
 
 ### Reasoning effort you can set per message
 
 Every provider that has a reasoning control names it differently and accepts a different subset of
-levels. Spora now has one vocabulary of its own — `none`, `minimal`, `low`, `medium`, `high`,
-`xhigh`, `max` — and each driver maps it onto its provider's own parameter.
+levels. Spora now has a vocabulary of its own — seven canonical names, and a configuration's own
+list on top of them — and each driver maps a level onto its provider's own parameter.
 
 **A default on the LLM configuration.** The OpenAI-compatible, Anthropic-compatible and OpenAI
-Responses drivers carry a new **Effort** setting. Its first entry is _Model default_, which is the
-default: no level is asked for, and the provider applies whatever it would have applied anyway.
-Pick a level and every task on that configuration starts there.
+Responses drivers carry an **Effort** setting. Leave it empty and nothing is asked for — the
+provider applies whatever it would have applied anyway. Set a level and every task on that
+configuration starts there.
 
 **An override per message in the chat.** The composer carries a picker, and so does the follow-up
 row, so a single message can think harder or cheaper than the rest of the conversation. The picker
-offers the levels the agent's driver can express and starts on the configuration's default.
+offers the levels the agent's configuration offers and starts on the agent's own default.
 
-The resolution order is: the message's own effort when it carries one, then the configuration's
-default, then the model's own default.
+The resolution order is: the message's own effort when it carries one, then the agent's default,
+then the configuration's default, then the model's own default.
 
 **One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible
 driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because
 silence is not a working configuration on the models that default to `medium` — see the OpenAI
 Responses section below.
 
-**The driver knows its vocabulary; the model knows its levels.** The two OpenAI drivers offer the
-whole scale, so a level their model rejects fails at the provider, with the provider's own error
-naming the offending value. **The Anthropic driver asks the model instead**: Anthropic publishes
-which Claude models take `output_config.effort` and which of the five levels each of them takes,
-and the driver reads the model id. A Claude that takes no level at all — Sonnet 4.5, Haiku 4.5 and
-every 3.x model — declares none, and a request that names a level the model does not take is
-refused by the API with `422 EFFORT_LEVEL_UNSUPPORTED` before it ever reaches the provider.
+**By default the driver knows its vocabulary; the model knows its levels.** The two OpenAI drivers
+offer the whole scale, so a level their model rejects fails at the provider, with the provider's
+own error naming the offending value. **The Anthropic driver asks the model instead**: Anthropic
+publishes which Claude models take `output_config.effort` and which of the five levels each of them
+takes, and the driver reads the model id. A Claude that takes no level at all — Sonnet 4.5, Haiku
+4.5 and every 3.x model — declares none, and a request that names a level the model does not take
+is refused by the API with `422 EFFORT_LEVEL_UNSUPPORTED` before it ever reaches the provider. An
+operator who knows what their endpoint takes can replace the whole set.
+
+### The levels are yours to name
+
+The seven canonical levels are a starting point, not a limit. Every provider that reaches Spora
+through an **Anthropic-compatible** or **OpenAI-compatible** endpoint has its own vocabulary, and
+some of those names are not on Spora's list at all — Groq's `default`, for one.
+
+**An LLM configuration can name its own levels.** The drivers carry an **Effort levels** setting:
+a comma-separated list of the levels that endpoint accepts. A list wins outright over whatever the
+model name would imply, so a gateway in front of an Anthropic-compatible API can offer `ultra` or
+`x-high` and Spora will send it. Leave the list empty and the driver's own set applies, exactly as
+before — an endpoint Spora has never seen keeps working.
+
+**An endpoint can have no effort at all.** A **Supports reasoning effort** toggle turns the
+capability off for an endpoint with no reasoning-effort parameter: the agent gets no picker, and
+any effort sent is refused.
+
+**An agent can carry a default of its own.** The agent's Identity tab takes a **Default effort**,
+so one agent in a group can run at a different depth than its siblings while they all share one LLM
+configuration.
+
+**A saved prompt and a schedule can carry one too.** Both already carried a step limit; both now
+carry a level. A schedule's own effort wins, then the template's, then the agent's, then the
+configuration's.
+
+The level names are bounded — at most 16 characters each, at most 32 per configuration — because
+the name travels into a third-party request body and into a `string(16)` column. See
+[Concepts → Reasoning effort](/reference/concepts/reasoning-effort).
 
 ### A new "OpenAI Responses" driver
 

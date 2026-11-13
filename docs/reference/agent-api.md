@@ -114,24 +114,69 @@ purpose, so a caller cannot tell a bad id from a bad secret. Requests are rate l
 
 ## Endpoints
 
-| Method | Path                                      | Purpose                                |
-| ------ | ----------------------------------------- | -------------------------------------- |
-| `GET`  | `/api/v1/agent-api/chats`                 | List this agent's chats                |
-| `POST` | `/api/v1/agent-api/chats`                 | Start a chat                           |
-| `GET`  | `/api/v1/agent-api/chats/{id}/status`     | Status and final answer                |
-| `GET`  | `/api/v1/agent-api/chats/{id}/messages`   | User messages and answers              |
-| `POST` | `/api/v1/agent-api/chats/{id}/messages`   | Continue the chat                      |
-| `GET`  | `/api/v1/agent-api/chats/{id}/transcript` | Tool calls, thinking, usage totals     |
-| `POST` | `/api/v1/agent-api/chats/{id}/approve`    | Approve pending tool calls             |
-| `POST` | `/api/v1/agent-api/chats/{id}/reject`     | Reject pending tool calls              |
-| `POST` | `/api/v1/agent-api/chats/{id}/answer`     | Answer a question the agent asked      |
-| `POST` | `/api/v1/agent-api/transcribe`            | Transcribe an audio asset              |
-| `POST` | `/api/v1/agent-api/transcribe-and-send`   | Transcribe and send to the agent       |
-| `POST` | `/api/v1/agent-api/media`                 | Upload a file for this agent           |
-| `GET`  | `/api/v1/agent-api/media/{mediaId}`       | Read a media asset this agent produced |
+| Method | Path                                      | Purpose                                        |
+| ------ | ----------------------------------------- | ---------------------------------------------- |
+| `GET`  | `/api/v1/agent-api/effort`                | The reasoning-effort levels this agent can use |
+| `GET`  | `/api/v1/agent-api/chats`                 | List this agent's chats                        |
+| `POST` | `/api/v1/agent-api/chats`                 | Start a chat                                   |
+| `GET`  | `/api/v1/agent-api/chats/{id}/status`     | Status and final answer                        |
+| `GET`  | `/api/v1/agent-api/chats/{id}/messages`   | User messages and answers                      |
+| `POST` | `/api/v1/agent-api/chats/{id}/messages`   | Continue the chat                              |
+| `GET`  | `/api/v1/agent-api/chats/{id}/transcript` | Tool calls, thinking, usage totals             |
+| `POST` | `/api/v1/agent-api/chats/{id}/approve`    | Approve pending tool calls                     |
+| `POST` | `/api/v1/agent-api/chats/{id}/reject`     | Reject pending tool calls                      |
+| `POST` | `/api/v1/agent-api/chats/{id}/answer`     | Answer a question the agent asked              |
+| `POST` | `/api/v1/agent-api/transcribe`            | Transcribe an audio asset                      |
+| `POST` | `/api/v1/agent-api/transcribe-and-send`   | Transcribe and send to the agent               |
+| `POST` | `/api/v1/agent-api/media`                 | Upload a file for this agent                   |
+| `GET`  | `/api/v1/agent-api/media/{mediaId}`       | Read a media asset this agent produced         |
 
 The per-endpoint reference, including the full status-code list for each, is in the
 [API reference](/reference/api/agent-api). That page is generated from the OpenAPI spec.
+
+## The reasoning-effort levels
+
+`GET /api/v1/agent-api/effort` tells a client which reasoning-effort levels this agent can use,
+and which one it runs with when nobody says otherwise.
+
+```bash
+curl https://spora.example.com/api/v1/agent-api/effort \
+  -H 'Authorization: Bearer spk_9f2c…_qRt…'
+```
+
+```json
+{
+  "data": {
+    "supported": true,
+    "levels": [
+      { "value": "low", "label": "Low" },
+      { "value": "high", "label": "High" }
+    ],
+    "default": "high"
+  }
+}
+```
+
+- `supported` — the agent's effective LLM configuration offers at least one level. A configuration
+  whose endpoint has no reasoning-effort parameter at all answers `false` with an empty `levels`
+  array.
+- `levels` — the levels on offer, each with the label to show. The set is the operator's
+  configuration, not a fixed scale: a provider's own vocabulary is expressible, so a name outside
+  Spora's canonical seven can appear here.
+- `default` — the level this agent runs with when nobody names one. That is the agent's own
+  `default_effort` when it has one and the configuration still offers it, and the LLM
+  configuration's default otherwise. `null` means the model's own default — no level asked for.
+
+The key pins one agent, so the path carries no id. The group and global surfaces have the same
+endpoint with the agent in the path: `GET /api/v1/group-api/agents/{agentId}/effort` and
+`GET /api/v1/global-api/agents/{agentId}/effort`. The session-authenticated
+`GET /api/v1/agents/{id}/effort` answers the same thing for the admin UI.
+
+Read the levels before you send one. A name outside the set is refused with
+`422 EFFORT_LEVEL_UNSUPPORTED`, and the message names the levels that are on offer.
+
+See [Concepts → Reasoning effort](/reference/concepts/reasoning-effort) for the level set, the
+default chain and the bounds on a level name.
 
 ## Start a chat
 
@@ -172,19 +217,23 @@ From there, either poll `/status` or supply a `callback_url` and be told.
 `additional_steps` does the same for a follow-up; both are clamped to 1–100, and omitting either
 falls back to the agent's configured limit.
 
-`effort` sets the reasoning effort for that message. It is one of `none`, `minimal`, `low`,
-`medium`, `high`, `xhigh` or `max`. Leave it out and the LLM configuration's default applies; send
-`""` to ask for the model's own default, so that no level is asked for. A `null` is read as an
-omitted field, so it applies the configuration's default too — it is not a `422 INVALID_EFFORT`. A
-value that is a string but not on that scale, or a value that is neither a string nor `null`, is a
-`422 INVALID_EFFORT`; a level the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED`.
-The same field is accepted on
-`POST /chats/{id}/messages`, where it applies to that follow-up only — the earlier turns keep the
-effort they were sent with. See
-[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
-and the resolution order, and
-[the refusals](/reference/api#the-effort-field-on-a-task-body) for every message the two codes
-answer with.
+`effort` sets the reasoning effort for that message. It is a **level name from the set this agent's
+LLM configuration offers** — not a fixed scale. Read the set from
+[`GET /api/v1/agent-api/effort`](#the-reasoning-effort-levels) and send the name back unchanged.
+
+Leave the field out and the agent's own default applies: its `default_effort` if it has one, the
+LLM configuration's default otherwise. Send `""` to ask for the model's own default, so that no
+level is asked for. A `null` is read as an omitted field, so it applies the default too — it is
+not a `422 INVALID_EFFORT`. A value that is neither a string nor `null` is a `422 INVALID_EFFORT`;
+a string the configuration does not offer is a `422 EFFORT_LEVEL_UNSUPPORTED`, and the message names
+the levels it does offer.
+
+The same field is accepted on `POST /chats/{id}/messages`, where it applies to that follow-up only
+— the earlier turns keep the effort they were sent with. See
+[Concepts → Reasoning effort](/reference/concepts/reasoning-effort) for the level set, the default
+chain and the bounds on a level name, [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels)
+for the wire shapes, and [the refusals](/reference/api#the-effort-field-on-a-task-body) for every
+message the two codes answer with.
 
 One driver asks for a level anyway: on a GPT-5.4-or-later reasoning model the OpenAI-compatible
 driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because
@@ -536,7 +585,9 @@ curl -X POST https://spora.example.com/api/v1/agent-api/transcribe-and-send \
 ```
 
 `text` is optional and is appended **after** the transcript, separated by a blank line — the
-recording leads, the caller's words frame it. `callback_url` is accepted here as it is on
+recording leads, the caller's words frame it. `effort` is accepted here too, and means exactly what
+it means on `POST /chats`: the reasoning effort for the message the transcript becomes. Omit it and
+the agent's default applies. `callback_url` is accepted here as it is on
 `POST /chats`, and is screened the same way before the chat is created — so a private address is
 refused with `422` either way. It is **called** only when a new chat is started: with a `chat_id`
 naming an existing chat, the URL is validated and then nothing is sent to it.

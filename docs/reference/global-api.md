@@ -79,29 +79,30 @@ Requests are rate limited per key.
 
 ## Endpoints
 
-| Method   | Path                                       | Purpose                                    |
-| -------- | ------------------------------------------ | ------------------------------------------ |
-| `GET`    | `/api/v1/global-api/groups`                | List every group                           |
-| `POST`   | `/api/v1/global-api/groups`                | Create a group                             |
-| `GET`    | `/api/v1/global-api/groups/{id}`           | Read a group                               |
-| `PATCH`  | `/api/v1/global-api/groups/{id}`           | Update a group                             |
-| `DELETE` | `/api/v1/global-api/groups/{id}`           | Delete a group                             |
-| `GET`    | `/api/v1/global-api/agents`                | List every group-owned agent               |
-| `POST`   | `/api/v1/global-api/agents`                | Create an agent in a group (import format) |
-| `GET`    | `/api/v1/global-api/agents/{id}`           | Read an agent (export format)              |
-| `PATCH`  | `/api/v1/global-api/agents/{id}`           | Update an agent (import format, merged)    |
-| `DELETE` | `/api/v1/global-api/agents/{id}`           | Delete an agent                            |
-| `GET`    | `/api/v1/global-api/chats`                 | List the chats of every group-owned agent  |
-| `POST`   | `/api/v1/global-api/chats`                 | Start a chat (body carries `agent_id`)     |
-| `GET`    | `/api/v1/global-api/chats/{id}/status`     | Status and final answer                    |
-| `GET`    | `/api/v1/global-api/chats/{id}/messages`   | User messages and answers                  |
-| `POST`   | `/api/v1/global-api/chats/{id}/messages`   | Continue the chat                          |
-| `GET`    | `/api/v1/global-api/chats/{id}/transcript` | Tool calls, thinking, usage totals         |
-| `POST`   | `/api/v1/global-api/chats/{id}/approve`    | Approve pending tool calls                 |
-| `POST`   | `/api/v1/global-api/chats/{id}/reject`     | Reject pending tool calls                  |
-| `POST`   | `/api/v1/global-api/chats/{id}/answer`     | Answer a question the agent asked          |
-| `POST`   | `/api/v1/global-api/media`                 | Upload a file for one of the agents        |
-| `GET`    | `/api/v1/global-api/media/{mediaId}`       | Read a media asset an agent produced       |
+| Method   | Path                                         | Purpose                                        |
+| -------- | -------------------------------------------- | ---------------------------------------------- |
+| `GET`    | `/api/v1/global-api/groups`                  | List every group                               |
+| `POST`   | `/api/v1/global-api/groups`                  | Create a group                                 |
+| `GET`    | `/api/v1/global-api/groups/{id}`             | Read a group                                   |
+| `PATCH`  | `/api/v1/global-api/groups/{id}`             | Update a group                                 |
+| `DELETE` | `/api/v1/global-api/groups/{id}`             | Delete a group                                 |
+| `GET`    | `/api/v1/global-api/agents`                  | List every group-owned agent                   |
+| `POST`   | `/api/v1/global-api/agents`                  | Create an agent in a group (import format)     |
+| `GET`    | `/api/v1/global-api/agents/{id}`             | Read an agent (export format)                  |
+| `PATCH`  | `/api/v1/global-api/agents/{id}`             | Update an agent (import format, merged)        |
+| `DELETE` | `/api/v1/global-api/agents/{id}`             | Delete an agent                                |
+| `GET`    | `/api/v1/global-api/agents/{agentId}/effort` | The reasoning-effort levels that agent can use |
+| `GET`    | `/api/v1/global-api/chats`                   | List the chats of every group-owned agent      |
+| `POST`   | `/api/v1/global-api/chats`                   | Start a chat (body carries `agent_id`)         |
+| `GET`    | `/api/v1/global-api/chats/{id}/status`       | Status and final answer                        |
+| `GET`    | `/api/v1/global-api/chats/{id}/messages`     | User messages and answers                      |
+| `POST`   | `/api/v1/global-api/chats/{id}/messages`     | Continue the chat                              |
+| `GET`    | `/api/v1/global-api/chats/{id}/transcript`   | Tool calls, thinking, usage totals             |
+| `POST`   | `/api/v1/global-api/chats/{id}/approve`      | Approve pending tool calls                     |
+| `POST`   | `/api/v1/global-api/chats/{id}/reject`       | Reject pending tool calls                      |
+| `POST`   | `/api/v1/global-api/chats/{id}/answer`       | Answer a question the agent asked              |
+| `POST`   | `/api/v1/global-api/media`                   | Upload a file for one of the agents            |
+| `GET`    | `/api/v1/global-api/media/{mediaId}`         | Read a media asset an agent produced           |
 
 The per-endpoint reference, including the full status-code list for each, is in the
 [API reference](/reference/api/global-api).
@@ -160,6 +161,48 @@ Read, update and delete work as they do on the [group surface](/reference/group-
 same format, the same merge semantics for an update — only the fields the payload names are
 written, and a tool it does not name is left alone.
 
+The `agent` block carries `default_effort` — the level this agent runs with when nobody names one,
+ahead of the LLM configuration's default. It is a level name from the set the agent's effective
+configuration offers, and a name outside that set is refused. Leave the field out of a merge and
+the agent keeps the default it had.
+
+### The reasoning-effort levels
+
+`GET /agents/{agentId}/effort` tells a client which reasoning-effort levels an agent can use, and
+which one it runs with when nobody says otherwise.
+
+```bash
+curl https://spora.example.com/api/v1/global-api/agents/7/effort \
+  -H 'Authorization: Bearer spk_9f2c…_qRt…'
+```
+
+```json
+{
+  "data": {
+    "supported": true,
+    "levels": [
+      { "value": "low", "label": "Low" },
+      { "value": "high", "label": "High" }
+    ],
+    "default": "high"
+  }
+}
+```
+
+- `supported` — the agent's effective LLM configuration offers at least one level. A configuration
+  whose endpoint has no reasoning-effort parameter at all answers `false` with an empty `levels`
+  array.
+- `levels` — the levels on offer, each with the label to show. The set is the operator's
+  configuration, not a fixed scale: a provider's own vocabulary is expressible, so a name outside
+  Spora's canonical seven can appear here.
+- `default` — the level this agent runs with when nobody names one: its own `default_effort` when
+  it has one and the configuration still offers it, the LLM configuration's default otherwise.
+  `null` means the model's own default — no level asked for.
+
+An agent outside the key's reach answers `404`, the same as any other agent on this surface. See
+[Concepts → Reasoning effort](/reference/concepts/reasoning-effort) for the level set, the default
+chain and the bounds on a level name.
+
 ## Chats
 
 A global key drives the chats of every group-owned agent, including chats a human started in the
@@ -175,18 +218,20 @@ Everything else — polling, transcripts, blocked chats, callbacks, media — wo
 [per-agent surface](/reference/agent-api), with one difference: a chat outside the reach answers
 `404`, not `403`. A caller must not be able to probe which chat ids exist.
 
-`effort` is accepted on the chat body — the reasoning effort for that message. It is one of
-`none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. Leave it out and the LLM
-configuration's default applies; send `""` to ask for the model's own default, so that no level is
-asked for. A `null` is read as an omitted field, so it applies the configuration's default too —
-it is not a `422 INVALID_EFFORT`. A value that is a string but not on that scale, or a value that is
-neither a string nor `null`, is a `422 INVALID_EFFORT`; a level
-the agent's driver does not declare is a `422 EFFORT_LEVEL_UNSUPPORTED`.
+`effort` is accepted on the chat body — the reasoning effort for that message. It is a **level name
+from the set the agent's LLM configuration offers**, not a fixed scale; read the set from
+[`GET /agents/{agentId}/effort`](#the-reasoning-effort-levels) and send the name back unchanged.
+Leave it out and the agent's own default applies — its `default_effort` if it has one, the LLM
+configuration's default otherwise. Send `""` to ask for the model's own default, so that no level is
+asked for. A `null` is read as an omitted field, so it applies the default too — it is not a
+`422 INVALID_EFFORT`. A value that is neither a string nor `null` is a `422 INVALID_EFFORT`; a
+string the configuration does not offer is a `422 EFFORT_LEVEL_UNSUPPORTED`, and the message names
+the levels it does offer.
 `POST /chats/{id}/messages` takes the same field, where it applies to that follow-up only. See
-[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the scale, the wire shapes
-and the resolution order, and
-[the refusals](/reference/api#the-effort-field-on-a-task-body) for every message the two codes
-answer with.
+[Concepts → Reasoning effort](/reference/concepts/reasoning-effort) for the level set and the
+default chain, [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for the wire
+shapes, and [the refusals](/reference/api#the-effort-field-on-a-task-body) for every message the
+two codes answer with.
 
 One driver asks for a level anyway: on a GPT-5.4-or-later reasoning model the OpenAI-compatible
 driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because

@@ -87,6 +87,7 @@ Authorisation for cross-principal agent creation is enforced server-side via `Ag
 - **Enabled** — toggle to disable the agent without deleting it
 - **Max steps** — the max number of LLM turns per task. Default 10. Higher = longer reasoning chains; lower = bounded cost.
 - **Allow followup** — whether the agent can be re-engaged in the same task (continues the conversation thread) or each message creates a new task.
+- **Default effort** — the reasoning effort this agent runs with when a message does not name one. Leave it unset and the LLM configuration's default applies. The list is the one the agent's configuration offers, so an agent can only be given a level its own endpoint takes.
 
 ### Tab 2 — System prompt
 
@@ -123,18 +124,32 @@ For details on creating LLM configs, see **Settings → LLM drivers** (or, progr
 #### The configuration's Effort setting
 
 Each LLM config carries an **Effort** setting: the reasoning effort every task on that
-configuration starts from. Its first entry is **Model default** — nothing is asked for, and the
-model applies whatever it would have applied anyway. Pick a level and every task on that
-configuration starts there; a chat can override it per message, and the picker's first entry is
-**Model default** again.
+configuration starts from. Leave it empty and nothing is asked for — the model applies whatever it
+would have applied anyway. Set a level and every task on that configuration starts there; a chat
+can override it per message, and an agent can carry a default of its own.
 
-The list the operator sees is the driver's own vocabulary — the same list for every model the
-driver talks to — while the levels a given **model** actually takes can be fewer. A Claude that
-takes no `max` does not run at `max`: the Anthropic driver knows what each Claude takes and drops a
-level the model does not offer, so that task runs at the model's own default, and the chat's picker
-never offers such a level in the first place. **The two OpenAI drivers do not narrow**: they offer
-the whole scale whatever the model takes, so a level the model refuses is one the list still
-offers — the request fails at the provider rather than quietly running at the model's default.
+**The Effort setting is a name, not a choice from a list.** The levels a configuration may name are
+the ones its endpoint accepts, and that set is yours to state — the **Effort levels** setting on
+the same config, comma-separated. An empty Effort levels list means the driver's own set applies:
+on a Claude, the levels that model takes, so a Claude that takes no `max` never offers one. When
+you name levels, that list wins outright, whatever the model name would imply — a gateway in front
+of an Anthropic-compatible API can accept a vocabulary no model name could. **The two OpenAI
+drivers do not narrow**: with no list of their own they offer the whole scale whatever the model
+takes, so a level the model refuses is one the list still offers — the request fails at the
+provider rather than quietly running at the model's default.
+
+A level the configuration does not offer is refused when you save the config, with a message naming
+the levels it does offer.
+
+#### The agent's own effort default
+
+An agent can carry a **default effort** of its own, set on the agent's Identity tab. It sits
+between the message and the configuration: a message that names no level runs at the agent's
+default, and one that does names its own. Leave the agent's default unset and the configuration's
+default applies, as before.
+
+This is what lets one agent in a group run at a different depth than its siblings while they all
+share one LLM configuration.
 
 ### Tab 4 — Tools
 

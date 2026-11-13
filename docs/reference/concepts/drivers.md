@@ -47,6 +47,8 @@ Password-typed settings (per the `#[ToolSetting]` schema) are encrypted at rest 
 
 Every provider that has a reasoning control names it differently, exposes a different subset of levels, and rejects the control outright on models that do not support it. Spora therefore has its own vocabulary, and each driver maps it onto its provider's wire shape.
 
+**The level set is a property of the configuration, not of the driver class.** An operator names the levels their endpoint accepts and the operator's list wins outright over whatever the model would take on its own. [Reasoning effort](/reference/concepts/reasoning-effort) is the deep dive; this section is the driver's own surface.
+
 ### The canonical scale
 
 `Spora\Drivers\EffortLevel` is a backed enum of seven levels, ascending:
@@ -61,26 +63,70 @@ Every provider that has a reasoning control names it differently, exposes a diff
 | `XHigh`   | `xhigh`   |
 | `Max`     | `max`     |
 
+The enum is the **default vocabulary and the label map**, not a constraint. A configuration may offer a name the enum does not carry — Groq's `default`, for one — and `EffortLevel::labelFor()` answers with the name itself for anything it does not carry, so an operator's own name reads as itself. The canonical seven are what the two OpenAI drivers offer when nothing else is configured.
+
 A driver declares the levels it can express in `Spora\Drivers\EffortAwareDriverInterface`:
 
 ```php
 interface EffortAwareDriverInterface
 {
-    /**
-     * The canonical effort levels this driver can express, mapped to the
-     * value the provider expects.
-     *
-     * @return array<string, string> canonical level value => provider wire value
-     */
     public function effortLevels(): array;
 }
 ```
 
-The key is the canonical level, the value is what goes on the wire. For every driver today the two are the same string; the indirection is the seam for a provider that renames a level.
+The key is the level name, the value is what goes on the wire. For every driver today the two are the same string; the indirection is the seam for a provider that renames a level.
 
-`LLMDriverInterface` does **not** carry the method — it is a published contract, and adding to it breaks every implementor. `AbstractCompatibleDriver` implements the interface returning `[]`, which means the driver cannot express effort and sends no effort parameter at all; `OpenAICompatibleDriver`, `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` override it.
+`LLMDriverInterface` does **not** carry the method — it is a published contract, and adding to it breaks every implementor.
 
-**The driver knows its vocabulary; the model knows its levels.** A driver's `effort` setting lists every level the driver can name, and its `effortLevels()` answers with the levels the agent's model actually takes — a subset of that list, and a test keeps the two in step. **The Anthropic driver asks the model**: Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the driver reads the model id — see [Which levels a Claude model takes](#which-levels-a-claude-model-takes). A level that model does not take is refused at the API boundary, before the provider sees it. **The two OpenAI drivers do not narrow**: they declare the whole canonical scale, whatever the model takes, so a level the model rejects is sent and comes back as the provider's own `400`, naming the offending value. A declared level is not an accepted one.
+### The level set
+
+`AbstractCompatibleDriver` owns the public `effortLevels()`, and the precedence it applies is the driver's own surface:
+
+```php
+public function effortLevels(): array
+{
+    if ($this->supportsEffort === false) {
+        return [];
+    }
+
+    if ($this->configuredEffortLevels !== []) {
+        return $this->configuredEffortLevels;
+    }
+
+    return $this->defaultEffortLevels();
+}
+```
+
+**The operator's list wins outright.** A configuration that names its levels offers exactly those, whatever the model would take on its own. The operator knows what their endpoint accepts, and a proxy in front of an Anthropic-compatible API may well accept a vocabulary no model id could imply.
+
+**An empty list means the driver's own set applies** — the levels the driver derives on its own, which for the Anthropic driver are the ones the model takes and for the two OpenAI drivers the whole canonical scale. That is what every configuration did before the setting existed, so those rows keep working untouched. The per-model set lives in each driver's `defaultEffortLevels()`, which the three concrete drivers override:
+
+| Driver                      | `defaultEffortLevels()`                                                       |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `AnthropicCompatibleDriver` | `ModelFamily::claudeEffortLevels($this->model)` — the levels that model takes |
+| `OpenAICompatibleDriver`    | the whole canonical scale                                                     |
+| `OpenAIResponsesDriver`     | the whole canonical scale                                                     |
+
+**The Anthropic driver asks the model**: Anthropic publishes which models take `output_config.effort` and which of the five levels each of them takes, and the driver reads the model id — see [Which levels a Claude model takes](#which-levels-a-claude-model-takes). A level that model does not take is refused at the API boundary, before the provider sees it. **The two OpenAI drivers do not narrow**: they declare the whole canonical scale, whatever the model takes, so a level the model rejects is sent and comes back as the provider's own `400`, naming the offending value. A declared level is not an accepted one.
+
+**A model id the driver cannot identify keeps the driver's own set.** On the Anthropic driver that is the full five levels — a deliberate rule, because narrowing an unidentifiable model to no levels would strip the effort picker from every existing Anthropic-compatible proxy until each operator configured a list by hand.
+
+### The settings
+
+Three settings decide what a configuration offers and what it defaults to. The drivers each declare
+`effort_levels` and `supports_effort`; `effort` was already there.
+
+| Setting           | Type     | What it decides                                                  |
+| ----------------- | -------- | ---------------------------------------------------------------- |
+| `effort_levels`   | textarea | the level set — comma-separated, empty means the model's own set |
+| `supports_effort` | toggle   | whether the endpoint has an effort parameter at all              |
+| `effort`          | text     | the configuration's default — empty means the model default      |
+
+`effort` was a `select` with a static option map and is free text now. A level the configuration does not offer is refused when the configuration is saved, with a message naming the levels it does offer.
+
+`supports_effort` is the mirror of the `supports_image_input` toggle on the same drivers. Off, the endpoint has no reasoning-effort parameter at all: the driver offers no levels, the agent gets no picker, and any effort sent is refused. The toggle is tri-state on the wire and boolean in effect — a configuration saved before the setting existed never stored the key, and that row keeps working, because only an explicit `false` disables the capability.
+
+A level name is at most 16 characters, and a configuration offers at most 32 of them. The bounds are a security and a storage decision: the name travels into a third-party request body and into a `string(16)` column. See [Reasoning effort](/reference/concepts/reasoning-effort#the-bounds-and-why-they-exist).
 
 ### The wire shapes
 
@@ -96,13 +142,15 @@ The Responses row is the request-level shape. On a model that supports `configur
 
 ### The default and the per-message override
 
-`effort` is a driver setting (`type: 'select'`). Its default is the empty string, which means **the model's own default**: no level is asked for, and the provider applies whatever it would have applied anyway. Anthropic's option list omits `none` and `minimal`; the other two drivers offer the full scale, whatever the model takes.
+`effort` is a driver setting, and it is free text — see [The settings](#the-settings). Its default is the empty string, which means **the model's own default**: no level is asked for, and the provider applies whatever it would have applied anyway.
 
-**A level the driver does not declare is refused at the API boundary.** `EffortService::assertLevel()` answers `422 EFFORT_LEVEL_UNSUPPORTED` — the request never reaches the provider, and the task row never carries a level the driver cannot send. The Anthropic driver declares neither `none` nor `minimal`, so a request that names one of them is refused rather than quietly falling back.
+**A level the driver does not declare is refused at the API boundary.** `EffortService::assertLevel()` answers `422 EFFORT_LEVEL_UNSUPPORTED` — the request never reaches the provider, and the task row never carries a level the driver cannot send.
 
-**A level that reaches the driver unchecked is dropped, not sent — on the Anthropic driver.** The HTTP boundary is what checks a level against the driver's set. A plugin that calls `TaskServiceInterface::startTask()` passes the effort as a plain string, and a level that is not in the driver's set is dropped on the way out: `AbstractCompatibleDriver::resolveEffort()` looks the level up and sends no effort parameter at all when it is not there. The task still runs — at the model's own default. The two OpenAI drivers declare every canonical level, so there is nothing for them to drop: the level goes out and the model takes it or refuses it.
+**A level that reaches the driver unchecked is dropped, not sent.** The HTTP boundary is what checks a level against the driver's set. A plugin that calls `TaskServiceInterface::startTask()` passes the effort as a plain string, and a level that is not in the driver's set is dropped on the way out: `AbstractCompatibleDriver::resolveEffort()` looks the level up and sends no effort parameter at all when it is not there. The task still runs — at the model's own default. The two OpenAI drivers declare every canonical level by default, so there is nothing for them to drop: the level goes out and the model takes it or refuses it.
 
-**The configuration's default is the same story.** The `effort` setting's option list is the driver's own vocabulary, so a configuration can be saved with a level the agent's model does not take; on the Anthropic driver the run then happens at that model's own default, because the driver drops the level, and the capability endpoint does not promise the configured default in that case — `GET /api/v1/agents/{id}/effort` answers `default: null`, and the picker shows **Model default**. On the OpenAI drivers every level the setting offers is declared, so the configured default is reported and then sent; a model that rejects it fails the request at the provider.
+**The configuration's default is checked when the configuration is saved.** A level the configuration does not offer is refused at that point, with a message naming the levels it does offer — so a saved default is always in the level set. Narrowing the list under a saved default is refused too, rather than silently dropping the default: the operator fixes both in the same submission.
+
+**A level the model rejects is still the provider's error.** The level set says what the endpoint takes; it does not say the model accepts it. On the two OpenAI drivers the set is the whole canonical scale, so a saved default can be a level the model refuses — the request then fails at the provider. On the Anthropic driver the set is the model's own levels, so that cannot happen there.
 
 **One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because silence is not a working configuration on the models that default to `medium`. See [Tools and effort on Chat Completions](#tools-and-effort-on-chat-completions).
 
@@ -110,23 +158,26 @@ A request may carry its own `effort`, and the resolution order is:
 
 ```text
 request effort (authoritative when the key is present)
-  → the config default (the `effort` setting on the LLM config)
-  → no level asked for (the model's own default)
+  → the agent's default_effort
+    → the config default (the `effort` setting on the LLM config)
+      → no level asked for (the model's own default)
 ```
 
 The three request values mean three different things:
 
 | Request body     | Meaning                                                 |
 | ---------------- | ------------------------------------------------------- |
-| key absent       | fall back to the config default                         |
+| key absent       | fall back to the agent's default, then the config's     |
 | `effort: ""`     | explicitly the model's own default — no level asked for |
 | `effort: "high"` | that level                                              |
 
+A link of the chain is only used when the level set contains it, so an agent default left behind by a configuration change falls back to the configuration's default rather than to a level the endpoint would refuse.
+
 The resolved value lands on the task row: `NULL` means no level was resolved — the model's own default — and the database never stores an empty string.
 
-The driver never reads the settings blob for effort. The resolution happens outside the driver (`LlmConfigResolver` → `TickPhaseRunner` → `LLMRequest::$effort`), and the driver only emits what it is handed. `LLMRequest::$effort` carries the **canonical** level value; the driver maps it.
+The driver never reads the settings blob for effort. The resolution happens outside the driver (`LlmConfigResolver` → `TickPhaseRunner` → `LLMRequest::$effort`), and the driver only emits what it is handed. `LLMRequest::$effort` carries the **level name**; the driver maps it.
 
-The chat overrides the default per message, and learns the vocabulary from `GET /api/v1/agents/{id}/effort` — see the [REST API reference](/reference/api).
+The chat overrides the default per message, and learns the vocabulary from `GET /api/v1/agents/{id}/effort` — see the [REST API reference](/reference/api) and [Reasoning effort](/reference/concepts/reasoning-effort).
 
 ## `OpenAICompatibleDriver`
 
@@ -139,7 +190,7 @@ The chat overrides the default per message, and learns the vocabulary from `GET 
 - Dispatches on `finish_reason: tool_calls`; otherwise returns the text content.
 - Sends the effort level as a flat `reasoning_effort` — see [Effort levels](#effort-levels).
 
-Settings schema (`#[ToolSetting]` attributes on `app/Drivers/OpenAICompatibleDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `temperature` (text), `effort` (select), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares. `context_window` and `max_tokens_output` are not settings-schema fields — they are columns on the `llm_driver_configurations` row.
+Settings schema (`#[ToolSetting]` attributes on `app/Drivers/OpenAICompatibleDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `temperature` (text), `effort` (text), `effort_levels` (textarea), `supports_effort` (toggle), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares. `context_window` and `max_tokens_output` are not settings-schema fields — they are columns on the `llm_driver_configurations` row.
 
 ### Reasoning models
 
@@ -198,7 +249,7 @@ OpenAI's own documentation draws the line: _"GPT-6 Astra, GPT-6.1 Sol, and GPT-6
 - Sends `anthropic-version: 2026-10-21` header and `x-api-key` for auth.
 - Sends the effort level as `output_config: {effort: "<level>"}` — see [Effort levels](#effort-levels).
 
-Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatibleDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `enable_prompt_caching` (toggle), `effort` (select), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares. As with the OpenAI driver, `context_window` and `max_tokens_output` are table columns rather than settings-schema fields.
+Settings schema (`#[ToolSetting]` attributes on `app/Drivers/AnthropicCompatibleDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `enable_prompt_caching` (toggle), `effort` (text), `effort_levels` (textarea), `supports_effort` (toggle), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares. As with the OpenAI driver, `context_window` and `max_tokens_output` are table columns rather than settings-schema fields.
 
 ### Which levels a Claude model takes
 
@@ -216,6 +267,8 @@ Anthropic publishes which models take `output_config.effort` and which of the fi
 A model that takes no level declares none, and the agent gets no picker: `GET /api/v1/agents/{id}/effort` answers `supported: false` with an empty `levels` array, and a request that names a level is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.
 
 **The last two rows are the rule's way of not knowing, not a statement about the model.** The driver cannot identify the model, so it does not narrow its level set: a `claude-` id that carries no version names the current generation on Anthropic's own API, but a compatible endpoint can use a versionless name such as `claude-legacy` for a model that takes some of the levels or none of them. An id that is not a `claude-` id at all belongs to an Anthropic-compatible endpoint with its own model names — Kimi and the like. The driver does not model another provider's model zoo, and the operator who pointed the agent at that endpoint is the only one who knows what it takes, so the provider has the last word there: a level the model rejects comes back as the provider's own error, not as a silent fall back to the model's default.
+
+**An operator who knows better says so.** The `effort_levels` setting replaces the fallback with the endpoint's real vocabulary, and it replaces it outright — see [The level set](#the-level-set).
 
 ### What the 2026-10-21 API version changed
 
@@ -254,7 +307,7 @@ A stored `thinking_budget` is pruned the next time that configuration is saved �
 - The token cap is `max_output_tokens`; `max_tokens` is not in the schema and is never sent.
 - The effort level travels nested: `reasoning: {"effort": "<level>"}`.
 
-Settings schema (`#[ToolSetting]` attributes on `app/Drivers/Responses/OpenAIResponsesDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `effort` (select), `store` (toggle), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares.
+Settings schema (`#[ToolSetting]` attributes on `app/Drivers/Responses/OpenAIResponsesDriver.php`): `api_key` (password), `base_url` (text), `model` (text), `effort` (text), `effort_levels` (textarea), `supports_effort` (toggle), `store` (toggle), `timeout` (text), plus the inherited `supports_image_input` (toggle) that `AbstractCompatibleDriver` declares.
 
 **It is priced like the Chat Completions driver.** `getProviderName()` returns `openai_compatible` — the tag the Chat Completions driver already uses, not a new one — so the price rows an operator already has for a model keep matching when an agent is pointed at this driver. A model with no price row is unpriced: the call is metered as free. The protocol identifier is the separate `openai_responses`; the usage panel reads `openai`, which is the tag both OpenAI protocols report.
 
@@ -309,10 +362,14 @@ Reasoning is scoped to the model family, so switching families silently drops it
 **File:** `app/Drivers/DriverFactory.php`
 
 - Calls `LLMConfigPreferences::getEffectiveConfigForAgent($agent)`, which performs three-tier resolution: agent-specific (`agent.llm_driver_config_id`) → principal preferred (`principal_preferences.preferred_llm_config_id`) → global default (`is_global = true AND is_default = true`). See `app/Services/LLMConfigPreferences.php:75-98`. Preference writes are principal-scoped: `setPrincipalPreferredConfig()` only accepts a global config or one owned by that same principal, and an agent resolves tier 2 through `agent.principal_id` (`app/Services/LLMConfigPreferences.php:100-145`).
-- Instantiates the `driver_class` column's FQCN with the decrypted settings plus an HTTP client, logger, and timeout. `timeout` is read from the per-config setting when present, otherwise it falls back to the container-wide `llm_timeout` (`app/Drivers/DriverFactory.php:82-85`).
-- `AnthropicCompatibleDriver` is constructed with an `AnthropicDriverOptions` value object carrying `supports_image_input` and `enable_prompt_caching` rather than loose scalars. A driver that needs more than the abstract driver's seven constructor arguments implements `Spora\Drivers\DriverOptionsAwareInterface` and is built from the decoded settings itself — `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` do. The factory asks the capability rather than comparing class names.
-- If no config resolves, it **throws** `LlmConfigurationMissingException` (`app/Drivers/DriverFactory.php:55-61`). There is no silent fallback driver: the previous empty-key `OpenAICompatibleDriver` punted the request to `api.openai.com` and surfaced as an upstream 401, hiding the operator-visible "no LLM configured" error. `ErrorClassifier` turns the exception into a `NO_LLM_CONFIGURATION` message on the task row.
+- Instantiates the `driver_class` column's FQCN with the decrypted settings plus an HTTP client, logger, and timeout. `timeout` is read from the per-config setting when present, otherwise it falls back to the container-wide `llm_timeout` (`app/Drivers/DriverFactory.php`).
+- **The build is split in two.** `makeDriverFromSettings(string $driverClass, array $settings)` takes the **plaintext** settings a save request carries; `makeDriverFromConfig(LLMDriverConfiguration $config)` decrypts the stored blob and delegates to it. The save path needs the first one because the row it is validating has not been written yet.
+- The two effort inputs ride in the common constructor arguments as `effortLevels` (a `list<string>`) and `supportsEffort` (`?bool`). `supports_effort` is decoded the way `supports_image_input` is: the frontend round-trips booleans as the strings `"true"`/`"false"`, and a missing key decodes to `null`, which means enabled.
+- `AnthropicCompatibleDriver` is constructed with an `AnthropicDriverOptions` value object carrying `supports_image_input` and `enable_prompt_caching` rather than loose scalars. A driver that needs more than the abstract driver's nine constructor arguments implements `Spora\Drivers\DriverOptionsAwareInterface` and is built from the decoded settings itself — `AnthropicCompatibleDriver` and `OpenAIResponsesDriver` do. The factory asks the capability rather than comparing class names.
+- If no config resolves, it **throws** `LlmConfigurationMissingException` (`app/Drivers/DriverFactory.php`). There is no silent fallback driver: the previous empty-key `OpenAICompatibleDriver` punted the request to `api.openai.com` and surfaced as an upstream 401, hiding the operator-visible "no LLM configured" error. `ErrorClassifier` turns the exception into a `NO_LLM_CONFIGURATION` message on the task row.
 - The factory does not merge plugin drivers — there is no such hook. Adding a driver means adding the class to the `llm_driver_classes` list in `app/Core/ContainerDefinitions.php` and referencing it from `llm_driver_configurations.driver_class`.
+
+**The save path builds a driver rather than asking a static.** The validator has to agree exactly with the runtime on which levels a configuration offers — including for an out-of-tree driver — and a static method beside the instance method would be two lists that have to stay in step. The cost is one `DriverFactory` dependency in the validator and one `HttpClient::create()` per save, which opens no connection.
 
 ## Dependencies
 
@@ -329,7 +386,6 @@ Reasoning is scoped to the model family, so switching families silently drops it
 - `tests/Unit/Drivers/LLMProviderExceptionTest.php`
 - `tests/Unit/Drivers/EffortLevelTest.php` — the canonical scale and its order
 - `tests/Unit/Drivers/AnthropicEffortLevelsTest.php` — the levels each Claude model takes, and what the driver sends for them
-- `tests/Unit/Drivers/EffortLevelsMatchSettingsOptionsTest.php` — the levels a driver declares are among the options its `effort` setting offers
 - `tests/Unit/Drivers/ModelFamilyTest.php` — the model-name parse, pinned against every current model id
 - `tests/Unit/Services/LlmConfigSchemaValidatorSelectTest.php` — a `select` setting accepts only the values its option list names
 - `tests/Unit/Drivers/ResponsesRequestBuilderTest.php` — the Responses wire shape, including the reasoning replay

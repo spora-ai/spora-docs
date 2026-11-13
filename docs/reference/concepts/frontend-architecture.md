@@ -211,11 +211,21 @@ The control that ends the pause is `TaskChatScrollToBottom.vue`, a round button 
 
 The chat can pick a reasoning effort per message. Five modules carry it, and the split is the point: the capability comes from the server, the cache holds it, and the component renders it.
 
-- **`src/composables/useAgentEffort.ts`** — the capability, the cache and the reconciliation. It asks `GET /agents/{id}/effort` for the agent's driver level set and the configuration's default, and it keeps the operator's choice in step with the level set: a choice the driver no longer offers is replaced by the configuration's default, or by the model default when the driver does not declare that one either.
+- **`src/composables/useAgentEffort.ts`** — the capability, the cache and the reconciliation. It asks `GET /agents/{id}/effort` for the agent's level set and the default the agent runs with, and it keeps the operator's choice in step with the level set: a choice the configuration no longer offers is replaced by the agent's default, or by the model default when there is none.
 - **`src/composables/agentEffortCache.ts`** — the session cache of the capabilities, keyed by agent id. It lives in its own module because the composable that fills it cannot be the one that drops it: `useAgentEffort` imports the agent store, and the agent store is where the LLM configuration changes.
-- **`src/components/EffortSelect.vue`** — the picker, rendered in two places: a labelled select on the initial composer, and an icon-only trigger on the follow-up row.
-- **`src/types/effort.ts`** — the shared vocabulary: the canonical scale, the selection type, and the shape of the endpoint's answer.
+- **`src/components/EffortSelect.vue`** — the picker, rendered in two places: a labelled select on the initial composer, and an icon-only trigger on the follow-up row. Its `emptyChoice` prop is what lets the same component serve a surface whose empty entry means something else.
+- **`src/types/effort.ts`** — the shared vocabulary: the shape of the endpoint's answer, the selection type, and the known level names. A level is a `string`, because the configuration's set is not a fixed scale; the union of the known names is kept for the labels, not for the wire.
 - **`src/utils/effortLevels.ts`** — the label of one level, the fallback for a level the endpoint did not name.
+
+### Where the picker appears
+
+The composer and the follow-up row are the two the picker has always had. Three more surfaces carry a level of their own, and each reuses `useAgentEffort` rather than asking the server again:
+
+- **`src/components/PromptTemplateDialog.vue`** — a saved prompt's own effort.
+- **`src/components/shared/ScheduleEditor/index.vue`** — a scheduled run's effort override.
+- **`src/components/agent/settings/AgentIdentitySection.vue`** — the agent's own default.
+
+The three are **defaults**, not per-message choices, and they say so: an unset effort on a template inherits the agent's default, and an unset override on a run inherits the template's. That is what the `emptyChoice` prop is for — the empty entry reads **Model default** in the chat, **Use the agent default** on a template and **Use the template default** on a run.
 
 ### The cache's invalidation contract
 

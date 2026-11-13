@@ -7,7 +7,7 @@ description: Full reference for the Spora Agent Template JSON Schema (draft 2020
 
 The Agent Template schema is published at [`https://docs.spora-ai.com/schemas/agent-template.schema.json`](https://docs.spora-ai.com/schemas/agent-template.schema.json) (served from `docs/.vuepress/public/schemas/`; the source-of-truth lives in `spora-core/agent-template.schema.json` and is mirrored at build time by `scripts/sync-schemas.mjs`). It uses JSON Schema draft 2020-12 with `additionalProperties: false` at every level.
 
-> **Operator-upload only.** This schema describes the payload accepted by the operator-upload endpoint `POST /api/v1/agent-templates/import`. The LLM-facing `create_agent` tool uses a **slim** subset (top-level `name` / `description` / `system_prompt` / `max_steps` / `allow_followup` / `retry_after_minutes` / `max_retries`) — see [Concepts → Tool system → Slim two-phase agent creation](/reference/concepts/tools#slim-two-phase-agent-creation). The two surfaces are explicit by design: the slim payload removes the N-nested-keys decision the LLM had to make in one call.
+> **Operator-upload only.** This schema describes the payload accepted by the operator-upload endpoint `POST /api/v1/agent-templates/import`. The LLM-facing `create_agent` tool uses a **slim** subset (top-level `name` / `description` / `system_prompt` / `max_steps` / `allow_followup` / `retry_after_minutes` / `max_retries` / `default_effort`) — see [Concepts → Tool system → Slim two-phase agent creation](/reference/concepts/tools#slim-two-phase-agent-creation). The two surfaces are explicit by design: the slim payload removes the N-nested-keys decision the LLM had to make in one call.
 >
 > **Settings are opt-in.** The new `tools[].settings` block is present only when the template was produced by `GET /agents/{id}/export?include_settings=1`. Password-typed keys (`#[ToolSetting(type: 'password')]`) and inherited global/user cascade values are NEVER included, regardless of how the template was produced. Recipients configure remaining secrets in **Settings → Tools** after import.
 
@@ -27,14 +27,15 @@ The Agent Template schema is published at [`https://docs.spora-ai.com/schemas/ag
 
 ## `agent` block
 
-| Field                 | Type    | Default | Notes                                                                            |
-| --------------------- | ------- | ------- | -------------------------------------------------------------------------------- |
-| `description`         | string  | —       | Up to 2000 chars.                                                                |
-| `system_prompt`       | string  | —       | System prompt. Omitting this produces a `SYSTEM_PROMPT_MISSING` warning at scan. |
-| `max_steps`           | integer | `10`    | 1-100.                                                                           |
-| `allow_followup`      | boolean | `true`  | Maps to DB `allow_followup`.                                                     |
-| `retry_after_minutes` | integer | `0`     | ≥ 0.                                                                             |
-| `max_retries`         | integer | `0`     | ≥ 0.                                                                             |
+| Field                 | Type    | Default | Notes                                                                                                                                                                                                                  |
+| --------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`         | string  | —       | Up to 2000 chars.                                                                                                                                                                                                      |
+| `system_prompt`       | string  | —       | System prompt. Omitting this produces a `SYSTEM_PROMPT_MISSING` warning at scan.                                                                                                                                       |
+| `max_steps`           | integer | `10`    | 1-100.                                                                                                                                                                                                                 |
+| `allow_followup`      | boolean | `true`  | Maps to DB `allow_followup`.                                                                                                                                                                                           |
+| `retry_after_minutes` | integer | `0`     | ≥ 0.                                                                                                                                                                                                                   |
+| `max_retries`         | integer | `0`     | ≥ 0.                                                                                                                                                                                                                   |
+| `default_effort`      | string  | —       | The agent's own reasoning-effort default. A level name the agent's effective LLM configuration offers; absent means the configuration's default applies. See [Reasoning effort](/reference/concepts/reasoning-effort). |
 
 ## `tools[]` entries
 

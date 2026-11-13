@@ -21,12 +21,12 @@
       "link": "/reference/api/group-api"
     },
     {
-      "text": "Tasks",
-      "link": "/reference/api/tasks"
-    },
-    {
       "text": "Agent-api",
       "link": "/reference/api/agent-api"
+    },
+    {
+      "text": "Tasks",
+      "link": "/reference/api/tasks"
     },
     {
       "text": "Auth",

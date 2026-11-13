@@ -317,7 +317,7 @@ Refusals are whole-call and happen before any write, so a rejected payload canno
 
 The LLM-facing agent creation flow is **two-phase** — `create_agent` does NOT accept a `tools[]` block. The flow is:
 
-1. **`create_agent`** — slim skeletal record (`name`, `description`, `system_prompt`, `max_steps`, `allow_followup`, `retry_after_minutes`, `max_retries`). Capture the returned `agent_id`.
+1. **`create_agent`** — slim skeletal record (`name`, `description`, `system_prompt`, `max_steps`, `allow_followup`, `retry_after_minutes`, `max_retries`, `default_effort`). Capture the returned `agent_id`.
 2. **`configure_tools(agent_id: <id>, tools: [...])`** — apply the toolset. Each entry is `{ tool_class, enabled?, settings?, operations: [{name, enabled?, auto_approve?}] }` — see [the `tools[]` entry shape](#configure_tools--the-tools-entry-shape) for the `settings` and `enabled` semantics.
 3. **`read_agent(agent_id: <id>)`** — verify the toolset is exactly what was wanted.
 

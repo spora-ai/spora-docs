@@ -211,18 +211,28 @@ The control that ends the pause is `TaskChatScrollToBottom.vue`, a round button 
 
 The chat can pick a reasoning effort per message. Five modules carry it, and the split is the point: the capability comes from the server, the cache holds it, and the component renders it.
 
-- **`src/composables/useAgentEffort.ts`** — the capability, the cache and the reconciliation. It asks `GET /agents/{id}/effort` for the agent's driver level set and the configuration's default, and it keeps the operator's choice in step with the level set: a choice the driver no longer offers is replaced by the configuration's default, or by the model default when the driver does not declare that one either.
+- **`src/composables/useAgentEffort.ts`** — the capability, the cache and the reconciliation. It asks `GET /agents/{id}/effort` for the agent's level set and the default the agent runs with, and it keeps the operator's choice in step with the level set: a choice the configuration no longer offers is replaced by the agent's default, or by the model default when there is none.
 - **`src/composables/agentEffortCache.ts`** — the session cache of the capabilities, keyed by agent id. It lives in its own module because the composable that fills it cannot be the one that drops it: `useAgentEffort` imports the agent store, and the agent store is where the LLM configuration changes.
-- **`src/components/EffortSelect.vue`** — the picker, rendered in two places: a labelled select on the initial composer, and an icon-only trigger on the follow-up row.
-- **`src/types/effort.ts`** — the shared vocabulary: the canonical scale, the selection type, and the shape of the endpoint's answer.
+- **`src/components/EffortSelect.vue`** — the picker, rendered in two places: a labelled select on the initial composer, and an icon-only trigger on the follow-up row. Its `emptyChoice` prop is what lets the same component serve a surface whose empty entry means something else.
+- **`src/types/effort.ts`** — the shared vocabulary: the shape of the endpoint's answer, the selection type, and the known level names. A level is a `string`, because the configuration's set is not a fixed scale; the union of the known names is kept for the labels, not for the wire.
 - **`src/utils/effortLevels.ts`** — the label of one level, the fallback for a level the endpoint did not name.
+
+### Where the picker appears
+
+The composer and the follow-up row are the two the picker has always had. Three more surfaces carry a level of their own, and each reuses `useAgentEffort` rather than asking the server again:
+
+- **`src/components/PromptTemplateDialog.vue`** — a saved prompt's own effort.
+- **`src/components/shared/ScheduleEditor/index.vue`** — a scheduled run's effort override.
+- **`src/components/agent/settings/AgentIdentitySection.vue`** — the agent's own default.
+
+The three are **defaults**, not per-message choices, and they say so: an unset effort on a template inherits the agent's default, and an unset override on a run inherits the template's. That is what the `emptyChoice` prop is for — the empty entry reads **Model default** in the chat, **Use the agent default** on a template and **Use the template default** on a run.
 
 ### The cache's invalidation contract
 
-The capability only changes when the agent's effective LLM configuration changes, so it is cached for the session. Four rules keep that cache honest:
+The cached answer carries the agent's level set **and** the default it runs with, so it goes stale when either the agent's effective LLM configuration changes or the agent's own `default_effort` does. It is cached for the session, and four rules keep that cache honest:
 
 - **It is keyed per agent id.** Two agents on one page have two capabilities, and a capability that arrives for one agent never answers for another.
-- **It is dropped wherever the answer can change.** The agent store drops that agent's entry when the agent is pointed at another LLM configuration — its `llm_driver_config_id` — and the whole session cache when the signed-in user drifts away: the capability belongs to the user who asked for it. The LLM-config, LLM-preferences and group stores drop the whole session cache when a configuration is edited, deleted or made the default, and when a new one is created as the default: any of those can move any agent's effective configuration, and therefore any agent's level set. A configuration created as a non-default moves nothing, so the cache stays. An LLM _tool override_ is not one of them — the effort comes from the configuration row the agent resolves to, and the override row is not on that path.
+- **It is dropped wherever the answer can change.** The agent store drops that agent's entry when the agent is pointed at another LLM configuration — its `llm_driver_config_id` — and when the agent's own `default_effort` changes: the cached answer carries the default as well as the level set, so either one moving makes it stale. The whole session cache goes when the signed-in user drifts away: the capability belongs to the user who asked for it. The LLM-config, LLM-preferences and group stores drop the whole session cache when a configuration is edited, deleted or made the default, and when a new one is created as the default: any of those can move any agent's effective configuration, and therefore any agent's level set. A configuration created as a non-default moves nothing, so the cache stays. An LLM _tool override_ is not one of them — the effort comes from the configuration row the agent resolves to, and the override row is not on that path.
 - **It is epoch-guarded.** Every agent carries a counter, bumped whenever its capability is dropped. An answer that was already on the wire when the drop happened describes a configuration that no longer holds — and, after a sign-out, the previous user's agent — so it is discarded instead of written back.
 - **The selection lives in the agent store, not in the composer draft.** The initial composer and the follow-up row are two component trees that have to agree on the level the operator picked, and the composer's draft is not shared between them.
 

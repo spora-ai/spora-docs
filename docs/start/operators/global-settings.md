@@ -18,7 +18,7 @@ It is five tabs, grouped by what an operator is doing rather than by what the co
 | ------------------------ | -------------------------------------- |
 | **General**              | General, Access                        |
 | **Mail & Realtime**      | Mail, Realtime                         |
-| **Worker & Performance** | Worker, Timeouts                       |
+| **Worker & Performance** | Worker, Timeouts, Agents               |
 | **Media**                | Media                                  |
 | **System**               | every section, file-only settings only |
 
@@ -71,6 +71,17 @@ Some toggles gate a whole capability rather than a value, and are worth calling 
   the others. A group's keys are managed in the group's **Settings → Developer access** section,
   the install's in **Settings → Global API keys**. See the [Group API](/reference/group-api) and
   the [Global API](/reference/global-api).
+
+## Agents
+
+The **Agents** section carries one setting: `SPORA_MAX_STEPS`, the largest step cap an agent may
+carry (default `200`). It is the ceiling every agent's `max_steps` is held to — the REST agent path,
+the LLM's `create_agent` / `update_agent` and the agent template format alike — so a value above
+it is refused with `422 VALIDATION_ERROR` rather than silently clamped.
+
+The ceiling reaches the admin UI through `GET /api/v1/config` as `max_agent_steps`, because the
+admin settings are admin-only and a plain user editing their own agent cannot read the bound
+there. A new agent carries 100 steps.
 
 ## Language
 

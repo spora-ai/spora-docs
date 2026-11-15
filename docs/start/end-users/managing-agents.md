@@ -85,7 +85,7 @@ Authorisation for cross-principal agent creation is enforced server-side via `Ag
 - **Name** — display name (e.g. "Research Assistant")
 - **Description** (optional) — short summary of what the agent does. Shown in the agent list and used in some tool UIs.
 - **Enabled** — toggle to disable the agent without deleting it
-- **Max steps** — the max number of LLM turns per task. Default 10. Higher = longer reasoning chains; lower = bounded cost.
+- **Max steps** — the max number of LLM turns per task. Default 100. Higher = longer reasoning chains; lower = bounded cost. The largest value the instance allows is its own ceiling (`SPORA_MAX_STEPS`, 200 by default), and the field refuses anything above it — the bound follows the instance, not a number baked into this page.
 - **Allow followup** — whether the agent can be re-engaged in the same task (continues the conversation thread) or each message creates a new task.
 - **Default effort** — the reasoning effort this agent runs with when a message does not name one. Leave it unset and the LLM configuration's default applies. The list is the one the agent's configuration offers, so an agent can only be given a level that configuration names — which is not the same as a level the model accepts: the two OpenAI drivers offer the whole scale whatever the model takes, and a level the model refuses is the provider's error.
 
@@ -150,6 +150,10 @@ between the message and the configuration: a message that names a level runs at 
 message that leaves the field out runs at the agent's default — then the configuration's, then the
 model's own default. A message that sends `effort: ""` asks for the model's own default instead.
 Leave the agent's default unset and the configuration's default applies, as before.
+
+The agent's default applies **while the configuration still offers that level**. Narrow the
+configuration's level list afterwards and the agent's default falls through to the
+configuration's own default rather than to a level the endpoint would refuse.
 
 This is what lets one agent in a group run at a different depth than its siblings while they all
 share one LLM configuration.

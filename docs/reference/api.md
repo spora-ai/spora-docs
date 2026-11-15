@@ -63,15 +63,15 @@ Source: `AuthWorkflow::performEmailVerification` (`app/Services/AuthWorkflow.php
 
 ### Agents
 
-| Method   | Path                           | Auth    | Purpose                                                         |
-| -------- | ------------------------------ | ------- | --------------------------------------------------------------- |
-| `GET`    | `/api/v1/agents`               | session | List agents (accepts `?principal_id=` repeatable filter)        |
-| `POST`   | `/api/v1/agents`               | + CSRF  | Create agent (accepts optional `principal_id` body field)       |
-| `GET`    | `/api/v1/agents/{id}`          | session | Get one agent                                                   |
-| `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                    |
-| `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                    |
-| `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls |
-| `GET`    | `/api/v1/agents/{id}/effort`   | session | The agent's reasoning-effort levels and its configured default  |
+| Method   | Path                           | Auth    | Purpose                                                          |
+| -------- | ------------------------------ | ------- | ---------------------------------------------------------------- |
+| `GET`    | `/api/v1/agents`               | session | List agents (accepts `?principal_id=` repeatable filter)         |
+| `POST`   | `/api/v1/agents`               | + CSRF  | Create agent (accepts optional `principal_id` body field)        |
+| `GET`    | `/api/v1/agents/{id}`          | session | Get one agent                                                    |
+| `PATCH`  | `/api/v1/agents/{id}`          | + CSRF  | Update agent                                                     |
+| `DELETE` | `/api/v1/agents/{id}`          | + CSRF  | Delete agent                                                     |
+| `POST`   | `/api/v1/agents/{id}/transfer` | + CSRF  | Re-key agent ownership to another principal the caller controls  |
+| `GET`    | `/api/v1/agents/{id}/effort`   | session | The agent's reasoning-effort levels and the default it runs with |
 
 > To send a message to an agent, create a task via `POST /api/v1/tasks` — there's no `/chat` sub-resource. The agent picks up the task and processes it asynchronously.
 
@@ -201,7 +201,7 @@ Every `GET` and `PATCH` response (and each entry of `GET /api/v1/agents`) carrie
 | `description`              | string \| null                   | Short summary, up to 2000 chars.                                                                                                                                                                                                                                                                  |
 | `system_prompt`            | string \| null                   | System prompt (Markdown allowed).                                                                                                                                                                                                                                                                 |
 | `llm_driver_config_id`     | integer \| null                  | Bound LLM config; `null` means inherit the global default.                                                                                                                                                                                                                                        |
-| `max_steps`                | integer                          | Max LLM turns per task (1-100). Default `10`.                                                                                                                                                                                                                                                     |
+| `max_steps`                | integer                          | Max LLM turns per task. Range `1..SPORA_MAX_STEPS` — the instance's ceiling, `200` by default. A new agent carries `100`.                                                                                                                                                                         |
 | `default_effort` **(new)** | string \| null                   | The reasoning effort this agent runs with when a message names none. `null` inherits the LLM configuration's default. A level the agent's LLM configuration does not offer is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.                                                                        |
 | `is_active`                | boolean                          | Whether the agent accepts new tasks.                                                                                                                                                                                                                                                              |
 | `allow_followup`           | boolean                          | Whether the agent can be re-engaged in the same task.                                                                                                                                                                                                                                             |
@@ -425,7 +425,14 @@ It writes `users.locale` (migration 0096), **not** `principal_preferences`: the 
 
 Errors: `400 INVALID_JSON` (the body is not valid JSON) · `401 UNAUTHENTICATED` · `404 NOT_FOUND` (the session's user row is gone) · `422 VALIDATION_ERROR` (a locale nobody has a catalogue for).
 
-`GET /api/v1/config` carries `default_lang` (`SPORA_DEFAULT_LANG`). A pre-login visitor has no preference to fetch, so this is the only thing telling the SPA which language the instance is in — without it the first paint would be English on a German instance.
+`GET /api/v1/config` carries `default_lang` (`SPORA_DEFAULT_LANG`) and `max_agent_steps`
+(`SPORA_MAX_STEPS`). A pre-login visitor has no preference to fetch, so `default_lang` is the only
+thing telling the SPA which language the instance is in — without it the first paint would be
+English on a German instance.
+
+`max_agent_steps` is the largest step cap an agent may carry on this instance, `200` by default. The
+agent's settings form needs the bound to cap its **Max steps** input, and the admin settings are
+admin-only — a plain user editing their own agent cannot read the bound there.
 
 ## Envelope
 

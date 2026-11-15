@@ -45,6 +45,8 @@ the message's effort
 
 The **model default** is not a level. It is the absence of one: no level was resolved, so the driver sends no effort parameter and the provider applies whatever it would have applied anyway. One driver breaks that rule for itself — on a GPT-5.4-or-later reasoning model that uses tools, the OpenAI-compatible driver sends `reasoning_effort: "none"` rather than nothing; see [Tools and effort on Chat Completions](/reference/concepts/drivers#tools-and-effort-on-chat-completions) and [Schema](/reference/concepts/schema#key-decisions).
 
+That escape hatch is **not subject to the operator's level list**. It is what the API requires, not a depth the operator chose, so a configuration that names `low, medium, high` without `none` still gets `none` on a model that needs it. Without it the request would carry no value the provider accepts.
+
 `EffortService::defaultFor()` owns the whole chain and is the only place that walks it. `LlmConfigResolver::resolveEffortDefault()` delegates to it, so the runtime and the endpoint that reports the default cannot drift apart.
 
 **The agent's own default** is `agents.default_effort` — a nullable name on the agent row. It exists because the configuration's default belongs to the configuration, and one configuration is shared by every agent that resolves to it: without a link of its own, an agent cannot differ from its siblings.
@@ -108,7 +110,7 @@ The character pattern keeps a name from carrying anything that could corrupt the
 
 `Spora\Drivers\EffortLevel` used to be the vocabulary: seven cases, and a name outside them was refused at the request boundary. It is now the **default vocabulary plus the label map** — the seven canonical names, and a label for each.
 
-A provider's own vocabulary is expressible. Groq's `default` is not a name Spora shipped, and any fixed list is incomplete the moment a provider ships another; both are now ordinary configuration. `EffortLevel::labelFor()` answers with the pretty label for a canonical name — `Low`, `XHigh` — and with the name itself for anything else, so an operator's own name reads as themselves.
+A provider's own vocabulary is expressible. Groq's `default` is not a name Spora shipped, and any fixed list is incomplete the moment a provider ships another; both are now ordinary configuration. `EffortLevel::labelFor()` answers with the pretty label for a canonical name — `Low`, `xHigh` — and with the name itself for anything else, so an operator's own name reads as themselves.
 
 The **canonical seven** are still what the two OpenAI drivers offer when nothing else is configured: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`.
 

@@ -79,6 +79,23 @@ The level names are bounded — at most 16 characters each, at most 32 per confi
 the name travels into a third-party request body and into a `string(16)` column. See
 [Concepts → Reasoning effort](/reference/concepts/reasoning-effort).
 
+### The agent's step cap has a ceiling
+
+An agent's step cap is the only thing bounding the agent loop: a tick that finishes a tool batch
+hands the task straight back to the loop, so an agent whose model keeps calling tools would
+otherwise recurse until the worker exhausted its memory.
+
+**A new agent now starts at 100 steps**, not 10, and the largest cap any agent may carry is the
+**`SPORA_MAX_STEPS`** setting — 200 by default, in a new **Agents** section of the operator
+settings. The ceiling is enforced on every surface that takes a cap — the REST agent path, the
+LLM's `create_agent` and `update_agent`, and the agent template format alike — and a cap outside
+it is refused with a `422` rather than silently clamped.
+
+Raise it for long-running agentic workflows. The bound reaches the admin UI through
+`GET /api/v1/config` (`max_agent_steps`), so a plain user editing their own agent sees it even
+though the setting itself is admin-only. See
+[Environment variables](/start/operators/env-vars#agents).
+
 ### A new "OpenAI Responses" driver
 
 Over OpenAI's Chat Completions API, a reasoning model cannot do two things at once. From GPT-5.4
@@ -181,6 +198,12 @@ There is no data migration to run.
 
 `Spora\Services\TaskServiceInterface::startTask()` and `continueTask()` change signature — each
 takes the reasoning effort for the task, as a plain optional `?string $effort = null`.
+
+`Spora\Drivers\OpenAICompatibleDriver`'s constructor changes too: its seventh argument was
+`?bool $supportsImageInput` and is now `?OpenAIDriverOptions $options`. The two other compatible
+drivers already took an options object, so this one now matches them — but a plugin that builds
+`new OpenAICompatibleDriver(...)` itself and passes that boolean now gets a `TypeError`. Pass an
+`OpenAIDriverOptions` instead.
 
 **If you run an operator's Spora install: nothing to do.** No shipped plugin implements the
 interface.

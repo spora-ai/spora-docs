@@ -222,10 +222,18 @@ The chat can pick a reasoning effort per message. Five modules carry it, and the
 The composer and the follow-up row are the two the picker has always had. Three more surfaces carry a level of their own, and each reuses `useAgentEffort` rather than asking the server again:
 
 - **`src/components/PromptTemplateDialog.vue`** — a saved prompt's own effort.
-- **`src/components/shared/ScheduleEditor/index.vue`** — a scheduled run's effort override.
+- **`src/components/shared/ScheduleEditor/ScheduleEffortOverride.vue`** — a scheduled run's effort override, rendered on step 3 of the schedule wizard; `ScheduleEditor/index.vue` carries it into the payload.
 - **`src/components/agent/settings/AgentIdentitySection.vue`** — the agent's own default.
 
-The three are **defaults**, not per-message choices, and they say so: an unset effort on a template inherits the agent's default, and an unset override on a run inherits the template's. That is what the `emptyChoice` prop is for — the empty entry reads **Model default** in the chat, **Use the agent default** on a template and **Use the template default** on a run.
+The three are **defaults**, not per-message choices, and they say so: an unset effort on a template inherits the agent's default, and an unset override on a run inherits the template's. That is what the `emptyChoice` prop is for — the empty entry reads **Model default** in the chat, **Use the agent default** on a template, **Use the template default** on a run and **Inherit** on the agent's own default, where it means the configuration's default.
+
+### The step-cap bound
+
+The agent's settings form does not know the instance's ceiling on its own. `src/stores/runtimeConfig.ts`
+reads `max_agent_steps` from `GET /api/v1/config` and falls back to `DEFAULT_MAX_AGENT_STEPS` (200)
+when the key is absent — an older backend sends no key. `src/components/agent/settings/AgentIdentitySection.vue`
+uses it as the `max` of the **Max steps** input and names the bound in the field's hint, so a plain
+user editing their own agent is bounded even though the admin settings are admin-only.
 
 ### The cache's invalidation contract
 

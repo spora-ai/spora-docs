@@ -127,12 +127,29 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Declared core ref: ${ref:-none}"
 
-      - name: Checkout spora-core
+      # A ref that cannot be fetched must never fail the job: the branch may
+      # be gone (a merged core PR's branch is deleted) and a sha may be
+      # unreachable. The check then compares against main only, exactly as
+      # the `api-spec` job does.
+      - name: Checkout the declared core ref
+        id: core-ref-checkout
+        if: steps.core-ref.outputs.ref != ''
+        continue-on-error: true
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
           repository: spora-ai/spora-core
-          ref: ${{ steps.core-ref.outputs.ref || 'main' }}
+          ref: ${{ steps.core-ref.outputs.ref }}
+          path: spora-core
+          clean: false
+
+      - name: Checkout spora-core (main)
+        if: steps.core-ref-checkout.outcome != 'success'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          repository: spora-ai/spora-core
+          ref: 'main'
           path: spora-core
 
       - name: Install

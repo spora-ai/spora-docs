@@ -90,12 +90,18 @@ public function effortLevels(): array
     }
 
     if ($this->configuredEffortLevels !== []) {
-        return $this->configuredEffortLevels;
+        return $this->levelMap($this->configuredEffortLevels);
     }
 
     return $this->defaultEffortLevels();
 }
 ```
+
+The answer is a **map of name to wire value**, not a list of names: the key is the name the operator
+writes, the value is what the provider is sent. A name with no separate spelling maps to itself, so
+`levelMap()` turns `['low', 'high']` into `['low' => 'low', 'high' => 'high']`. Both sides of that
+map are read: the keys are the levels a picker offers, and the values are what the driver puts in
+the request body.
 
 **The operator's list wins outright.** A configuration that names its levels offers exactly those, whatever the model would take on its own. The operator knows what their endpoint accepts, and a proxy in front of an Anthropic-compatible API may well accept a vocabulary no model id could imply.
 
@@ -152,7 +158,7 @@ The Responses row is the request-level shape. On a model that supports `configur
 
 **A level the model rejects is still the provider's error.** The level set says what the endpoint takes; it does not say the model accepts it. On the two OpenAI drivers the set is the whole canonical scale, so a saved default can be a level the model refuses — the request then fails at the provider. On the Anthropic driver the set is the model's own levels, so that cannot happen there.
 
-**One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because silence is not a working configuration on the models that default to `medium`. See [Tools and effort on Chat Completions](#tools-and-effort-on-chat-completions).
+**One driver asks for a level anyway.** On a GPT-5.4-or-later reasoning model the OpenAI-compatible driver sends `reasoning_effort: "none"` when the agent uses tools and no level resolves, because silence is not a working configuration on the models that default to `medium`. The escape hatch is **not subject to the operator's level list** — it is what the API requires, not a depth the operator chose, so a configuration that names `low, medium, high` without `none` still gets `none` on a model that needs it. See [Tools and effort on Chat Completions](#tools-and-effort-on-chat-completions).
 
 A request may carry its own `effort`, and the resolution order is:
 

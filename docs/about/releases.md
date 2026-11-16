@@ -88,8 +88,9 @@ otherwise recurse until the worker exhausted its memory.
 **A new agent now starts at 100 steps**, not 10, and the largest cap any agent may carry is the
 **`SPORA_MAX_STEPS`** setting — 200 by default, in a new **Agents** section of the operator
 settings. The ceiling is enforced on every surface that takes a cap — the REST agent path, the
-LLM's `create_agent` and `update_agent`, and the agent template format alike — and a cap outside
-it is refused with a `422` rather than silently clamped.
+LLM's `create_agent` and `update_agent`, the agent template format, a saved prompt's own cap and
+a schedule's cap override alike — and a cap outside it is refused with a `422` rather than
+silently clamped.
 
 Raise it for long-running agentic workflows. The bound reaches the admin UI through
 `GET /api/v1/config` (`max_agent_steps`), so a plain user editing their own agent sees it even

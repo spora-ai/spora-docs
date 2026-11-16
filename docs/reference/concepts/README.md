@@ -17,6 +17,7 @@ The deep-dive reference for Spora's internals. These pages were migrated from th
 ### Tools, drivers, plugins
 
 - **[LLM drivers](/reference/concepts/drivers)** — `LLMDriverConfigInterface`, `OpenAICompatibleDriver`, `AnthropicCompatibleDriver`, `OpenAIResponsesDriver`, `DriverFactory`
+- **[Reasoning effort](/reference/concepts/reasoning-effort)** — the configurable level set, the default chain, and the bounds on a level name
 - **[Tool system](/reference/concepts/tools)** — `#[Tool]`, `#[ToolOperation]`, `#[ToolParameter]`, `#[ToolSetting]`, settings cascade
 - **[Plugin system](/reference/concepts/plugins-system)** — manifest, auto-discovery, `PluginLoader`, conflicts, security model
 - **[App extensions](/reference/concepts/app-extension)** — `app/App.php`, the `SporaExtensionInterface` hooks

@@ -42,26 +42,35 @@ For a simple "what's the capital" question with no tools enabled, the agent repl
 
 ### The effort picker
 
-Next to the composer sits an **Effort** picker, when the agent's driver can express a reasoning
-effort at all — a driver that speaks no effort has no picker, and neither does a model that
-takes none. It offers the levels that agent's driver declares, and its first entry is **Model
-default** — the level the model applies when nobody asks for one. Pick a level and the agent
-thinks harder or cheaper for that message: the level travels with the message it is sent with, and
-the turns already sent keep the effort they were sent with. Your choice stays on the picker for
-the next message — the level belongs to the message it is sent with, not to the conversation.
+Next to the composer sits an **Effort** picker, when the agent's LLM configuration can express a
+reasoning effort at all — an endpoint with no effort parameter has no picker, and neither does a
+model that takes no level. It offers the levels that configuration offers, and its first entry is
+**Model default** — no level is asked for, and the model runs at its own default, with the
+exception noted below. Pick a level and the agent thinks harder or cheaper for that message: the
+level travels with the message it is sent with, and the turns already sent keep the effort they were
+sent with. Your choice stays on the picker for the next message — the level belongs to the message
+it is sent with, not to the conversation.
 
-**Which levels are on the picker depends on the driver.** On a Claude, the list is the levels that
-model takes, so a Claude that takes no `max` never offers one. On an OpenAI model the list is the
-whole scale whatever the model takes — so a level the model refuses is one the picker still
-offers, and the request fails at the provider instead of quietly running at the model's default.
+**Which levels are on the picker is the operator's call.** The list comes from the agent's LLM
+configuration: when the operator names the levels their endpoint accepts, that is the list, and
+Spora does not second-guess it — a gateway in front of an Anthropic-compatible API can accept a
+vocabulary no model name could imply. When the operator names none, the driver's own set applies:
+on a Claude, the levels that model takes, so a Claude that takes no `max` never offers one. On an
+OpenAI model that list is the whole scale whatever the model takes — so a level the model refuses
+is one the picker still offers, and the request fails at the provider instead of quietly running at
+the model's default.
+
+**The picker starts at the agent's own default.** An agent can carry a default of its own, set in
+its settings; without one it falls back to the LLM configuration's default. That is the level the
+agent runs with when you send a message without touching the picker.
 
 **Model default is not always "the model thinks as it would".** On a GPT-5.4-or-later model with
 tools enabled, Spora sends `none` explicitly, because silence is not a working configuration
 there. On GPT-5.5 — whose own default is `medium` — that means the model does not reason at all.
 
-A level the driver does not offer cannot be picked, and a level the agent's driver stops offering
-is refused by the server with `EFFORT_LEVEL_UNSUPPORTED` — the chat asks for that agent's levels
-again and replaces the choice with one the driver still has.
+A level the agent's configuration stops offering is refused by the server with
+`EFFORT_LEVEL_UNSUPPORTED` — the chat asks for that agent's levels again and replaces the choice
+with one the configuration still has.
 
 ## Step 4 — Read the agent's reply
 

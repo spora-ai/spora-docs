@@ -282,6 +282,7 @@ export default defineUserConfig({
             { text: 'Media folders', link: '/reference/concepts/media-folders' },
             { text: 'Plugin system', link: '/reference/concepts/plugins-system' },
             { text: 'Principals & groups', link: '/reference/concepts/principals' },
+            { text: 'Reasoning effort', link: '/reference/concepts/reasoning-effort' },
             { text: 'Schema', link: '/reference/concepts/schema' },
             { text: 'Skills', link: '/reference/concepts/skills' },
             { text: 'Speech providers', link: '/reference/concepts/speech-providers' },

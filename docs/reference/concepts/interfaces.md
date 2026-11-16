@@ -63,23 +63,23 @@ with a breaking release. The interface covers the whole task lifecycle: listing,
 approving, compacting, retrying, continuing and aborting. The two methods that start a task are
 the ones this release changes:
 
-- `startTask(userId, agentId, prompt, maxSteps = null, parentTaskId = null, mediaIds = [], effort = null): array` — creates a task and queues it. `effort` is the reasoning effort for that task; `null` leaves the task on the LLM configuration's default.
+- `startTask(userId, agentId, prompt, maxSteps = null, parentTaskId = null, mediaIds = [], effort = null): array` — creates a task and queues it. `effort` is the reasoning effort for that task; `null` leaves the task on the agent's own default, falling back to the LLM configuration's.
 - `continueTask(taskId, userId, prompt, additionalSteps = null, mediaIds = [], effort = null): array` — continues a task with a new user message. `effort` applies to that follow-up only.
 
 Both are **breaking changes**: a plugin that _implements_ the interface has to move with it, or
 the class does not load. A plugin that only _calls_ the service is unaffected — omitting the
-effort leaves the task on the configuration's default. See
+effort leaves the task on the default. See
 [Plugin system → Stability contract](/reference/concepts/plugins-system#plugin-stable-depend-freely).
 
 **The interface takes the effort as a plain string and does not check it against the agent's
-driver.** The HTTP boundary is what checks it: a task started through the API is refused with
-`422 EFFORT_LEVEL_UNSUPPORTED` when the level is not one the agent's effective driver declares. A
-task started from a plugin skips that check — and what happens then depends on the driver. On the
-Anthropic driver a level the driver does not declare is dropped on the way to the provider, and the
-task runs at the model's own default. On the two OpenAI drivers every canonical level is declared,
-so there is nothing to drop: the level is sent, and a model that does not take it rejects the
-request with the provider's own error. See
-[Concepts → LLM drivers](/reference/concepts/drivers#effort-levels).
+configuration.** The HTTP boundary is what checks it: a task started through the API is refused
+with `422 EFFORT_LEVEL_UNSUPPORTED` when the level is not one the agent's effective configuration
+offers. A task started from a plugin skips that check — and what happens then depends on the
+configuration. A level the configuration does not offer is dropped on the way to the provider, and
+the task runs at the model's own default. On the two OpenAI drivers the whole canonical scale is
+declared by default, so there is nothing to drop: the level is sent, and a model that does not
+take it rejects the request with the provider's own error. See
+[Concepts → Reasoning effort](/reference/concepts/reasoning-effort).
 
 **An empty effort is not always "no effort".** On a GPT-5.4-or-later model with tools enabled, an
 empty effort resolves to nothing and the OpenAI-compatible driver sends `reasoning_effort: "none"`
@@ -89,7 +89,7 @@ model think as it would. See
 
 ## `LLMDriverConfigInterface` (`app/Drivers/LLMDriverConfigInterface.php`)
 
-Drivers are resolved per-request by `DriverFactory::makeFromAgent()` (`app/Drivers/DriverFactory.php:51-61`), which delegates three-tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()` (`app/Services/LLMConfigPreferences.php:81-97`): the agent's own `llm_driver_config_id` FK → the **principal's** preferred config (`principal_preferences.preferred_llm_config_id`, looked up through the agent's `principal_id` at `app/Services/LLMConfigPreferences.php:90`) → the global default (`is_global = true AND is_default = true`).
+Drivers are resolved per-request by `DriverFactory::makeFromAgent()` (`app/Drivers/DriverFactory.php`), which delegates three-tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()` (`app/Services/LLMConfigPreferences.php:81-97`): the agent's own `llm_driver_config_id` FK → the **principal's** preferred config (`principal_preferences.preferred_llm_config_id`, looked up through the agent's `principal_id` at `app/Services/LLMConfigPreferences.php:90`) → the global default (`is_global = true AND is_default = true`).
 
 - `static getName(): string` — snake_case identifier, e.g. `"openai_compatible"`, `"anthropic_compatible"`, `"openai_responses"`.
 - `static getDisplayName(): string` — human-readable, e.g. `"OpenAI Compatible"`.

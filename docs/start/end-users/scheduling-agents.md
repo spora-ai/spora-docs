@@ -61,6 +61,29 @@ Two rules make them safe to leave in a template:
 
 The principal is resolved once per agent and then branched on its type, so one template serves both kinds of owner.
 
+## Effort
+
+A schedule can carry its own reasoning effort, and so can a saved prompt. Both are optional, and
+each is set in the form that owns it — the **Schedules** tab for a schedule, the **Templates** tab
+for a saved prompt.
+
+The levels on offer are the ones the agent's LLM configuration offers, so a schedule can only be
+given a level that configuration names — which is not the same as a level the model accepts. A
+level the configuration offers can still be refused by the provider, and a run that uses it fails
+when it fires. Leave the field unset and the schedule inherits, and the chain runs:
+
+```text
+the schedule's own effort
+  → the template's effort
+    → the agent's default
+      → the LLM configuration's default
+        → the model's own default
+```
+
+The agent's own `schedule` tool takes the same two fields — `effort_override` on a schedule and
+`effort` on a prompt template — and refuses a level the configuration does not offer, with a
+message naming the levels it does.
+
 ## Timezone selection
 
 The form's **Timezone** dropdown is pre-filled with the browser's IANA zone — for example, `Europe/Berlin` if the browser is configured for Berlin, or `America/New_York` for the US East Coast. The dropdown is populated from the IANA tz database, so anything `Intl.DateTimeFormat` recognises is offered.
@@ -100,7 +123,7 @@ As a shortcut, the agent can also send just the target field on its own: `{run_a
 
 ### Clearing optional fields
 
-Five fields can be cleared by sending `null`: `template_id`, `cron_expression`, `run_at`, `max_steps_override` (on a schedule), and `max_steps` (on a prompt template). The validator accepts JSON `null` and — because LLM tool-call wire formats round-trip values as JSON-encoded strings — also accepts the literal four-character string `"null"` (case-insensitive) and an empty string as the same intent. Either form clears the field.
+Seven fields can be cleared by sending `null`: `template_id`, `cron_expression`, `run_at`, `max_steps_override` and `effort_override` (on a schedule), and `max_steps` and `effort` (on a prompt template). The validator accepts JSON `null` and — because LLM tool-call wire formats round-trip values as JSON-encoded strings — also accepts the literal four-character string `"null"` (case-insensitive) and an empty string as the same intent. Either form clears the field.
 
 This matters when reading agent traces: a model that emits `"cron_expression":"null"` instead of `"cron_expression":null` is doing the right thing — both clear the cron and switch the schedule to one-shot (or to "no cron" if no `run_at` is set).
 

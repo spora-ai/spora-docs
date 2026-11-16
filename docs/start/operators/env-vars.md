@@ -104,10 +104,10 @@ See [Worker deployment](/reference/concepts/worker-deployment) for server-mode c
 | `SPORA_MAX_STEPS` | `200`   | —          | The largest step cap an agent may carry. The cap is what bounds the agent loop: a tick that finishes a tool batch hands the task straight back to the loop, so an agent whose model keeps calling tools would otherwise recurse until the worker exhausted its memory. Raise it for long-running agentic workflows; a new agent carries 100 steps. The ceiling cannot be set above 100000. |
 
 The ceiling is enforced on every surface that takes a cap — the REST agent path, the LLM's
-`create_agent` and `update_agent`, and the agent template format alike — and a cap outside it is
-refused rather than clamped. The bound reaches the SPA on `GET /api/v1/config` as
-`max_agent_steps`, because the admin settings are admin-only and a plain user editing their own
-agent cannot read the bound there.
+`create_agent` and `update_agent`, the agent template format, a saved prompt's own cap and a
+schedule's cap override alike — and a cap outside it is refused rather than clamped. The bound
+reaches the SPA on `GET /api/v1/config` as `max_agent_steps`, because the admin settings are
+admin-only and a plain user editing their own agent cannot read the bound there.
 
 ## Mercure (SSE)
 

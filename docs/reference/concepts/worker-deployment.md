@@ -135,7 +135,7 @@ The `--stale-minutes` value should exceed your worst-case LLM round-trip time. S
 
 **The message names the actor that vanished.** The `error_message` the reaper writes says what disappeared: on a server-worker install the task reads _"The worker running this task stopped before it finished. Click Retry to start a fresh attempt."_; in client-worker mode it reads _"The browser driving this task disconnected. Click Retry to start a fresh attempt."_ — there, the browser's SharedWorker is the thing that disappeared.
 
-> **A parent waiting on its children is left alone.** A sub-agent's parent sits in `AWAITING_SUB_AGENTS` while its children run, and it holds no lease of its own. The sweep only reaps such a parent once nothing below it is still running, still leased, or waiting on a retry of its own — so a parent whose child is about to be retried is not failed out from under it. When the whole chain below has gone stale, the parent is swept with them.
+**A parent waiting on its children is left alone.** A sub-agent's parent sits in `AWAITING_SUB_AGENTS` while its children run, and it holds no lease of its own. The sweep only reaps such a parent once nothing below it is still running, still leased, or waiting on a retry of its own — so a parent whose child is about to be retried is not failed out from under it. When the whole chain below has gone stale, the parent is swept with them.
 
 > **Client mode does not arm the retry.** Only the server worker claims scheduled retries, so in client-worker mode the reaper marks the row `FAILED` and leaves the retry to the operator. See [Client-worker mode](/deploy/shared-host/client-worker-mode).
 

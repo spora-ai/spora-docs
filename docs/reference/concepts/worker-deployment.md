@@ -122,7 +122,7 @@ stdout_logfile=/var/log/spora-worker.log
 
 Tasks can be orphaned in `RUNNING` when a worker process is killed ungracefully (OOM, `SIGKILL`, server crash) between claiming a task and completing it.
 
-The reaper sweeps `RUNNING` (and `AWAITING_SUB_AGENTS`) tasks whose lease has expired and whose `updated_at` is older than `--stale-minutes`, and marks them `FAILED`. Retry-chain rows are left alone, and `--stale-minutes 0` disables the sweep entirely. It runs:
+The reaper sweeps `RUNNING` (and `AWAITING_SUB_AGENTS`) tasks whose lease has expired and whose `updated_at` is older than `--stale-minutes`, and marks them `FAILED` with `error_code: WORKER_DISCONNECTED`. Retry-chain rows are left alone, and `--stale-minutes 0` disables the sweep entirely. It runs:
 
 - **Daemon mode:** At startup, then every 5 minutes regardless of queue state
 - **Cron mode:** At startup (before the drain loop)
@@ -130,6 +130,12 @@ The reaper sweeps `RUNNING` (and `AWAITING_SUB_AGENTS`) tasks whose lease has ex
 > **Note:** The reaper runs inside the queue drain loop in daemon mode — it is triggered every 5 minutes even when the queue is non-empty. This ensures orphaned tasks are cleaned up even during sustained high load.
 
 The `--stale-minutes` value should exceed your worst-case LLM round-trip time. Set it generously (at least 5 minutes) to avoid false positives on slow providers.
+
+**A reaped task is retried when the agent asks for it.** If the agent has `retry_after_minutes` and `max_retries` both above zero, the reaper arms the same automatic retry every other failure path arms: the row keeps `error_code: WORKER_DISCONNECTED`, gains a `retry_after` stamp, and the server worker picks the task up once that delay has elapsed. The failed run is re-run in place with its history intact — the same chain a rate limit produces. An agent without a retry policy is only marked `FAILED`, and the operator retries it by hand.
+
+**The message names the actor that vanished.** The `error_message` the reaper writes says what disappeared: on a server-worker install the task reads _"The worker running this task stopped before it finished. Click Retry to start a fresh attempt."_; in client-worker mode it reads _"The browser driving this task disconnected. Click Retry to start a fresh attempt."_ — there, the browser's SharedWorker is the thing that disappeared.
+
+> **Client mode does not arm the retry.** Only the server worker claims scheduled retries, so in client-worker mode the reaper marks the row `FAILED` and leaves the retry to the operator. See [Client-worker mode](/deploy/shared-host/client-worker-mode).
 
 ## Concurrent Workers
 

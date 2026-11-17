@@ -71,7 +71,7 @@ The effective "silent task gets reaped" window differs by mode:
 | `server` | No          | `updated_at` only                 | `SPORA_WORKER_STALE_MINUTES` (e.g. 60 min)                                              |
 | `client` | Yes         | `lease_expires_at` + `updated_at` | `SPORA_TICK_LEASE_SECONDS + SPORA_WORKER_STALE_MINUTES` (e.g. 10 min + 60 min = 70 min) |
 
-On reap, the task's `error_code` is `WORKER_DISCONNECTED` (new in this release) — distinct from the legacy `ORPHANED`, which kept its meaning of "server-side daemon died". The operator UI surfaces `WORKER_DISCONNECTED` as **"The browser driving this task disconnected. Click Retry to start a fresh attempt."**
+On reap, the task's `error_code` is `WORKER_DISCONNECTED` (new in this release) — distinct from the legacy `ORPHANED`, which kept its meaning of "server-side daemon died". The operator UI surfaces `WORKER_DISCONNECTED` as **"The browser driving this task disconnected. Click Retry to start a fresh attempt."** In client-worker mode the reaper arms no automatic retry — nothing would pick the row up — so the banner's **Retry** button is the only way back.
 
 The reaper is lease-aware: for client-mode tasks it reaps rows where `lease_owner` is anything (`user:42`, `server:housekeeping`, anything). The lease TTL + the stale-minutes grace period mean a row with `lease_owner='server:housekeeping'` and an active lease is never reaped, even if the housekeeping handler blocks longer than `SPORA_WORKER_STALE_MINUTES` for a long synchronous scheduled-run tick. The shared 30-second `worker_housekeeping_locks` lock prevents overlapping housekeeping calls (so two open browsers don't both dispatch the same schedule).
 
@@ -169,7 +169,7 @@ Scheduled runs are browser-driven. They fire only while **any** authenticated br
 
 ### A task shows `error_code: WORKER_DISCONNECTED`
 
-The browser driving the task disconnected (closed tab, crash, network loss) before the tick finished. The reaper swept the row when the lease expired + `SPORA_WORKER_STALE_MINUTES` elapsed with no progress. The chat UI surfaces this as **"The browser driving this task disconnected. Click Retry to start a fresh attempt."** Clicking Retry creates a fresh task with `user_id = currentUser`; your browser will drive it on the next polling cycle.
+The browser driving the task disconnected (closed tab, crash, network loss) before the tick finished. The reaper swept the row when the lease expired + `SPORA_WORKER_STALE_MINUTES` elapsed with no progress. The chat UI surfaces this as **"The browser driving this task disconnected. Click Retry to start a fresh attempt."** Clicking Retry re-runs the task in place — same task, full conversation history. The task's original runner drives it on the next polling cycle; an admin who retries another runner's task does not drive it, and the row stays `QUEUED` until that runner's browser is open (see [Per-runner scoping](#per-runner-scoping)).
 
 ### Token expiry / logout
 
@@ -191,7 +191,7 @@ These seven scenarios prove the runtime end-to-end. Run them in order — each o
 
 6. **Browser crash mid-tick** — start a long-running task (one that loops for several ticks), close the browser tab mid-tick. Wait `SPORA_TICK_LEASE_SECONDS + SPORA_WORKER_STALE_MINUTES` (default 600 s + 60 min — shorter for tests via `SPORA_WORKER_STALE_MINUTES=1`). Verify the row flips to `FAILED` with `error_code: WORKER_DISCONNECTED`.
 
-7. **Logout / token expiry** — login, click into a chat, send a message. The chat goes `QUEUED → RUNNING` (browser-driven). Log out (clear session cookie or call `POST /api/v1/auth/logout`). The chat stays `QUEUED` after the lease expires + the reaper sweep. Re-login in a fresh tab; click **Retry**; verify the new task progresses.
+7. **Logout / token expiry** — login, click into a chat, send a message. The chat goes `QUEUED → RUNNING` (browser-driven). Log out (clear session cookie or call `POST /api/v1/auth/logout`). The SharedWorker stops ticking, so the task stops advancing: a tick already in flight finishes server-side, and a browser that dies mid-tick leaves the row `RUNNING` until the lease expires and the reaper sweep flips it to `FAILED` with `error_code: WORKER_DISCONNECTED`. Re-login in a fresh tab; click **Retry**; verify the task progresses.
 
 ## What's next
 

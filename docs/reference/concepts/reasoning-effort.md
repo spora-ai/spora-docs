@@ -124,7 +124,7 @@ An operator who knows better says so, and the operator's list replaces the drive
 
 ## Where the level set is read
 
-The level set is computed on the server, from the agent's effective LLM configuration — the agent's own configuration, the principal's preferred one, then the global default. A client never re-implements that resolution.
+The level set is computed on the server, from the agent's effective LLM configuration — the agent's own configuration, the principal's preferred one, the principal's own default row, then the global default. A client never re-implements that resolution.
 
 The endpoints that report it are listed in the API reference: the session-authenticated
 `GET /api/v1/agents/{id}/effort` on the [REST API reference](/reference/api), and one per

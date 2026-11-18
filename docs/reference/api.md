@@ -111,9 +111,9 @@ built for the list endpoint too.
 - `levels` — the levels the configuration offers, each with a label. A configuration that names its own list in `effort_levels` offers exactly that list; a configuration that names none falls back to its driver's own set, and that fallback is driver-dependent: the Anthropic driver answers with the levels the agent's _model_ takes, while the two OpenAI drivers answer with the whole canonical scale, whatever the model takes. **An offered level is not an accepted one** — a level the configuration offers can still be refused by the provider.
 - `default` — the level this agent runs with when nobody names one: the agent's own `default_effort`, then the effective configuration's `effort` setting, then `null` for the model's own default. A default the configuration does not offer is never reported, because it would never be sent.
 
-The effective configuration is resolved on the server, through the same three tiers the agent uses —
-the agent's own configuration, the principal's preferred configuration, then the global default — so
-a client never has to re-implement it.
+The effective configuration is resolved on the server, through the same four tiers the agent uses —
+the agent's own configuration, the principal's preferred configuration, the principal's own default
+row, then the global default — so a client never has to re-implement it.
 
 An agent the caller may not see answers `404`, the same as `GET /api/v1/agents/{id}`.
 
@@ -156,6 +156,45 @@ See [Concepts → LLM drivers](/reference/concepts/drivers#effort-levels) for th
 | `DELETE` | `/api/v1/groups/{id}/locations/{locationId}`        | + CSRF                                | Delete one of the group's locations (group owner/admin only)                  |
 
 A global admin usually does not belong to the groups it administers, and the group routes do not all treat that the same way. The **group row** answers a global admin that is not a member — `PATCH` and `DELETE` both do — and so do the **member routes** and the **picture routes**: a global admin may read a group's membership, add and remove members, and replace the group's avatar without belonging to it. The routes that hold the group's **settings** — the agents, the locations, the tool settings, the LLM configs and the preferences — are gated on membership for everyone, a global admin included, so a non-member gets `404 GROUP_NOT_FOUND` on every one of them. Group creation is the other way round: it is open to every signed-in user unless the operator turns `allow_group_creation` off, in which case it is global-admin only. See [Principals and groups → Group authorisation](/reference/concepts/principals#group-authorisation) for the full table.
+
+### LLM configurations
+
+| Method   | Path                                       | Auth         | Purpose                                                       |
+| -------- | ------------------------------------------ | ------------ | ------------------------------------------------------------- |
+| `GET`    | `/api/v1/llm-configs`                      | session      | List the configurations the caller may see                    |
+| `POST`   | `/api/v1/llm-configs`                      | + CSRF       | Create a configuration                                        |
+| `GET`    | `/api/v1/llm-configs/{id}`                 | session      | Get one configuration                                         |
+| `PUT`    | `/api/v1/llm-configs/{id}`                 | + CSRF       | Update a configuration                                        |
+| `DELETE` | `/api/v1/llm-configs/{id}`                 | + CSRF       | Delete a configuration                                        |
+| `POST`   | `/api/v1/llm-configs/{id}/set-default`     | admin + CSRF | Make a global configuration the installation's default        |
+| `GET`    | `/api/v1/llm-configs/global`               | session      | List the global configurations                                |
+| `GET`    | `/api/v1/llm-configs/effective?agent_id=N` | session      | The configuration an agent runs on, and the tier it came from |
+
+#### The effective LLM configuration
+
+An agent runs on one configuration, and the cascade that picks it runs on the server:
+
+1. the agent's own `llm_driver_config_id`
+2. the principal's preferred configuration (`principal_preferences.preferred_llm_config_id`)
+3. the principal's own default row (`llm_driver_configurations.is_default = true` for that principal)
+4. the global default (`is_global = true AND is_default = true`)
+
+A configuration the agent's principal may not use is skipped rather than spent: a private configuration belongs to the principal that pays for it, so a reference that outlived its authorisation falls through to the next tier.
+
+The tiers belong to the principal that **owns the agent**, not to the caller, so a group-owned agent resolves against its group. `GET /api/v1/llm-configs/effective?agent_id=N` resolves the cascade and answers with the configuration and the tier that won:
+
+```json
+{
+  "data": {
+    "config": { "id": 12, "name": "Production GPT-5" },
+    "source": "group_default"
+  }
+}
+```
+
+`source` is one of `agent`, `group_preference`, `user_preference`, `group_default`, `user_default`, `global_default` or `none`. The `group_` and `user_` prefixes name the principal the tier belongs to, so a group-owned agent and a personal one are told apart without the client re-implementing the cascade. `none` answers with a `null` config.
+
+An agent the caller may not see answers `404 AGENT_NOT_FOUND`; an `agent_id` that is missing or not a positive integer answers `422 VALIDATION_ERROR`.
 
 ### Principals
 
@@ -200,7 +239,7 @@ Every `GET` and `PATCH` response (and each entry of `GET /api/v1/agents`) carrie
 | `name`                     | string                           | Display name.                                                                                                                                                                                                                                                                                     |
 | `description`              | string \| null                   | Short summary, up to 2000 chars.                                                                                                                                                                                                                                                                  |
 | `system_prompt`            | string \| null                   | System prompt (Markdown allowed).                                                                                                                                                                                                                                                                 |
-| `llm_driver_config_id`     | integer \| null                  | Bound LLM config; `null` means inherit the global default.                                                                                                                                                                                                                                        |
+| `llm_driver_config_id`     | integer \| null                  | Bound LLM config; `null` means the agent inherits one through the cascade — the principal's preferred configuration, the principal's own default row, or the global default.                                                                                                                      |
 | `max_steps`                | integer                          | Max LLM turns per task. Range `1..SPORA_MAX_STEPS` — the instance's ceiling, `200` by default. A new agent carries `100`.                                                                                                                                                                         |
 | `default_effort` **(new)** | string \| null                   | The reasoning effort this agent runs with when a message names none. `null` inherits the LLM configuration's default. A level the agent's LLM configuration does not offer is refused with `422 EFFORT_LEVEL_UNSUPPORTED`.                                                                        |
 | `is_active`                | boolean                          | Whether the agent accepts new tasks.                                                                                                                                                                                                                                                              |
@@ -496,8 +535,8 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 - [Speech](/reference/api/speech) — 10 routes
 - [Users](/reference/api/users) — 10 routes
 - [Me](/reference/api/me) — 9 routes
+- [Llm-configs](/reference/api/llm-configs) — 8 routes
 - [Notifications](/reference/api/notifications) — 8 routes
-- [Llm-configs](/reference/api/llm-configs) — 7 routes
 - [Tools](/reference/api/tools) — 7 routes
 - [Mail-templates](/reference/api/mail-templates) — 6 routes
 - [Plugins](/reference/api/plugins) — 5 routes
@@ -680,6 +719,7 @@ The API is mounted at `/api/v1/`. Breaking changes require a version bump (e.g. 
 | `PUT`    | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Update LLMConfig                                                         | Llm-configs      |
 | `DELETE` | `/api/v1/llm-configs/{id}`                                  | `cookieAuth` + `csrfToken` | Destroy LLMConfig                                                        | Llm-configs      |
 | `POST`   | `/api/v1/llm-configs/{id}/set-default`                      | `cookieAuth` + `csrfToken` | SetDefault LLMConfig                                                     | Llm-configs      |
+| `GET`    | `/api/v1/llm-configs/effective`                             | `cookieAuth`               | Effective LLM configuration for an agent                                 | Llm-configs      |
 | `GET`    | `/api/v1/llm-configs/global`                                | `cookieAuth`               | GlobalConfigs LLMConfig                                                  | Llm-configs      |
 | `GET`    | `/api/v1/llm-drivers`                                       | `cookieAuth`               | Drivers LLMConfig                                                        | Llm-drivers      |
 | `GET`    | `/api/v1/mail-config`                                       | `cookieAuth`               | Index MailConfig                                                         | Mail-config      |

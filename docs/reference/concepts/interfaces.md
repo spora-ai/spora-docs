@@ -89,7 +89,7 @@ model think as it would. See
 
 ## `LLMDriverConfigInterface` (`app/Drivers/LLMDriverConfigInterface.php`)
 
-Drivers are resolved per-request by `DriverFactory::makeFromAgent()` (`app/Drivers/DriverFactory.php`), which delegates three-tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()` (`app/Services/LLMConfigPreferences.php:81-97`): the agent's own `llm_driver_config_id` FK → the **principal's** preferred config (`principal_preferences.preferred_llm_config_id`, looked up through the agent's `principal_id` at `app/Services/LLMConfigPreferences.php:90`) → the global default (`is_global = true AND is_default = true`).
+Drivers are resolved per-request by `DriverFactory::makeFromAgent()` (`app/Drivers/DriverFactory.php`), which delegates four-tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()` (`app/Services/LLMConfigPreferences.php:130-133`): the agent's own `llm_driver_config_id` FK → the **principal's** preferred config (`principal_preferences.preferred_llm_config_id`, looked up through the agent's `principal_id` at `app/Services/LLMConfigPreferences.php:108-124`) → the **principal's own** default row (`principal_id` = the agent's principal, `is_default = true`) → the global default (`is_global = true AND is_default = true`). `GET /api/v1/llm-configs/effective?agent_id=N` serves the same resolution and names the tier that won.
 
 - `static getName(): string` — snake_case identifier, e.g. `"openai_compatible"`, `"anthropic_compatible"`, `"openai_responses"`.
 - `static getDisplayName(): string` — human-readable, e.g. `"OpenAI Compatible"`.

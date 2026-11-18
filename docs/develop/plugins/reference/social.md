@@ -42,7 +42,7 @@ All five tools recommend it through `recommendsSkills`, so on the agent's **Tool
 
 1. **Install the plugin**, and connect the providers the agent will publish as — see [Connecting a provider](#connecting-a-provider).
 2. **Create the agent.** **Agents → New → From template**, pick **Spora Social Poster**, then **Import**. The agent arrives with the five tools enabled, the approval defaults from the template, and the `social-poster` skill allowlisted — the operating manual is in place before the agent has read anything.
-3. **Give it a model.** The agent's **LLM config** tab, or the global default in **Settings → LLM drivers**.
+3. **Give it a model.** The agent's **LLM config** tab, or the configuration its owner inherits — the group's own on a group's **LLM Drivers** page, or the global default in **Settings → LLM drivers**.
 4. **Give it a schedule.** The agent's own **Schedules** tab: a recurring cron expression, a timezone, and the prompt that says what to write about — "a post about this week's release, on Tuesday morning". The schedule wakes the agent; the agent does the rest.
 
 The imported agent is an ordinary agent afterwards: editing the template file does not reach it. See [Start → Managing agents → Agent templates](/start/end-users/managing-agents#agent-templates).

@@ -179,7 +179,7 @@ An agent runs on one configuration, and the cascade that picks it runs on the se
 3. the principal's own default row (`llm_driver_configurations.is_default = true` for that principal)
 4. the global default (`is_global = true AND is_default = true`)
 
-A configuration the agent's principal may not use is skipped rather than spent: a private configuration belongs to the principal that pays for it, so a reference that outlived its authorisation falls through to the next tier.
+The first two tiers are skipped when the configuration is not the principal's to use: a private configuration belongs to the principal that pays for it, so a reference that outlived its authorisation falls through to the next tier.
 
 The tiers belong to the principal that **owns the agent**, not to the caller, so a group-owned agent resolves against its group. `GET /api/v1/llm-configs/effective?agent_id=N` resolves the cascade and answers with the configuration and the tier that won:
 

@@ -53,6 +53,17 @@ Leave it empty and the group's agents fall back to the name and the description 
 
 A failed save keeps the form open, with the error above it, so nothing you typed is lost.
 
+### LLM Drivers
+
+The **LLM Drivers** page holds the LLM configurations the group's agents run on. Each row is one configuration: its name, the driver behind it, and that driver's own settings — the base URL and the API key.
+
+**Two settings decide which of them a group's agent runs on**, and they are not the same setting:
+
+- **Preferred LLM for this group** names the configuration the group's agents use unless they override it themselves. It accepts one of the group's own configurations or a global one.
+- The **Default** badge marks the group's own default configuration. **Set as Default** moves the badge, and **Set as group default** sets it on a configuration as you create it. The badge answers only when no agent names a configuration of its own and the group names no preferred one.
+
+An agent that names its own configuration — the agent's **LLM config** tab — ignores both.
+
 ## What the group's agents see
 
 The group's agents read the group's information and its locations when they answer "where are you?" or "how do I reach you?". The tool that does it is `principal_info` — see [Tools → principal_info](/reference/concepts/tools) for what it returns, and [Principals](/reference/concepts/principals) for the model behind it.

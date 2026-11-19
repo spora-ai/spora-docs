@@ -49,12 +49,12 @@
       "link": "/reference/api/me"
     },
     {
-      "text": "Notifications",
-      "link": "/reference/api/notifications"
-    },
-    {
       "text": "Llm-configs",
       "link": "/reference/api/llm-configs"
+    },
+    {
+      "text": "Notifications",
+      "link": "/reference/api/notifications"
     },
     {
       "text": "Tools",

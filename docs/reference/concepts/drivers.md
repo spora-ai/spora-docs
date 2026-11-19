@@ -5,7 +5,7 @@ description: LLM driver system — LLMDriverConfigInterface, LLMDriverConfigurat
 
 # LLM Drivers
 
-Spora's LLM layer is built around `LLMDriverConfigInterface`. Drivers are resolved per-request by `DriverFactory`, which delegates tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()`. Effective config is the `LLMDriverConfiguration` that tier resolution selects — the agent's own `llm_driver_config_id` FK if set, otherwise the principal's preferred config, otherwise the global default.
+Spora's LLM layer is built around `LLMDriverConfigInterface`. Drivers are resolved per-request by `DriverFactory`, which delegates tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()`. Effective config is the `LLMDriverConfiguration` that tier resolution selects — the agent's own `llm_driver_config_id` FK if set, otherwise the principal's preferred config, otherwise the principal's own default row, otherwise the global default. The first two tiers are skipped when the configuration is not the principal's to use: a private configuration belongs to the principal that pays for it, so a reference that outlived its authorisation falls through to the next tier.
 
 ## `LLMDriverConfigInterface`
 
@@ -26,18 +26,18 @@ Driver classes are listed in the PHP-DI container under the `'llm_driver_classes
 **File:** `app/Models/LLMDriverConfiguration.php`
 **Table:** `llm_driver_configurations`
 
-| Column                      | Type                   | Description                                                                                                      |
-| --------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `id`                        | bigInt                 | Primary key                                                                                                      |
-| `principal_id`              | bigInt FK (nullable)   | Owning principal. `NULL` marks the global config — `LLMDriverConfiguration::validateGlobalXor` enforces the XOR. |
-| `name`                      | varchar(100)           | User's friendly name: "Production GPT-4"                                                                         |
-| `driver_class`              | varchar(200)           | FQCN implementing `LLMDriverConfigInterface`                                                                     |
-| `settings`                  | text (JSON)            | Driver-specific settings. Password fields are per-field encrypted (see below).                                   |
-| `context_window`            | unsignedInt (nullable) | Total context window for the model (input + output)                                                              |
-| `max_tokens_output`         | unsignedInt (nullable) | Max output tokens (output buffer)                                                                                |
-| `is_default`                | boolean                | Global default flag. Default is set only on `is_global=true` rows.                                               |
-| `is_global`                 | boolean                | Admin-shared config visible to all users                                                                         |
-| `created_at` / `updated_at` | timestamp              |                                                                                                                  |
+| Column                      | Type                   | Description                                                                                                                                                                                                                   |
+| --------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                        | bigInt                 | Primary key                                                                                                                                                                                                                   |
+| `principal_id`              | bigInt FK (nullable)   | Owning principal. `NULL` marks the global config — `LLMDriverConfiguration::validateGlobalXor` enforces the XOR.                                                                                                              |
+| `name`                      | varchar(100)           | User's friendly name: "Production GPT-4"                                                                                                                                                                                      |
+| `driver_class`              | varchar(200)           | FQCN implementing `LLMDriverConfigInterface`                                                                                                                                                                                  |
+| `settings`                  | text (JSON)            | Driver-specific settings. Password fields are per-field encrypted (see below).                                                                                                                                                |
+| `context_window`            | unsignedInt (nullable) | Total context window for the model (input + output)                                                                                                                                                                           |
+| `max_tokens_output`         | unsignedInt (nullable) | Max output tokens (output buffer)                                                                                                                                                                                             |
+| `is_default`                | boolean                | Default flag. On a global row it names the installation's default; on a principal-owned row it names that principal's default. The write paths keep one default per scope — setting a new one clears the others in its scope. |
+| `is_global`                 | boolean                | Admin-shared config visible to all users                                                                                                                                                                                      |
+| `created_at` / `updated_at` | timestamp              |                                                                                                                                                                                                                               |
 
 Ownership is principal-scoped, not user-scoped: migration `0067_introduce_principals_and_groups` replaced `user_id` with a nullable `principal_id` FK to `principals.id`, and left it nullable on this table alone so the global config row can keep `principal_id = NULL`. A group principal can own its own configs. See [Schema](/reference/concepts/schema) for the full `principals` picture.
 
@@ -367,7 +367,7 @@ Reasoning is scoped to the model family, so switching families silently drops it
 
 **File:** `app/Drivers/DriverFactory.php`
 
-- Calls `LLMConfigPreferences::getEffectiveConfigForAgent($agent)`, which performs three-tier resolution: agent-specific (`agent.llm_driver_config_id`) → principal preferred (`principal_preferences.preferred_llm_config_id`) → global default (`is_global = true AND is_default = true`). See `app/Services/LLMConfigPreferences.php:75-98`. Preference writes are principal-scoped: `setPrincipalPreferredConfig()` only accepts a global config or one owned by that same principal, and an agent resolves tier 2 through `agent.principal_id` (`app/Services/LLMConfigPreferences.php:100-145`).
+- Calls `LLMConfigPreferences::getEffectiveConfigForAgent($agent)`, which performs four-tier resolution: agent-specific (`agent.llm_driver_config_id`) → principal preferred (`principal_preferences.preferred_llm_config_id`) → principal default (`principal_id` = the agent's principal, `is_default = true`) → global default (`is_global = true AND is_default = true`). See `app/Services/LLMConfigPreferences.php:108-125`. The third tier is the row the group page's "Set as Default" writes; the global row keeps the fourth tier because a global row carries `principal_id = null` and therefore cannot match the third. Preference writes are principal-scoped: `setPrincipalPreferredConfig()` only accepts a global config or one owned by that same principal, and an agent resolves tier 2 through `agent.principal_id` (`app/Services/LLMConfigPreferences.php:110` and `:228-255`).
 - Instantiates the `driver_class` column's FQCN with the decrypted settings plus an HTTP client, logger, and timeout. `timeout` is read from the per-config setting when present, otherwise it falls back to the container-wide `llm_timeout` (`app/Drivers/DriverFactory.php`).
 - **The build is split in two.** `makeDriverFromSettings(string $driverClass, array $settings)` takes the **plaintext** settings a save request carries; `makeDriverFromConfig(LLMDriverConfiguration $config)` decrypts the stored blob and delegates to it. The save path needs the first one because the row it is validating has not been written yet.
 - The two effort inputs ride in the common constructor arguments as `effortLevels` (a `list<string>`) and `supportsEffort` (`?bool`). `supports_effort` is decoded the way `supports_image_input` is: the frontend round-trips booleans as the strings `"true"`/`"false"`, and a missing key decodes to `null`, which means enabled.
@@ -376,6 +376,8 @@ Reasoning is scoped to the model family, so switching families silently drops it
 - The factory does not merge plugin drivers — there is no such hook. Adding a driver means adding the class to the `llm_driver_classes` list in `app/Core/ContainerDefinitions.php` and referencing it from `llm_driver_configurations.driver_class`.
 
 **The save path builds a driver rather than asking a static.** The validator has to agree exactly with the runtime on which levels a configuration offers — including for an out-of-tree driver — and a static method beside the instance method would be two lists that have to stay in step. The cost is one `DriverFactory` dependency in the validator and one `HttpClient::create()` per save, which opens no connection.
+
+**The cascade is served over HTTP as well.** `GET /api/v1/llm-configs/effective?agent_id=N` resolves it server-side and names the tier that won: `agent`, `group_preference` or `user_preference`, `group_default` or `user_default`, `global_default`, or `none`. A client that re-implements the tiers gets a group-owned agent wrong — the tiers belong to the principal that owns the agent, not to the caller. See [REST API reference → The effective LLM configuration](/reference/api#the-effective-llm-configuration).
 
 ## Dependencies
 

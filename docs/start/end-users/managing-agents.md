@@ -116,7 +116,7 @@ Template variables belong to the other surface — the prompt templates a **sche
 
 Pick which LLM config the agent uses. You can:
 
-- **Inherit one** — the agent runs on the configuration its owner names: first the owner's preferred configuration, then the owner's own default row, then the global default. A group names the first two on its **LLM Drivers** page; a personal agent inherits the **Preferred LLM** from **Settings → LLM drivers**
+- **Inherit one** — the agent runs on the configuration its owner names: first the owner's preferred configuration, then the owner's own default row, then the global default. The agent's own configuration and the owner's preferred configuration are skipped when the agent's owner may not use them, so a lower tier answers instead. A group names the first two on its **LLM Drivers** page; a personal agent inherits the **Preferred LLM** from **Settings → LLM drivers**
 - **Override per agent** — pick a specific config from the dropdown
 
 For details on creating LLM configs, see **Settings → LLM drivers** (or, programmatically, [Concepts → LLM drivers](/reference/concepts/drivers)).

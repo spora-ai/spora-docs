@@ -5,7 +5,7 @@ description: LLM driver system — LLMDriverConfigInterface, LLMDriverConfigurat
 
 # LLM Drivers
 
-Spora's LLM layer is built around `LLMDriverConfigInterface`. Drivers are resolved per-request by `DriverFactory`, which delegates tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()`. Effective config is the `LLMDriverConfiguration` that tier resolution selects — the agent's own `llm_driver_config_id` FK if set, otherwise the principal's preferred config, otherwise the principal's own default row, otherwise the global default. A tier whose configuration the agent's principal may not use is skipped rather than spent: a private configuration belongs to the principal that pays for it.
+Spora's LLM layer is built around `LLMDriverConfigInterface`. Drivers are resolved per-request by `DriverFactory`, which delegates tier resolution to `LLMConfigPreferences::getEffectiveConfigForAgent()`. Effective config is the `LLMDriverConfiguration` that tier resolution selects — the agent's own `llm_driver_config_id` FK if set, otherwise the principal's preferred config, otherwise the principal's own default row, otherwise the global default. The first two tiers are skipped when the configuration is not the principal's to use: a private configuration belongs to the principal that pays for it, so a reference that outlived its authorisation falls through to the next tier.
 
 ## `LLMDriverConfigInterface`
 

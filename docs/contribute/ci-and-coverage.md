@@ -20,6 +20,7 @@ two that gate merges:
 | ------------------------------ | ------------ | ------------------------------------------------------------------------------- |
 | `Pest + coverage (PHP 8.4)`    | Pest + pcov  | The backend suite, with coverage for SonarCloud                                 |
 | `Pest (PHP 8.5)`               | Pest         | The suite on the newer PHP                                                      |
+| `Pest (PHP 8.6)`               | Pest         | The suite on the newest PHP                                                     |
 | `Pest (PHP 8.4, MySQL 9.7)`    | Pest         | The suite against a real MySQL engine                                           |
 | `Pest (PHP 8.4, MariaDB 12.3)` | Pest         | The suite against a real MariaDB engine                                         |
 | `PHPStan`                      | PHPStan      | Static analysis (level 5) plus the OpenAPI, translation and merge-marker checks |
@@ -124,7 +125,7 @@ If coverage dropped below 80%, SonarQube's PR comment shows the uncovered lines.
 
 `spora-core`'s CI runs on `ubuntu-latest` with:
 
-- **PHP** 8.4 (the project's minimum), plus a second job on 8.5 and two on real MySQL and MariaDB engines
+- **PHP** 8.4 (the project's minimum), plus a job on 8.5, a job on 8.6 and two on real MySQL and MariaDB engines
 - **Composer** 2.x
 - **Xdebug** disabled by default (Pest uses `pcov` for speed on CI)
 

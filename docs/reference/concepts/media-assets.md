@@ -593,13 +593,19 @@ The default is `principal`. It was `agent` until the release that added this ope
 case is the operator pointing the agent at an image in the library, and an operator's own upload
 carries no `agent_id` to match under `scope=agent`.
 
-**An agent that already had the `media` tool enabled keeps the scope in its own settings row.**
-Enabling a tool writes its settings defaults into that row, so the old default is already
-materialised there and a changed default does not reach it: an agent on the old `agent` default
-keeps `agent`, and an agent set to `principal` keeps `principal`. Set **Library scope** to
-`principal` on such an agent to give it the wider reach: a global change does not reach it,
-because its own agent-level setting overrides the global value. A global change still reaches
-every agent that has no `scope` of its own.
+**An agent that already had the `media` tool enabled keeps `agent`; an agent enabled from now on
+gets `principal`.** Migration `0105` is what holds the old reach in place: it materialises
+`scope: 'agent'` into the agent's own settings row for every agent that had the `media` tool
+enabled and has no scope of its own, so those agents see exactly what they saw before. It only
+adds a scope where no layer of the cascade supplies one — the agent's own row, the shared group,
+the tool global, the group layer or the principal layer — so a deliberate choice is never
+shadowed, and an agent whose global, principal, shared-group or own setting already supplies a
+scope is left alone. It is idempotent, its rollback takes back only the scopes it wrote, and it
+runs like every other migration: `php bin/spora spora:install`.
+
+Set **Library scope** to `principal` on such an agent to give it the wider reach: a global change
+does not reach it, because its own agent-level setting overrides the global value. A global change
+still reaches every agent that has no `scope` of its own.
 
 An asset outside the scope is **not visible**, and the failure says so without revealing whether the
 asset exists. It names the active scope and the remedy — set **Library scope** to `principal`, or

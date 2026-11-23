@@ -214,7 +214,7 @@ switch to flip. It is never a silent failure.
 One asset per call, and the image is the asset's own bytes — up to 20 MiB. What the task history
 stores is a reference rather than the pixels, so the image is read from storage when a request is
 built and re-sent on every later turn of the conversation, exactly like an image you attached
-yourself. Nothing about the archive's schema changes, so there is no migration to run.
+yourself. Nothing about the archive's schema changes, so no migration touches the archive.
 
 See [Concepts → Tool system → `media`](/reference/concepts/tools#media-—-mediatool) and
 [Concepts → Media assets](/reference/concepts/media-assets#_8-inspect-image-—-the-model-looks-at-an-archive-image).
@@ -225,13 +225,20 @@ The `media` tool's **Library scope** setting defaults to `principal` instead of 
 now sees the whole principal's library — the principal owner's own uploads included — rather than
 only the media it produced itself.
 
-**An agent that already had the `media` tool enabled keeps the scope in its own settings row.**
-Enabling a tool writes its settings defaults into that row, so the old default is already
-materialised there and a changed default does not reach it: an agent on the old `agent` default
-keeps `agent`, and an agent set to `principal` keeps `principal`. If you want such an agent to
-reach your uploads, set **Library scope** to `principal` on that agent: a global change does not
-reach it, because its own agent-level setting overrides the global value. A global change still
-reaches every agent that has no `scope` of its own.
+**An agent that already had the `media` tool enabled keeps `agent`; an agent enabled from now on
+gets `principal`.** A migration ships with the upgrade and holds that reach in place: it
+materialises `scope: 'agent'` into the agent's own settings row for every agent that had the
+`media` tool enabled and has no scope of its own. It adds rather than rewrites, because a
+rewrite could not tell a materialised default from your deliberate choice, and silently
+overturning the second would be the worse bug. Absence is unambiguous, so the migration only adds
+a scope where no layer of the cascade supplies one — the agent's own row, the shared group, the
+tool global, the group layer or the principal layer — and an agent whose global, principal,
+shared-group or own setting already supplies a scope is left alone.
+
+To widen an existing agent, set **Library scope** to `principal` on that agent (agent → **Tools** →
+Media). A global change does not reach an agent that has a scope of its own, because its own
+agent-level setting overrides the global value; a global change still reaches every agent that has
+no `scope` of its own.
 
 What changes when the scope is widened:
 
@@ -241,9 +248,9 @@ What changes when the scope is widened:
 - The reads widen too — `search`, `get_media`, `get_source`, `get_embed_code`, `list_derivatives`
   and `create_derivative` reach more rows.
 
-There is no migration to run, and deliberately so: a migration that rewrote `agent` to `principal`
-in existing settings could not tell a materialised default from your deliberate choice, and
-silently overturning the second would be the worse bug.
+**The migration is `0105`, and it runs with the upgrade.** It is idempotent — re-running it
+changes nothing — and its rollback takes back only the scopes it wrote, so an agent's own scope is
+never touched. On a fresh install there is nothing to materialise.
 
 ### One breaking change, for plugin authors
 
@@ -278,10 +285,11 @@ to move together. A plugin that only _calls_ the service is unaffected.
 composer update spora-ai/spora-core spora-ai/spora-frontend
 ```
 
-**Run the migration before the worker starts.** This release adds a `tasks.effort` column. The web
-path installs the schema itself on the next request, but **the CLI worker does not** — it opens the
-database without running migrations. A worker that fires before the migration has run writes a task
-against a table without the column, and the run fails with a log line and nothing more. So:
+**Run the migration before the worker starts.** This release adds a `tasks.effort` column, and the
+migration that holds the `media` tool's existing scope in place. The web path installs the schema
+itself on the next request, but **the CLI worker does not** — it opens the database without running
+migrations. A worker that fires before the migration has run writes a task against a table without
+the column, and the run fails with a log line and nothing more. So:
 
 ```bash
 composer update spora-ai/spora-core

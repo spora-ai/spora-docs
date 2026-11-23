@@ -58,10 +58,11 @@ SQLite handles the same workload as MariaDB for single-instance Spora deployment
 
 ## What's in the image
 
-The Dockerfile is at `docker/Dockerfile` in the `spora-ai/spora` skeleton. It uses a two-stage build:
+The Dockerfile is at `docker/Dockerfile` in the `spora-ai/spora` skeleton. It uses a three-stage build:
 
-- **Stage 1** (`composer:2.8`) — runs `composer install` to resolve PHP deps and the `spora-ai/spora-frontend` Composer package (which routes into `public/dist/` via `spora-ai/installer`)
-- **Stage 2** (`dunglas/frankenphp:1.13.1-php8.5.12-bookworm`) — runtime base image. Adds `supervisord` + `pdo_mysql` extension, copies app source + vendor + supervisord/frankenphp configs, runs as the non-root `www-data` user
+- **Stage 1** (`composer:2.11.2`) — carries the Composer binary and nothing else; the binary is copied into the next stage
+- **Stage 2** (`php:8.5.12-cli-alpine`) — runs `composer install` to resolve PHP deps and the `spora-ai/spora-frontend` Composer package (which routes into `public/dist/` via `spora-ai/installer`). The base carries the same PHP patch the runtime runs, so the resolution matches the code that will execute it
+- **Stage 3** (`dunglas/frankenphp:1.13.5-php8.5.12-bookworm`) — runtime base image. Adds `supervisord` + `pdo_mysql` extension, copies app source + vendor + supervisord/frankenphp configs, runs as the non-root `www-data` user
 
 The runtime starts two processes via supervisord:
 

@@ -218,7 +218,7 @@ composer test:parallel       # Pest — 212 tests, ~50 s
 composer lint               # PHP-CS-Fixer dry-run
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan per `phpstan.neon`, php-cs-fixer dry-run. A separate `coverage` job runs Pest with `pcov` and uploads `coverage.xml` + JUnit; the `sonar` job then uploads both to SonarCloud (project key `spora-ai_spora-plugin-minimax`), so the `new_coverage` metric is measurable per PR. Requires the `SONAR_TOKEN` secret in the repo. MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan per `phpstan.neon`, php-cs-fixer dry-run. A separate `coverage` job runs Pest with `pcov` and uploads `coverage.xml` + JUnit; the `sonar` job then uploads both to SonarCloud (project key `spora-ai_spora-plugin-minimax`), so the `new_coverage` metric is measurable per PR. Requires the `SONAR_TOKEN` secret in the repo. MIT license.
 
 ## Notes
 

@@ -36,7 +36,7 @@ two that gate merges:
 | `sonarqube`      | SonarCloud       | The `new_coverage` gate                     |
 
 **`spora`** (the skeleton template) validates the composer manifest, boots a
-smoke test and builds the operator image.
+smoke test on PHP 8.4 and again on PHP 8.6, and builds the operator image.
 
 The MySQL and MariaDB jobs in `spora-core` are advisory rather than gating:
 they carry `continue-on-error` until the SQLite-specific migration tests are
@@ -139,7 +139,7 @@ For local parity, match these versions. If your local is ahead (e.g. PHP 8.5), t
 
 **For plugin changes**, the plugin's own CI runs. Plugin repos have a smaller pipeline (Pest + PHPStan + php-cs-fixer + coverage) and don't build a Docker image.
 
-**For spora-core changes**, the full pipeline runs — the suite on four PHP/engine combinations, PHPStan, php-cs-fixer and the SonarCloud scan. That is the slowest PR.
+**For spora-core changes**, the full pipeline runs — the suite on five PHP/engine combinations, PHPStan, php-cs-fixer and the SonarCloud scan. That is the slowest PR.
 
 ## What's next
 

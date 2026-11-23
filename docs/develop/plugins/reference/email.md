@@ -113,7 +113,7 @@ composer install
 ./vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan level per `phpstan.neon`, php-cs-fixer dry-run. SonarCloud analysis against project key `spora-ai_spora-plugin-email` (requires `SONAR_TOKEN` secret on the repo). MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan level per `phpstan.neon`, php-cs-fixer dry-run. SonarCloud analysis against project key `spora-ai_spora-plugin-email` (requires `SONAR_TOKEN` secret on the repo). MIT license.
 
 ---
 

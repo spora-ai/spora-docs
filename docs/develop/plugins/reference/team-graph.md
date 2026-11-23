@@ -141,7 +141,7 @@ composer install
 ./vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan, php-cs-fixer dry-run, a coverage job and a SonarCloud scan (project key `spora-ai_spora-plugin-team-graph`).
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan, php-cs-fixer dry-run, a coverage job and a SonarCloud scan (project key `spora-ai_spora-plugin-team-graph`).
 
 The frontend package has its own CI: ESLint, `vue-tsc`, Vitest, the catalogue gate, the build, a smoke check on the IIFE global and the CSS scope, a bundle-size budget and SonarCloud.
 

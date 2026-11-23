@@ -153,7 +153,7 @@ composer lint      # php-cs-fixer dry-run
 
 ## CI
 
-Pest (PHP 8.4 + 8.5), PHPStan, php-cs-fixer, coverage, and a SonarCloud scan run on every push to `main`, on `v*` tags, and on pull requests. External actions are pinned to full commit SHAs.
+Pest (PHP 8.4 + 8.5 + 8.6), PHPStan, php-cs-fixer, coverage, and a SonarCloud scan run on every push to `main`, on `v*` tags, and on pull requests. External actions are pinned to full commit SHAs.
 
 ## License
 

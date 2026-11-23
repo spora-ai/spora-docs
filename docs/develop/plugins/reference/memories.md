@@ -226,7 +226,7 @@ composer analyse         # PHPStan
 composer lint           # php-cs-fixer dry-run
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, a `static-analysis` job, and a `code-style` job. A separate `coverage` job runs Pest with xdebug and uploads `coverage.xml` as a clover report; the `sonar` job depends on it and uploads to SonarCloud (project key `spora-ai_spora-plugin-memories`, from `sonar-project.properties`), so `new_coverage` is measurable per PR. Requires the `SONAR_TOKEN` secret on the repo. CI also installs `spora-core` from a branch-pinned ref via an env var, so cross-PR dependencies land together.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, a `static-analysis` job, and a `code-style` job. A separate `coverage` job runs Pest with xdebug and uploads `coverage.xml` as a clover report; the `sonar` job depends on it and uploads to SonarCloud (project key `spora-ai_spora-plugin-memories`, from `sonar-project.properties`), so `new_coverage` is measurable per PR. Requires the `SONAR_TOKEN` secret on the repo. CI also installs `spora-core` from a branch-pinned ref via an env var, so cross-PR dependencies land together.
 
 MIT license.
 

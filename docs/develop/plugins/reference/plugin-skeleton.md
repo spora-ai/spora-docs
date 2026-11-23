@@ -98,7 +98,7 @@ There's nothing to bump in `plugin.json` or `composer.json` — the runtime read
 
 Three parallel jobs run on every push to `main`, on `v*` tags, and on pull requests:
 
-- `test` — Pest on PHP 8.4 + 8.5
+- `test` — Pest on PHP 8.4 + 8.5 + 8.6
 - `static-analysis` — PHPStan level 5
 - `code-style` — php-cs-fixer dry-run (same ruleset as Spora core)
 

@@ -195,6 +195,53 @@ summarised thinking explicitly, because the API's own default stopped returning 
 A stored `temperature` or `thinking_budget` is pruned the next time that configuration is saved.
 There is no data migration to run.
 
+### An agent can look at an image in the Media Archive
+
+The `media` tool gains an operation called `inspect_image`. It sends an image out of the archive and
+into the model's context, so the agent can describe it, answer a question about it, or QA it — on
+its own, mid-conversation, with nothing attached by a human.
+
+**It is off by default.** The operation is absent from the tool schema the model is given until an
+operator switches it on for the agent (agent → **Tools** → Media → the `inspect_image` operation's
+toggle), so an agent that has not been opted in cannot call it at all.
+
+**It needs an LLM that takes images.** The same _Allow images_ setting that governs image uploads
+governs this, and it is the resolved value that counts — the toggle first, a model-name heuristic
+only when the toggle is absent. On a model that does not take image blocks the call fails with a
+message the **model** reads, naming the setting and the model, so the agent can tell you which
+switch to flip. It is never a silent failure.
+
+One asset per call, and the image is the asset's own bytes — up to 20 MiB. What the task history
+stores is a reference rather than the pixels, so the image is read from storage when a request is
+built and re-sent on every later turn of the conversation, exactly like an image you attached
+yourself. Nothing about the archive's schema changes, so there is no migration to run.
+
+See [Concepts → Tool system → `media`](/reference/concepts/tools#media-—-mediatool) and
+[Concepts → Media assets](/reference/concepts/media-assets#_8-inspect-image-—-the-model-looks-at-an-archive-image).
+
+### The `media` tool's default scope is now `principal`
+
+The `media` tool's **Library scope** setting defaults to `principal` instead of `agent`. An agent
+now sees the whole principal's library — the principal owner's own uploads included — rather than
+only the media it produced itself.
+
+**An agent that already had the `media` tool enabled keeps `agent`.** Enabling a tool writes its
+settings defaults into that agent's own settings row, so the old default is already materialised
+there and a changed default does not reach it. If you want such an agent to reach your uploads,
+set **Library scope** to `principal` on that agent — or globally, for every agent.
+
+What changes when the scope is widened:
+
+- **`get_public_url` changes the most.** It can now mint a share link for any of the principal's
+  assets, not only the agent's own. It is still approval-gated on every call, and the link is
+  per-asset.
+- The reads widen too — `search`, `get_media`, `get_source`, `get_embed_code`, `list_derivatives`
+  and `create_derivative` reach more rows.
+
+There is no migration to run, and deliberately so: a migration that rewrote `agent` to `principal`
+in existing settings could not tell a materialised default from your deliberate choice, and
+silently overturning the second would be the worse bug.
+
 ### One breaking change, for plugin authors
 
 `Spora\Services\TaskServiceInterface::startTask()` and `continueTask()` change signature — each

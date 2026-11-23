@@ -69,7 +69,7 @@ composer install
 ./vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4, PHPStan analysis, php-cs-fixer dry-run. A separate `coverage` job runs Pest with `pcov` and uploads `coverage.xml` + JUnit; the `sonar` job uploads both to SonarCloud (project key `spora-ai_spora-plugin-serper`), so the `new_coverage` metric is measurable per PR. Requires the `SONAR_TOKEN` secret in the repo. MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan analysis, php-cs-fixer dry-run. A separate `coverage` job runs Pest with `pcov` and uploads `coverage.xml` + JUnit; the `sonar` job uploads both to SonarCloud (project key `spora-ai_spora-plugin-serper`), so the `new_coverage` metric is measurable per PR. Requires the `SONAR_TOKEN` secret in the repo. MIT license.
 
 ---
 

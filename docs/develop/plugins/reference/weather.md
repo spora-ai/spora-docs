@@ -74,7 +74,7 @@ composer install
 ./vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan, and php-cs-fixer dry-run. The `sonar` job uploads coverage to SonarCloud (project key `spora-ai_spora-plugin-weather`) so the `new_coverage` metric is measurable per PR; requires the `SONAR_TOKEN` secret in the repo. MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan, and php-cs-fixer dry-run. The `sonar` job uploads coverage to SonarCloud (project key `spora-ai_spora-plugin-weather`) so the `new_coverage` metric is measurable per PR; requires the `SONAR_TOKEN` secret in the repo. MIT license.
 
 ---
 

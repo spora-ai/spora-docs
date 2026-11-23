@@ -284,7 +284,7 @@ composer analyse           # PHPStan level per phpstan.neon
 composer lint              # php-cs-fixer dry-run
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan, php-cs-fixer dry-run, plus an `integration` job that boots the plugin in a throwaway `spora-core` skeleton and asserts it routes to `plugins/spora-plugin-typst/`, and a `sonarcloud` job (project key `spora-ai_spora-plugin-typst`) fed by the PHP 8.4 build's Clover + JUnit artifacts.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan, php-cs-fixer dry-run, plus an `integration` job that boots the plugin in a throwaway `spora-core` skeleton and asserts it routes to `plugins/spora-plugin-typst/`, and a `sonarcloud` job (project key `spora-ai_spora-plugin-typst`) fed by the PHP 8.4 build's Clover + JUnit artifacts.
 
 `pecl install typst` runs with `continue-on-error: true` and every Composer step passes `--ignore-platform-req=ext-typst`, so the suite stays green on runners without the extension: the producer and world-factory tests skip themselves when `Typst\World` is unavailable. `stubs/typst.php` gives PHPStan a shadow of the `Typst\*` classes so static analysis works on the same runners. This means a green CI run is _not_ evidence that the compile path works — the render path is only exercised where `ext-typst` is actually installed. MIT license.
 

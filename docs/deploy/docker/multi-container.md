@@ -182,7 +182,7 @@ The MariaDB schema is migrated on first container start by the image's entrypoin
 - **Change the default MariaDB passwords** (currently `sporapassword` / `rootpassword`). Use strong random values.
 - **`SPORA_ALLOW_REGISTRATION`** should be `true` only for the initial admin signup, then `false`.
 - The `phpmyadmin` port (`8082`) is **not authenticated by default** beyond the MariaDB credentials. Put it behind a reverse proxy with basic auth, or remove the service for production.
-- The Docker image runs as `www-data` (non-root). The base image sets `setcap cap_net_bind_service=+ep` on the FrankenPHP binary so it can bind 80/443 without root.
+- The container runs as root and the application processes as `www-data`, so a deployment that enforces a non-root container rejects this image. The base image sets `setcap cap_net_bind_service=+ep` on the FrankenPHP binary so it can bind 80/443 without root.
 
 ## Next steps
 

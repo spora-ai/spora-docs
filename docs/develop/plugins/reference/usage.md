@@ -255,7 +255,7 @@ composer analyse         # PHPStan
 composer lint            # php-cs-fixer dry-run
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, a `static-analysis` job, a `code-style` job, a `coverage` job that uploads `coverage.xml`, and a `sonar` job (project key `spora-ai_spora-plugin-usage`).
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, a `static-analysis` job, a `code-style` job, a `coverage` job that uploads `coverage.xml`, and a `sonar` job (project key `spora-ai_spora-plugin-usage`).
 
 MIT license.
 

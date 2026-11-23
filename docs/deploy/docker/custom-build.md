@@ -134,7 +134,7 @@ Run with `docker compose -f docker-compose.yml up -d`. With `SERVER_NAME=spora.e
 The image is multi-stage, so the runtime image contains only what the app needs at runtime:
 
 - **No Node toolchain.** The admin SPA (`spora-ai/spora-frontend`) is a prebuilt Composer package — `spora-ai/installer` routes it into `public/dist/` during `composer install`. You don't need npm in the image.
-- **No Git.** The build stages use `COPY` of `composer.json` + `composer.lock`, not a git clone.
+- **No Git in the runtime image.** Git is installed in the deps-builder stage, where `cweagans/composer-patches` applies a plugin's patches with it; the runtime stage does not carry it.
 - **No `storage/` content from your dev machine.** The `storage/` directory is intentionally not `COPY`'d — it is created and `chown`'d at runtime. Copying it would risk shipping the SQLite DB and `secret.key` into the image.
 - **No `vendor/` from your dev machine.** The `vendor/` is built in the deps-builder stage and `COPY --from=deps-builder`'d into the runtime stage.
 

@@ -35,8 +35,9 @@ two that gate merges:
 | `build-frontend` | `vue-tsc` + Vite | The type-check and the production build     |
 | `sonarqube`      | SonarCloud       | The `new_coverage` gate                     |
 
-**`spora`** (the skeleton template) validates the composer manifest, boots a
-smoke test on PHP 8.4 and again on PHP 8.6, and builds the operator image.
+**`spora`** (the skeleton template) validates the composer manifest, checks that
+the builder and the runtime agree on the PHP patch, boots a smoke test on PHP
+8.4 and again on PHP 8.6, and builds the operator image.
 
 The MySQL and MariaDB jobs in `spora-core` are advisory rather than gating:
 they carry `continue-on-error` until the SQLite-specific migration tests are

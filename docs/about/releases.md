@@ -225,10 +225,13 @@ The `media` tool's **Library scope** setting defaults to `principal` instead of 
 now sees the whole principal's library — the principal owner's own uploads included — rather than
 only the media it produced itself.
 
-**An agent that already had the `media` tool enabled keeps `agent`.** Enabling a tool writes its
-settings defaults into that agent's own settings row, so the old default is already materialised
-there and a changed default does not reach it. If you want such an agent to reach your uploads,
-set **Library scope** to `principal` on that agent — or globally, for every agent.
+**An agent that already had the `media` tool enabled keeps the scope in its own settings row.**
+Enabling a tool writes its settings defaults into that row, so the old default is already
+materialised there and a changed default does not reach it: an agent on the old `agent` default
+keeps `agent`, and an agent set to `principal` keeps `principal`. If you want such an agent to
+reach your uploads, set **Library scope** to `principal` on that agent: a global change does not
+reach it, because its own agent-level setting overrides the global value. A global change still
+reaches every agent that has no `scope` of its own.
 
 What changes when the scope is widened:
 

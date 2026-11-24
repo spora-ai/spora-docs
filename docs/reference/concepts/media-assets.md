@@ -534,7 +534,7 @@ media inspect_image {asset_id, question?}
             └─ an image content block on the user turn after the tool result
 ```
 
-The image is **never stored in the database**. What the task-history row holds is the reference — the asset id and the kind — and the bytes are read off storage when a request is actually built, the same lazy resolution the user-attachment path already does.
+What the **task-history row** holds is the reference — the asset id and the kind — not the bytes, and the bytes are read off storage when a request is actually built, the same lazy resolution the user-attachment path already does. The archive's own row is the exception: under `data_url` storage the image bytes land in `media_assets.payload`, the MEDIUMBLOB column the configuration table above names.
 
 The image turn follows the **whole run of tool results**, not just its own. A provider accepts a tool result only directly after the assistant turn that asked for it, so a user turn between two results of the same batch is a 400. With one call the turn lands immediately after its result; with several calls in one batch it lands after the last of them.
 
@@ -591,7 +591,7 @@ The default is `principal`. It was `agent` until the release that added this ope
 
 Migration `0105` is what holds the old reach in place: it materialises `scope: 'agent'` into the agent's own settings row for every agent that had the `media` tool enabled and has no scope of its own, so those agents see exactly what they saw before. It only adds a scope where no layer of the cascade supplies one — the agent's own row, the shared group, the tool global, the group layer or the principal layer — so a deliberate choice is never shadowed, and an agent whose global, principal, shared-group or own setting already supplies a scope is left alone. The **group layer** counts only while the group cascade is on (`SPORA_TOOLS_GROUP_CASCADE_ENABLED`, off by default): with the cascade off, a group principal's scope governs nothing at runtime, so it does not stop the materialisation. It is idempotent, its rollback takes back only the scopes it wrote, and it runs like every other migration: `php bin/spora spora:install`.
 
-Set **Library scope** to `principal` on an agent whose scope is `agent` to give it the wider reach: a global change does not reach an agent that has a scope of its own, because its own agent-level setting overrides the global value. A global change still reaches every agent that has no `scope` of its own.
+Set **Library scope** to `principal` on an agent whose scope is `agent` to give it the wider reach: a global change does not reach an agent that has a scope of its own, because its own agent-level setting overrides the global value. A global change still reaches an agent only when no layer above the global layer sets `scope` for it: its own agent-level setting, its principal setting or, while `SPORA_TOOLS_GROUP_CASCADE_ENABLED` is on, its group setting.
 
 An asset outside the scope is **not visible**, and the failure says so without revealing whether the asset exists. It names the active scope, and it names the remedy the agent can act on: under `agent` both remedies — call `search` to list what the agent can see, or ask the operator to set **Library scope** to `principal` — and under `principal` only `search`, because the scope is already the wider one. That is the difference between a dead end and something the agent can act on.
 

@@ -214,8 +214,10 @@ you which switch to flip. It is never a silent failure.
 
 One asset per call, and the image is the asset's own bytes — up to 20 MiB. What the task history
 stores is a reference rather than the pixels, so the image is read from storage when a request is
-built and re-sent on every later turn of the conversation, exactly like an image you attached
-yourself. Nothing about the archive's schema changes, so no migration touches the archive.
+built and re-sent on every later turn of the conversation until a compaction drops it, exactly
+like an image you attached yourself. The archive's own row is the exception: under `data_url`
+storage the image bytes land in `media_assets.payload`. Nothing about the archive's schema
+changes, so no migration touches the archive.
 
 See [Concepts → Tool system → `media`](/reference/concepts/tools#media-—-mediatool) and
 [Concepts → Media assets](/reference/concepts/media-assets#_8-inspect-image-—-the-model-looks-at-an-archive-image).
@@ -244,7 +246,9 @@ scope governs nothing at runtime, so it does not stop the materialisation.
 To widen an agent whose scope is `agent`, set **Library scope** to `principal` on it (agent →
 **Tools** → **Media Library**). A global change does not reach an agent that has a scope of its
 own, because its own agent-level setting overrides the global value; a global change still reaches
-every agent that has no `scope` of its own.
+an agent only when no layer above the global layer sets `scope` for it: its own agent-level
+setting, its principal setting or, while `SPORA_TOOLS_GROUP_CASCADE_ENABLED` is on, its group
+setting.
 
 What changes when the scope is widened:
 

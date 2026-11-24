@@ -276,7 +276,7 @@ The built-in `AgentTool` (`app/Tools/AgentTool.php`) exposes a `get_available_to
 
 > **Note:** `skills.visible` is the **legal name set** for a `settings.allowed_skills` write. `configure_tools` refuses any skill name not present in it — the whole call, not just the offending entry, because a list that quietly shrank reads to the model as the whole list landing. Read `skills.visible` first, then name from it. The check fails closed: a provider that scopes by principal sees nothing and every name is refused.
 
-### `configure_tools` — the `tools[]` entry shape
+### The `tools[]` entry shape
 
 ```json
 {
@@ -318,7 +318,7 @@ Refusals are whole-call and happen before any write, so a rejected payload canno
 The LLM-facing agent creation flow is **two-phase** — `create_agent` does NOT accept a `tools[]` block. The flow is:
 
 1. **`create_agent`** — slim skeletal record (`name`, `description`, `system_prompt`, `max_steps`, `allow_followup`, `retry_after_minutes`, `max_retries`, `default_effort`). Capture the returned `agent_id`.
-2. **`configure_tools(agent_id: <id>, tools: [...])`** — apply the toolset. Each entry is `{ tool_class, enabled?, settings?, operations: [{name, enabled?, auto_approve?}] }` — see [the `tools[]` entry shape](#configure-tools-—-the-tools-entry-shape) for the `settings` and `enabled` semantics.
+2. **`configure_tools(agent_id: <id>, tools: [...])`** — apply the toolset. Each entry is `{ tool_class, enabled?, settings?, operations: [{name, enabled?, auto_approve?}] }` — see [the `tools[]` entry shape](#the-tools-entry-shape) for the `settings` and `enabled` semantics.
 3. **`read_agent(agent_id: <id>)`** — verify the toolset is exactly what was wanted.
 
 The full agent-template shape (`id` / `version` / nested `agent{}` / `tools[]` / `required_plugins[]`) is reserved for the operator-upload endpoint at `POST /api/v1/agent-templates/import` (see [Agent template schema](/reference/agent-template-schema)). `create_agent` rejects the nested-object shape with a literal "send X instead" example; see `skills/agent-creation/SKILL.md` for the full protocol.

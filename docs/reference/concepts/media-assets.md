@@ -37,6 +37,8 @@ A service interface in `app/Services/AssetStore.php`. Three implementations ship
 
 The container binds `AssetStore::class` to whichever mode the operator picks via `SPORA_ASSET_STORE_MODE`. Plugins depend on the **interface**, never on a concrete class.
 
+The `<ext>` half of `<storage>/assets/<token>.<ext>` comes from the stored **filename** when it carries an extension, and from the MIME map otherwise — so an upload named `photo.jpeg` lands as `<token>.jpeg`, not `<token>.jpg`. Every reader has to ask for that suffix rather than derive one from the MIME: the image channel and the delete path both go through `LocalAssetStore::storedExtension()`.
+
 ### `Spora\Tools\MediaEmbed`
 
 A final, stateless utility class in `app/Tools/MediaEmbed.php`. These return the canonical HTML the chat UI knows how to render (see [Frontend markdown allow-list](https://github.com/spora-ai/spora-frontend/blob/main/src/composables/useMarkdown.ts) for the source of truth).
@@ -597,7 +599,9 @@ An asset outside the scope is **not visible**, and the failure says so without r
 
 ### The re-send cost
 
-The image stays in the task history, and it is **re-sent on every subsequent turn** of the conversation — exactly like an image the user attached. A long conversation that inspected a large image keeps paying for it in the context window. A compacted conversation loses the image, the same way it loses a user attachment.
+The image stays in the task history, and it is **re-sent on every subsequent turn** of the conversation — exactly like an image the user attached — for as long as the asset is still in the archive. A long conversation that inspected a large image keeps paying for it in the context window. A compacted conversation loses the image, the same way it loses a user attachment.
+
+An asset the operator removes from the archive is the other way the image stops being sent. The row still declares it, but the bytes are gone, so the block cannot be resolved — and the message that made the claim ("you can see it now") carries a note saying the image was removed, rather than the model reading a claim the payload no longer supports. The note rides on that message, not on a turn of its own: the message count and the order are the provider's contract. It names no path and no id beyond what the row already carries.
 
 The `media-library` skill ships with the release, and it is what the model reads: it carries the operation matrix, the refusals and the scope rule, so the agent knows what `inspect_image` accepts before it calls it. This page is the reference behind that skill, not the model's copy of it.
 

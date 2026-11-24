@@ -200,7 +200,7 @@ The turn follows the **whole run of tool results**, not just its own. A provider
 
 Two byte budgets apply, and they are not interchangeable. The per-asset cap is 20 MiB, and a **row** carries a further **32 MiB** of image bytes (`MediaImageBlocks::MAX_ROW_BYTES`) — the same budget the operator-attachment path spends. An image that does not fit is **dropped**, and the tool result's **text still reaches the model**: two 18 MiB images in one row leave the model with one of them, and the call itself does not fail.
 
-The image stays in the task history, so it is re-sent on every subsequent turn of the conversation — until a compaction drops it, because a compaction replaces the rows it covers with a summary.
+The image stays in the task history, so it is re-sent on every subsequent turn of the conversation — until a compaction drops it, because a compaction replaces the rows it covers with a summary, or until the asset is removed from the archive. A removed asset stops the image being sent, and the message that claimed it carries a note that says so: the note rides on the claim's own message, so the message count and the order the provider expects are unchanged.
 
 The result's `content` still carries the weight: it is what the model reads on the next turn, so it should say what the image is and what the tool was asked for. The image rides alongside that text, not instead of it.
 

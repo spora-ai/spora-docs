@@ -229,7 +229,7 @@ now sees the whole principal's library — the principal owner's own uploads inc
 only the media it produced itself.
 
 **An agent keeps the scope it had.** An agent whose scope came from the schema default keeps
-`agent`; an agent whose scope you set deliberately — at the agent, global, principal or
+`agent`; an agent whose scope you set deliberately — at the agent, global, group, principal or
 shared-group level — keeps that scope; an agent enabled from now on gets `principal`.
 
 A migration ships with the upgrade and holds that reach in place: it materialises `scope: 'agent'`

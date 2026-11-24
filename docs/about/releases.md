@@ -225,20 +225,25 @@ The `media` tool's **Library scope** setting defaults to `principal` instead of 
 now sees the whole principal's library — the principal owner's own uploads included — rather than
 only the media it produced itself.
 
-**An agent that already had the `media` tool enabled keeps `agent`; an agent enabled from now on
-gets `principal`.** A migration ships with the upgrade and holds that reach in place: it
-materialises `scope: 'agent'` into the agent's own settings row for every agent that had the
-`media` tool enabled and has no scope of its own. It adds rather than rewrites, because a
-rewrite could not tell a materialised default from your deliberate choice, and silently
-overturning the second would be the worse bug. Absence is unambiguous, so the migration only adds
-a scope where no layer of the cascade supplies one — the agent's own row, the shared group, the
-tool global, the group layer or the principal layer — and an agent whose global, principal,
-shared-group or own setting already supplies a scope is left alone.
+**An agent keeps the scope it had.** An agent whose scope came from the schema default keeps
+`agent`; an agent whose scope you set deliberately — at the agent, global, principal or
+shared-group level — keeps that scope; an agent enabled from now on gets `principal`.
 
-To widen an existing agent, set **Library scope** to `principal` on that agent (agent → **Tools** →
-Media). A global change does not reach an agent that has a scope of its own, because its own
-agent-level setting overrides the global value; a global change still reaches every agent that has
-no `scope` of its own.
+A migration ships with the upgrade and holds that reach in place: it materialises `scope: 'agent'`
+into the agent's own settings row for every agent that had the `media` tool enabled and has no
+scope of its own. It adds rather than rewrites, because a rewrite could not tell a materialised
+default from your deliberate choice, and silently overturning the second would be the worse bug.
+Absence is unambiguous, so the migration only adds a scope where no layer of the cascade supplies
+one — the agent's own row, the shared group, the tool global, the group layer or the principal
+layer — and an agent whose global, principal, shared-group or own setting already supplies a scope
+is left alone. The **group layer** counts only while the group cascade is on
+(`SPORA_TOOLS_GROUP_CASCADE_ENABLED`, off by default): with the cascade off, a group principal's
+scope governs nothing at runtime, so it does not stop the materialisation.
+
+To widen an agent whose scope is `agent`, set **Library scope** to `principal` on it (agent →
+**Tools** → **Media Library**). A global change does not reach an agent that has a scope of its
+own, because its own agent-level setting overrides the global value; a global change still reaches
+every agent that has no `scope` of its own.
 
 What changes when the scope is widened:
 
@@ -249,8 +254,8 @@ What changes when the scope is widened:
   and `create_derivative` reach more rows.
 
 **The migration is `0105`, and it runs with the upgrade.** It is idempotent — re-running it
-changes nothing — and its rollback takes back only the scopes it wrote, so an agent's own scope is
-never touched. On a fresh install there is nothing to materialise.
+changes nothing — and its rollback takes back only the scopes it wrote, so a scope you set by hand
+is never reversed. On a fresh install there is nothing to materialise.
 
 ### One breaking change, for plugin authors
 

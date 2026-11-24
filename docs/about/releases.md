@@ -202,14 +202,15 @@ into the model's context, so the agent can describe it, answer a question about 
 its own, mid-conversation, with nothing attached by a human.
 
 **It is off by default.** The operation is absent from the tool schema the model is given until an
-operator switches it on for the agent (agent → **Tools** → Media → the `inspect_image` operation's
-toggle), so an agent that has not been opted in cannot call it at all.
+operator switches it on for the agent (agent → **Tools** → **Media Library** → the
+`inspect_image` operation's toggle), so an agent that has not been opted in cannot call it at all.
 
 **It needs an LLM that takes images.** The same _Allow images_ setting that governs image uploads
 governs this, and it is the resolved value that counts — the toggle first, a model-name heuristic
-only when the toggle is absent. On a model that does not take image blocks the call fails with a
-message the **model** reads, naming the setting and the model, so the agent can tell you which
-switch to flip. It is never a silent failure.
+only when the toggle is absent. The toggle is a field of the **LLM driver configuration** — the
+agent's **LLM config**, not its **Tools** tab. On a model that does not take image blocks the call
+fails with a message the **model** reads, naming the setting and the model, so the agent can tell
+you which switch to flip. It is never a silent failure.
 
 One asset per call, and the image is the asset's own bytes — up to 20 MiB. What the task history
 stores is a reference rather than the pixels, so the image is read from storage when a request is
@@ -280,9 +281,10 @@ to move together. A plugin that only _calls_ the service is unaffected.
 - **Anthropic's default model** — the driver now defaults to a current Claude generation. The
   Claude 3.x generation it defaulted to is retired and answers an error on every request.
 - **Image input** — the built-in drivers' image heuristics now cover the current model families
-  (the current Claude ids, `gpt-4.1`, `gpt-5`, `gpt-6`). A configuration that never set the
-  _Allow images_ toggle starts sending images where it previously did not. Set the toggle
-  explicitly if your provider rejects image blocks.
+  (every Claude from `claude-3` onwards, and the OpenAI families `gpt-4o`, `gpt-4-turbo`,
+  `gpt-4-vision`, `gpt-4.1`, `gpt-5`, `gpt-6`, `o1`, `o3`, `o4` and `chatgpt-4o`). A configuration
+  that never set the _Allow images_ toggle starts sending images where it previously did not. Set
+  the toggle explicitly if your provider rejects image blocks.
 
 ### Upgrading
 

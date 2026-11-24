@@ -524,10 +524,7 @@ If you emit HTML outside the canonical helpers (`MediaEmbed::*`), test that the 
 
 ## 8. `inspect_image` — the model looks at an archive image
 
-Everything above is about putting media in front of the **human**. The `media` tool has one
-operation that puts an archive image in front of the **model**: the agent names an asset, and the
-image itself arrives in the model's context on the next turn — so the model can describe it, answer
-a question about it, or QA it, without a human attaching anything.
+Everything above is about putting media in front of the **human**. The `media` tool has one operation that puts an archive image in front of the **model**: the agent names an asset, and the image itself arrives in the model's context on the next turn — so the model can describe it, answer a question about it, or QA it, without a human attaching anything.
 
 ```text
 media inspect_image {asset_id, question?}
@@ -537,9 +534,9 @@ media inspect_image {asset_id, question?}
             └─ an image content block on the user turn after the tool result
 ```
 
-The image is **never stored in the database**. What the task-history row holds is the reference —
-the asset id and the kind — and the bytes are read off storage when a request is actually built,
-the same lazy resolution the user-attachment path already does.
+The image is **never stored in the database**. What the task-history row holds is the reference — the asset id and the kind — and the bytes are read off storage when a request is actually built, the same lazy resolution the user-attachment path already does.
+
+The image turn follows the **whole run of tool results**, not just its own. A provider accepts a tool result only directly after the assistant turn that asked for it, so a user turn between two results of the same batch is a 400. With one call the turn lands immediately after its result; with several calls in one batch it lands after the last of them.
 
 ### The parameters
 
@@ -550,48 +547,45 @@ the same lazy resolution the user-attachment path already does.
 
 It is a **read**: it asks for no approval and changes nothing in the archive.
 
+The result's text names the asset and the question:
+
+```text
+Attached media asset <id> (<filename>, <mime>, <n> bytes) to this result — you can see it now.
+
+Question: <the question, or "none given.">
+```
+
+The structured data carries `asset_id`, `filename`, `mime_type`, `byte_size` and `question` — the last one `null` when no question was given. That copy is stored for the operator's dashboard and the audit trail; the model reads the text.
+
 ### Two gates stand in front of it
 
-**The operation is off by default.** It is absent from the tool schema the model is given until an
-operator enables it for the agent — the agent's **Tools** tab → Media → the `inspect_image`
-operation's toggle. An agent that has not been opted in cannot call it at all, and no context is
-spent on it.
+**The operation is off by default.** It is absent from the tool schema the model is given until an operator enables it for the agent — the agent's **Tools** tab → **Media Library** → the `inspect_image` operation's toggle. An agent that has not been opted in cannot call it at all, and no context is spent on it.
 
-**The agent's LLM must accept image content blocks.** The same **Allow images** setting that
-governs image _uploads_ governs this, and the **resolved** value is what counts: the operator's
-toggle first, and a model-name heuristic only when the toggle is absent. A deliberately-off toggle
-blocks; an untouched toggle on a vision-capable model (`gpt-4o`, `claude-3` and later) works.
+**The agent's LLM must accept image content blocks.** The same **Allow images** setting that governs image _uploads_ governs this, and the **resolved** value is what counts: the operator's toggle first, and a model-name heuristic only when the toggle is absent. A deliberately-off toggle blocks; an untouched toggle on a vision-capable model works — every Claude from `claude-3` onwards, and the OpenAI families `gpt-4o`, `gpt-4-turbo`, `gpt-4-vision`, `gpt-4.1`, `gpt-5`, `gpt-6`, `o1`, `o3`, `o4` and `chatgpt-4o`.
 
-When the LLM does not take images, the call **fails with a message the model reads** — one that
-names the setting, the model, and the remedy, so the agent can tell the operator which switch to
-flip. It is never a silent failure, and never a success whose image is stripped further down.
+That toggle is a field of the **LLM driver configuration** — the agent's **LLM config**, not its **Tools** tab, so it is not the field next to the operation toggle above. The refusal names it: _Enable "Allow images" on the agent's LLM configuration_.
 
-> **One wrinkle worth knowing.** The settings form renders an untouched toggle as _unset_, which
-> for a toggle reads as "off" — the opposite of what runs. An operator looking at a `gpt-4o`
-> configuration sees "Allow images: off" while the system treats images as allowed. This is
-> pre-existing behaviour, shared with the upload gate.
+When the LLM does not take images, the call **fails with a message the model reads** — one that names the setting, the model, and the remedy, so the agent can tell the operator which switch to flip. It is never a silent failure, and never a success whose image is stripped further down.
+
+> **One wrinkle worth knowing.** The settings form renders an untouched toggle as _unset_, which for a toggle reads as "off" — the opposite of what runs. An operator looking at a `gpt-4o` configuration sees "Allow images: off" while the system treats images as allowed. This is pre-existing behaviour, shared with the upload gate.
 
 ### What it refuses
 
 Every refusal names its reason:
 
-| Refusal                                              | Why                                                                                                                                                          |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| The asset's MIME is not an image                     | The MIME must be one of the raster formats the providers accept — `image/png`, `image/jpeg`, `image/webp`, `image/gif`.                                      |
-| `image/svg+xml`                                      | SVG is script-capable, not raster. It is refused whatever the operator's script-capable settings say.                                                        |
-| The agent's LLM does not accept image content blocks | The gate above — the failure names the setting and the model.                                                                                                |
-| The asset is larger than 20 MiB                      | The same cap the attachment path applies. A stale or missing size is re-measured after the load, so an oversized body cannot slip in through a stale column. |
-| The asset's `storage_mode` is `external`             | An external asset has no bytes on hand — the archive holds a link, not the file.                                                                             |
+| Refusal                                              | Why                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The asset's MIME is not an image                     | The MIME must be one of the raster formats the providers accept — `image/png`, `image/jpeg`, `image/webp`, `image/gif`.                                                                                                                                                                                 |
+| `image/svg+xml`                                      | SVG is script-capable, not raster, and **no registered derivative producer rasterises one** — core's image producer takes PNG, JPEG, WebP and GIF sources only, so `create_derivative` cannot convert it. The asset has to be rasterised outside Spora, or by the operator, before it can be inspected. |
+| The agent's LLM does not accept image content blocks | The gate above — the failure names the setting and the model.                                                                                                                                                                                                                                           |
+| The asset is larger than 20 MiB                      | The same cap the attachment path applies. A stale or missing size is re-measured after the load, so an oversized body cannot slip in through a stale column.                                                                                                                                            |
+| The asset's `storage_mode` is `external`             | An external asset has no bytes on hand — the archive holds a link, not the file.                                                                                                                                                                                                                        |
 
 ### What it cannot see
 
-The operation obeys the `media` tool's **Library scope** setting (`scope`), the same one every
-other read obeys: under `principal` the agent sees the whole principal's library — the operator's
-own uploads included — and under `agent` it sees only the media it produced itself.
+The operation obeys the `media` tool's **Library scope** setting (`scope`), the same one every other read obeys: under `principal` the agent sees the whole principal's library — the operator's own uploads included — and under `agent` it sees only the media it produced itself.
 
-The default is `principal`. It was `agent` until the release that added this operation: the common
-case is the operator pointing the agent at an image in the library, and an operator's own upload
-carries no `agent_id` to match under `scope=agent`.
+The default is `principal`. It was `agent` until the release that added this operation: the common case is the operator pointing the agent at an image in the library, and an operator's own upload carries no `agent_id` to match under `scope=agent`.
 
 **An agent keeps the scope it had.** An agent whose scope came from the schema default keeps `agent`; an agent whose scope was set deliberately — at the agent, global, principal or shared-group level — keeps that scope; an agent enabled from now on gets `principal`.
 
@@ -599,17 +593,13 @@ Migration `0105` is what holds the old reach in place: it materialises `scope: '
 
 Set **Library scope** to `principal` on an agent whose scope is `agent` to give it the wider reach: a global change does not reach an agent that has a scope of its own, because its own agent-level setting overrides the global value. A global change still reaches every agent that has no `scope` of its own.
 
-An asset outside the scope is **not visible**, and the failure says so without revealing whether the
-asset exists. It names the active scope and the remedy — set **Library scope** to `principal`, or
-call `search` to list what the agent can see — which is the difference between a dead end and
-something the agent can act on.
+An asset outside the scope is **not visible**, and the failure says so without revealing whether the asset exists. It names the active scope, and it names the remedy the agent can act on: under `agent` both remedies — call `search` to list what the agent can see, or ask the operator to set **Library scope** to `principal` — and under `principal` only `search`, because the scope is already the wider one. That is the difference between a dead end and something the agent can act on.
 
 ### The re-send cost
 
-The image stays in the task history, and it is **re-sent on every subsequent turn** of the
-conversation — exactly like an image the user attached. A long conversation that inspected a large
-image keeps paying for it in the context window. A compacted conversation loses the image, the
-same way it loses a user attachment.
+The image stays in the task history, and it is **re-sent on every subsequent turn** of the conversation — exactly like an image the user attached. A long conversation that inspected a large image keeps paying for it in the context window. A compacted conversation loses the image, the same way it loses a user attachment.
+
+The `media-library` skill ships with the release, and it is what the model reads: it carries the operation matrix, the refusals and the scope rule, so the agent knows what `inspect_image` accepts before it calls it. This page is the reference behind that skill, not the model's copy of it.
 
 ## 9. Local-mode URLs are stable, not permanent
 

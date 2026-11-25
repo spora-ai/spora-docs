@@ -112,7 +112,7 @@ Copy these from `spora-plugin-skeleton/composer.json`:
 }
 ```
 
-The framework's CI gates on three things — Pest (on PHP 8.4, 8.5, MySQL and MariaDB), PHPStan and a php-cs-fixer dry run — and its own composer scripts are `composer test:parallel`, `composer analyse` and `composer format`. That is the contract your plugin should meet before tagging a release; run the same three against your own checkout.
+The framework's CI gates on three things — Pest (on PHP 8.4, 8.5, 8.6, MySQL and MariaDB), PHPStan and a php-cs-fixer dry run — and its own composer scripts are `composer test:parallel`, `composer analyse` and `composer format`. That is the contract your plugin should meet before tagging a release; run the same three against your own checkout.
 
 ## Versioning
 

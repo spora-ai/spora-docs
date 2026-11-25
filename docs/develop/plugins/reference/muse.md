@@ -125,7 +125,7 @@ composer lint          # php-cs-fixer dry-run
 composer format        # apply formatting
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan per `phpstan.neon`, php-cs-fixer dry-run. The test job installs `ffmpeg` via `apt-get` so the audio pipeline is exercised on every PR. MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan per `phpstan.neon`, php-cs-fixer dry-run. The test job installs `ffmpeg` via `apt-get` so the audio pipeline is exercised on every PR. MIT license.
 
 ### Local development
 

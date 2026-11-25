@@ -166,7 +166,7 @@ composer analyse           # PHPStan
 composer lint              # php-cs-fixer dry-run
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan (2G memory limit), php-cs-fixer dry-run, a `coverage` job producing `coverage.xml` via Xdebug, and a `sonar` job (display name `SonarCloud scan`, project key `spora-ai_spora-plugin-openai-image`, 30-day `sonar.leak.period` from `sonar-project.properties`) that ingests it. MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan (2G memory limit), php-cs-fixer dry-run, a `coverage` job producing `coverage.xml` via Xdebug, and a `sonar` job (display name `SonarCloud scan`, project key `spora-ai_spora-plugin-openai-image`, 30-day `sonar.leak.period` from `sonar-project.properties`) that ingests it. MIT license.
 
 `plugin.json` sets `icon` to a **raw SVG path string** rather than a bundled icon name — the host's `<Icon>` component falls back to a single-path icon only when the value matches `/^(?:(?:M\s*\d)|(?:m\s*-?\d))/`, i.e. it must begin `M` (or `m`) immediately followed by a digit. This plugin's value starts `M5 3h14…`, so it renders as the bespoke glyph it was written for; a path opening with `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A` or `Z` would **not** match and would silently render as the `puzzle` fallback icon. That is one of the two forms the manifest's `icon` field accepts; the other is a bundled name.
 

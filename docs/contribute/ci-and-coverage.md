@@ -20,6 +20,7 @@ two that gate merges:
 | ------------------------------ | ------------ | ------------------------------------------------------------------------------- |
 | `Pest + coverage (PHP 8.4)`    | Pest + pcov  | The backend suite, with coverage for SonarCloud                                 |
 | `Pest (PHP 8.5)`               | Pest         | The suite on the newer PHP                                                      |
+| `Pest (PHP 8.6)`               | Pest         | The suite on the newest PHP                                                     |
 | `Pest (PHP 8.4, MySQL 9.7)`    | Pest         | The suite against a real MySQL engine                                           |
 | `Pest (PHP 8.4, MariaDB 12.3)` | Pest         | The suite against a real MariaDB engine                                         |
 | `PHPStan`                      | PHPStan      | Static analysis (level 5) plus the OpenAPI, translation and merge-marker checks |
@@ -34,8 +35,9 @@ two that gate merges:
 | `build-frontend` | `vue-tsc` + Vite | The type-check and the production build     |
 | `sonarqube`      | SonarCloud       | The `new_coverage` gate                     |
 
-**`spora`** (the skeleton template) validates the composer manifest, boots a
-smoke test and builds the operator image.
+**`spora`** (the skeleton template) validates the composer manifest, checks that
+the builder and the runtime agree on the PHP patch, boots a smoke test on PHP
+8.4 and again on PHP 8.6, and builds the operator image.
 
 The MySQL and MariaDB jobs in `spora-core` are advisory rather than gating:
 they carry `continue-on-error` until the SQLite-specific migration tests are
@@ -124,7 +126,7 @@ If coverage dropped below 80%, SonarQube's PR comment shows the uncovered lines.
 
 `spora-core`'s CI runs on `ubuntu-latest` with:
 
-- **PHP** 8.4 (the project's minimum), plus a second job on 8.5 and two on real MySQL and MariaDB engines
+- **PHP** 8.4 (the project's minimum), plus a job on 8.5, a job on 8.6 and two on real MySQL and MariaDB engines
 - **Composer** 2.x
 - **Xdebug** disabled by default (Pest uses `pcov` for speed on CI)
 
@@ -138,7 +140,7 @@ For local parity, match these versions. If your local is ahead (e.g. PHP 8.5), t
 
 **For plugin changes**, the plugin's own CI runs. Plugin repos have a smaller pipeline (Pest + PHPStan + php-cs-fixer + coverage) and don't build a Docker image.
 
-**For spora-core changes**, the full pipeline runs — the suite on four PHP/engine combinations, PHPStan, php-cs-fixer and the SonarCloud scan. That is the slowest PR.
+**For spora-core changes**, the full pipeline runs — the suite on five PHP/engine combinations, PHPStan, php-cs-fixer and the SonarCloud scan. That is the slowest PR.
 
 ## What's next
 

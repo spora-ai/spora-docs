@@ -103,7 +103,7 @@ composer install
 ./vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan, php-cs-fixer dry-run, plus SonarCloud analysis (project key `spora-ai_spora-plugin-semantic-scholar`). MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan, php-cs-fixer dry-run, plus SonarCloud analysis (project key `spora-ai_spora-plugin-semantic-scholar`). MIT license.
 
 ---
 

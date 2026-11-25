@@ -219,7 +219,7 @@ composer install
 ./vendor/bin/php-cs-fixer fix --dry-run --diff     # same ruleset as spora-core
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, PHPStan level 5, php-cs-fixer dry-run, a `coverage` job producing the clover report, and a `sonar` job uploading to SonarCloud (project key `spora-ai_spora-plugin-staan`) so the `new_coverage` metric is measurable per PR. Requires the `SONAR_TOKEN` secret in the repo.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, PHPStan level 5, php-cs-fixer dry-run, a `coverage` job producing the clover report, and a `sonar` job uploading to SonarCloud (project key `spora-ai_spora-plugin-staan`) so the `new_coverage` metric is measurable per PR. Requires the `SONAR_TOKEN` secret in the repo.
 
 ---
 

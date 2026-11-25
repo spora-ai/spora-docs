@@ -282,7 +282,7 @@ composer analyse         # PHPStan
 composer lint           # php-cs-fixer dry-run
 ```
 
-CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5, plus `static-analysis` and `code-style` jobs. A `coverage` job runs Pest with xdebug in parallel and uploads a clover `coverage.xml`; the `sonar` job depends on it and uploads to SonarCloud (project key `spora-ai_spora-plugin-custom-skills`, from `sonar-project.properties`), so `new_coverage` is measurable per PR. Requires the `SONAR_TOKEN` secret on the repo. MIT license.
+CI: `.github/workflows/ci.yml` — Pest on PHP 8.4 + 8.5 + 8.6, plus `static-analysis` and `code-style` jobs. A `coverage` job runs Pest with xdebug in parallel and uploads a clover `coverage.xml`; the `sonar` job depends on it and uploads to SonarCloud (project key `spora-ai_spora-plugin-custom-skills`, from `sonar-project.properties`), so `new_coverage` is measurable per PR. Requires the `SONAR_TOKEN` secret on the repo. MIT license.
 
 The plugin ships **no agent template** — `agent-templates/` is empty. An agent that should be able to author skills needs `manage_skill` activated on it by hand.
 

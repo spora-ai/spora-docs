@@ -58,12 +58,13 @@ SQLite handles the same workload as MariaDB for single-instance Spora deployment
 
 ## What's in the image
 
-The Dockerfile is at `docker/Dockerfile` in the `spora-ai/spora` skeleton. It uses a two-stage build:
+The Dockerfile is at `docker/Dockerfile` in the `spora-ai/spora` skeleton. It uses a three-stage build:
 
-- **Stage 1** (`composer:2.8`) — runs `composer install` to resolve PHP deps and the `spora-ai/spora-frontend` Composer package (which routes into `public/dist/` via `spora-ai/installer`)
-- **Stage 2** (`dunglas/frankenphp:1.13.1-php8.5.12-bookworm`) — runtime base image. Adds `supervisord` + `pdo_mysql` extension, copies app source + vendor + supervisord/frankenphp configs, runs as the non-root `www-data` user
+- **Stage 1** (`composer:2.11.2`) — carries the Composer binary and nothing else; the binary is copied into the next stage
+- **Stage 2** (`php:8.5.12-cli-alpine`) — runs `composer install` to resolve PHP deps and the `spora-ai/spora-frontend` Composer package (which routes into `public/dist/` via `spora-ai/installer`). The base carries the same PHP patch the runtime runs, so the resolution matches the code that will execute it
+- **Stage 3** (`dunglas/frankenphp:1.13.5-php8.5.12-bookworm`) — runtime base image. Adds `supervisord` + `pdo_mysql` extension, copies app source + vendor + supervisord/frankenphp configs, declares `USER root` — the container and the supervisor run as root, the application processes as `www-data`
 
-The runtime starts two processes via supervisord:
+The runtime starts two processes via supervisord, which keeps root and drops each program to `www-data`:
 
 - **`spora-web`** — `frankenphp run` (the web server)
 - **`spora-worker`** — `php /app/bin/spora worker:run --daemon` (the agent worker)
@@ -89,7 +90,7 @@ The `spora_storage` volume survives container restarts. To wipe state (full rese
 - **`SPORA_SECRET_KEY`** must be set in `.env` (or via your secret manager). The container won't start without it (the `?:` syntax in the compose above forces the explicit error).
 - **`SPORA_APP_ENV=production`** silences PHP deprecation warnings and removes the `debug` envelope from `/api/*` JSON error responses. Production deployments **must** set it.
 - **`SPORA_LOG_PATH=stdout`** sends Monolog records to the Docker log driver; otherwise logs land in `/app/storage/spora.log` inside the container. PHP fatals and `error_log()` calls are routed to `php://stderr` at the image layer (see `docker/Dockerfile`) and also surface in `docker logs`, independent of `SPORA_LOG_PATH`.
-- The image runs as `www-data` (non-root). The base image's `setcap cap_net_bind_service=+ep` lets FrankenPHP bind 80/443 without root.
+- The container runs as root and the application processes as `www-data`, so a deployment that enforces a non-root container rejects this image. The base image's `setcap cap_net_bind_service=+ep` lets FrankenPHP bind 80/443 without root.
 - For HTTPS in production, set `SERVER_NAME=your.domain.tld` in `.env` and publish `443:443` so Caddy auto-issues a Let's Encrypt cert on first boot. Otherwise, put a reverse proxy in front. Don't expose port 80 directly to the internet.
 
 ## Next steps

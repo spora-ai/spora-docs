@@ -204,7 +204,7 @@ composer install
 ./vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
 
-CI: `.github/workflows/ci.yml` — five jobs. `test` runs Pest on PHP 8.4 and 8.5 (the 8.4 run also produces the coverage report), `static-analysis` runs PHPStan, `code-style` runs php-cs-fixer in dry-run, `integration` boots the plugin in a throwaway `spora-core` skeleton to prove the manifest parses and the registrations hook in, and `sonarcloud` scans the repository.
+CI: `.github/workflows/ci.yml` — five jobs. `test` runs Pest on PHP 8.4, 8.5 and 8.6 (the 8.4 run also produces the coverage report), `static-analysis` runs PHPStan, `code-style` runs php-cs-fixer in dry-run, `integration` boots the plugin in a throwaway `spora-core` skeleton to prove the manifest parses and the registrations hook in, and `sonarcloud` scans the repository.
 
 ---
 

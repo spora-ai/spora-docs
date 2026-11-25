@@ -25,14 +25,15 @@ Commit the resulting `composer.json` + `composer.lock` change.
 
 ### 3. Update the Dockerfile (if needed)
 
-The shipped `docker/Dockerfile` (in the template, two-stage, ~70 lines, heavily commented) covers the common case. Edit it only when you need to add an OS package or a PHP extension — e.g. a database client, an image library, or a missing PECL extension. Most plugins do not require a Dockerfile change because they install via Composer.
+The shipped `docker/Dockerfile` (in the template, three-stage, ~95 lines, heavily commented) covers the common case. Edit it only when you need to add an OS package or a PHP extension — e.g. a database client, an image library, or a missing PECL extension. Most plugins do not require a Dockerfile change because they install via Composer.
 
 The base images are pinned:
 
-- `composer:2.8` (deps-builder stage)
-- `dunglas/frankenphp:1.13.1-php8.5.12-bookworm` (runtime stage)
+- `composer:2.11.2` (the `composer-bin` stage — the Composer binary the deps-builder uses)
+- `php:8.5.12-cli-alpine` (deps-builder stage)
+- `dunglas/frankenphp:1.13.5-php8.5.12-bookworm` (runtime stage)
 
-Spora's `composer.json` declares `"php": "^8.4.1"`; downgrading the runtime to PHP 8.3 will fail the platform check.
+Spora's `composer.json` declares `"php": "^8.4.1"`; downgrading the runtime to PHP 8.3 will fail the platform check. The deps-builder is pinned to the same PHP patch the runtime runs, so a dependency that caps its PHP range fails the build rather than the deployment.
 
 ### 4. Configure your environment
 
@@ -133,9 +134,9 @@ Run with `docker compose -f docker-compose.yml up -d`. With `SERVER_NAME=spora.e
 The image is multi-stage, so the runtime image contains only what the app needs at runtime:
 
 - **No Node toolchain.** The admin SPA (`spora-ai/spora-frontend`) is a prebuilt Composer package — `spora-ai/installer` routes it into `public/dist/` during `composer install`. You don't need npm in the image.
-- **No Git.** The build stages use `COPY` of `composer.json` + `composer.lock`, not a git clone.
+- **No Git in the runtime image.** Git is installed in the deps-builder stage, where `cweagans/composer-patches` applies a plugin's patches with it; the runtime stage does not carry it.
 - **No `storage/` content from your dev machine.** The `storage/` directory is intentionally not `COPY`'d — it is created and `chown`'d at runtime. Copying it would risk shipping the SQLite DB and `secret.key` into the image.
-- **No `vendor/` from your dev machine.** The `vendor/` is built in stage 1 and `COPY --from=deps-builder`'d into stage 2.
+- **No `vendor/` from your dev machine.** The `vendor/` is built in the deps-builder stage and `COPY --from=deps-builder`'d into the runtime stage.
 
 ## When to fork the Dockerfile
 

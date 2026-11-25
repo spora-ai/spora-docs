@@ -212,7 +212,7 @@ agent's **LLM config**, not its **Tools** tab. On a model that does not take ima
 fails with a message the **model** reads, naming the setting and the model, so the agent can tell
 you which switch to flip. It is never a silent failure.
 
-One asset per call, and the image is the asset's own bytes — up to 20 MiB. What the task history
+One asset per call, and the image is the asset's own bytes — up to what the endpoint accepts, which is three quarters of the provider's per-image base64 ceiling (20 MB on OpenAI, 10 MB on the Claude API, 5 MB on Bedrock). What the task history
 stores is a reference rather than the pixels, so the image is read from storage when a request is
 built and re-sent on every later turn of the conversation until a compaction drops it, exactly
 like an image you attached yourself. The archive's own row is the exception: under `data_url`

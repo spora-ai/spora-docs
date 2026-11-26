@@ -1,6 +1,6 @@
 ---
 title: Media assets
-description: Embedding images, audio, video, and downloadable documents in tool results — AssetStore, MediaEmbed, StoresBinaryAssets trait.
+description: Embedding images, audio, video, and downloadable documents in tool results — AssetStore, MediaEmbed, StoresBinaryAssets trait — and putting an archive image in front of the model.
 ---
 
 # Plugin Author Guide — Embedding Media in Tool Results
@@ -36,6 +36,8 @@ A service interface in `app/Services/AssetStore.php`. Three implementations ship
 | `AutoAssetStore`    | `auto` (default) | Composes the two above and dispatches per call based on a size threshold.                                                                  |
 
 The container binds `AssetStore::class` to whichever mode the operator picks via `SPORA_ASSET_STORE_MODE`. Plugins depend on the **interface**, never on a concrete class.
+
+The `<ext>` half of `<storage>/assets/<token>.<ext>` comes from the stored **filename** when it carries an extension, and from the MIME map otherwise — so an upload named `photo.jpeg` lands as `<token>.jpeg`, not `<token>.jpg`. Every reader has to ask for that suffix rather than derive one from the MIME: the image channel and the delete path both go through `LocalAssetStore::storedExtension()`.
 
 ### `Spora\Tools\MediaEmbed`
 
@@ -317,16 +319,16 @@ Both are mirrored onto the derivative's own `media_assets` row as `plugin_slug` 
 
 `createNew()` writes a fresh `media_assets` row, so it has to decide, field by field, what the derivative inherits from its parent. The per-field table is deliberate; do not "helpfully" copy the whole parent:
 
-| Field                 | Action               | Why                                                                                                                                                                                                              |
-| --------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `principal_id`        | precedence chain     | Parent's value wins; else the supplied `PrincipalContext`; else `PrincipalService::ensureUserPrincipal($userId)`; else null. Same chain the ingest pipeline uses, so LIST and CREATE agree on a row's principal. |
-| `user_id`             | **inherit**          | The caller's `userId` wins where supplied; otherwise the parent's. `AssetController` gates reads on the owner, so a derivative with a null `user_id` is unreadable by the non-admin who created it.              |
-| `agent_id`            | **inherit**          | `MediaTool` gates agent-scoped reads on `asset.agent_id`. Without it a `scope=agent` agent gets "not found" on a derivative it caused.                                                                           |
-| `is_temporary`        | **inherit**          | `MediaArchiveRetention`'s sweep filters on `(user_id, agent_id, is_temporary)`. A row with null `user_id` **and** null `agent_id` matches no sweep and grows without bound.                                      |
-| `task_id`             | do **not** inherit   | The derivative outlives the turn. Leaving it null keeps LIST scoping simple.                                                                                                                                     |
-| `tool_call_id`        | do **not** inherit   | It would collide with the ingest dedup key `(tool_call_id, source_url)`.                                                                                                                                         |
-| `tags` / `prompt`     | do **not** inherit   | They describe the source, not a render of it.                                                                                                                                                                    |
-| `public_access_token` | **must not** inherit | Inheriting it would mint a second unauthenticated read path for a derived document that nobody chose to share.                                                                                                   |
+| Field                 | Action               | Why                                                                                                                                                                                                                                   |
+| --------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `principal_id`        | precedence chain     | Parent's value wins; else the supplied `PrincipalContext`; else `PrincipalService::ensureUserPrincipal($userId)`; else null. Same chain the ingest pipeline uses, so LIST and CREATE agree on a row's principal.                      |
+| `user_id`             | **inherit**          | The caller's `userId` wins where supplied; otherwise the parent's. `AssetController` gates reads on the owner, so a derivative with a null `user_id` is unreadable by the non-admin who created it.                                   |
+| `agent_id`            | **inherit**          | `MediaTool` gates agent-scoped reads on `asset.agent_id`. Without it a `scope=agent` agent gets "not found" on a derivative it caused. `scope=agent` is no longer the default, but an agent explicitly scoped to it still needs this. |
+| `is_temporary`        | **inherit**          | `MediaArchiveRetention`'s sweep filters on `(user_id, agent_id, is_temporary)`. A row with null `user_id` **and** null `agent_id` matches no sweep and grows without bound.                                                           |
+| `task_id`             | do **not** inherit   | The derivative outlives the turn. Leaving it null keeps LIST scoping simple.                                                                                                                                                          |
+| `tool_call_id`        | do **not** inherit   | It would collide with the ingest dedup key `(tool_call_id, source_url)`.                                                                                                                                                              |
+| `tags` / `prompt`     | do **not** inherit   | They describe the source, not a render of it.                                                                                                                                                                                         |
+| `public_access_token` | **must not** inherit | Inheriting it would mint a second unauthenticated read path for a derived document that nobody chose to share.                                                                                                                        |
 
 ### The `md` format, and what gets extracted
 
@@ -468,9 +470,9 @@ The message gets the frame by being asked for it. A model shows a widget by link
 [test-dashboard.html](/api/v1/media/<asset_id>/embed)
 ```
 
-and the chat renders that link as the live asset, in place, as a block. The model never sees
-the asset's bytes and never writes any markup — a link is the whole request, the way a link
-to a file is a link and not the file.
+and the chat renders that link as the live asset, in place, as a block. The model never sees the
+bytes of the document it is embedding and never writes any markup — a link is the whole request,
+the way a link to a file is a link and not the file.
 
 The route is the point, and it is a **path** rather than a fragment: the server is what
 decides whether the framed document may run script, and it decides by the path it is asked
@@ -522,13 +524,102 @@ That reset is the second hand-written rule, and its reason is worth knowing befo
 
 If you emit HTML outside the canonical helpers (`MediaEmbed::*`), test that the result survives sanitization. Run the frontend tests in `spora-frontend/tests/composables/useMarkdown.spec.ts` against your markup.
 
-## 8. Local-mode URLs are stable, not permanent
+## 8. `inspect_image` — the model looks at an archive image
+
+Everything above is about putting media in front of the **human**. The `media` tool has one operation that puts an archive image in front of the **model**: the agent names an asset, and the image itself arrives in the model's context on the next turn — so the model can describe it, answer a question about it, or QA it, without a human attaching anything.
+
+```text
+media inspect_image {asset_id, question?}
+  │
+  └─ the tool result carries a reference to the archive image
+       └─ the bytes are read from storage when the request is built
+            └─ an image content block on the user turn after the tool result
+```
+
+What the **task-history row** holds is the reference — the asset id and the kind — not the bytes, and the bytes are read off storage when a request is actually built, the same lazy resolution the user-attachment path already does. The archive's own row is the exception: under `data_url` storage the image bytes land in `media_assets.payload`, the MEDIUMBLOB column the configuration table above names.
+
+The image turn follows the **whole run of tool results**, not just its own. A provider accepts a tool result only directly after the assistant turn that asked for it, so a user turn between two results of the same batch is a 400. With one call the turn lands immediately after its result; with several calls in one batch it lands after the last of them.
+
+### The parameters
+
+| Parameter  | Type   | Required | What it is                                                                                    |
+| ---------- | ------ | -------- | --------------------------------------------------------------------------------------------- |
+| `asset_id` | string | yes      | The archive asset to look at. One asset per call.                                             |
+| `question` | string | no       | What to look at. The tool result carries it, so the model knows what it is being asked about. |
+
+It is a **read**: it asks for no approval and changes nothing in the archive.
+
+The result's text names the asset and the question:
+
+```text
+Attached media asset <id> (<filename>, <mime>, <n> bytes) to this result — you can see it now.
+
+Question: <the question, or "none given.">
+```
+
+The structured data carries `asset_id`, `filename`, `mime_type`, `byte_size` and `question` — the last one `null` when no question was given. That copy is stored for the operator's dashboard and the audit trail; the model reads the text.
+
+### Two gates stand in front of it
+
+**The operation is off by default.** It is absent from the tool schema the model is given until an operator enables it for the agent — the agent's **Tools** tab → **Media Library** → the `inspect_image` operation's toggle. An agent that has not been opted in cannot call it at all, and no context is spent on it.
+
+**The agent's LLM must accept image content blocks.** The same **Allow images** setting that governs image _uploads_ governs this, and the **resolved** value is what counts: the operator's toggle first, and a model-name heuristic only when the toggle is absent. A deliberately-off toggle blocks; an untouched toggle on a vision-capable model works — every Claude from `claude-3` onwards, and the OpenAI families `gpt-4o`, `gpt-4-turbo`, `gpt-4-vision`, `gpt-4.1`, `gpt-5`, `gpt-6`, `o1`, `o3`, `o4` and `chatgpt-4o`.
+
+That toggle is a field of the **LLM driver configuration** — the agent's **LLM config**, not its **Tools** tab, so it is not the field next to the operation toggle above. The refusal names it: _Enable "Allow images" on the agent's LLM configuration_.
+
+When the LLM does not take images, the call **fails with a message the model reads** — one that names the setting, the model, and the remedy, so the agent can tell the operator which switch to flip. It is never a silent failure, and never a success whose image is stripped further down.
+
+> **One wrinkle worth knowing.** The settings form renders an untouched toggle as _unset_, which for a toggle reads as "off" — the opposite of what runs. An operator looking at a `gpt-4o` configuration sees "Allow images: off" while the system treats images as allowed. This is pre-existing behaviour, shared with the upload gate.
+
+### What it refuses
+
+Every refusal names its reason:
+
+| Refusal                                                   | Why                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The asset's MIME is not an image                          | The MIME must be one of the raster formats the providers accept — `image/png`, `image/jpeg`, `image/webp`, `image/gif`.                                                                                                                                                                                                                                                                                               |
+| `image/svg+xml`                                           | SVG is script-capable, not raster, and **no registered derivative producer rasterises one** — core's image producer takes PNG, JPEG, WebP and GIF sources only, so `create_derivative` cannot convert it. The asset has to be rasterised outside Spora, or by the operator, before it can be inspected.                                                                                                               |
+| The agent's LLM does not accept image content blocks      | The gate above — the failure names the setting and the model.                                                                                                                                                                                                                                                                                                                                                         |
+| The asset is larger than the endpoint's per-image ceiling | The provider caps the **base64** form of the image, so the file that fits is three-quarters of the stated limit — 20 MB on OpenAI, 10 MB on the Claude API, 5 MB on Bedrock. A stale or missing size is re-measured after the load, so an oversized body cannot slip in through a stale column. The call is **refused**: the image never becomes an attachment, so there is nothing for a later request to leave out. |
+| The asset's `storage_mode` is `external`                  | An external asset has no bytes on hand — the archive holds a link, not the file.                                                                                                                                                                                                                                                                                                                                      |
+
+### The two limits, and which one is which
+
+The refusal above is decided **in the call**. The ceiling is the endpoint's, and the call reads the asset's bytes and measures them, so an asset over it never becomes an attachment — there is nothing for a later request to leave out.
+
+The **request's own room** is a second limit, and it is decided **later**, when the request is built. Every image in one request shares it: the ones `inspect_image` put there and the operator's own attachments alike, against three-quarters of the provider's request ceiling — the remaining quarter is the system prompt, the tools and the conversation text. A request that carries more than the endpoint accepts is refused whole, so an image the request has no room for is **dropped** rather than sent.
+
+**The call has already succeeded by then.** The tool result's **text still reaches the model**, and the result carries a note that the image **did not fit in the request** and was not sent, so it is not visible in the conversation. What the model loses is the image, not the answer. The note does not say which of the request's two limits applied — the request's bytes or the number of images it may carry — and the two need different recoveries: a smaller derivative answers the first and not the second, because a derivative needs a slot of its own.
+
+### What it cannot see
+
+The operation obeys the `media` tool's **Library scope** setting (`scope`), the same one every other read obeys: under `principal` the agent sees the whole principal's library — the operator's own uploads included — and under `agent` it sees only the media it produced itself.
+
+The default is `principal`. It was `agent` until the release that added this operation: the common case is the operator pointing the agent at an image in the library, and an operator's own upload carries no `agent_id` to match under `scope=agent`.
+
+**An agent keeps the scope it had.** An agent whose scope came from the schema default keeps `agent`; an agent whose scope was set deliberately — at the agent, global, group, principal or shared-group level — keeps that scope; an agent enabled from now on gets `principal`.
+
+Migration `0105` is what holds the old reach in place: it materialises `scope: 'agent'` into the agent's own settings row for an agent that had the `media` tool enabled and for which no layer supplies a scope — the agent's own row, the shared group, the tool global, the group layer or the principal layer — so those agents see exactly what they saw before. The **group layer** counts only while the group cascade is on (`SPORA_TOOLS_GROUP_CASCADE_ENABLED`, off by default): with the cascade off, a group principal's scope governs nothing at runtime, so it does not stop the materialisation. It only adds a scope where none exists, so a deliberate choice is never shadowed, and an agent whose global, principal, shared-group or own setting already supplies a scope is left alone. It is idempotent, its rollback takes back only the scopes it wrote, and it runs like every other migration: `php bin/spora spora:install`.
+
+Set **Library scope** to `principal` on an agent whose scope is `agent` to give it the wider reach: a global change does not reach an agent that has a scope of its own, because its own agent-level setting overrides the global value. A global change still reaches an agent only when no layer above the global layer sets `scope` for it: its own agent-level setting, its principal setting or, while `SPORA_TOOLS_GROUP_CASCADE_ENABLED` is on, its group setting.
+
+An asset outside the scope is **not visible**, and the failure says so without revealing whether the asset exists. It names the active scope, and it names the remedy the agent can act on: under `agent` both remedies — call `search` to list what the agent can see, or ask the operator to set **Library scope** to `principal` — and under `principal` only `search`, because the scope is already the wider one. That is the difference between a dead end and something the agent can act on.
+
+### The re-send cost
+
+The image stays in the task history, and it is **re-sent on every subsequent turn** of the conversation — exactly like an image the user attached — for as long as the asset is still in the archive **and the request has room for it**. A long conversation that inspected a large image keeps paying for it in the context window. A compacted conversation loses the image, the same way it loses a user attachment.
+
+An asset the operator removes from the archive is the other way the image stops being sent. The row still declares it, but the bytes are gone, so the block cannot be resolved — and the message that made the claim ("you can see it now") carries a note saying the image was removed, rather than the model reading a claim the payload no longer supports. The note rides on that message, not on a turn of its own: the message count and the order are the provider's contract. It names no path and no id beyond what the row already carries.
+
+The `media-library` skill ships with the release, and it is what the model reads: it carries the operation matrix, the refusals and the scope rule, so the agent knows what `inspect_image` accepts before it calls it. This page is the reference behind that skill, not the model's copy of it.
+
+## 9. Local-mode URLs are stable, not permanent
 
 `LocalAssetStore` mints a token that embeds a daily-rotating HMAC. A URL generated today is valid until midnight UTC tomorrow; a URL from last week returns 404 even if the file is still on disk.
 
 If you want long-term retention, run `php bin/spora assets:gc --max-age-days=N` periodically (cron) to free disk. The command does **not** invalidate URLs that are still in their validity window — it only unlinks files past `--max-age-days`.
 
-## 9. End-to-end example
+## 10. End-to-end example
 
 ```php
 final class TtsTool extends AbstractTool {

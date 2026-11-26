@@ -110,6 +110,7 @@ public function startTask(
 
 ## What's next
 
+- [Putting an archive image in front of the model](/reference/concepts/tools#putting-an-archive-image-in-front-of-the-model) — hand a generated image to the model, not only to the chat
 - [Skills](/develop/plugins/author-guide/skills) — ship operator knowledge alongside the tool's capability
 - [Migrations](/develop/plugins/author-guide/migrations) — when your tool needs its own tables
 - [Admin UI](/develop/plugins/author-guide/admin-ui) — when the operator needs a UI to manage the tool's data

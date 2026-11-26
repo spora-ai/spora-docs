@@ -195,6 +195,73 @@ summarised thinking explicitly, because the API's own default stopped returning 
 A stored `temperature` or `thinking_budget` is pruned the next time that configuration is saved.
 There is no data migration to run.
 
+### An agent can look at an image in the Media Archive
+
+The `media` tool gains an operation called `inspect_image`. It sends an image out of the archive and
+into the model's context, so the agent can describe it, answer a question about it, or QA it — on
+its own, mid-conversation, with nothing attached by a human.
+
+**It is off by default.** The operation is absent from the tool schema the model is given until an
+operator switches it on for the agent (agent → **Tools** → **Media Library** → the
+`inspect_image` operation's toggle), so an agent that has not been opted in cannot call it at all.
+
+**It needs an LLM that takes images.** The same _Allow images_ setting that governs image uploads
+governs this, and it is the resolved value that counts — the toggle first, a model-name heuristic
+only when the toggle is absent. The toggle is a field of the **LLM driver configuration** — the
+agent's **LLM config**, not its **Tools** tab. On a model that does not take image blocks the call
+fails with a message the **model** reads, naming the setting and the model, so the agent can tell
+you which switch to flip. It is never a silent failure.
+
+One asset per call, and the image is the asset's own bytes — up to what the endpoint accepts, which is three-quarters of the provider's per-image base64 ceiling (20 MB on OpenAI, 10 MB on the Claude API, 5 MB on Bedrock). An asset over that ceiling is **refused**, so it never becomes an attachment; a separate, later limit — the room the request itself has — drops an image the request cannot carry, and the tool result says so. What the task history
+stores is a reference rather than the pixels, so the image is read from storage when a request is
+built and re-sent on every later turn of the conversation until a compaction drops it, exactly
+like an image you attached yourself. The archive's own row is the exception: under `data_url`
+storage the image bytes land in `media_assets.payload`. Nothing about the archive's schema
+changes, so no migration touches the archive.
+
+See [Concepts → Tool system → `media`](/reference/concepts/tools#media-—-mediatool) and
+[Concepts → Media assets](/reference/concepts/media-assets#_8-inspect-image-—-the-model-looks-at-an-archive-image).
+
+### The `media` tool's default scope is now `principal`
+
+The `media` tool's **Library scope** setting defaults to `principal` instead of `agent`. An agent
+now sees the whole principal's library — the principal owner's own uploads included — rather than
+only the media it produced itself.
+
+**An agent keeps the scope it had.** An agent whose scope came from the schema default keeps
+`agent`; an agent whose scope you set deliberately — at the agent, global, group, principal or
+shared-group level — keeps that scope; an agent enabled from now on gets `principal`.
+
+A migration ships with the upgrade and holds that reach in place: it materialises `scope: 'agent'`
+into the agent's own settings row for every agent that had the `media` tool enabled and has no
+scope of its own. It adds rather than rewrites, because a rewrite could not tell a materialised
+default from your deliberate choice, and silently overturning the second would be the worse bug.
+Absence is unambiguous, so the migration only adds a scope where no layer of the cascade supplies
+one — the agent's own row, the shared group, the tool global, the group layer or the principal
+layer — and an agent whose global, principal, shared-group or own setting already supplies a scope
+is left alone. The **group layer** counts only while the group cascade is on
+(`SPORA_TOOLS_GROUP_CASCADE_ENABLED`, off by default): with the cascade off, a group principal's
+scope governs nothing at runtime, so it does not stop the materialisation.
+
+To widen an agent whose scope is `agent`, set **Library scope** to `principal` on it (agent →
+**Tools** → **Media Library**). A global change does not reach an agent that has a scope of its
+own, because its own agent-level setting overrides the global value; a global change still reaches
+an agent only when no layer above the global layer sets `scope` for it: its own agent-level
+setting, its principal setting or, while `SPORA_TOOLS_GROUP_CASCADE_ENABLED` is on, its group
+setting.
+
+What changes when the scope is widened:
+
+- **`get_public_url` changes the most.** It can now mint a share link for any of the principal's
+  assets, not only the agent's own. It is still approval-gated on every call, and the link is
+  per-asset.
+- The reads widen too — `search`, `get_media`, `get_source`, `get_embed_code`, `list_derivatives`
+  and `create_derivative` reach more rows.
+
+**The migration is `0105`, and it runs with the upgrade.** It is idempotent — re-running it
+changes nothing — and its rollback takes back only the scopes it wrote, so a scope you set by hand
+is never reversed. On a fresh install there is nothing to materialise.
+
 ### One breaking change, for plugin authors
 
 `Spora\Services\TaskServiceInterface::startTask()` and `continueTask()` change signature — each
@@ -218,9 +285,10 @@ to move together. A plugin that only _calls_ the service is unaffected.
 - **Anthropic's default model** — the driver now defaults to a current Claude generation. The
   Claude 3.x generation it defaulted to is retired and answers an error on every request.
 - **Image input** — the built-in drivers' image heuristics now cover the current model families
-  (the current Claude ids, `gpt-4.1`, `gpt-5`, `gpt-6`). A configuration that never set the
-  _Allow images_ toggle starts sending images where it previously did not. Set the toggle
-  explicitly if your provider rejects image blocks.
+  (every Claude from `claude-3` onwards, and the OpenAI families `gpt-4o`, `gpt-4-turbo`,
+  `gpt-4-vision`, `gpt-4.1`, `gpt-5`, `gpt-6`, `o1`, `o3`, `o4` and `chatgpt-4o`). A configuration
+  that never set the _Allow images_ toggle starts sending images where it previously did not. Set
+  the toggle explicitly if your provider rejects image blocks.
 
 ### Upgrading
 
@@ -228,10 +296,11 @@ to move together. A plugin that only _calls_ the service is unaffected.
 composer update spora-ai/spora-core spora-ai/spora-frontend
 ```
 
-**Run the migration before the worker starts.** This release adds a `tasks.effort` column. The web
-path installs the schema itself on the next request, but **the CLI worker does not** — it opens the
-database without running migrations. A worker that fires before the migration has run writes a task
-against a table without the column, and the run fails with a log line and nothing more. So:
+**Run the migration before the worker starts.** This release adds a `tasks.effort` column, and the
+migration that holds the `media` tool's existing scope in place. The web path installs the schema
+itself on the next request, but **the CLI worker does not** — it opens the database without running
+migrations. A worker that fires before the migration has run writes a task against a table without
+the column, and the run fails with a log line and nothing more. So:
 
 ```bash
 composer update spora-ai/spora-core
